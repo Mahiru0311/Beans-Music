@@ -1,0 +1,144 @@
+name: Build Unsigned IPA
+
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  build-ipa:
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install xcodegen
+
+      - name: Resolve version from project.yml
+        id: bump
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          path = 'project.yml'
+          with open(path) as f:
+              content = f.read()
+          ver = re.search(r'MARKETING_VERSION:\s*"([^"]+)"', content).group(1)
+          build = re.search(r'CURRENT_PROJECT_VERSION:\s*"(\d+)"', content).group(1)
+          print('::notice title=Version::Building %s (build %s)' % (ver, build))
+          with open('version.txt', 'w') as f:
+              f.write(ver)
+          with open('build.txt', 'w') as f:
+              f.write(build)
+          PYEOF
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Verify Bilibili login and playback parsing
+        run: |
+          xcrun swiftc Beans/BilibiliProtocol.swift Beans/BilibiliNativeRequestPolicy.swift scripts/check-bilibili-protocol.swift -o /tmp/beans-bilibili-checks
+          /tmp/beans-bilibili-checks
+
+      - name: Build (unsigned)
+        run: |
+          set -o pipefail
+          VER=$(cat version.txt)
+          BUILD=$(cat build.txt)
+          echo "Building with MARKETING_VERSION=$VER CURRENT_PROJECT_VERSION=$BUILD"
+          echo "BUILD_NUMBER=$BUILD" >> "$GITHUB_ENV"
+          echo "VERSION_LABEL=$VER" >> "$GITHUB_ENV"
+          echo "VERSION_TAG=v$VER" >> "$GITHUB_ENV"
+          xcodebuild \
+            -project Beans.xcodeproj \
+            -scheme Beans \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            MARKETING_VERSION="$VER" \
+            CURRENT_PROJECT_VERSION="$BUILD" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee xcodebuild.log
+
+      - name: Test CiliCili upstream and Beans integration regressions
+        run: |
+          set -o pipefail
+          SIMULATOR=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x.get("isAvailable") and "iPhone" in x["name"]))')
+          xcodebuild \
+            -project Beans.xcodeproj \
+            -scheme Beans \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR" \
+            -derivedDataPath build-tests \
+            -resultBundlePath BilibiliTests.xcresult \
+            -only-testing:BeansTests/BilibiliDetailTests \
+            -only-testing:BeansTests/BilibiliListenQueueTests \
+            -only-testing:BeansTests/WebDAVRecoveryTests \
+            -only-testing:BeansTests/FoliaClassicMotionTests \
+            -only-testing:BeansTests/FoliaClassicGlowTests \
+            -only-testing:BeansTests/FoliaModeCatalogTests \
+            -only-testing:BeansTests/FoliaTimelineTests \
+            -only-testing:BeansTests/FoliaBeansLyricBridgeTests \
+            -only-testing:CiliCiliTests \
+            -only-testing:BeansUITests/CiliCiliPortUITests \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee bilibili-tests.log
+
+      - name: Export simulator screenshots
+        if: always()
+        run: |
+          if [ -d BilibiliTests.xcresult ]; then
+            xcrun xcresulttool export attachments --path BilibiliTests.xcresult --output-path ui-screenshots
+          fi
+
+      - name: Upload build and test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Beans-build-diagnostics
+          path: |
+            xcodebuild.log
+            bilibili-tests.log
+            BilibiliTests.xcresult
+            ui-screenshots
+
+      - name: Verify version in built app
+        run: |
+          echo "== project.yml =="
+          grep -E "MARKETING_VERSION|CURRENT_PROJECT_VERSION" project.yml
+          echo "== built Info.plist =="
+          plutil -p build/Build/Products/Release-iphoneos/Beans.app/Info.plist | grep -E "CFBundleShortVersionString|CFBundleVersion"
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Beans.app Payload/
+          cp Beans/Resources/CiliCili-LICENSE.txt Payload/Beans.app/
+          cp Beans/Resources/CiliCili-NOTICE.md Payload/Beans.app/
+          # 使用普通 ZIP，避免将 macOS 资源元数据带入 IPA，提升第三方签名器兼容性。
+          zip -qry Beans-unsigned.ipa Payload
+          unzip -t Beans-unsigned.ipa
+          test -d Payload/Beans.app
+          test -f Payload/Beans.app/Info.plist
+          test -x Payload/Beans.app/Beans
+          test -x Payload/Beans.app/Frameworks/CiliCiliKit.framework/CiliCiliKit
+
+      - name: Package corresponding GPL source
+        run: git archive --format=zip --output=Beans-CiliCili-source.zip HEAD
+
+      - name: Upload corresponding source
+        uses: actions/upload-artifact@v4
+        with:
+          name: Beans-CiliCili-source
+          path: Beans-CiliCili-source.zip
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Beans-unsigned-ipa
+          path: Beans-unsigned.ipa
+
+
+

@@ -1,0 +1,173 @@
+name: Beans
+
+options:
+  deploymentTarget:
+    iOS: "26.1"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+
+targets:
+  Beans:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.1"
+    sources:
+      - Beans
+      - BeansLiveActivityShared
+    resources:
+      - Beans/en.lproj
+      - Beans/zh-Hans.lproj
+      - Beans/Resources/XProfile.html
+      - Beans/Resources/CeruBilibili-LICENSE.txt
+      - Beans/Resources/SimpleIcons-LICENSE.txt
+      - Beans/Resources/CeruBilibili-NOTICE.md
+      - Beans/Resources/ikun-music-source.js
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app
+        DEAD_CODE_STRIPPING: YES
+        DEPLOYMENT_POSTPROCESSING: YES
+        STRIP_INSTALLED_PRODUCT: YES
+        SWIFT_COMPILATION_MODE: wholemodule
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
+        MARKETING_VERSION: "1.8.1"
+        CURRENT_PROJECT_VERSION: "19"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_OBJC_BRIDGING_HEADER: Beans/Beans-Bridging-Header.h
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: Beans/Beans.entitlements
+    dependencies:
+      - target: CiliCiliKit
+      - target: BeansLiveActivity
+    info:
+      path: Beans/Info.plist
+      properties:
+        CFBundleDisplayName: Beans Music
+        LSRequiresIPhoneOS: true
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UIBackgroundModes: [audio]
+        NSSupportsLiveActivities: true
+        NSPhotoLibraryAddUsageDescription: 用于将哔哩哔哩动态和评论图片保存到系统照片图库。
+        UILaunchScreen:
+          UIImageName: LaunchBackground
+          UIColorName: LaunchBackgroundColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: false
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        CADisableMinimumFrameDurationOnPhone: true
+        UISupportsCarPlay: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+  BeansLiveActivity:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.1"
+    sources:
+      - BeansLiveActivity
+      - BeansLiveActivityShared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.liveactivity
+        MARKETING_VERSION: "1.8.1"
+        CURRENT_PROJECT_VERSION: "19"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: BeansLiveActivity/Info.plist
+      properties:
+        CFBundleDisplayName: Beans Now Playing
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  CiliCiliKit:
+    type: framework
+    platform: iOS
+    deploymentTarget: "26.1"
+    sources:
+      - path: Modules/CiliCili/Sources
+        excludes:
+          - App/JKBiliApp.swift
+      - Modules/CiliCili/Integration
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.cilicili
+        DEAD_CODE_STRIPPING: YES
+        DEPLOYMENT_POSTPROCESSING: YES
+        STRIP_INSTALLED_PRODUCT: YES
+        SWIFT_COMPILATION_MODE: wholemodule
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+        SWIFT_VERSION: "5.0"
+  CiliCiliTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.1"
+    sources:
+      - Modules/CiliCili/Tests
+    dependencies:
+      - target: CiliCiliKit
+      - target: Beans
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.cilicili.tests
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+  BeansTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.1"
+    sources:
+      - BeansTests
+    dependencies:
+      - target: Beans
+      - target: CiliCiliKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.tests
+  BeansUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.1"
+    sources:
+      - BeansUITests
+    dependencies:
+      - target: Beans
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.uitests
+
+schemes:
+  Beans:
+    build:
+      targets:
+        Beans: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+    test:
+      targets:
+        - BeansTests
+        - CiliCiliTests
+        - BeansUITests
+

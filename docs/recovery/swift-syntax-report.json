@@ -1,0 +1,84 @@
+{
+  "parser": "tree-sitter Swift; syntax only, not an Xcode compiler",
+  "files": 1337,
+  "issues": [
+    {
+      "file": "Beans\\BeansDiagnostics.swift",
+      "line": 198,
+      "type": "ERROR",
+      "text": ""
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2013,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2014,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2015,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2017,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2035,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2038,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2067,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\KugouMusicAPI.swift",
+      "line": 2069,
+      "type": "ERROR",
+      "text": "final"
+    },
+    {
+      "file": "Beans\\SWFractalClouds.swift",
+      "line": 323,
+      "type": "ERROR",
+      "text": "@available(iOS 17.0, *)"
+    },
+    {
+      "file": "Beans\\SWInkSmoke.swift",
+      "line": 313,
+      "type": "ERROR",
+      "text": "@available(iOS 17.0, *)"
+    },
+    {
+      "file": "Beans\\SWLiquidChrome.swift",
+      "line": 335,
+      "type": "ERROR",
+      "text": "@available(iOS 17.0, *)"
+    },
+    {
+      "file": "Modules\\CiliCili\\Sources\\Utilities\\PerformanceServices.swift",
+      "line": 957,
+      "type": "ERROR",
+      "text": "if let data = await task.value {\n                    return storeBVIDPlayInfoDataIfNeeded(\n                        data,\n                        bvid:"
+    }
+  ]
+}

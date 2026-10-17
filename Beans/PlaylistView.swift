@@ -1,0 +1,371 @@
+import SwiftUI
+
+/// 歌单内排序方式
+enum PlaylistSortMode: String, CaseIterable, Identifiable {
+    case original = "默认"
+    case name = "歌名"
+    case duration = "时长"
+    var id: String { rawValue }
+}
+
+struct PlaylistView: View {
+    @EnvironmentObject private var player: PlayerManager
+    @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var theme: ThemeStore
+    @ObservedObject private var favorites = FavoritesStore.shared
+
+    let playlist: Playlist
+    @State private var tracks: [Song] = []
+    @State private var loading = true
+    @State private var errorMessage: String?
+    @State private var searchText = ""
+    @State private var sortMode: PlaylistSortMode = .original
+    @State private var showBatchDownload = false
+    @State private var showPlaylistDescription = false
+    @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
+    @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
+    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
+
+    init(playlist: Playlist) {
+        self.playlist = playlist
+        let cached = Self.initialCachedSongs(for: playlist)
+        _tracks = State(initialValue: cached?.songs ?? [])
+        _loading = State(initialValue: cached?.songs.isEmpty ?? true)
+    }
+
+    private static func initialCachedSongs(for playlist: Playlist) -> SyncedPlaylistCache.SongEntry? {
+        let accountID: String
+        switch playlist.source {
+        case .netease:
+            if let data = UserDefaults.standard.data(forKey: "beans.user"),
+               let user = try? JSONDecoder().decode(NetEaseUser.self, from: data) {
+                accountID = "\(user.uid)"
+            } else {
+                accountID = ""
+            }
+        case .qq:
+            let qqAuth = QQMusicAuth.shared
+            accountID = qqAuth.rawUin.isEmpty ? qqAuth.playlistUin : qqAuth.rawUin
+        case .kugou:
+            accountID = KugouMusicAuth.shared.userId
+        case .kuwo, .migu, .webdav:
+            accountID = ""
+        case .qishui:
+            accountID = ""
+        case .bilibili:
+            accountID = BilibiliAuth.shared.accountID
+        }
+        return SyncedPlaylistCache.shared.cachedSongs(playlist: playlist, accountID: accountID)
+    }
+
+    private var isNativeClean: Bool {
+        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+    }
+
+    private var cacheAccountID: String {
+        switch playlist.source {
+        case .netease:
+            return "\(auth.user?.uid ?? 0)"
+        case .qq:
+            let qqAuth = QQMusicAuth.shared
+            return qqAuth.rawUin.isEmpty ? qqAuth.playlistUin : qqAuth.rawUin
+        case .kugou:
+            return KugouMusicAuth.shared.userId
+        case .kuwo, .migu, .webdav:
+            return ""
+        case .qishui:
+            return ""
+        case .bilibili:
+            return BilibiliAuth.shared.accountID
+        }
+    }
+
+    var body: some View {
+        let _ = theme.accent
+        ZStack {
+                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
+                Group {
+                if loading {
+                    BeansDetailSongsLoadingState(coverSize: 96, rowCount: 10)
+                } else if let errorMessage {
+                    ErrorStateView(message: errorMessage) {
+                        Task { await load(force: true) }
+                    }
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            header
+                            ForEach(Array(displayedTracks.enumerated()), id: \.element.identityKey) { index, song in
+                                SongCell(
+                                    song: song,
+                                    showCover: true,
+                                    suppressNativeCleanRowGlass: true,
+                                    coverSize: 46,
+                                    fixedRowHeight: 64,
+                                    playbackContext: orderedTracks,
+                                    playbackIndex: playbackIndex(for: song)
+                                ) {
+                                    player.play(songs: orderedTracks, startAt: playbackIndex(for: song))
+                                }
+                                .padding(.horizontal, 22)
+                            }
+                        }
+                        .padding(.top, 12)
+                        .padding(.bottom, 118)
+                    }
+                    .beansScrollIndicatorsHidden()
+                }
+            }
+            }
+            .navigationTitle(playlist.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .beansDetailProfileToolbar()
+        .task { await load() }
+        .sheet(isPresented: $showBatchDownload) {
+            BatchDownloadSheet(songs: displayedTracks, title: "下载歌单")
+                .environmentObject(theme)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if immersiveDetail {
+                BeansImmersiveDetailHeader(coverURL: playlist.coverURL, title: playlist.name,
+                                          subtitle: playlist.creatorName, metadata: beansSongCountText(tracks.count))
+            } else {
+            HStack(spacing: isNativeClean ? 18 : 14) {
+                CoverImage(url: playlist.coverURL, size: 96, cornerRadius: 18)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(playlist.name)
+                        .font(BeansFont.appFont(18, .bold))
+                        .foregroundStyle(Color.beansLabel)
+                        .lineLimit(2)
+                    if !playlist.creatorName.isEmpty {
+                        HStack(spacing: 6) {
+                            CoverImage(url: playlist.creatorAvatarURL, size: 22, cornerRadius: 11)
+                            Text(playlist.creatorName)
+                                .font(BeansFont.appFont(12))
+                                .foregroundStyle(Color.beansComment)
+                        }
+                    }
+                    Text(beansSongCountText(tracks.count))
+                        .font(BeansFont.appFont(12))
+                        .foregroundStyle(Color.beansComment)
+                    if playlist.playCount > 0 {
+                        Text("播放 \(formatPlaylistPlayCount(playlist.playCount))")
+                            .font(BeansFont.appFont(12))
+                            .foregroundStyle(Color.beansComment)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            }
+            if let description = playlistDescription {
+                Button {
+                    BeansHaptics.tap()
+                    showPlaylistDescription = true
+                } label: {
+                    HStack(alignment: .top, spacing: 6) {
+                        Text(description.replacingOccurrences(of: "\n", with: " "))
+                            .font(BeansFont.appFont(12))
+                            .foregroundStyle(Color.beansComment)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color.beansComment.opacity(0.72))
+                            .padding(.top, 2)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
+                GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
+                    player.play(songs: displayedTracks, startAt: 0)
+                }
+                GlassButton(title: "随机播放", systemName: "shuffle", forceLiquid: true) {
+                    if !displayedTracks.isEmpty {
+                        player.play(songs: displayedTracks, startAt: Int.random(in: 0..<displayedTracks.count))
+                    }
+                }
+            }
+            if tracks.count > 1 {
+                HStack {
+                    Text(beansSongCountText(displayedTracks.count))
+                        .font(BeansFont.appFont(12))
+                        .foregroundStyle(Color.beansComment)
+                    Spacer()
+                    if downloadFeatureUnlocked {
+                        Button {
+                            BeansHaptics.tap()
+                            showBatchDownload = true
+                        } label: {
+                            Label("批量下载", systemImage: "arrow.down.circle")
+                                .font(BeansFont.appFont(12, .semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Color.beansAmber)
+                        .disabled(displayedTracks.isEmpty)
+                    }
+                }
+            }
+            HStack(spacing: 10) {
+                if #available(iOS 26, *) {
+                    NativeSearchBar(
+                        text: $searchText,
+                        placeholder: beansLocalized("搜索歌单内歌曲", "Search songs in playlist"),
+                        onSubmit: { _ in }
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.beansComment)
+                        TextField(beansLocalized("搜索歌单内歌曲", "Search songs in playlist"), text: $searchText)
+                            .font(BeansFont.appFont(14))
+                            .autocorrectionDisabled()
+                        if !searchText.isEmpty {
+                            Button {
+                                searchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color.beansComment)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                }
+
+                if !hideSortButton {
+                    Menu {
+                        Picker("排序", selection: $sortMode) {
+                            ForEach(PlaylistSortMode.allCases) { mode in
+                                Text(LocalizedStringKey(mode.rawValue)).tag(mode)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.beansAmber)
+                            .frame(width: 38, height: 38)
+                            .background { BeansSurface(shape: Circle()) }
+                    }
+                    .buttonStyle(GlassPressButtonStyle())
+                }
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.bottom, 14)
+        .sheet(isPresented: $showPlaylistDescription) {
+            BeansLongDescriptionSheet(title: "歌单简介", text: playlistDescription ?? "")
+        }
+    }
+
+    private var playlistDescription: String? {
+        let value = playlist.playlistDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private func formatPlaylistPlayCount(_ count: Int) -> String {
+        if count >= 100_000_000 { return String(format: "%.1f亿", Double(count) / 100_000_000) }
+        if count >= 10_000 { return String(format: "%.1f万", Double(count) / 10_000) }
+        return "\(count)"
+    }
+
+    /// The full playlist order remains the playback queue even when the list is filtered.
+    private var orderedTracks: [Song] {
+        var list = tracks
+        switch sortMode {
+        case .original: break
+        case .name:
+            list.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        case .duration:
+            list.sort { $0.duration < $1.duration }
+        }
+        return list
+    }
+
+    /// Search only changes what is visible, not the queue that follows the selected song.
+    private var displayedTracks: [Song] {
+        let kw = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !kw.isEmpty else { return orderedTracks }
+        return orderedTracks.filter { song in
+            song.name.lowercased().contains(kw)
+                || song.artists.lowercased().contains(kw)
+                || song.album.lowercased().contains(kw)
+        }
+    }
+
+    private func playbackIndex(for song: Song) -> Int {
+        orderedTracks.firstIndex { $0.identityKey == song.identityKey } ?? 0
+    }
+    private func load(force: Bool = false) async {
+        let cache = SyncedPlaylistCache.shared
+        if let cached = cache.cachedSongs(playlist: playlist, accountID: cacheAccountID) {
+            tracks = cached.songs
+            loading = false
+            if !force, playlist.source == .qishui, cache.isFresh(cached) {
+                return
+            }
+            if !force, cache.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
+                return
+            }
+        } else {
+            loading = true
+        }
+        errorMessage = nil
+        BeansLogger.shared.log("歌单页面打开 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) advertisedCount=\(playlist.trackCount)", level: .info)
+        do {
+            if playlist.source == .kugou {
+                tracks = try await KugouMusicAPI.shared.playlistSongs(playlist: playlist)
+            } else if playlist.source == .qq {
+                tracks = try await QQMusicAPI.shared.playlistSongs(listID: playlist.id)
+                // 云端收藏接口临时被风控或返回空时，至少展示已同步到本机的 QQ 收藏，
+                // 避免“我的喜欢”进入后变成空白页面。
+                if tracks.isEmpty, playlist.id == QQMusicAPI.qqLikedPlaylistID {
+                    tracks = favorites.qqFavoriteSongs
+                    BeansLogger.shared.log("QQ 我的喜欢页面网络结果为空，使用本地收藏回退 count=\(tracks.count)", level: tracks.isEmpty ? .warn : .info)
+                }
+            } else if playlist.source == .qishui {
+                let identifier = playlist.qishuiID ?? String(playlist.id)
+                let preserveVisibleTracks = !tracks.isEmpty
+                tracks = try await QishuiAPI.shared.playlistSongs(id: identifier, forceRefresh: force) { partialSongs in
+                    guard !partialSongs.isEmpty else { return }
+                    guard !preserveVisibleTracks else { return }
+                    tracks = partialSongs
+                    loading = false
+                }
+            } else if playlist.source == .bilibili {
+                let identifier = playlist.bilibiliID ?? String(playlist.id)
+                let result = try await BilibiliAPI.shared.collection(identifier, force: force)
+                tracks = result.songs
+            } else if playlist.source == .kuwo || playlist.source == .migu {
+                tracks = try await AdditionalCatalogSearchAPI.playlistSongs(source: playlist.source, id: playlist.id)
+            } else {
+                tracks = try await NetEaseAPI.shared.playlistTracks(id: playlist.id)
+            }
+            if !tracks.isEmpty {
+                cache.saveSongs(tracks, playlist: playlist, accountID: cacheAccountID)
+            }
+            BeansLogger.shared.log("歌单页面加载完成 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) count=\(tracks.count) error=无", level: tracks.isEmpty ? .warn : .info)
+            loading = false
+        } catch {
+            if tracks.isEmpty {
+                errorMessage = error.localizedDescription
+            } else {
+                BeansLogger.shared.log("歌单页面刷新失败，继续使用缓存 source=\(playlist.source.rawValue) id=\(playlist.id) error=\(error.localizedDescription)", level: .warn)
+            }
+            BeansLogger.shared.log("歌单页面加载失败 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) error=\(error.localizedDescription)", level: .error)
+            loading = false
+        }
+    }
+}

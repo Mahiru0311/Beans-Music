@@ -1,0 +1,1280 @@
+[
+  {
+    "name": "__C.AVVideoCodecType",
+    "fields": [
+      "_rawValue"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.AdditionalCatalogSearchError",
+    "fields": [
+      "invalidResponse"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.ArtistHomeCache",
+    "fields": [
+      "defaults",
+      "storageKey",
+      "lock",
+      "persistenceQueue",
+      "entries",
+      "ttl"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.ArtistHomeCache.Entry",
+    "fields": [
+      "artist",
+      "songs",
+      "albums",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.ArtistHomeCache.Entry.context_2_1007c3518.CodingKeys",
+    "fields": [
+      "artist",
+      "songs",
+      "albums",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansCacheManager",
+    "fields": [
+      "_usage",
+      "_working",
+      "_message"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansCacheUsage",
+    "fields": [
+      "category",
+      "diskBytes",
+      "memoryBytes"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansCacheCategory",
+    "fields": [
+      "images",
+      "immersive",
+      "metadata",
+      "lyrics",
+      "network",
+      "bilibili",
+      "logs"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansCacheSettingsSection",
+    "fields": [
+      "_manager",
+      "__expanded",
+      "__pending",
+      "__confirm"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c38a8.BeansDiagnosticGlassSurface",
+    "fields": [
+      "_theme"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BilibiliFeedVideo",
+    "fields": [
+      "song",
+      "ownerAvatarURL",
+      "playCount",
+      "danmakuCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BilibiliFeedVideo.context_2_1007c424c.CodingKeys",
+    "fields": [
+      "song",
+      "ownerAvatarURL",
+      "playCount",
+      "danmakuCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007c4e6c.GlobalFloatingImageCache",
+    "fields": [
+      "encodedValue",
+      "cachedImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansGlass",
+    "fields": [
+      "_disableLiquidGlass",
+      "_theme",
+      "_colorScheme",
+      "_settingsPerformanceMode",
+      "shape",
+      "forceLiquid"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.GlassBackdrop",
+    "fields": [
+      "_theme",
+      "_colorScheme",
+      "_settingsPerformanceMode",
+      "_dynamicWallpaper",
+      "customColor",
+      "homeMode",
+      "ignoreCustomBackground",
+      "wallpaperBlur",
+      "includeDynamicWallpaper"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.GlassButton",
+    "fields": [
+      "_theme",
+      "_uiStyleRaw",
+      "title",
+      "systemName",
+      "prominent",
+      "forceLiquid",
+      "expandsHorizontally",
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.GlassIconButton",
+    "fields": [
+      "_theme",
+      "_uiStyleRaw",
+      "systemName",
+      "size",
+      "active",
+      "forceLiquid",
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.GlassPressButtonStyle",
+    "fields": [
+      "scale"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WallpaperImage",
+    "fields": [
+      "image",
+      "blurRadius"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DetailSongsCache",
+    "fields": [
+      "defaults",
+      "storageKey",
+      "lock",
+      "persistenceQueue",
+      "entries",
+      "ttl"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DetailSongsCache.Entry",
+    "fields": [
+      "songs",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DetailSongsCache.Entry.context_2_1007c5d28.CodingKeys",
+    "fields": [
+      "songs",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DiscoverCache",
+    "fields": [
+      "listTTL",
+      "dailyTTL",
+      "qqRecommendationTTL",
+      "storageKey",
+      "qishuiSnapshotVersionKey",
+      "qishuiSnapshotVersion",
+      "store"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DiscoverCache.Snapshot",
+    "fields": [
+      "dailySongs",
+      "newAlbums",
+      "topArtists",
+      "topLists",
+      "personalized",
+      "qqTopLists",
+      "kugouTopLists",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DiscoverCache.Snapshot.context_2_1007c6294.CodingKeys",
+    "fields": [
+      "dailySongs",
+      "newAlbums",
+      "topArtists",
+      "topLists",
+      "personalized",
+      "qqTopLists",
+      "kugouTopLists",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.DynamicWallpaperStore",
+    "fields": [
+      "_kind",
+      "_fractalSkyHex",
+      "_fractalCloudHex",
+      "_fractalWarmTintHex",
+      "_fractalWarmth",
+      "_fractalSpeed",
+      "_fractalZoom",
+      "_fractalDriftX",
+      "_fractalDriftY",
+      "_fractalWarp",
+      "_fractalCoverage",
+      "_ink1Hex",
+      "_ink2Hex",
+      "_ink3Hex",
+      "_ink4Hex",
+      "_inkGlowHex",
+      "_inkSpeed",
+      "_inkScale",
+      "_inkWarp",
+      "_inkHighlight",
+      "_chromeShadowHex",
+      "_chromeSilverHex",
+      "_chromeHighlightHex",
+      "_chromeTintHex",
+      "_chromeSpeed",
+      "_chromeScale",
+      "_chromeWarp",
+      "_chromeContrast",
+      "_chromeSpecPower",
+      "_chromeSpecStrength",
+      "_chromeTintStrength",
+      "_neuroFrontHex",
+      "_neuroMidHex",
+      "_neuroBackHex",
+      "_neuroSpeed",
+      "_neuroBrightness",
+      "_neuroContrast",
+      "_neuroScale",
+      "_simplexColorsHex",
+      "_simplexScale",
+      "_simplexStepsPerColor",
+      "_simplexSoftness",
+      "_simplexSpeed",
+      "_metaballsStyleRaw",
+      "_metaballsColorsHex",
+      "_metaballsBackgroundHex",
+      "_metaballsSpeed",
+      "_metaballsCount",
+      "_metaballsSize",
+      "_metaballsBigSize",
+      "_waterImageDataBase64",
+      "_waterSpeed",
+      "_waterSize",
+      "_waterCaustic",
+      "_waterWaves",
+      "_waterLayering",
+      "_waterEdges",
+      "_waterHighlights",
+      "_waterBackHex",
+      "_waterHighlightHex",
+      "_starNestZoom",
+      "_starNestSpeed",
+      "_starNestBrightness",
+      "_starNestSaturation",
+      "_starNestDarkmatter",
+      "_starNestDistfading",
+      "_starNestAngleX",
+      "_starNestAngleY",
+      "_starNestVolsteps",
+      "_starNestIterations",
+      "_dotOrbitColorsHex",
+      "_dotOrbitBackgroundHex",
+      "_dotOrbitSpeed",
+      "_dotOrbitScale",
+      "_dotOrbitSize",
+      "_dotOrbitSizeRange",
+      "_dotOrbitSpreading",
+      "_dotOrbitStepsPerColor",
+      "_dotsStyleRaw",
+      "_dotsTintHex",
+      "_dotsBackgroundHex",
+      "_dotsSpeed",
+      "_dotsBrightness",
+      "_dotsDotSize",
+      "_dotsGridDensity",
+      "_dotsPatternScale",
+      "_dotsAmplitude",
+      "_dotsDepthFade",
+      "_dotsVignette",
+      "_dotsHorizon",
+      "_grainGradientColorsHex",
+      "_grainGradientScale",
+      "_grainGradientContrast",
+      "_syncToPlayer",
+      "cachedWaterImageKey",
+      "cachedWaterImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansDynamicWallpaperKind",
+    "fields": [
+      "off",
+      "fractalClouds",
+      "inkSmoke",
+      "liquidChrome",
+      "neuroNoise",
+      "simplexNoise",
+      "metaballs",
+      "water",
+      "starNest",
+      "dotOrbit",
+      "dots",
+      "grainGradient"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansDynamicWallpaperView",
+    "fields": [
+      "_store",
+      "forPlayer"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansImmersiveDetailToggle",
+    "fields": [
+      "_enabled"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c6f1c.BeansImmersiveImageKey",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c6f40.BeansImmersivePaletteKey",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c6f64.BeansImmersivePullDistanceKey",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c6f88.BeansImmersiveArtworkLoadingKey",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersivePalette",
+    "fields": [
+      "red",
+      "green",
+      "blue"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c6fc8.BeansImmersiveEnabledKey",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c6fec.BeansImmersiveDetailSurface",
+    "fields": [
+      "coverURL",
+      "title",
+      "legacyTitle",
+      "_enabled",
+      "_loader",
+      "__palette",
+      "__collapsed",
+      "__pullDistance"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersiveFavoriteButton",
+    "fields": [
+      "isFavorite",
+      "label",
+      "identifier",
+      "action"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersiveSearchRow",
+    "fields": [
+      "_text",
+      "prompt",
+      "resultCount",
+      "actions"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersiveDownloadButton",
+    "fields": [
+      "disabled",
+      "action"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersiveDetailHeader",
+    "fields": [
+      "title",
+      "subtitle",
+      "metadata",
+      "descriptionText",
+      "portrait",
+      "onSubtitle",
+      "playbackEnabled",
+      "onPlay",
+      "onShuffle",
+      "accessory",
+      "_image",
+      "_palette",
+      "_pullDistance",
+      "_artworkLoading",
+      "_player",
+      "__descriptionExpanded",
+      "__descriptionFullHeight",
+      "__descriptionPreviewHeight",
+      "__availableWidth"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c70cc.BeansImmersiveHeaderPosition",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersiveIconButton",
+    "fields": [
+      "systemName",
+      "label",
+      "active",
+      "action"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.BeansImmersiveDetailLoadingState",
+    "fields": [
+      "rowCount",
+      "__availableWidth"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.LocalSearchAddSheet",
+    "fields": [
+      "_store",
+      "_platformPrefs",
+      "_player",
+      "_auth",
+      "_dismiss",
+      "playlistID",
+      "__keyword",
+      "__results",
+      "__searching",
+      "__provider",
+      "__task"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansLockScreenVideoStore",
+    "fields": [
+      "$defaultActor",
+      "pending",
+      "retained",
+      "directory"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.LyricDebugOverlayWindow",
+    "fields": [
+      "window",
+      "player"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c7b70.LyricDebugWindow",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007c7ba4.LyricDebugButtonController",
+    "fields": [
+      "player",
+      "button",
+      "dragStart",
+      "previousKeyWindow",
+      "subscription",
+      "xKey",
+      "yKey"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.LyricDebugPanel",
+    "fields": [
+      "player",
+      "onClose",
+      "_dismiss",
+      "_capture",
+      "__snapshot",
+      "__busy",
+      "__errorMessage",
+      "__shareURL",
+      "__showShare",
+      "__probeTask"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.LyricsCache",
+    "fields": [
+      "prefix",
+      "maxAge"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.LyricsCache.context_2_1007c7d94.Entry",
+    "fields": [
+      "lyric",
+      "translation",
+      "wordTiming",
+      "wordFormat",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.LyricsCache.context_2_1007c7d94.Entry.CodingKeys",
+    "fields": [
+      "lyric",
+      "translation",
+      "wordTiming",
+      "wordFormat",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007c8b30.PlayerSettingsLiquidGlass",
+    "fields": [
+      "shape"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.PlaylistSquareCache",
+    "fields": [
+      "ttl"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.PlaylistSquareCache.Entry",
+    "fields": [
+      "savedAt",
+      "playlists",
+      "hasMore",
+      "nextOffset"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.PlaylistSquareCache.Entry.context_2_1007c8e80.CodingKeys",
+    "fields": [
+      "savedAt",
+      "playlists",
+      "hasMore",
+      "nextOffset"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007c8ee0.BeansNativePlaylistSearchField.Coordinator",
+    "fields": [
+      "parent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007c8ee0.BeansNativePlaylistSearchField",
+    "fields": [
+      "_text",
+      "onSubmit"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WallpaperPhotoPicker.Coordinator",
+    "fields": [
+      "parent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WallpaperPhotoPicker",
+    "fields": [
+      "allowsMultiple",
+      "onPicked"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007c933c.SettingsCompactGlassSurface",
+    "fields": [
+      "_disableLiquidGlass",
+      "_theme"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007c9818.QishuiCacheBox",
+    "fields": [
+      "value",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.RelatedAlbumsCache",
+    "fields": [
+      "defaults",
+      "storageKey",
+      "lock",
+      "persistenceQueue",
+      "entries",
+      "ttl"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.RelatedAlbumsCache.Entry",
+    "fields": [
+      "albums",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.RelatedAlbumsCache.Entry.context_2_1007ca0e4.CodingKeys",
+    "fields": [
+      "albums",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007ca3c4.GlassTabBar.Item",
+    "fields": [
+      "tab",
+      "title",
+      "icon",
+      "assetName"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007ca3c4.GlassTabBar",
+    "fields": [
+      "items",
+      "_selection",
+      "labelsVisible",
+      "accentIsNativeClean",
+      "onHomeLongPress",
+      "iconSize",
+      "isRoundedStyle",
+      "onSelect",
+      "_colorScheme",
+      "__dragX",
+      "__isDragging",
+      "innerInset",
+      "contentHeight",
+      "settle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.AnnouncementVideoView",
+    "fields": [
+      "url",
+      "_player"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchHistoryStore",
+    "fields": [
+      "_history",
+      "defaults",
+      "key",
+      "maxCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchFieldController",
+    "fields": [
+      "textField",
+      "searchBar"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.NativeSearchBar.Coordinator",
+    "fields": [
+      "parent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchTextField.Coordinator",
+    "fields": [
+      "parent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchTextField",
+    "fields": [
+      "_text",
+      "controller",
+      "placeholder",
+      "textColor",
+      "onSubmit"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.NativeSearchBar",
+    "fields": [
+      "_text",
+      "controller",
+      "placeholder",
+      "onTextChange",
+      "onSubmit"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchProvider",
+    "fields": [
+      "netease",
+      "qq",
+      "kugou",
+      "qishui",
+      "bilibili"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007cba00.SearchResultCacheEntry",
+    "fields": [
+      "songs",
+      "artists",
+      "albums",
+      "playlists"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007cba24.SearchResultCacheKey",
+    "fields": [
+      "keyword",
+      "provider",
+      "resultType"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchResultType",
+    "fields": [
+      "all",
+      "song",
+      "artist",
+      "album",
+      "playlist"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007cba64.SearchCatalogProvider",
+    "fields": [
+      "aggregate",
+      "netease",
+      "qq",
+      "kugou",
+      "kuwo",
+      "migu",
+      "qishui",
+      "bilibili"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SearchView",
+    "fields": [
+      "_theme",
+      "_player",
+      "_auth",
+      "_colorScheme",
+      "_horizontalSizeClass",
+      "_usesSharedRootBackdrop",
+      "_uiStyleRaw",
+      "__keyword",
+      "__provider",
+      "_pendingBilibiliSearchQuery",
+      "__homeSourceSnapshot",
+      "__hotLoadedProvider",
+      "__resultType",
+      "__songResults",
+      "__artistResults",
+      "__albumResults",
+      "__playlistResults",
+      "__hotWords",
+      "__hotWordsCache",
+      "__searchResultCache",
+      "__searching",
+      "__errorMessage",
+      "__showAddToPlaylist",
+      "__selectedArtist",
+      "__selectedBilibiliArtist",
+      "__selectedBilibiliVideo",
+      "__selectedAlbum",
+      "__selectedPlaylist",
+      "_historyStore",
+      "__debounceTask",
+      "__searchTask",
+      "__searchRequestID",
+      "__playlistSearchTask",
+      "__playlistSearchRequestID",
+      "__showBatchDownload",
+      "__selectedDownloadSong",
+      "__showProfile",
+      "__artistCoverCache",
+      "__searchController",
+      "_downloadFeatureUnlocked"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.context_2_1007cbab0.BeansSearchSongRow",
+    "fields": [
+      "song",
+      "onTap",
+      "onPlayNext",
+      "onAddToPlaylist",
+      "onDownload",
+      "_showSongVIPBadge"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansUnifiedSearchField",
+    "fields": [
+      "_text",
+      "controller",
+      "__fallbackController",
+      "placeholder",
+      "isSearching",
+      "onClear",
+      "onSubmit"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SyncedPlaylistCache",
+    "fields": [
+      "defaults",
+      "playlistsKey",
+      "songsKey",
+      "lock",
+      "persistenceQueue",
+      "playlistEntries",
+      "songEntries",
+      "playlistTTL",
+      "songTTL"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SyncedPlaylistCache.SongEntry",
+    "fields": [
+      "songs",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SyncedPlaylistCache.PlaylistEntry",
+    "fields": [
+      "playlists",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SyncedPlaylistCache.PlaylistEntry.context_2_1007cbd84.CodingKeys",
+    "fields": [
+      "playlists",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.SyncedPlaylistCache.SongEntry.context_2_1007cbda8.CodingKeys",
+    "fields": [
+      "songs",
+      "savedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.BeansWallpaperAppearance",
+    "fields": [
+      "light",
+      "dark"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.UnblockService.context_2_1007cc254.ResolutionCacheEntry",
+    "fields": [
+      "resolved",
+      "expiresAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.UnblockService.context_2_1007cc284.PersistentResolutionCacheEntry",
+    "fields": [
+      "url",
+      "source",
+      "quality",
+      "expiresAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.UnblockService.context_2_1007cc284.PersistentResolutionCacheEntry.CodingKeys",
+    "fields": [
+      "url",
+      "source",
+      "quality",
+      "expiresAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WebDAVBackup",
+    "fields": [
+      "format",
+      "version",
+      "createdAt",
+      "playlists",
+      "favoriteSongs",
+      "albums",
+      "artists",
+      "favoritePlaylists",
+      "settings"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVBackup.context_2_1007cc614.CodingKeys",
+    "fields": [
+      "format",
+      "version",
+      "createdAt",
+      "playlists",
+      "favoriteSongs",
+      "albums",
+      "artists",
+      "favoritePlaylists",
+      "settings"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WebDAVSetting",
+    "fields": [
+      "string",
+      "number",
+      "bool"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVSetting.context_2_1007cc654.CodingKeys",
+    "fields": [
+      "string",
+      "number",
+      "bool"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WebDAVSetting.context_2_1007cc678.StringCodingKeys",
+    "fields": [
+      "_0"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVSetting.context_2_1007cc69c.NumberCodingKeys",
+    "fields": [
+      "_0"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVSetting.context_2_1007cc6c0.BoolCodingKeys",
+    "fields": [
+      "_0"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVListingParser",
+    "fields": [
+      "current",
+      "property",
+      "stack",
+      "text",
+      "responses",
+      "sawMultistatus",
+      "rejected"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVTransfer",
+    "fields": [
+      "root",
+      "authorization",
+      "limit",
+      "lock",
+      "continuation",
+      "task",
+      "cancelled"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVClient",
+    "fields": [
+      "root",
+      "authorization",
+      "configuration"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVConnection",
+    "fields": [
+      "id",
+      "address",
+      "username",
+      "allowHTTP"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVListingParser.context_2_1007cc7c8.Response",
+    "fields": [
+      "href",
+      "name",
+      "directory",
+      "size",
+      "successful"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVConnection.context_2_1007cc7ec.CodingKeys",
+    "fields": [
+      "id",
+      "address",
+      "username",
+      "allowHTTP"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WebDAVError",
+    "fields": [
+      "http",
+      "keychain",
+      "invalidAddress",
+      "outsideRoot",
+      "invalidListing",
+      "tooLarge",
+      "missingConnection",
+      "invalidBackup"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVEntry",
+    "fields": [
+      "url",
+      "name",
+      "isDirectory",
+      "size"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVStore",
+    "fields": [
+      "_connection",
+      "defaults"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVTrack",
+    "fields": [
+      "connectionID",
+      "relativePath",
+      "accountKey"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.WebDAVTrack.context_2_1007cc8c4.CodingKeys",
+    "fields": [
+      "connectionID",
+      "relativePath",
+      "accountKey"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "Beans.WebDAVView",
+    "fields": [
+      "_dismiss",
+      "_player",
+      "_auth",
+      "_store",
+      "__section",
+      "__showConnection",
+      "__confirmClear",
+      "__message",
+      "__showPlayer"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007cc910.WebDAVConnectionView",
+    "fields": [
+      "_dismiss",
+      "_store",
+      "__draft",
+      "__password",
+      "__busy",
+      "__message",
+      "__confirmHTTP",
+      "__confirmDisconnect",
+      "__task"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007cc940.WebDAVPageBackdrop",
+    "fields": [
+      "_theme",
+      "_wallpaperBlur"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007cc964.WebDAVBackupView",
+    "fields": [
+      "_store",
+      "__entries",
+      "__busy",
+      "__message",
+      "__preview",
+      "__includeSettings",
+      "__showPreview",
+      "__task"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "Beans.context_2_1007cc994.WebDAVBrowserView",
+    "fields": [
+      "directory",
+      "_player",
+      "_store",
+      "__entries",
+      "__busy",
+      "__message",
+      "__favorite",
+      "__search"
+    ],
+    "declared_in_source": false
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "ipa_sha256": "659099fc47f922299f2f35b7d4183c08b463917679e234305f8f666ea671f34e",
+  "components": [
+    {
+      "component": "Beans",
+      "size": 12271448,
+      "sha256": "535bb38e2d628352892ec02c5af116c9d5385dd23b08d6713129b2a13600b778",
+      "matches_existing_evidence": true
+    },
+    {
+      "component": "CiliCiliKit",
+      "size": 23075136,
+      "sha256": "41fa22b6742cfc1aa0240bb8e8adae098506e3180826a64806e77ddac2a2b7a7",
+      "matches_existing_evidence": true
+    }
+  ],
+  "bundle": {
+    "CFBundleIdentifier": "com.beans.app",
+    "CFBundleShortVersionString": "2.0.3",
+    "CFBundleVersion": "2",
+    "MinimumOSVersion": "15.0",
+    "lock_screen_rebuild": {
+      "evidence": ["BeansLockScreenArtwork", "BeansLockScreenVideoStore", "supportedAnimatedArtworkKeys", "appendPixelBuffer:withPresentationTime:"],
+      "implemented": ["BeansLockScreenArtwork.swift", "LockScreenVideoStore.swift", "PlayerManager.swift"],
+      "status": "reconstructed; requires iOS 26 device verification"
+    },
+    "immersive_detail_rebuild": {
+      "evidence": ["BeansImmersiveDetailHeader", "BeansImmersiveDetailSurface", "beans.immersive.detail"],
+      "implemented": ["ImmersiveDetail.swift", "PlaylistView.swift", "SearchView.swift", "ArtistHomeSheet.swift"],
+      "status": "reconstructed; screenshot and interaction comparison pending"
+    }
+  }
+}

@@ -1,0 +1,7099 @@
+[
+  {
+    "name": "CiliCiliKit.context_2_c16120.NativeDolbyVideoOverlayRenderer",
+    "fields": [
+      "player",
+      "prepareTask",
+      "asset",
+      "item",
+      "localVideoBridge",
+      "layer",
+      "surface",
+      "itemStatusObserver",
+      "layerReadyObserver",
+      "state",
+      "host",
+      "sourceKind",
+      "playlistHost",
+      "lastErrorDescription",
+      "lastDriftMilliseconds",
+      "displayPolicySummary",
+      "hasSyncedReadyItem",
+      "didNotifyReadyToPlay",
+      "didNotifyReadyForDisplay",
+      "resyncCount",
+      "onReadyForDisplay",
+      "onReadyToPlay"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache",
+    "fields": [
+      "$defaultActor",
+      "ttl",
+      "maxCount",
+      "maxDiskCount",
+      "fileManager",
+      "rootURL",
+      "cache",
+      "pendingJoinTimeoutNanoseconds",
+      "pendingBuilds",
+      "storeCountSinceDiskTrim",
+      "diskTrimTask"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16314.HLSBridgeRoutePlanCache",
+    "fields": [
+      "$defaultActor",
+      "ttl",
+      "maxCount",
+      "pendingJoinTimeoutNanoseconds",
+      "cache",
+      "pendingBuilds"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c163b8.LocalHLSBridgeInstanceCache",
+    "fields": [
+      "$defaultActor",
+      "ttl",
+      "maxCount",
+      "cache",
+      "pendingBuilds"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16454.HLSSourcePreferenceCache",
+    "fields": [
+      "$defaultActor",
+      "ttl",
+      "sessionAvoidanceTTL",
+      "maxCount",
+      "maxHostScoreCount",
+      "fileManager",
+      "storeURL",
+      "hostScoreStoreURL",
+      "entries",
+      "hostScores",
+      "sessionAvoidance",
+      "hasLoadedStore",
+      "persistTask",
+      "persistDirty"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16454.HLSSourcePreferenceCache.SessionAvoidance",
+    "fields": [
+      "reason",
+      "failureCount",
+      "expiresAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16454.HLSSourcePreferenceCache.HostScore",
+    "fields": [
+      "averageMilliseconds",
+      "averageKilobytesPerSecond",
+      "successCount",
+      "failureCount",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16454.HLSSourcePreferenceCache.Entry",
+    "fields": [
+      "preferredURLString",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c163b8.LocalHLSBridgeInstanceCache.PendingBuild",
+    "fields": [
+      "id",
+      "storesForReuse",
+      "task"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c163b8.LocalHLSBridgeInstanceCache.Entry",
+    "fields": [
+      "bridge",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16314.HLSBridgeRoutePlanCache.PendingBuild",
+    "fields": [
+      "id",
+      "task"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16314.HLSBridgeRoutePlanCache.Entry",
+    "fields": [
+      "plan",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PendingBuild",
+    "fields": [
+      "id",
+      "task"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.Entry",
+    "fields": [
+      "rendition",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16120.NativeDolbyVideoOverlayRenderer.State",
+    "fields": [
+      "disabled",
+      "loading",
+      "ready",
+      "failed"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.LocalHLSVideoOnlyBridge",
+    "fields": [
+      "masterPlaylistURL",
+      "videoVariantDetails",
+      "server"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "__C.AVLayerVideoGravity",
+    "fields": [
+      "_rawValue"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedDolbyVisionConfiguration",
+    "fields": [
+      "boxType",
+      "profile",
+      "level",
+      "rpuPresent",
+      "enhancementLayerPresent",
+      "baseLayerPresent",
+      "baseLayerSignalCompatibilityID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedReference",
+    "fields": [
+      "range",
+      "duration",
+      "startTime",
+      "startTimeTicks",
+      "timescale"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedEntry",
+    "fields": [
+      "date",
+      "rendition"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16d34.HLSCachePendingWaiter.Timeout",
+    "fields": [
+      "timedOut"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16454.HLSSourcePreferenceCache.Entry.CodingKeys",
+    "fields": [
+      "preferredURLString",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16454.HLSSourcePreferenceCache.HostScore.CodingKeys",
+    "fields": [
+      "averageMilliseconds",
+      "averageKilobytesPerSecond",
+      "successCount",
+      "failureCount",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16314.HLSBridgeRoutePlanCache.State",
+    "fields": [
+      "hit",
+      "pending",
+      "miss",
+      "skippedPending"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c163b8.LocalHLSBridgeInstanceCache.State",
+    "fields": [
+      "hit",
+      "pending",
+      "miss"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.State",
+    "fields": [
+      "hit",
+      "disk",
+      "pending",
+      "miss"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedReference.CodingKeys",
+    "fields": [
+      "range",
+      "duration",
+      "startTime",
+      "startTimeTicks",
+      "timescale"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedDolbyVisionConfiguration.CodingKeys",
+    "fields": [
+      "boxType",
+      "profile",
+      "level",
+      "rpuPresent",
+      "enhancementLayerPresent",
+      "baseLayerPresent",
+      "baseLayerSignalCompatibilityID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedEntry.CodingKeys",
+    "fields": [
+      "date",
+      "rendition"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedRendition",
+    "fields": [
+      "sourceURL",
+      "fallbackSourceURLs",
+      "mediaType",
+      "quality",
+      "initialization",
+      "initializationData",
+      "references",
+      "targetDuration",
+      "bandwidth",
+      "codec",
+      "mediaTimeOffset",
+      "baseMediaDecodeTimeOffsetTicks",
+      "dynamicRange",
+      "dolbyVisionConfiguration",
+      "dolbyVisionRenderingPolicy",
+      "videoColorInformation",
+      "hlsBaseLayerCodec",
+      "dimensionsWidth",
+      "dimensionsHeight",
+      "frameRate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedRange",
+    "fields": [
+      "start",
+      "endInclusive"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedRange.CodingKeys",
+    "fields": [
+      "start",
+      "endInclusive"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c16204.HLSRenditionCache.PersistedRendition.CodingKeys",
+    "fields": [
+      "sourceURL",
+      "fallbackSourceURLs",
+      "mediaType",
+      "quality",
+      "initialization",
+      "initializationData",
+      "references",
+      "targetDuration",
+      "bandwidth",
+      "codec",
+      "mediaTimeOffset",
+      "baseMediaDecodeTimeOffsetTicks",
+      "dynamicRange",
+      "dolbyVisionConfiguration",
+      "dolbyVisionRenderingPolicy",
+      "videoColorInformation",
+      "hlsBaseLayerCodec",
+      "dimensionsWidth",
+      "dimensionsHeight",
+      "frameRate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.AdaptiveVideoCoverImage",
+    "fields": [
+      "display",
+      "style",
+      "fixedSize",
+      "maximumPixelLength",
+      "onPhaseChange",
+      "_displayScale"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.AdaptiveVideoCoverImage.Style",
+    "fields": [
+      "exactCrop",
+      "maxSide"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.BiliVideoLink",
+    "fields": [
+      "bvid",
+      "aid",
+      "resumeTime"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCommentAnchor",
+    "fields": [
+      "rootID",
+      "secondaryID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCommentRoute",
+    "fields": [
+      "video",
+      "anchor"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.AppLiquidGlassStylePreference",
+    "fields": [
+      "current"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.AccountVideoEntryPage",
+    "fields": [
+      "entries",
+      "hasMore",
+      "nextHistoryCursor"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenPlaylistRequestContext",
+    "fields": [
+      "cookieHeader",
+      "anonymousCookieHeader",
+      "appAccessKey",
+      "guestModeEnabled"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CachedDanmaku",
+    "fields": [
+      "items",
+      "storedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CachedPlayURLFailure",
+    "fields": [
+      "error",
+      "expiresAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c19560.BiliEmoteRenderCache",
+    "fields": [
+      "cache"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c195a4.BiliEmoteRenderCacheEntry",
+    "fields": [
+      "result",
+      "memoryCost"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenPlaylistSortOrder",
+    "fields": [
+      "normal",
+      "reverse",
+      "random"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderCard",
+    "fields": [
+      "mid",
+      "name",
+      "face",
+      "sign",
+      "fans",
+      "attention",
+      "relation",
+      "likes"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoInteractionState",
+    "fields": [
+      "isLiked",
+      "coinCount",
+      "isFavorited",
+      "isFollowing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenAudioVariant",
+    "fields": [
+      "stream",
+      "url"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoPageCursor",
+    "fields": [
+      "aid",
+      "next"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesItem",
+    "fields": [
+      "meta",
+      "archives"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesMeta",
+    "fields": [
+      "cover",
+      "name",
+      "title",
+      "ptime",
+      "total",
+      "seasonID",
+      "seriesID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoOwner",
+    "fields": [
+      "mid",
+      "name",
+      "face"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchiveSort",
+    "fields": [
+      "desc",
+      "asc"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchSuggestItem",
+    "fields": [
+      "value",
+      "ref"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HotSearchItem",
+    "fields": [
+      "keyword",
+      "showName",
+      "icon"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.AccountVideoEntry",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "duration",
+      "owner",
+      "stat",
+      "cid",
+      "savedAt",
+      "playbackTime",
+      "playbackDuration",
+      "pgcSeasonID",
+      "pgcEpisodeID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderProfile",
+    "fields": [
+      "card",
+      "follower",
+      "following",
+      "likeNum",
+      "archiveCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoItem",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "desc",
+      "duration",
+      "pubdate",
+      "owner",
+      "stat",
+      "cid",
+      "pages",
+      "dimension",
+      "historyResumeTime",
+      "historyCID",
+      "recommendReason",
+      "pgcSeasonID",
+      "pgcEpisodeID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoOnlinePayload",
+    "fields": [
+      "total",
+      "count"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.UploaderViewerRelation",
+    "fields": [
+      "following"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderUpStat",
+    "fields": [
+      "likes",
+      "archiveCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderRelationStat",
+    "fields": [
+      "following",
+      "follower"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoArchiveRelationState",
+    "fields": [
+      "isLiked",
+      "coinCount",
+      "isFavorited",
+      "isFollowing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoFavoriteState",
+    "fields": [
+      "favoured"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoinState",
+    "fields": [
+      "multiply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoData",
+    "fields": [
+      "list",
+      "page"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoList",
+    "fields": [
+      "vlist"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoItem",
+    "fields": [
+      "bvid",
+      "aid",
+      "author",
+      "mid",
+      "title",
+      "pic",
+      "description",
+      "length",
+      "pubdate",
+      "play",
+      "comment"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderAppArchiveItem",
+    "fields": [
+      "title",
+      "cover",
+      "param",
+      "uri",
+      "bvid",
+      "cid",
+      "duration",
+      "length",
+      "author",
+      "play",
+      "danmaku",
+      "pubdate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderAppArchiveData",
+    "fields": [
+      "count",
+      "item",
+      "hasNext",
+      "next"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoItem.CodingKeys",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "desc",
+      "duration",
+      "pubdate",
+      "owner",
+      "stat",
+      "cid",
+      "pages",
+      "dimension",
+      "historyResumeTime",
+      "historyCID",
+      "recommendReason",
+      "pgcSeasonID",
+      "pgcEpisodeID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderArchiveStats",
+    "fields": [
+      "count"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderProfile.CodingKeys",
+    "fields": [
+      "card",
+      "follower",
+      "following",
+      "fans",
+      "relation",
+      "likes",
+      "archive",
+      "isFollowed",
+      "likeNum",
+      "archiveCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HotSearchItem.CodingKeys",
+    "fields": [
+      "keyword",
+      "icon",
+      "showName"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchSuggestItem.context_2_c1a26c.CodingKeys",
+    "fields": [
+      "value",
+      "ref"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoOwner.CodingKeys",
+    "fields": [
+      "mid",
+      "name",
+      "face",
+      "avatar",
+      "faceURL"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesMeta.CodingKeys",
+    "fields": [
+      "cover",
+      "name",
+      "title",
+      "ptime",
+      "total",
+      "seasonID",
+      "seriesID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesItem.CodingKeys",
+    "fields": [
+      "meta",
+      "archives"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderCard.CodingKeys",
+    "fields": [
+      "mid",
+      "name",
+      "face",
+      "sign",
+      "fans",
+      "attention",
+      "friend",
+      "relation",
+      "likes"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchSuggestResponse",
+    "fields": [
+      "tag"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchTypeData",
+    "fields": [
+      "result"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchVideoItem",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "author",
+      "mid",
+      "play",
+      "duration",
+      "description",
+      "pubdate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderLikes",
+    "fields": [
+      "likeNum"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderRelationState",
+    "fields": [
+      "isFollowing",
+      "isFollowedByUploader",
+      "status",
+      "attribute"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoHistoryProgress",
+    "fields": [
+      "progress",
+      "lastPlayCid"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchive",
+    "fields": [
+      "aid",
+      "bvid",
+      "title",
+      "pic",
+      "duration",
+      "pubdate",
+      "ctime",
+      "upMID",
+      "stat"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchArticleItem",
+    "fields": [
+      "articleID",
+      "title",
+      "description",
+      "author",
+      "imageURLs",
+      "view",
+      "reply",
+      "like",
+      "pubTime",
+      "url"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchMediaItem",
+    "fields": [
+      "mediaID",
+      "seasonID",
+      "title",
+      "cover",
+      "description",
+      "typeName",
+      "indexShow",
+      "rating",
+      "stylesText",
+      "url",
+      "gotoURL"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchUserItem",
+    "fields": [
+      "mid",
+      "name",
+      "face",
+      "sign",
+      "fans",
+      "videos",
+      "officialDescription",
+      "isFollowing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDimension",
+    "fields": [
+      "width",
+      "height",
+      "rotate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPage",
+    "fields": [
+      "cid",
+      "page",
+      "part",
+      "duration",
+      "dimension"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoStat",
+    "fields": [
+      "view",
+      "reply",
+      "like",
+      "coin",
+      "favorite",
+      "share",
+      "online"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.BiliVideoDynamicRange",
+    "fields": [
+      "sdr",
+      "hdr10",
+      "hlg",
+      "dolbyVision"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchUserOfficialVerify",
+    "fields": [
+      "desc"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchUserItem.CodingKeys",
+    "fields": [
+      "mid",
+      "fans",
+      "videos",
+      "name",
+      "face",
+      "sign",
+      "officialVerify",
+      "isFollowing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchMediaRating",
+    "fields": [
+      "score"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchMediaItem.CodingKeys",
+    "fields": [
+      "title",
+      "cover",
+      "url",
+      "rating",
+      "styles",
+      "mediaID",
+      "seasonID",
+      "description",
+      "typeName",
+      "indexShow",
+      "gotoURL"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchArticleItem.CodingKeys",
+    "fields": [
+      "title",
+      "author",
+      "view",
+      "reply",
+      "like",
+      "url",
+      "articleID",
+      "description",
+      "imageURLs",
+      "pubTime",
+      "pubTimeAlt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoHistoryProgress.CodingKeys",
+    "fields": [
+      "progress",
+      "lastPlayCid",
+      "cid"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchVideoItem.CodingKeys",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "author",
+      "mid",
+      "play",
+      "duration",
+      "description",
+      "pubdate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchTypeData.context_2_c1a97c.CodingKeys",
+    "fields": [
+      "result"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchSuggestResponse.context_2_c1a9d8.CodingKeys",
+    "fields": [
+      "tag"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderAppArchiveData.CodingKeys",
+    "fields": [
+      "count",
+      "item",
+      "next",
+      "hasNext"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderAppArchiveItem.CodingKeys",
+    "fields": [
+      "title",
+      "cover",
+      "param",
+      "uri",
+      "bvid",
+      "duration",
+      "length",
+      "author",
+      "play",
+      "danmaku",
+      "ctime",
+      "pubdate",
+      "cid",
+      "publishTime"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoItem.CodingKeys",
+    "fields": [
+      "bvid",
+      "aid",
+      "author",
+      "mid",
+      "title",
+      "pic",
+      "description",
+      "length",
+      "pubdate",
+      "created",
+      "ctime",
+      "play",
+      "comment"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoList.context_2_c1aa50.CodingKeys",
+    "fields": [
+      "vlist"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoData.context_2_c1aa74.CodingKeys",
+    "fields": [
+      "list",
+      "page"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoinState.context_2_c1aabc.CodingKeys",
+    "fields": [
+      "multiply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoFavoriteState.context_2_c1aae0.CodingKeys",
+    "fields": [
+      "favoured"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoArchiveRelationState.context_2_c1ab04.CodingKeys",
+    "fields": [
+      "like",
+      "coin",
+      "favorite",
+      "attention"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderRelationStat.CodingKeys",
+    "fields": [
+      "following",
+      "follower"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderUpStat.CodingKeys",
+    "fields": [
+      "likes",
+      "like",
+      "likeNum",
+      "archive",
+      "archiveCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderUpStat.ArchiveCodingKeys",
+    "fields": [
+      "count"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderViewerRelation.CodingKeys",
+    "fields": [
+      "attribute",
+      "special"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoOnlinePayload.CodingKeys",
+    "fields": [
+      "total",
+      "count"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDimension.context_2_c1abb4.CodingKeys",
+    "fields": [
+      "width",
+      "height",
+      "rotate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPage.context_2_c1abd8.CodingKeys",
+    "fields": [
+      "cid",
+      "page",
+      "part",
+      "duration",
+      "dimension"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoStat.CodingKeys",
+    "fields": [
+      "view",
+      "reply",
+      "like",
+      "coin",
+      "favorite",
+      "share",
+      "online"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderArchiveStats.CodingKeys",
+    "fields": [
+      "count",
+      "archiveCount",
+      "item",
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchive.CodingKeys",
+    "fields": [
+      "aid",
+      "bvid",
+      "title",
+      "pic",
+      "duration",
+      "pubdate",
+      "ctime",
+      "stat",
+      "upMID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderLikes.CodingKeys",
+    "fields": [
+      "likeNum",
+      "count",
+      "likes"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderRelationState.CodingKeys",
+    "fields": [
+      "isFollow",
+      "isFollowed",
+      "status",
+      "attribute"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchiveData",
+    "fields": [
+      "archives",
+      "page"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoPageInfo",
+    "fields": [
+      "count"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchiveStat",
+    "fields": [
+      "view",
+      "danmaku"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HotSearchData",
+    "fields": [
+      "trending"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HotSearchTrending",
+    "fields": [
+      "list"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchiveData.CodingKeys",
+    "fields": [
+      "archives",
+      "page"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchUserOfficialVerify.context_2_c1aec8.CodingKeys",
+    "fields": [
+      "desc"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchMediaRating.CodingKeys",
+    "fields": [
+      "score"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoPageInfo.CodingKeys",
+    "fields": [
+      "count"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesArchiveStat.CodingKeys",
+    "fields": [
+      "view",
+      "danmaku"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesResponse",
+    "fields": [
+      "itemsLists"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesData",
+    "fields": [
+      "page",
+      "seasonsList",
+      "seriesList"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoPageResult",
+    "fields": [
+      "videos",
+      "totalCount",
+      "hasMore",
+      "nextCursor"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesPage",
+    "fields": [
+      "pageNum",
+      "pageSize",
+      "total"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesData.CodingKeys",
+    "fields": [
+      "page",
+      "seasonsList",
+      "seriesList"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesResponse.CodingKeys",
+    "fields": [
+      "itemsLists"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HotSearchTrending.context_2_c1b03c.CodingKeys",
+    "fields": [
+      "list"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HotSearchData.context_2_c1b060.CodingKeys",
+    "fields": [
+      "trending"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesPage.CodingKeys",
+    "fields": [
+      "pageNum",
+      "pageSize",
+      "total"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CiliCiliVideoListenRequest",
+    "fields": [
+      "bvid",
+      "aid",
+      "cid",
+      "title",
+      "coverURL",
+      "duration",
+      "artist",
+      "ownerID",
+      "audioURL"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c1c168.VideoCommentReplyComposerActionKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RenderingEngineVideoPlayerAdapter",
+    "fields": [
+      "engine",
+      "progressTask",
+      "preparedSource",
+      "state",
+      "onStateChange",
+      "onProgressUpdate",
+      "onFirstFrame"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CoreVideoPlayerManager",
+    "fields": [
+      "activePlayer"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPlayerProgress",
+    "fields": [
+      "currentTime",
+      "duration",
+      "isPlaying",
+      "bufferedRanges"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPlayerState",
+    "fields": [
+      "failed",
+      "idle",
+      "preparing",
+      "ready",
+      "buffering",
+      "playing",
+      "paused",
+      "ended"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoColorInformation",
+    "fields": [
+      "colorType",
+      "colorPrimaries",
+      "transferCharacteristics",
+      "matrixCoefficients",
+      "fullRangeFlag"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoColorInformation.context_2_c1d798.CodingKeys",
+    "fields": [
+      "colorType",
+      "colorPrimaries",
+      "transferCharacteristics",
+      "matrixCoefficients",
+      "fullRangeFlag"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c1d9e4.DynamicAttributedTextRenderCache",
+    "fields": [
+      "cache"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c1da28.DynamicAttributedTextRenderCacheEntry",
+    "fields": [
+      "result"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicCommentDialogItemCacheEntry",
+    "fields": [
+      "signature",
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicCommentReplyItemCacheEntry",
+    "fields": [
+      "signature",
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicFeedVideoCover",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "video",
+      "display",
+      "__coverLoadedState"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicFeedWarmCache",
+    "fields": [
+      "$defaultActor",
+      "freshnessInterval",
+      "cachedPage",
+      "cachedAt",
+      "cachedIdentityKey",
+      "warmTask",
+      "warmTaskIdentityKey",
+      "warmTaskToken"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicTopUploaderStripItem",
+    "fields": [
+      "owner",
+      "liveRoom"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicHomeVideoFeedCard",
+    "fields": [
+      "video",
+      "display",
+      "initialIsLiked",
+      "contentWidth",
+      "usesExternalHorizontalInsets",
+      "onShowComments"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicVideoPlayBadge",
+    "fields": [
+      "size",
+      "iconSize"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicVideoTitleText",
+    "fields": [
+      "title",
+      "style",
+      "lineLimit"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DynamicVideoTitleText.Style",
+    "fields": [
+      "feed",
+      "compact"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoFeedSkeletonCard",
+    "fields": [
+      "style"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoFeedSkeletonCard.Style",
+    "fields": [
+      "borderedSingleColumn",
+      "singleColumn",
+      "grid"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HLSProxyCacheMetrics",
+    "fields": [
+      "$defaultActor",
+      "maxSessionCount",
+      "sessions",
+      "order",
+      "updateCounts"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HLSProxyCacheMetrics.context_2_c20668.Session",
+    "fields": [
+      "cacheHits",
+      "remoteFetches",
+      "streamedRanges",
+      "joinedRanges",
+      "totalBytes",
+      "bestElapsedMilliseconds"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeStreamCacheCollector",
+    "fields": [
+      "fileURL",
+      "data",
+      "handle",
+      "isFinished"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeStreamCachePayload",
+    "fields": [
+      "data",
+      "file"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedCachedVideo",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "desc",
+      "duration",
+      "pubdate",
+      "owner",
+      "stat",
+      "cid",
+      "recommendReason"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedCachedOwner",
+    "fields": [
+      "mid",
+      "name",
+      "face"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedCachedOwner.context_2_c2160c.CodingKeys",
+    "fields": [
+      "mid",
+      "name",
+      "face"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedCachedVideo.context_2_c21630.CodingKeys",
+    "fields": [
+      "bvid",
+      "aid",
+      "title",
+      "pic",
+      "desc",
+      "duration",
+      "pubdate",
+      "owner",
+      "stat",
+      "cid",
+      "recommendReason"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedCachedStat",
+    "fields": [
+      "view",
+      "reply",
+      "like",
+      "coin",
+      "favorite"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedCachedStat.context_2_c21694.CodingKeys",
+    "fields": [
+      "view",
+      "reply",
+      "like",
+      "coin",
+      "favorite"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedVideoCardButton",
+    "fields": [
+      "metrics",
+      "video",
+      "display",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeFeedVideoCardLabel",
+    "fields": [
+      "metrics",
+      "display",
+      "showsAuthorIdentity",
+      "usesGenericAuthorIcon"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeVideoCellModel",
+    "fields": [
+      "id",
+      "index",
+      "video",
+      "display"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeVideoCellSignature",
+    "fields": [
+      "bvid",
+      "title",
+      "pic",
+      "duration",
+      "pubdate",
+      "ownerID",
+      "ownerName",
+      "ownerFace",
+      "view",
+      "width",
+      "height",
+      "rotate",
+      "recommendReason"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.HomeVideoCellCacheEntry",
+    "fields": [
+      "signature",
+      "cell"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.InitialVideoDetailCommentsContentPage",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.InitialVideoDetailContentPage",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "seedVideo",
+      "layoutWidth",
+      "tab",
+      "mountsSecondaryContent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.InitialVideoDetailContentPageBody",
+    "fields": [
+      "seedVideo",
+      "layoutWidth",
+      "tab",
+      "mountsSecondaryContent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.InitialVideoDetailDetailContentPage",
+    "fields": [
+      "seedVideo",
+      "layoutWidth",
+      "mountsSecondaryContent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.InitialVideoDetailControls",
+    "fields": [
+      "titleText",
+      "contentWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c21da8.InitialVideoDetailActionStrip",
+    "fields": [
+      "contentWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRuntimeSettingsStore",
+    "fields": [
+      "_snapshot",
+      "libraryStore",
+      "cancellable"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRuntimeSettingsSnapshot",
+    "fields": [
+      "playerPerformanceOverlayEnabled",
+      "videoRotationFrameReportOverlayEnabled",
+      "pictureInPictureEnabled",
+      "appTintColorHex",
+      "defaultPlaybackRate",
+      "showsNetworkDiagnosticsButton",
+      "showsPinnedProgressBar",
+      "preferredVideoQuality",
+      "effectivePlaybackCDNPreference",
+      "playbackAutoOptimizationEnabled",
+      "minimizesTabBarOnScroll",
+      "defersVideoDetailSecondaryContent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSegmentedPickerGlassStyle",
+    "fields": [
+      "clear",
+      "regular"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.LibraryVideoRow",
+    "fields": [
+      "item",
+      "timestampTitle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c22244.LibraryVideoInfo",
+    "fields": [
+      "item",
+      "timestampTitle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c22274.LibraryVideoCover",
+    "fields": [
+      "urlString"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c222c0.LibraryVideoProgress",
+    "fields": [
+      "_appTintColor",
+      "resumeTime",
+      "progress"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c223d8.BiliGlassEffectModifier",
+    "fields": [
+      "tint",
+      "interactive",
+      "shape"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c22434.BiliLiquidGlassForegroundModifier",
+    "fields": [
+      "shadowOpacity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c22458.BiliRegularGlassEffectModifier",
+    "fields": [
+      "interactive",
+      "shape"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c224b4.BiliGlassButtonStyleModifier",
+    "fields": [
+      "prominent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2438c.VideoCoverSurfaceModifier",
+    "fields": [
+      "_colorScheme",
+      "cornerRadius",
+      "shadowLevel",
+      "emphasizesBorder",
+      "shadowOpacityScale",
+      "borderOpacityScale",
+      "appliesUnifiedBorder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c24400.UnifiedVideoCoverBorderModifier",
+    "fields": [
+      "_displayScale",
+      "shape",
+      "opacityScale"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.MineHomeAndSearchSettingsView",
+    "fields": [
+      "_libraryStore"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c24914.MineImageCacheControl",
+    "fields": [
+      "__statistics",
+      "__isWorking"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.MineSearchSettingsSection",
+    "fields": [
+      "_libraryStore"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CiliCiliHomeSearchField.Coordinator",
+    "fields": [
+      "parent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c25294.NativeNavigationSearchBridge.Coordinator",
+    "fields": [
+      "owner"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c25294.NativeNavigationSearchBridge.Controller",
+    "fields": [
+      "textBinding",
+      "isPresentedBinding",
+      "isKeyboardVisibleBinding",
+      "onSubmit",
+      "navigationTitleText",
+      "isEnabled",
+      "installedNavigationItem",
+      "searchController",
+      "restoredNavigationTitle",
+      "restoredNavigationTitleView",
+      "installedNavigationTitleView",
+      "reconcileWorkItem"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c25294.NativeNavigationSearchBridge",
+    "fields": [
+      "_text",
+      "_isPresented",
+      "_isKeyboardVisible",
+      "isEnabled",
+      "prompt",
+      "title",
+      "onSubmit"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CiliCiliHomeSearchField",
+    "fields": [
+      "_colorScheme",
+      "_themeModeRaw",
+      "_text",
+      "onSubmit"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadCenter",
+    "fields": [
+      "$defaultActor",
+      "maxConcurrentPreloads",
+      "cachedPlayURLTTL",
+      "stalePlayablePlayURLTTL",
+      "maxCachedPlayURLCount",
+      "cachedDetailTTL",
+      "maxCachedDetailCount",
+      "cachedRelatedTTL",
+      "maxCachedRelatedCount",
+      "relatedEarlyPlayURLPrefetchTraceTTL",
+      "maxRelatedEarlyPlayURLPrefetchTraceCount",
+      "relatedStartupPackageWarmupTraceTTL",
+      "maxRelatedStartupPackageWarmupTraceCount",
+      "mediaWarmupTTL",
+      "maxMediaWarmupCount",
+      "defaultPreferredQuality",
+      "defaultTargetPreferredQuality",
+      "tasks",
+      "taskUserInitiatedFlags",
+      "taskPreferredQualities",
+      "pendingMediaWarmupRequests",
+      "detailTasks",
+      "detailTaskUserInitiatedFlags",
+      "relatedTasks",
+      "bvidPlayInfoTasks",
+      "bvidPlayInfoTaskPreferredQualities",
+      "bvidPlayInfoCache",
+      "mediaWarmupTasks",
+      "activeOrder",
+      "playURLCache",
+      "detailCache",
+      "relatedCache",
+      "recentRelatedCandidates",
+      "relatedEarlyPlayURLPrefetchTraces",
+      "relatedStartupPackageWarmupTraces",
+      "mediaWarmupCache",
+      "mediaWarmupRecords",
+      "focusedPlaybackBVID",
+      "focusedPlaybackUntil",
+      "defaultCDNPreference"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeCache",
+    "fields": [
+      "$defaultActor",
+      "maxCacheBytes",
+      "fileManager",
+      "rootURL",
+      "pendingFetches",
+      "cachedRangesByURLHash",
+      "pendingRangesByURLHash",
+      "estimatedCacheBytes",
+      "storeCountSinceTrim",
+      "trimTask"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangePendingCompletion",
+    "fields": [
+      "lock",
+      "continuation",
+      "result"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageDisplayMemoryCache",
+    "fields": [
+      "cache",
+      "appliedBudget",
+      "loadHits",
+      "loadMisses"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CachedRemoteImageLoader",
+    "fields": [
+      "_image",
+      "_phase",
+      "task",
+      "loadIdentity",
+      "imageIdentity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageCache",
+    "fields": [
+      "$defaultActor",
+      "cache",
+      "inFlight",
+      "inFlightOrder",
+      "diskRequests",
+      "storedKeys",
+      "hits",
+      "misses",
+      "stores",
+      "evictions",
+      "inFlightReuseCount",
+      "loadTaskCount",
+      "failedLoads",
+      "appliedBudget",
+      "diskTrimTask",
+      "session",
+      "maximumInFlightLoads",
+      "failedLoadTTL",
+      "diskTrimDelayNanoseconds"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageCache.context_2_c25eac.InFlightImageLoad",
+    "fields": [
+      "task",
+      "priorityHandle",
+      "priority"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c25ed0.ImageCacheKey",
+    "fields": [
+      "identity",
+      "targetPixelSize"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeCache.context_2_c25f10.PendingRangeEntry",
+    "fields": [
+      "range",
+      "task"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeCache.context_2_c25f34.CachedRangeEntry",
+    "fields": [
+      "range",
+      "fileURL"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadCenter.context_2_c25f64.MediaWarmupRecord",
+    "fields": [
+      "bvid",
+      "countsAgainstFullBudget",
+      "startedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadCenter.context_2_c25f94.CachedRelatedVideos",
+    "fields": [
+      "videos",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadCenter.context_2_c25fc4.CachedVideoDetail",
+    "fields": [
+      "detail",
+      "date"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadCenter.context_2_c25ff4.CachedPlayURL",
+    "fields": [
+      "data",
+      "date",
+      "expiresAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadCenter.context_2_c26024.PendingMediaWarmupRequest",
+    "fields": [
+      "targetPreferredQuality",
+      "cdnPreference",
+      "mediaWarmupMode",
+      "mediaWarmupDelay"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeCacheStatistics",
+    "fields": [
+      "entryCount",
+      "estimatedBytes",
+      "byteCapacity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeCache.context_2_c260b0.PendingRangeError",
+    "fields": [
+      "invalidData"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeExternalFetchReservation",
+    "fields": [
+      "cached",
+      "pending",
+      "reserved",
+      "unreserved"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeExternalFetchToken",
+    "fields": [
+      "key",
+      "url",
+      "range",
+      "completion"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRangeCacheFetchSource",
+    "fields": [
+      "cache",
+      "pending",
+      "remote"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoPreloadMediaWarmupMode",
+    "fields": [
+      "full",
+      "routePlanOnly"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.CachedRemoteImage",
+    "fields": [
+      "url",
+      "fallbackURL",
+      "scale",
+      "targetPixelSize",
+      "cachePolicy",
+      "displayCachePolicy",
+      "animatesAppearance",
+      "content",
+      "placeholder",
+      "_loader",
+      "__reloadToken",
+      "__automaticRetryTask"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageDisplayCachePolicy",
+    "fields": [
+      "retained",
+      "transient"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageCachePolicy",
+    "fields": [
+      "standard",
+      "reloadIgnoringLocalCacheData"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlaybackNetworkBaselineCacheRows",
+    "fields": [
+      "cacheSummary"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlaybackPerformanceTestVideo",
+    "fields": [
+      "bvid",
+      "title"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlaybackPerformanceTestVideoView",
+    "fields": [
+      "_dependencies",
+      "testVideo",
+      "__isReady"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c280c0.BiliPlayerClearGlassModifier",
+    "fields": [
+      "interactive",
+      "shape"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCodecPreference",
+    "fields": [
+      "codecOrder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCodecPreference.context_2_c281f0.CodingKeys",
+    "fields": [
+      "codecOrder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCodecFamily",
+    "fields": [
+      "unknown",
+      "h264",
+      "hevc",
+      "av1"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayerNativeGlassIconButton",
+    "fields": [
+      "systemName",
+      "accessibilityLabel",
+      "accessibilityIdentifier",
+      "metrics",
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c285fc.TelegramProgressTrackGlassModifier",
+    "fields": [
+      "isEnabled",
+      "isInteractive"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayerVideoRenditionSource",
+    "fields": [
+      "quality",
+      "title",
+      "videoURL",
+      "videoStream",
+      "dynamicRange"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoShotTile",
+    "fields": [
+      "sourceURL",
+      "frameIndex",
+      "column",
+      "row",
+      "columnCount",
+      "rowCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoShotMetadata",
+    "fields": [
+      "imageColumnCount",
+      "imageRowCount",
+      "imageColumnSize",
+      "imageRowSize",
+      "imageURLs",
+      "index"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoShotMetadata.CodingKeys",
+    "fields": [
+      "imageColumnCount",
+      "imageRowCount",
+      "imageColumnSize",
+      "imageRowSize",
+      "imageURLs",
+      "index"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RelatedVideoRetryState",
+    "fields": [
+      "message",
+      "retry"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheCleanupSection",
+    "fields": [
+      "performClear"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheLimitSection",
+    "fields": [
+      "_isCacheLimitEnabled",
+      "_cacheLimitMegabytes",
+      "applyLimit"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheManagementView",
+    "fields": [
+      "_libraryStore",
+      "_isCacheLimitEnabled",
+      "_cacheLimitMegabytes",
+      "__summary",
+      "__isWorking"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheSummarySection",
+    "fields": [
+      "summary",
+      "cacheLimitSubtitle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2a384.ResourceCacheSummaryRows",
+    "fields": [
+      "summary",
+      "cacheLimitSubtitle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheRow",
+    "fields": [
+      "title",
+      "value",
+      "subtitle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayURLCache",
+    "fields": [
+      "$defaultActor",
+      "capacity",
+      "ttl",
+      "entries",
+      "hits",
+      "misses",
+      "stores",
+      "evictions",
+      "invalidations"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.BiliAPIResponseMemoryCache",
+    "fields": [
+      "$defaultActor",
+      "maxEntries",
+      "maxBytes",
+      "entries",
+      "estimatedBytes",
+      "hits",
+      "staleHits",
+      "misses",
+      "stores",
+      "evictions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ProgressiveMediaSegmentCache",
+    "fields": [
+      "$defaultActor",
+      "byteCapacity",
+      "itemLimit",
+      "maxEntryBytes",
+      "ttl",
+      "entries",
+      "estimatedBytes",
+      "hits",
+      "misses",
+      "stores",
+      "evictions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SubtitleDanmakuResourceCache",
+    "fields": [
+      "$defaultActor",
+      "ttl",
+      "subtitleLimit",
+      "danmakuLimit",
+      "byteCapacity",
+      "subtitles",
+      "danmakuSegments",
+      "estimatedBytes",
+      "hits",
+      "misses",
+      "evictions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheAutoTrimCoordinator",
+    "fields": [
+      "$defaultActor",
+      "scheduledTask"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SubtitleDanmakuResourceCache.context_2_c2ad64.DanmakuEntry",
+    "fields": [
+      "items",
+      "bytes",
+      "storedAt",
+      "lastAccessedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.DanmakuSegmentCacheKey",
+    "fields": [
+      "cid",
+      "segmentIndex"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SubtitleDanmakuResourceCache.context_2_c2adb0.SubtitleEntry",
+    "fields": [
+      "data",
+      "bytes",
+      "storedAt",
+      "lastAccessedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SubtitleCueCacheKey",
+    "fields": [
+      "bvid",
+      "cid",
+      "subtitleId",
+      "language",
+      "urlHash"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ProgressiveMediaSegmentCache.context_2_c2adfc.Entry",
+    "fields": [
+      "response",
+      "bytes",
+      "storedAt",
+      "lastAccessedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ProgressiveMediaCacheKey",
+    "fields": [
+      "url",
+      "rangeHeader"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.BiliAPIResponseMemoryCache.context_2_c2ae48.Entry",
+    "fields": [
+      "data",
+      "freshUntil",
+      "staleUntil",
+      "lastAccessedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayURLCache.context_2_c2aec4.Entry",
+    "fields": [
+      "data",
+      "scope",
+      "storedAt",
+      "expiresAt",
+      "usesMediaURLExpiration",
+      "lastAccessedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayURLCacheKey",
+    "fields": [
+      "bvid",
+      "cid",
+      "requestedQuality",
+      "audioLanguage",
+      "fnval",
+      "fnver",
+      "platform"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.TimedResourceCacheStatistics",
+    "fields": [
+      "subtitleCount",
+      "danmakuSegmentCount",
+      "estimatedBytes",
+      "byteCapacity",
+      "hits",
+      "misses",
+      "evictions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ProgressiveMediaCacheStatistics",
+    "fields": [
+      "entryCount",
+      "estimatedBytes",
+      "byteCapacity",
+      "hits",
+      "misses",
+      "stores",
+      "evictions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.BiliAPIResponseMemoryCacheStatistics",
+    "fields": [
+      "count",
+      "estimatedBytes",
+      "byteCapacity",
+      "freshCount",
+      "staleCount",
+      "hits",
+      "staleHits",
+      "misses",
+      "stores",
+      "evictions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageCacheStatistics",
+    "fields": [
+      "memoryEntryCount",
+      "inFlightCount",
+      "memoryCostLimit",
+      "diskUsage",
+      "diskCapacity",
+      "hits",
+      "misses",
+      "stores",
+      "evictions",
+      "inFlightReuseCount",
+      "loadTaskCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayURLCacheStatistics",
+    "fields": [
+      "count",
+      "capacity",
+      "hits",
+      "misses",
+      "stores",
+      "evictions",
+      "invalidations"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ProgressiveMediaCacheResponse",
+    "fields": [
+      "data",
+      "contentLength",
+      "mimeType",
+      "isByteRangeAccessSupported"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayURLCacheLoginScope",
+    "fields": [
+      "isLoggedIn",
+      "userMID",
+      "guestModeEnabled",
+      "credentialVersion"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.ResourceCacheSummary",
+    "fields": [
+      "playURL",
+      "image",
+      "api",
+      "apiMemory",
+      "videoRangeMedia",
+      "progressiveMedia",
+      "subtitlesAndDanmaku"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.RemoteImageDisplayCacheStatistics",
+    "fields": [
+      "hits",
+      "misses"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.URLCacheStatistics",
+    "fields": [
+      "memoryUsage",
+      "memoryCapacity",
+      "diskUsage",
+      "diskCapacity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchArticleResultRow",
+    "fields": [
+      "article"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b66c.SearchArticleMetricsLine",
+    "fields": [
+      "article"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b690.SearchArticleDescriptionText",
+    "fields": [
+      "article"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b6b4.SearchArticleMetaLine",
+    "fields": [
+      "article",
+      "publishDate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchTabBottomAccessory",
+    "fields": [
+      "_store"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchContentView",
+    "fields": [
+      "_viewModel",
+      "showsHotSearches",
+      "_accessoryStore"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b7b0.SearchFilterCapsule",
+    "fields": [
+      "_viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchLoadingContent",
+    "fields": [
+      "scope",
+      "count",
+      "showsTitle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchListView",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "_viewModel",
+      "showsHotSearches"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b884.SearchScopedResultSkeletonRow",
+    "fields": [
+      "scope"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b8a8.SearchStructuredResultCard",
+    "fields": [
+      "result"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b8cc.SearchHotSearchRow",
+    "fields": [
+      "rank",
+      "item",
+      "action"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b8f0.SearchDiscoveryLoadingCard",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b914.SearchDiscoveryEmptyCard",
+    "fields": [
+      "title",
+      "message"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b938.SearchSuggestionRow",
+    "fields": [
+      "item",
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2b95c.SearchContentSection",
+    "fields": [
+      "title",
+      "systemImage",
+      "content"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ba08.SearchNonVideoResultSkeletonRow",
+    "fields": [
+      "style",
+      "cornerRadius"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ba08.SearchNonVideoResultSkeletonRow.Style",
+    "fields": [
+      "user",
+      "media",
+      "article"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchLoadingList",
+    "fields": [
+      "_ciliCiliBackdropEnabled"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchMediaResultRow",
+    "fields": [
+      "media",
+      "kind"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bbf4.SearchMediaDescriptionText",
+    "fields": [
+      "media"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bc18.SearchMediaStylesText",
+    "fields": [
+      "media"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bc3c.SearchMediaMetaLine",
+    "fields": [
+      "media",
+      "kind"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchPosterCover",
+    "fields": [
+      "sourceURLString",
+      "thumbnailWidth",
+      "thumbnailHeight",
+      "targetPixelSize",
+      "size",
+      "placeholderSystemImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchVideoResultSkeletonRow",
+    "fields": [
+      "coverSize",
+      "cornerRadius"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchVideoResultRow",
+    "fields": [
+      "display",
+      "coverSize"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchSoftPill",
+    "fields": [
+      "text",
+      "tint"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchMetadataLabel",
+    "fields": [
+      "text",
+      "systemImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchImagePlaceholder",
+    "fields": [
+      "systemImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchResultRouteRow",
+    "fields": [
+      "result"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bec0.SearchArticleRouteRow",
+    "fields": [
+      "article"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bee4.SearchInternalMediaRouteRow",
+    "fields": [
+      "media",
+      "kind",
+      "_openPgcSeasonRoute"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchUserResultRow",
+    "fields": [
+      "user"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bf9c.SearchUserMetadataLine",
+    "fields": [
+      "user"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bfc0.SearchUserDescriptionText",
+    "fields": [
+      "user"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2bfe4.SearchUserNameLine",
+    "fields": [
+      "user"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2c008.SearchUserAvatar",
+    "fields": [
+      "urlString"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchView",
+    "fields": [
+      "_dependencies",
+      "_libraryStore",
+      "_accessoryStore",
+      "_holder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchViewModel",
+    "fields": [
+      "_query",
+      "_recentSearches",
+      "_selectedScope",
+      "_selectedOrder",
+      "_hotSearches",
+      "_suggestions",
+      "_results",
+      "_state",
+      "_hotSearchState",
+      "hotSearchesRevision",
+      "suggestionsRevision",
+      "resultsRevision",
+      "api",
+      "historyDefaults",
+      "historyKey",
+      "debouncer",
+      "page",
+      "lastKeyword",
+      "hasMore",
+      "searchGeneration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchResultItem",
+    "fields": [
+      "video",
+      "user",
+      "bangumi",
+      "movie",
+      "article"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchSortOrder",
+    "fields": [
+      "comprehensive",
+      "mostPlayed",
+      "newest",
+      "mostSaved"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchScope",
+    "fields": [
+      "comprehensive",
+      "video",
+      "bangumi",
+      "movie",
+      "article",
+      "user"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchViewModelHolder",
+    "fields": [
+      "_viewModel",
+      "cancellable",
+      "lastSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.SearchBottomAccessoryStore",
+    "fields": [
+      "_viewModel",
+      "_isSearchFocused",
+      "_isKeyboardVisible"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2c264.SearchRenderSnapshot",
+    "fields": [
+      "query",
+      "showsDiscovery",
+      "selectedScope",
+      "selectedOrder",
+      "state",
+      "hotSearchState",
+      "hotSearchCount",
+      "hotSearchRevision",
+      "suggestionCount",
+      "suggestionRevision",
+      "resultCount",
+      "firstResultID",
+      "lastResultID",
+      "resultRevision"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2c4bc.StableVideoTitleLabel.Coordinator",
+    "fields": [
+      "lastSignature",
+      "lastMeasuredWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2c4bc.StableVideoTitleLabel",
+    "fields": [
+      "title",
+      "font",
+      "lineLimit",
+      "preferredWidth",
+      "adjustsFontForContentSizeCategory",
+      "allowsNaturalHeight"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2c4bc.StableVideoTitleLabel.Signature",
+    "fields": [
+      "title",
+      "fontName",
+      "pointSize",
+      "lineLimit",
+      "preferredWidth",
+      "adjustsFontForContentSizeCategory",
+      "allowsNaturalHeight"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.StableVideoTitleText",
+    "fields": [
+      "_dynamicTypeSize",
+      "title",
+      "style",
+      "lineLimit",
+      "preferredWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.StableVideoTitleText.Style",
+    "fields": [
+      "feedStory",
+      "feedHeadline",
+      "compactCard",
+      "related"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderContentView",
+    "fields": [
+      "_dependencies",
+      "_libraryStore",
+      "owner",
+      "_viewModel",
+      "allowsPullToRefresh",
+      "showsToolbarRefreshButton",
+      "__contentWidth",
+      "_selectedSection",
+      "__isRefreshingFromToolbar",
+      "__pullRefreshDistance",
+      "__isConfiguredPullRefreshing",
+      "__pullRefreshActions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2c8b4.UploaderProfileSection",
+    "fields": [
+      "videos",
+      "dynamics",
+      "collections"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderContentWidthPreferenceKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderContentWidthReader",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderDynamicsSection",
+    "fields": [
+      "api",
+      "_viewModel",
+      "contentWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderFollowButton",
+    "fields": [
+      "_appTintColor",
+      "owner",
+      "_viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderStatsRow",
+    "fields": [
+      "_viewModel",
+      "card"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderProfileStatusMessage",
+    "fields": [
+      "state"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderFollowMessage",
+    "fields": [
+      "message",
+      "isFollowing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSignatureText",
+    "fields": [
+      "sign"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ca58.UploaderStatItem",
+    "fields": [
+      "title",
+      "value"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderHeaderView",
+    "fields": [
+      "owner",
+      "_viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderIdentityRow",
+    "fields": [
+      "owner",
+      "card",
+      "_viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cbcc.UploaderSeasonSeriesDetailViewModel",
+    "fields": [
+      "_videos",
+      "_state",
+      "_sort",
+      "_totalCount",
+      "_hasMore",
+      "owner",
+      "item",
+      "page"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesDetailView",
+    "fields": [
+      "_dependencies",
+      "_viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cc38.UploaderSeasonSeriesDetailLoadingRows",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderSeasonSeriesSection",
+    "fields": [
+      "_viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ccc8.UploaderSeasonSeriesRouteCard",
+    "fields": [
+      "owner",
+      "item"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ccec.UploaderSeasonSeriesLoadingState",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cd38.UploaderSeasonSeriesSkeletonCard",
+    "fields": [
+      "coverSize"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cd5c.UploaderSeasonSeriesCard",
+    "fields": [
+      "item"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cdd0.UploaderSeasonSeriesPreview",
+    "fields": [
+      "archive"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cdf4.UploaderSeasonSeriesCover",
+    "fields": [
+      "size",
+      "item"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideosSection",
+    "fields": [
+      "_viewModel",
+      "metrics"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ced4.UploaderVideoGridItem",
+    "fields": [
+      "video",
+      "metrics",
+      "onOpen",
+      "loadMoreIfNeeded"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cef8.UploaderVideosLoadingState",
+    "fields": [
+      "metrics"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderView",
+    "fields": [
+      "_usesBackdrop",
+      "_dependencies",
+      "owner",
+      "allowsPullToRefresh",
+      "showsToolbarRefreshButton",
+      "_holder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cfb0.UploaderInitialLoadingView",
+    "fields": [
+      "_usesBackdrop"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2cffc.UploaderHeaderSkeletonCard",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderViewModel",
+    "fields": [
+      "_profile",
+      "_videos",
+      "_state",
+      "_profileState",
+      "_isFollowing",
+      "_followerCount",
+      "_followingCount",
+      "_likeCount",
+      "_archiveCount",
+      "_isMutatingFollow",
+      "_followMessage",
+      "_profileRevision",
+      "_videosRevision",
+      "_videoOrder",
+      "_hasMoreVideos",
+      "_dynamicItems",
+      "_dynamicState",
+      "_dynamicItemsRevision",
+      "_seasonSeriesItems",
+      "_seasonSeriesState",
+      "_seasonSeriesRevision",
+      "seedOwner",
+      "api",
+      "uploaderVideosTimeoutNanoseconds",
+      "page",
+      "videoCursor",
+      "dynamicOffset",
+      "dynamicHasMore",
+      "seasonSeriesPage",
+      "seasonSeriesHasMore"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderVideoOrder",
+    "fields": [
+      "pubdate",
+      "click"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.UploaderViewModelHolder",
+    "fields": [
+      "_viewModel",
+      "cancellable",
+      "lastSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d11c.UploaderRenderSnapshot",
+    "fields": [
+      "state",
+      "profileState",
+      "profileRevision",
+      "videosRevision",
+      "videoOrder",
+      "hasMoreVideos",
+      "dynamicItemsRevision",
+      "videoCount",
+      "dynamicItemCount",
+      "firstVideoID",
+      "lastVideoID",
+      "firstDynamicItemID",
+      "lastDynamicItemID",
+      "isFollowing",
+      "followerCount",
+      "followingCount",
+      "likeCount",
+      "archiveCount",
+      "isMutatingFollow",
+      "followMessage",
+      "dynamicState"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d140.LiquidVideoCardSurfacesKey",
+    "fields": [],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d164.VideoCardBorderedSurfaceModifier",
+    "fields": [
+      "_colorScheme",
+      "_usesLiquidSurfaces",
+      "cornerRadius",
+      "showsShadow"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d194.LiquidVideoCardSurfaceModifier",
+    "fields": [
+      "cornerRadius"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d1b8.CompactVideoResultSurfaceModifier",
+    "fields": [
+      "_usesLiquidSurfaces",
+      "cornerRadius"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardBorderedCompactBody",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "display",
+      "coverSize",
+      "usesGenericAuthorIcon",
+      "leadingMetadata",
+      "showsRecommendReason",
+      "showsCoverDurationBadge",
+      "__coverLoadedState"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardBorderedBody",
+    "fields": [
+      "display",
+      "cover",
+      "showsPublishTimeInAuthorRow",
+      "showsAuthorIdentity",
+      "usesGenericAuthorIcon",
+      "cornerRadius"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardBlendedBody",
+    "fields": [
+      "display",
+      "cover",
+      "showsPublishTimeInAuthorRow",
+      "showsAuthorIdentity",
+      "usesGenericAuthorIcon"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardElevatedBody",
+    "fields": [
+      "display",
+      "cover",
+      "showsPublishTimeInAuthorRow",
+      "showsAuthorIdentity",
+      "usesGenericAuthorIcon"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardBorderedCompactBody.LeadingMetadata",
+    "fields": [
+      "viewCount",
+      "duration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardDisplayModel",
+    "fields": [
+      "id",
+      "title",
+      "authorName",
+      "viewText",
+      "durationText",
+      "publishTimeText",
+      "recommendReasonText",
+      "metadataSummaryText",
+      "coverURL",
+      "largeCoverURL",
+      "sourceCoverURL",
+      "avatarURLString",
+      "coverAspectRatio"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardTextStack",
+    "fields": [
+      "display",
+      "showsPublishTimeInAuthorRow",
+      "showsAuthorIdentity",
+      "usesGenericAuthorIcon"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardView",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "display",
+      "showsPublishTimeInAuthorRow",
+      "showsAuthorIdentity",
+      "usesGenericAuthorIcon",
+      "showsCoverViewCountBadge",
+      "surfaceStyle",
+      "coverAspectRatio",
+      "fixedCoverSize",
+      "coverMaximumPixelLength",
+      "__coverLoadedState"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCardView.SurfaceStyle",
+    "fields": [
+      "elevated",
+      "blended",
+      "bordered"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCodecSelectionSettingsView",
+    "fields": [
+      "_libraryStore",
+      "_codecOrder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCompactCover",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "display",
+      "size",
+      "maximumPixelLength",
+      "cornerRadius",
+      "showsBorder",
+      "borderOpacityScale",
+      "showsShadow",
+      "badgeInset",
+      "__coverLoadedState"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCompactListRow",
+    "fields": [
+      "display",
+      "coverSize",
+      "coverMaximumPixelLength",
+      "coverCornerRadius",
+      "showsCoverBorder",
+      "titleMinHeight",
+      "authorStyle",
+      "metadataStyle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCompactListPlaceholderRow",
+    "fields": [
+      "coverSize",
+      "fill",
+      "cornerRadius",
+      "titleMinHeight",
+      "authorStyle",
+      "metadataStyle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCompactListRow.MetadataStyle",
+    "fields": [
+      "related",
+      "search"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCompactListRow.AuthorStyle",
+    "fields": [
+      "icon",
+      "plain"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCompactListTextColumn",
+    "fields": [
+      "display",
+      "titleMinHeight",
+      "authorStyle",
+      "metadataStyle",
+      "minHeight"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d67c.VideoCompactMetadataRow",
+    "fields": [
+      "display",
+      "metadataStyle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d6ac.VideoCompactAuthorLabel",
+    "fields": [
+      "display",
+      "authorStyle"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d704.VideoCompactMetadataLabel",
+    "fields": [
+      "text",
+      "systemImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d7a0.VideoCoverDurationBadgesVisibilityKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverDurationBadge",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "duration",
+      "maxWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverBottomScrim",
+    "fields": [
+      "opacity",
+      "heightFraction"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d7fc.VideoCoverBadgeBackgroundModifier",
+    "fields": [
+      "shape",
+      "style"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d858.VideoCoverBadgeForegroundModifier",
+    "fields": [
+      "opacity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2d8cc.VideoCoverReadableBackingModifier",
+    "fields": [
+      "_contrastOpacity",
+      "shape",
+      "style"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverBadgeGlassStyle",
+    "fields": [
+      "clear",
+      "regular"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverPlayBadge",
+    "fields": [
+      "size",
+      "iconSize"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverViewCountBadge",
+    "fields": [
+      "viewText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverLoadedState",
+    "fields": [
+      "loadedIdentity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoCoverMetaOverlay",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "viewText",
+      "durationText",
+      "showsViewCount",
+      "durationMaxWidth",
+      "horizontalPadding",
+      "bottomPadding",
+      "spacing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStrip",
+    "fields": [
+      "model",
+      "onFollow",
+      "onLike",
+      "onCoin",
+      "onFavorite",
+      "onShareTap"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripOwnerAvatar",
+    "fields": [
+      "owner"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripButtonRow",
+    "fields": [
+      "_appTintColor",
+      "model",
+      "layout",
+      "onFollow",
+      "onLike",
+      "onCoin",
+      "onFavorite",
+      "onShareTap"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripContainer",
+    "fields": [
+      "_descriptionStore",
+      "_store",
+      "contentWidth",
+      "onFollow",
+      "onLike",
+      "onCoin",
+      "onFavorite",
+      "onShareTap"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripShareButton",
+    "fields": [
+      "shareURL",
+      "shareSubject",
+      "shareMessage",
+      "valueText",
+      "onShareTap"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripFollowControl",
+    "fields": [
+      "isFollowing",
+      "canFollow",
+      "isMutating",
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2dc90.VideoDetailActionStripFollowLabel",
+    "fields": [
+      "isFollowing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripIconButton",
+    "fields": [
+      "accessibilityTitle",
+      "systemImage",
+      "valueText",
+      "foregroundStyle",
+      "isDisabled",
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripIconLabel",
+    "fields": [
+      "systemImage",
+      "foregroundStyle",
+      "valueText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripLayout",
+    "fields": [
+      "contentWidth"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailActionStripModel",
+    "fields": [
+      "owner",
+      "canFavorite",
+      "shareURL",
+      "shareSubject",
+      "shareMessage",
+      "contentWidth",
+      "isFollowing",
+      "isLiked",
+      "isCoined",
+      "isFavorited",
+      "coinCount",
+      "likeCount",
+      "coinTotalCount",
+      "favoriteCount",
+      "shareCount",
+      "isMutatingLike",
+      "isMutatingCoin",
+      "isMutatingFavorite",
+      "isMutatingFollow"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCoinSheetHost",
+    "fields": [
+      "_dismiss",
+      "_appTintColor",
+      "_viewModel",
+      "__selectedCoinCount",
+      "__isSubmitting",
+      "__didShowSuccessAnimation",
+      "__animationToken"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ddf8.VideoDetailCoinSuccessAnimation",
+    "fields": [
+      "token",
+      "__phase"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentDialogDisplayItem",
+    "fields": [
+      "id",
+      "reply",
+      "display"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentDisplayItem",
+    "fields": [
+      "id",
+      "comment",
+      "display"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentDisplayModel",
+    "fields": [
+      "authorName",
+      "authorOwner",
+      "authorLevel",
+      "avatarURLString",
+      "timeText",
+      "likeText",
+      "isLiked",
+      "replyPreviews",
+      "visibleReplyCount",
+      "pictures"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentListSignature",
+    "fields": [
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentListState",
+    "fields": [
+      "comments",
+      "state",
+      "loadMoreState",
+      "didCompleteInitialLoad",
+      "selectedSort",
+      "cursor",
+      "legacyPage",
+      "end",
+      "pageLoadGeneration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentsRenderSnapshot",
+    "fields": [
+      "detail",
+      "comments",
+      "commentItems",
+      "state",
+      "loadMoreState",
+      "selectedSort",
+      "didCompleteInitialLoad",
+      "hasMoreComments",
+      "replyCountText",
+      "commentsSignature"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentReplyDisplayItem",
+    "fields": [
+      "id",
+      "reply",
+      "display",
+      "canShowDialog"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentDialogDisplayCacheEntry",
+    "fields": [
+      "signature",
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentReplyDisplayCacheEntry",
+    "fields": [
+      "signature",
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentReplyDisplaySignature",
+    "fields": [
+      "rootID",
+      "replies"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentReplyDisplaySignature.Reply",
+    "fields": [
+      "id",
+      "parentID",
+      "dialogID",
+      "message"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentTarget",
+    "fields": [
+      "oid",
+      "type",
+      "bvid",
+      "contextKey"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentDeepLinkLoadResult",
+    "fields": [
+      "rootComment",
+      "focusedReplyID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadRenderSnapshot",
+    "fields": [
+      "replyThreads",
+      "replyThreadStates",
+      "replyThreadHasMore",
+      "dialogThreads",
+      "dialogThreadStates"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadDialogSnapshot",
+    "fields": [
+      "state",
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadRepliesSnapshot",
+    "fields": [
+      "state",
+      "replies",
+      "replyDisplays",
+      "hasMoreReplies"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadRenderStore",
+    "fields": [
+      "_snapshot",
+      "replyDisplayCache",
+      "dialogDisplayCache"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentSignature",
+    "fields": [
+      "id",
+      "like",
+      "likeState",
+      "replyCount",
+      "message",
+      "replyIDs",
+      "pictureURLs"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadState",
+    "fields": [
+      "replyThreads",
+      "replyThreadStates",
+      "replyThreadPages",
+      "replyThreadHasMore",
+      "replyThreadLoadTokens",
+      "dialogThreads",
+      "dialogThreadStates",
+      "dialogThreadLoadTokens",
+      "deepLinkAnchor"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadAnchor",
+    "fields": [
+      "contextKey",
+      "rootID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentsRenderChangeSignature",
+    "fields": [
+      "detailBVID",
+      "detailReplyCount",
+      "commentsSignature",
+      "state",
+      "loadMoreState",
+      "selectedSort",
+      "didCompleteInitialLoad",
+      "hasMoreComments",
+      "replyCountText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentsRenderStore",
+    "fields": [
+      "_snapshot",
+      "deferredSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentsSectionActions",
+    "fields": [
+      "beginInitialCommentsLoad",
+      "selectCommentSort",
+      "retryComments",
+      "loadMoreComments",
+      "showReplies",
+      "replyToComment",
+      "showAllComments"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2e8a0.VideoDetailCommentsEmptyStateMinimumHeightKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentsSectionFooterActions",
+    "fields": [
+      "loadMoreComments"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailContentPageBody",
+    "fields": [
+      "viewModel",
+      "layoutWidth",
+      "tab",
+      "mountsSecondaryContent",
+      "runtimeSettings",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "onReply",
+      "showsSummary",
+      "onComposeReply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailContentPage",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "viewModel",
+      "layoutWidth",
+      "tab",
+      "mountsSecondaryContent",
+      "runtimeSettings",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "onReply",
+      "showsSummary",
+      "onComposeReply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailContentTab",
+    "fields": [
+      "detail",
+      "comments"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailContentUpdateGate",
+    "fields": [
+      "_revision",
+      "isDeferred",
+      "hasPendingUpdate",
+      "isDeliveryScheduled",
+      "deliveryGeneration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDeferredValue",
+    "fields": [
+      "isDeferred",
+      "pendingValue"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCoreTaskState",
+    "fields": [
+      "backgroundTasks",
+      "pageLoadingTask",
+      "pageLoadingToken",
+      "detailLoadingTask",
+      "detailLoadingToken",
+      "playVariantSwitchTask",
+      "commentsLoadingTask",
+      "commentsLoadingToken",
+      "startupPlayURLTask",
+      "startupPlayURLTaskKey",
+      "startupPlayURLRequestLease",
+      "startupPlayURLGeneration",
+      "cloudHistoryResumeTask",
+      "cloudHistoryResumeTaskAid"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuLoadingState",
+    "fields": [
+      "fullLoadTask",
+      "startupLoadTask",
+      "startupLoadToken",
+      "generation",
+      "segmentTasks",
+      "loadedSegments",
+      "loadingSegments",
+      "segmentItems",
+      "didFallbackToFullLoad",
+      "lastScheduleKey",
+      "isUnderPlaybackLoad"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuOverlay",
+    "fields": [
+      "store",
+      "playerViewModel",
+      "clock",
+      "usesLandscapePlaybackChrome",
+      "isLayoutTransitioning",
+      "onPlaybackTime",
+      "_state"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2ed20.VideoDetailDanmakuOverlayLifecycleModifier",
+    "fields": [
+      "playerViewModel",
+      "isEnabled",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuOverlayLifecycleActions",
+    "fields": [
+      "store",
+      "playerViewModel",
+      "clock",
+      "state",
+      "onPlaybackTime"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuOverlaySnapshot",
+    "fields": [
+      "items",
+      "itemsRevision",
+      "isPlaying",
+      "playbackRate",
+      "isEnabled",
+      "hasPresentedPlayback",
+      "isLoadShedding",
+      "settings"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuOverlayState",
+    "fields": [
+      "_snapshot",
+      "store",
+      "playerViewModel",
+      "cancellables",
+      "allItems",
+      "sourceItemsRevision",
+      "publishedSourceItemsRevision",
+      "publishedWindowRange",
+      "lastWindowCenterBucket",
+      "normalWindowLookBehind",
+      "normalWindowLookAhead",
+      "windowRecenterInterval"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuRenderSnapshot",
+    "fields": [
+      "items",
+      "itemsRevision",
+      "isDanmakuEnabled",
+      "effectiveSettings"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuSettingsRenderSnapshot",
+    "fields": [
+      "isDanmakuEnabled",
+      "danmakuSettings"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuSettingsRenderStore",
+    "fields": [
+      "_snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuRenderStore",
+    "fields": [
+      "_snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuSettingsSheetHost",
+    "fields": [
+      "_viewModel",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDanmakuSheetActions",
+    "fields": [
+      "viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDescriptionRenderSnapshot",
+    "fields": [
+      "titleText",
+      "owner",
+      "viewCountText",
+      "commentCountText",
+      "likeCountText",
+      "coinCountText",
+      "favoriteCountText",
+      "shareCountText",
+      "onlineCountText",
+      "fanCountText",
+      "publishDateText",
+      "publishDateSubtitleText",
+      "descriptionText",
+      "hasResolvedDetailMetadata",
+      "canFavorite",
+      "shareURL",
+      "shareSubject",
+      "shareMessage",
+      "isFollowing",
+      "isMutatingInteraction"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDescriptionRenderStore",
+    "fields": [
+      "_snapshot",
+      "deferredSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDoneToolbar",
+    "fields": [
+      "finish",
+      "accessibilityIdentifier"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailEmbeddedCommentsSection",
+    "fields": [
+      "viewModel",
+      "renderPack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailEmbeddedCommentsSectionRenderPack",
+    "fields": [
+      "store",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailExpandedDescriptionText",
+    "fields": [
+      "descriptionText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailFavoriteFolderRenderStore",
+    "fields": [
+      "_snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailFavoriteFolderSheetActions",
+    "fields": [
+      "viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailFavoriteFolderSheetHost",
+    "fields": [
+      "_viewModel",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInfoLoadingPlaceholder",
+    "fields": [
+      "titleText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInfoMetadataRow",
+    "fields": [
+      "metadataText",
+      "hasDescriptionContent",
+      "isExpanded",
+      "descriptionCopyText",
+      "toggleExpansion"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInfoPresentation",
+    "fields": [
+      "titleText",
+      "descriptionText",
+      "hasDescriptionContent",
+      "metadataText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInfoBlock",
+    "fields": [
+      "_store",
+      "__isExpanded"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInfoTitleText",
+    "fields": [
+      "text",
+      "isExpanded"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInfoTitleSkeleton",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialContent",
+    "fields": [
+      "seedVideo",
+      "_selectedContentTab",
+      "runtimeSettings",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialPlaybackLayout",
+    "fields": [
+      "width",
+      "playerHeight"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialPlaybackPage",
+    "fields": [
+      "seedVideo",
+      "_selectedContentTab",
+      "runtimeSettings",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialPlaybackStage",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "seedVideo",
+      "layout",
+      "containerHeight",
+      "_selectedContentTab",
+      "runtimeSettings",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialPlayerPlaceholder",
+    "fields": [
+      "width",
+      "height",
+      "showsPinnedProgressBar",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialPlayerPlaceholderBackButtonLayer",
+    "fields": [
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialPlayerPlaceholderProgressLayer",
+    "fields": [
+      "width"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInteractionMutationState",
+    "fields": [
+      "isMutatingLike",
+      "isMutatingCoin",
+      "isMutatingFavorite",
+      "isMutatingFollow"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailLifecycleSubscriptionState",
+    "fields": [
+      "filterCancellable",
+      "sponsorBlockCancellable",
+      "playbackAutoOptimizationCancellable",
+      "playbackPerformanceCancellable",
+      "lastDanmakuAdaptationProfile"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailLoadTimeoutError",
+    "fields": [
+      "playURL",
+      "related"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailLoadedCommentsContentPage",
+    "fields": [
+      "viewModel",
+      "onReply",
+      "onComposeReply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailLoadedDetailContentPage",
+    "fields": [
+      "viewModel",
+      "layoutWidth",
+      "mountsSecondaryContent",
+      "runtimeSettings",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "showsSummary",
+      "showsRecommendations"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f75c.VideoDetailRecommendationsSection",
+    "fields": [
+      "detail",
+      "_relatedStore",
+      "layoutWidth",
+      "runtimeSettings",
+      "retryRelated"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailLoadedDetailContentPageActions",
+    "fields": [
+      "viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailLoadedDetailContentPageRenderPack",
+    "fields": [
+      "contentWidth",
+      "pageSelectorStore",
+      "relatedStore",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailMetadataLoadingRow",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f898.VideoDetailInteractiveScrollHost.Coordinator",
+    "fields": [
+      "hostingController",
+      "contentConfiguration",
+      "tab",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange",
+      "appliedScrollAdjustmentToken",
+      "isApplyingScrollAdjustment",
+      "virtualScrollOffset",
+      "lastReportedVirtualScrollOffset",
+      "pendingReportedScroll",
+      "isReportScheduled",
+      "hasUserScrolled",
+      "isUpdatingView"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f898.VideoDetailInteractiveScrollHost",
+    "fields": [
+      "tab",
+      "viewportHeight",
+      "scrollAdjustment",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange",
+      "summary",
+      "topInset",
+      "minimumPlayerHeight",
+      "contentRevision",
+      "contentMountsSecondaryContent",
+      "bottomInset",
+      "content"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f898.VideoDetailInteractiveScrollHost.ContentConfiguration",
+    "fields": [
+      "viewportHeight",
+      "topInset",
+      "minimumPlayerHeight",
+      "contentRevision",
+      "contentMountsSecondaryContent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNativeContentTabView",
+    "fields": [
+      "segmentedPickerHeight",
+      "_appTintColor",
+      "_ciliCiliBackdropEnabled",
+      "_selection",
+      "layoutWidth",
+      "topInset",
+      "bottomInset",
+      "scrollAdjustment",
+      "mountsSecondaryContent",
+      "hidesBottomToolbar",
+      "placesTopInsetInScrollContent",
+      "interactiveMinimumPlayerHeight",
+      "contentRevision",
+      "onOpenCommentComposer",
+      "onRefreshComments",
+      "onSelectionWillChange",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange",
+      "summary",
+      "content"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f96c.VideoDetailToolbarCommentComposerButton",
+    "fields": [
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f990.VideoDetailToolbarCommentRefreshButton",
+    "fields": [
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2f9b4.VideoDetailScrollingTabPage",
+    "fields": [
+      "tab",
+      "scrollAdjustment",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange",
+      "summary",
+      "topInset",
+      "minimumPlayerHeight",
+      "bottomInset",
+      "content",
+      "__position"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fa10.VideoDetailInteractiveScrollingTabPage",
+    "fields": [
+      "tab",
+      "scrollAdjustment",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange",
+      "summary",
+      "topInset",
+      "minimumPlayerHeight",
+      "contentRevision",
+      "contentMountsSecondaryContent",
+      "bottomInset",
+      "content"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailScrollAdjustment",
+    "fields": [
+      "tab",
+      "offset",
+      "token"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fbac.VideoDetailNavigationLatencyTiming.Presentation",
+    "fields": [
+      "displayText",
+      "copyText",
+      "durationMilliseconds",
+      "milestone",
+      "isLatency"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNavigationLatencySnapshotRow",
+    "fields": [
+      "snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNetworkDiagnosticsButton",
+    "fields": [
+      "action"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNetworkDiagnosticsRenderSnapshot",
+    "fields": [
+      "videoTitle",
+      "metricsID",
+      "selectedPlayVariant",
+      "playerViewModel",
+      "detailLoadElapsedMilliseconds",
+      "playURLElapsedMilliseconds",
+      "relatedElapsedMilliseconds",
+      "lastPlayURLSource",
+      "resumeDiagnostics",
+      "playbackFallbackMessage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNetworkDiagnosticsRenderStore",
+    "fields": [
+      "_snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNetworkDiagnosticsSheetHost",
+    "fields": [
+      "_viewModel",
+      "_libraryStore"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailNoticeLabel",
+    "fields": [
+      "message",
+      "systemImage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPageMenu",
+    "fields": [
+      "_store",
+      "selectPage",
+      "__isPageSheetPresented"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fd50.VideoDetailPageSelectionSheet",
+    "fields": [
+      "pages",
+      "selectedCID",
+      "selectPage",
+      "columns"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fd74.VideoDetailPageRoute",
+    "fields": [
+      "page",
+      "isSelected",
+      "selectPage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fd98.VideoDetailPageMenuHeader",
+    "fields": [
+      "pageCount",
+      "_showsPageSheet"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fde4.VideoDetailPageSheetRoute",
+    "fields": [
+      "_dismiss",
+      "page",
+      "isSelected",
+      "selectPage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fe14.VideoDetailPageSheetHeader",
+    "fields": [
+      "pageCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c2fe38.VideoDetailPageTile",
+    "fields": [
+      "_appTintColor",
+      "page",
+      "isSelected",
+      "width",
+      "height",
+      "usesGlassBackground"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPageSelectorRenderSnapshot",
+    "fields": [
+      "pages",
+      "selectedCID",
+      "pageCountText"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPageSelectorRenderStore",
+    "fields": [
+      "_snapshot",
+      "deferredSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPerformanceExperimentState",
+    "fields": [
+      "_snapshot",
+      "bareSurfaceTransitionBeganAt",
+      "pendingPlayerStatePublishCount",
+      "pendingSettingsStatePublishCount",
+      "observationCountFlushTask"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPerformanceExperimentSnapshot",
+    "fields": [
+      "directUIKitSurfaceEnabled",
+      "narrowPlayerOverlayObservationEnabled",
+      "isBareSurfaceTransitionActive",
+      "overlayPublishCount",
+      "overlayDeferredCount",
+      "overlayFlushCount",
+      "playerStatePublishCount",
+      "settingsStatePublishCount",
+      "playerRebindCount",
+      "rotationTransitionCount",
+      "lastBareSurfaceDurationMilliseconds",
+      "totalBareSurfaceDurationMilliseconds",
+      "lastEvent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c30058.VideoDetailPgcEpisodeOrder",
+    "fields": [
+      "ascending",
+      "descending"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPgcEpisodeSection",
+    "fields": [
+      "detail",
+      "selectEpisode",
+      "actionContent",
+      "_dependencies",
+      "__season",
+      "__state",
+      "__order",
+      "__isEpisodeSheetPresented"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c300b8.VideoDetailPgcEpisodeSelectionSheet",
+    "fields": [
+      "detail",
+      "season",
+      "selectEpisode",
+      "_order",
+      "columns"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c300dc.VideoDetailPgcEpisodeFailedSection",
+    "fields": [
+      "_appTintColor",
+      "message",
+      "retry"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c30100.VideoDetailPgcEpisodeLoadingSection",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c30124.VideoDetailPgcEpisodeLoadedSection",
+    "fields": [
+      "detail",
+      "season",
+      "selectEpisode",
+      "_order",
+      "_showsEpisodeSheet"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c3017c.VideoDetailPgcEpisodeSheetRoute",
+    "fields": [
+      "episode",
+      "season",
+      "selectEpisode",
+      "isSelected",
+      "_dismiss",
+      "_prewarmVideoRoute"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c301ac.VideoDetailPgcEpisodeSheetHeader",
+    "fields": [
+      "episodeCount",
+      "_order"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c301d0.VideoDetailPgcEpisodeRoute",
+    "fields": [
+      "episode",
+      "season",
+      "selectEpisode",
+      "isSelected",
+      "width",
+      "height"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c301f4.VideoDetailPgcEpisodeHeader",
+    "fields": [
+      "episodeCount",
+      "_order",
+      "_showsEpisodeSheet"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c302b8.VideoDetailPgcEpisodeTile",
+    "fields": [
+      "_appTintColor",
+      "episode",
+      "isSelected",
+      "isPlayable",
+      "width",
+      "height",
+      "usesGlassBackground"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPgcSeasonInfoBlock",
+    "fields": [
+      "season",
+      "detail",
+      "_appTintColor",
+      "__isDescriptionExpanded"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPinnedProgressPlaceholder",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPinnedStaticProgressTrack",
+    "fields": [
+      "progress"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayURLCacheResolution",
+    "fields": [
+      "loaded",
+      "needsNetwork"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayURLFailedNotice",
+    "fields": [
+      "message",
+      "retry"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayURLNotice",
+    "fields": [
+      "_placeholderStore",
+      "retry"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayURLRetryButton",
+    "fields": [
+      "title",
+      "systemImage",
+      "retry"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayURLLoadMode",
+    "fields": [
+      "normal",
+      "playbackRecovery"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackDiagnostics",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackFallbackContext",
+    "fields": [
+      "failedVariant",
+      "fallbackVariant"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackNavigationState",
+    "fields": [
+      "isPlaybackInvalidatedForNavigation",
+      "isPlaybackTerminatedForNavigation",
+      "playbackStopTask",
+      "shouldResumePlaybackAfterCancelledNavigation",
+      "pendingNavigationResumeTime",
+      "hasPendingNavigationInterruption"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInteractionNotice",
+    "fields": [
+      "_store",
+      "__visibleFallbackMessage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackOptions",
+    "fields": [
+      "recordsPlaybackHistory",
+      "resumesPlaybackHistory",
+      "usesStartupCaches"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackQualityMenuItem",
+    "fields": [
+      "variant",
+      "title",
+      "subtitle",
+      "systemImage",
+      "isDisabled"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackRecoveryInput",
+    "fields": [
+      "source",
+      "message",
+      "reason",
+      "failedVariantID",
+      "selectedVariantID",
+      "hasFallbackVariant",
+      "playURLIsLoading",
+      "recoveryAttemptCount",
+      "maxRecoveryReloadAttempts",
+      "isPlaybackInvalidatedForNavigation",
+      "hasPendingNavigationInterruption"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackRecoveryCoordinator",
+    "fields": [
+      "handledFailureSignatures"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackRecoveryFailureSource",
+    "fields": [
+      "playerCallback",
+      "errorObserver",
+      "appResume"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackRecoveryState",
+    "fields": [
+      "didSelectPlayVariantManually",
+      "manuallySelectedPlayVariantQuality",
+      "failedPlayVariantIDs",
+      "playbackRecoveryAttemptCount",
+      "playbackRecoveryCoordinator",
+      "lastBufferingCDNRefreshCount",
+      "playbackRecoveryReloadTask",
+      "playbackRecoveryReloadGeneration",
+      "bufferingCDNRefreshTask",
+      "bufferingCDNRefreshGeneration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackRenderSnapshot",
+    "fields": [
+      "historyVideo",
+      "historyCID",
+      "duration",
+      "pages",
+      "selectedCID",
+      "playURLState",
+      "selectedPlayVariant",
+      "isDetailLoading",
+      "isDetailLoaded",
+      "failedMessage",
+      "isDanmakuEnabled",
+      "qualityInlineButtonTitle",
+      "qualityAccessoryButtonTitle",
+      "qualityButtonSystemImage",
+      "qualityMenuItems",
+      "isSwitchingPlayQuality"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackRenderStore",
+    "fields": [
+      "_snapshot",
+      "deferredSnapshot",
+      "qualityControlStore",
+      "placeholderStore",
+      "pageSelectorStore"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackStartupWaitState",
+    "fields": [
+      "release",
+      "waiters"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackTransitionState",
+    "fields": [
+      "playerViewModel",
+      "snapshot",
+      "fallbackCoverURL",
+      "opacity",
+      "releaseTask",
+      "releaseGeneration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackWarmupTaskState",
+    "fields": [
+      "hlsRenditionPrebuildTask",
+      "hlsRenditionPrebuildGeneration",
+      "seekWarmupTasks",
+      "seekWarmupTokens",
+      "seekWarmupTaskOrder",
+      "recentSeekWarmupKeys",
+      "recentSeekWarmupKeyOrder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerBackButton",
+    "fields": [
+      "_controlMetrics",
+      "action",
+      "usesGlass"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c30864.VideoDetailPlayerBackButtonSurface",
+    "fields": [
+      "usesGlass",
+      "metrics"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerIdentityRenderSnapshot",
+    "fields": [
+      "playerViewModel",
+      "transitionSnapshot",
+      "transitionFallbackCoverURL",
+      "transitionPlayerOpacity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerIdentityRenderStore",
+    "fields": [
+      "_snapshot",
+      "revision"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.PlayerPerformanceOverlayNetworkAndCacheLines",
+    "fields": [
+      "session"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPerformanceOverlayContainer",
+    "fields": [
+      "_store",
+      "_experimentState",
+      "panelWidth",
+      "maximumHeight"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerPlaceholderRenderSnapshot",
+    "fields": [
+      "playURLState",
+      "selectedPlayVariant",
+      "isDetailLoading",
+      "isDetailLoaded",
+      "failedMessage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerPlaceholderRenderStore",
+    "fields": [
+      "_snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerSurfaceBackButtonHost",
+    "fields": [
+      "action",
+      "usesGlass"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerSurfaceDanmakuLayer",
+    "fields": [
+      "store",
+      "playerViewModel",
+      "usesLandscapePlaybackChrome",
+      "isLayoutTransitioning",
+      "onPlaybackTime"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSwiftUISurfaceHostingView",
+    "fields": [
+      "hostingController",
+      "viewModel",
+      "isPictureInPictureEnabled",
+      "videoGravity",
+      "isTornDown"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlayerSurfaceRepresentable",
+    "fields": [
+      "viewModel",
+      "isPictureInPictureEnabled",
+      "videoGravity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPresentationState",
+    "fields": [
+      "displayMetrics",
+      "uploaderProfile",
+      "uploaderFanCountText",
+      "didRecordDetailLoadedEvent",
+      "hasResolvedDetailMetadata"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInteractionRenderStore",
+    "fields": [
+      "_snapshot",
+      "deferredSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailQualityControlRenderSnapshot",
+    "fields": [
+      "qualityInlineButtonTitle",
+      "qualityAccessoryButtonTitle",
+      "qualityButtonSystemImage",
+      "qualityMenuItems",
+      "isSwitchingPlayQuality"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailQualityControlRenderStore",
+    "fields": [
+      "_snapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedDisplayItem",
+    "fields": [
+      "id",
+      "video",
+      "display"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedHeader",
+    "fields": [
+      "isLoading"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedItemSignature",
+    "fields": [
+      "id",
+      "title",
+      "coverURL",
+      "duration",
+      "ownerID",
+      "ownerName",
+      "viewCount",
+      "pubdate"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31560.MarkRelatedVideoNavigationActionKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedList",
+    "fields": [
+      "items",
+      "layout",
+      "actions",
+      "_markRelatedVideoNavigation"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c315a0.VideoDetailRelatedRow",
+    "fields": [
+      "item",
+      "coverSize"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedListActions",
+    "fields": [
+      "beginPreload"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedListLayout",
+    "fields": [
+      "layoutWidth",
+      "horizontalPadding"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedListSignature",
+    "fields": [
+      "items"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedPlaceholderActions",
+    "fields": [
+      "retryRelated"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedPlaceholderContent",
+    "fields": [
+      "layout",
+      "state",
+      "didTimeOut",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedPlaceholderList",
+    "fields": [
+      "layout"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedPreloadActions",
+    "fields": [
+      "_preloadedVideoIDs",
+      "api",
+      "runtimeSettings"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedRenderSnapshot",
+    "fields": [
+      "related",
+      "relatedItems",
+      "relatedSignature",
+      "state",
+      "lastLoadTimedOut"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedRenderStore",
+    "fields": [
+      "_snapshot",
+      "deferredSnapshot"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedSection",
+    "fields": [
+      "_dependencies",
+      "_store",
+      "layoutWidth",
+      "runtimeSettings",
+      "retryRelated",
+      "__preloadedRelatedVideos"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedSectionContent",
+    "fields": [
+      "relatedItems",
+      "layout",
+      "state",
+      "didTimeOut",
+      "retryRelated",
+      "listActions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedState",
+    "fields": [
+      "related",
+      "loadingState",
+      "lastLoadTimedOut"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRelatedTaskState",
+    "fields": [
+      "loadingTask",
+      "refreshTask",
+      "preloadTask",
+      "artworkPrefetchTask",
+      "loadingGeneration",
+      "refreshGeneration",
+      "preloadGeneration",
+      "artworkPrefetchGeneration"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRenderStoreSyncMask",
+    "fields": [
+      "rawValue"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRenderStoreSyncState",
+    "fields": [
+      "task",
+      "pending",
+      "generation"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailReplySheetActions",
+    "fields": [
+      "viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailReplySheetRenderPack",
+    "fields": [
+      "store",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailResolvedInfoContent",
+    "fields": [
+      "_store",
+      "_isExpanded"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c318e4.VideoDetailMetricLabel",
+    "fields": [
+      "icon",
+      "title",
+      "value"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRotationBridgeViewController",
+    "fields": [
+      "rotationPolicy",
+      "rotationCoordinator",
+      "contentController",
+      "systemBackGestureDelegateLease",
+      "cancellables",
+      "isViewActive",
+      "rotationCompletionTask",
+      "rotationWatchdogTask",
+      "rotationGeneration",
+      "didPrepareForDismantle",
+      "hostColorScheme"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRotationPolicy",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailRotationRequestCoalescer",
+    "fields": [
+      "isTransitioning",
+      "pendingTarget"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInteractionRenderSnapshot",
+    "fields": [
+      "interactionState",
+      "interactionMessage",
+      "isMutatingInteraction",
+      "isMutatingLike",
+      "isMutatingCoin",
+      "isMutatingFavorite",
+      "isMutatingFollow",
+      "playbackFallbackMessage"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailFavoriteFolderRenderSnapshot",
+    "fields": [
+      "favoriteFolders",
+      "favoriteFolderState",
+      "isMutatingInteraction"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailDisplayMetrics",
+    "fields": [
+      "publishDateText",
+      "publishDateSubtitleText",
+      "likeTitle",
+      "coinTitle",
+      "favoriteTitle",
+      "canFavorite"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSheetActions",
+    "fields": [
+      "replies",
+      "favoriteFolders",
+      "danmaku"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailReplySheetHost",
+    "fields": [
+      "rootComment",
+      "_viewModel",
+      "initialReplyID",
+      "renderPack",
+      "submitReply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31a8c.VideoDetailSheetHostModifier",
+    "fields": [
+      "_viewModel",
+      "_libraryStore",
+      "sheetState",
+      "sheetActions",
+      "submitReply"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailMoreControlsSheetPresentation",
+    "fields": [
+      "id",
+      "playerViewModel",
+      "onDismiss",
+      "hasFinished"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSheetRoute",
+    "fields": [
+      "commentThread",
+      "moreControls"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailCommentThreadSheetPresentation",
+    "fields": [
+      "id",
+      "rootComment",
+      "secondaryID"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSheetState",
+    "fields": [
+      "route",
+      "isShowingFavoriteFolders",
+      "isShowingCoinPicker",
+      "isShowingDanmakuSettings",
+      "isShowingNetworkDiagnostics"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellCollapsedBar",
+    "fields": [
+      "_appTintColor",
+      "_playerViewModel",
+      "opacity",
+      "onNavigateBack",
+      "onRequestFullscreen"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellContentView.State",
+    "fields": [
+      "_topInset",
+      "_bottomInset",
+      "_scrollAdjustment",
+      "_suppressesInteractiveContentActions",
+      "_mountsSecondaryContent",
+      "_hidesBottomToolbar",
+      "scrollAdjustmentToken"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellContentView",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "viewModel",
+      "_updateGate",
+      "_runtimeSettings",
+      "_state",
+      "layoutWidth",
+      "placesTopInsetInScrollContent",
+      "interactiveMinimumPlayerHeight",
+      "_selectedContentTab",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "onOpenCommentComposer",
+      "onRefreshComments",
+      "onReply",
+      "openVideoOwnerRoute",
+      "onSelectedTabChange",
+      "onSelectionWillChange",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31c4c.VideoDetailShellContentBody",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "viewModel",
+      "_runtimeSettings",
+      "_state",
+      "layoutWidth",
+      "placesTopInsetInScrollContent",
+      "interactiveMinimumPlayerHeight",
+      "contentRevision",
+      "_selectedContentTab",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "onOpenCommentComposer",
+      "onRefreshComments",
+      "onReply",
+      "openVideoOwnerRoute",
+      "onSelectedTabChange",
+      "onSelectionWillChange",
+      "onScrollOffsetChange",
+      "onScrollPhaseChange"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellLayout",
+    "fields": [
+      "playerFrame",
+      "contentFrame",
+      "contentTopInset",
+      "usesFullscreenLayout"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellRepresentable",
+    "fields": [
+      "_dependencies",
+      "_openVideoOwnerRoute",
+      "seedVideo",
+      "_viewModel",
+      "_runtimeSettings",
+      "_selectedContentTab",
+      "_sheetRoute",
+      "_isShowingDanmakuSettings",
+      "_isShowingFavoriteFolders",
+      "_isShowingCoinPicker",
+      "_isShowingNetworkDiagnostics",
+      "onOpenCommentComposer",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellSurfaceHost",
+    "fields": [
+      "state",
+      "overlayState",
+      "experimentState",
+      "libraryStore",
+      "rotationCoordinator",
+      "surfaceHostView",
+      "overlayHostingController",
+      "cancellables",
+      "rotationChromePrewarmGeneration",
+      "isRotationChromePrewarming",
+      "isRotationChromePrewarmed",
+      "isTornDown"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellSurfaceHost.State",
+    "fields": [
+      "_isBareSurfaceTransitionActive",
+      "_retainsChromeDuringBareSurfaceTransition",
+      "_isCollapsedChromeActive",
+      "_playbackControlsHideRequestGeneration",
+      "_playerViewModel",
+      "_videoAspectRatio"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31d88.VideoDetailShellOverlayState",
+    "fields": [
+      "_snapshot",
+      "isBareSurfaceTransitionActive",
+      "pendingSnapshot",
+      "experimentState",
+      "cancellables"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31dd8.VideoDetailPlayerOverlayLegacyObservationBridge",
+    "fields": [
+      "_revision",
+      "updateScheduled",
+      "cancellables"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31e64.VideoDetailShellOverlaySnapshot",
+    "fields": [
+      "historyVideo",
+      "recordsPlaybackHistory",
+      "historyCID",
+      "historyDuration",
+      "isDanmakuEnabled",
+      "isSwitchingPlayQuality",
+      "playbackContentMode",
+      "isSwitchingVideoListenMode"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31f28.VideoDetailFullscreenClockControl",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31f4c.VideoDetailFullscreenBatteryControl",
+    "fields": [
+      "__batteryLevel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31f94.SurfaceOnlyVideoListenQuickControls",
+    "fields": [
+      "_detailViewModel",
+      "_libraryStore",
+      "metrics",
+      "showQueue"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c31fb8.SurfaceOnlyVideoListenQueuePage",
+    "fields": [
+      "_detailViewModel",
+      "closeSheet"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c32000.VideoListenArtworkLayer",
+    "fields": [
+      "video",
+      "isLandscape",
+      "artworkAspectRatio"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c32344.SurfaceOnlyVideoListenSleepTimerPage",
+    "fields": [
+      "_detailViewModel",
+      "closeSheet"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c32368.SurfaceOnlyVideoListenPlaybackOrderPage",
+    "fields": [
+      "_libraryStore",
+      "closeSheet"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellSurfaceRepresentable.Coordinator",
+    "fields": [
+      "host",
+      "observedPlayer",
+      "configuredPlayer",
+      "configuredAspectRatio",
+      "configuredCollapsedChrome",
+      "configuredBareSurface",
+      "configuredRetainsChrome",
+      "playerCancellable",
+      "attachmentRetry",
+      "isAttached",
+      "isPrewarmScheduled",
+      "isConfigurationUpdateScheduled"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailShellSurfaceRepresentable",
+    "fields": [
+      "playerViewModel",
+      "detailViewModel",
+      "dependencies",
+      "runtimeSettings",
+      "rotationCoordinator",
+      "videoAspectRatio",
+      "isBareSurfaceTransitionActive",
+      "retainsChromeDuringBareSurfaceTransition",
+      "isCollapsedChromeActive",
+      "onShowMoreControls",
+      "onDismissMoreControls",
+      "onRequestFullscreen",
+      "onExitFullscreen",
+      "onToggleDanmaku",
+      "onShowDanmakuSettings",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSponsorBlockState",
+    "fields": [
+      "task",
+      "segments",
+      "identity",
+      "generation"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailStablePlayerState",
+    "fields": [
+      "identity",
+      "playbackSession",
+      "errorCancellable",
+      "firstFrameCancellable"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailStatusBarBackdrop",
+    "fields": [
+      "isHidden"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSummaryCard",
+    "fields": [
+      "viewModel",
+      "contentWidth",
+      "showsNetworkDiagnosticsButton",
+      "showsVideoInfo",
+      "onShowNetworkDiagnostics",
+      "onShowCoinPicker",
+      "renderPack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c326cc.VideoDetailSummaryCardViewModelBox",
+    "fields": [
+      "viewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSummaryCardActions",
+    "fields": [
+      "viewModelBox",
+      "showFavoriteFolders"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSummaryCardRenderPack",
+    "fields": [
+      "descriptionStore",
+      "interactionStore",
+      "placeholderStore",
+      "actions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSwiftUIContainerModel",
+    "fields": [
+      "viewModel",
+      "runtimeSettings",
+      "rotationCoordinator",
+      "contentUpdateGate",
+      "contentState",
+      "_activePlayerViewModel",
+      "_surfacePlayerViewModel",
+      "_videoAspectRatio",
+      "_currentPlayerHeight",
+      "lastScrollOffset",
+      "_isCollapsedChromeActive",
+      "_isPlaybackActiveSnapshot",
+      "_isBareSurfaceTransitionActive",
+      "_retainsChromeDuringBareSurfaceTransition",
+      "playerFrame",
+      "_rootSafeAreaInsets",
+      "interactiveScrollOffset",
+      "cancellables",
+      "playbackStateCancellables",
+      "aspectRatioCancellables",
+      "scrollOffsets",
+      "interactiveScrollOffsets",
+      "visitedContentTabs",
+      "activeContentTab",
+      "pendingInteractiveTab",
+      "pendingInteractiveTabOffset",
+      "isBackgroundRenderFreezeActive",
+      "layoutSynchronizationScheduled",
+      "pendingLayout"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSwiftUIContainerViewController",
+    "fields": [
+      "viewModel",
+      "contentModel",
+      "rotationCoordinator",
+      "rotationDelegate",
+      "runtimeSettings",
+      "dependencies",
+      "selectedContentTab",
+      "openVideoOwnerRoute",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "onOpenCommentComposer",
+      "onShowDanmakuSettings",
+      "onReply",
+      "onPresentPlayerMoreControls",
+      "onDismissPlayerMoreControls",
+      "onToggleDanmaku",
+      "onNavigateBack",
+      "playbackDiagnostics",
+      "cancellables",
+      "hostEnvironment",
+      "$__lazy_storage_$_hostingController"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSwiftUIContainer",
+    "fields": [
+      "_ciliCiliBackdropEnabled",
+      "viewModel",
+      "_model",
+      "_runtimeSettings",
+      "_rotationCoordinator",
+      "_selectedContentTab",
+      "dependencies",
+      "onShowNetworkDiagnostics",
+      "onShowFavoriteFolders",
+      "onShowCoinPicker",
+      "onOpenCommentComposer",
+      "onReply",
+      "openVideoOwnerRoute",
+      "onShowMoreControls",
+      "onDismissMoreControls",
+      "onRequestFullscreen",
+      "onExitFullscreen",
+      "onToggleDanmaku",
+      "onShowDanmakuSettings",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c32830.VideoDetailInteractivePlayerLayer",
+    "fields": [
+      "_model",
+      "_rotationCoordinator",
+      "viewModel",
+      "size",
+      "safeAreaTop",
+      "selectedContentTab",
+      "dependencies",
+      "runtimeSettings",
+      "onShowMoreControls",
+      "onDismissMoreControls",
+      "onRequestFullscreen",
+      "onExitFullscreen",
+      "onToggleDanmaku",
+      "onShowDanmakuSettings",
+      "onNavigateBack"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailSystemBackGestureBridge.Controller",
+    "fields": [
+      "configuredContentPopID",
+      "configuredScrollPanIDs",
+      "attachedNavigationController",
+      "onNavigationGestureBegan",
+      "allowsSingleControllerNavigation",
+      "preservesSystemGestureDelegates"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailToolbarSegmentedPickerView",
+    "fields": [
+      "_colorScheme",
+      "_selection",
+      "_selectionIndicatorNamespace"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailUploaderInteractionLoadState",
+    "fields": [
+      "task",
+      "identity",
+      "generation"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c329cc.VideoDownloadShare",
+    "fields": [
+      "id",
+      "url"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.CiliCiliVideoDownloadButton",
+    "fields": [
+      "_detailViewModel",
+      "__showsQuality",
+      "__downloadTask",
+      "__share",
+      "__downloadedURL",
+      "__errorMessage"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.context_2_c32a24.VideoDownloadActivityView",
+    "fields": [
+      "url"
+    ],
+    "declared_in_source": false
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailView",
+    "fields": [
+      "_usesBackdrop",
+      "_dependencies",
+      "_hostColorScheme",
+      "_dismiss",
+      "seedVideo",
+      "playbackOptions",
+      "onRequestClose",
+      "onPopOne",
+      "_holder",
+      "_runtimeSettings",
+      "__presentationState",
+      "__pendingCommentAnchor",
+      "__videoDetailRuntimeOwner"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewActions",
+    "fields": [
+      "configuration",
+      "close"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewActionsBuilder",
+    "fields": [
+      "seedVideo",
+      "playbackOptions",
+      "dependencies",
+      "holder",
+      "dismiss",
+      "onRequestClose",
+      "onPopOne"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewCloseActions",
+    "fields": [
+      "holder",
+      "dismiss",
+      "onRequestClose",
+      "onPopOne"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewConfigurationActions",
+    "fields": [
+      "seedVideo",
+      "playbackOptions",
+      "dependencies",
+      "holder"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewContent",
+    "fields": [
+      "seedVideo",
+      "_holder",
+      "_runtimeSettings",
+      "_selectedContentTab",
+      "_sheetRoute",
+      "_pendingCommentAnchor",
+      "_isShowingDanmakuSettings",
+      "_isShowingFavoriteFolders",
+      "_isShowingCoinPicker",
+      "_isShowingNetworkDiagnostics",
+      "onNavigateBack",
+      "lifecycleActions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewContentLifecycleActions",
+    "fields": [
+      "configureViewModel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailInitialContentResolver",
+    "fields": [
+      "seedVideo",
+      "_selectedContentTab",
+      "runtimeSettings",
+      "onNavigateBack",
+      "lifecycleActions"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewContentResolver",
+    "fields": [
+      "_dependencies",
+      "seedVideo",
+      "_runtimeSettings",
+      "_viewModel",
+      "_selectedContentTab",
+      "_sheetRoute",
+      "_pendingCommentAnchor",
+      "_isShowingDanmakuSettings",
+      "_isShowingFavoriteFolders",
+      "_isShowingCoinPicker",
+      "_isShowingNetworkDiagnostics",
+      "onNavigateBack",
+      "__commentComposerTarget",
+      "__commentComposerDrafts"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewModel",
+    "fields": [
+      "_detail",
+      "_onlineViewerCount",
+      "_playVariants",
+      "_selectedPlayVariant",
+      "renderStores",
+      "detailPresentationState",
+      "relatedStateStorage",
+      "commentListState",
+      "_selectedCID",
+      "_state",
+      "_playURLState",
+      "_isSwitchingPlayQuality",
+      "_pendingPlayVariantID",
+      "_playbackContentMode",
+      "_isSwitchingVideoListenMode",
+      "_videoListenAudioVariants",
+      "_selectedVideoListenAudioPreferenceKey",
+      "automaticVideoListenAudioVariantID",
+      "failedVideoListenAudioVariantIDs",
+      "pendingVideoListenPlaybackIntent",
+      "_videoListenPgcSeasonInfo",
+      "videoListenPgcSeasonID",
+      "_videoListenQueueSession",
+      "videoListenQueueTask",
+      "videoListenQueueTaskGeneration",
+      "videoListenContentSwitchTask",
+      "_videoListenSleepTimerOption",
+      "_videoListenSleepTimerDeadline",
+      "videoListenSleepTimerTask",
+      "videoListenPlaybackSessionStore",
+      "pendingVideoListenPlaybackSessionState",
+      "_interactionState",
+      "_interactionMessage",
+      "_isMutatingInteraction",
+      "interactionMutationState",
+      "interactionMutationRevision",
+      "_favoriteFolders",
+      "_favoriteFolderState",
+      "_stablePlayerViewModel",
+      "_playbackFallbackMessage",
+      "_danmakuItems",
+      "_danmakuItemsRevision",
+      "_danmakuState",
+      "_isDanmakuEnabled",
+      "_danmakuSettings",
+      "_detailLoadElapsedMilliseconds",
+      "_playURLElapsedMilliseconds",
+      "_relatedElapsedMilliseconds",
+      "_lastPlayURLSource",
+      "currentPlayURLData",
+      "_resumeDiagnostics",
+      "commentThreadState",
+      "serviceDependencies",
+      "playbackOptions",
+      "coreTaskState",
+      "relatedTaskState",
+      "playbackWarmupTaskState",
+      "lifecycleSubscriptionState",
+      "sponsorBlockState",
+      "danmakuLoadingState",
+      "stablePlayerState",
+      "playbackTransitionState",
+      "playbackStartupWaitState",
+      "playbackRecoveryState",
+      "renderStoreSyncState",
+      "navigationState",
+      "playVariantSwitchToken",
+      "pendingPlaybackHistoryResumeTime",
+      "pendingPlaybackHistoryResumeCID",
+      "didResolveCloudHistoryResume",
+      "isAwaitingInitialManualPlayback",
+      "isAwaitingRelatedVideoReturnPlayback",
+      "manuallySelectedPageCID",
+      "uploaderInteractionLoadState",
+      "lastUserSeekAt",
+      "loadTiming",
+      "cleanupStablePlaybackBeforeDeinit",
+      "relatedLoadTimeoutNanoseconds"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewModelDependencies",
+    "fields": [
+      "api",
+      "libraryStore",
+      "sessionStore",
+      "sponsorBlockService"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewModelHolder",
+    "fields": [
+      "_viewModel",
+      "cleanupPlayback"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewModelLoadTimingState",
+    "fields": [
+      "detailLoadStartTime",
+      "playURLLoadStartTime",
+      "relatedLoadStartTime"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewModelRenderStores",
+    "fields": [
+      "comments",
+      "related",
+      "interaction",
+      "playback",
+      "commentThread",
+      "favoriteFolder",
+      "danmakuSettings",
+      "danmaku",
+      "networkDiagnostics",
+      "description",
+      "playerIdentity"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackStartupWaiter",
+    "fields": [
+      "acceptsFailure",
+      "continuation"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailPlaybackStartupRelease",
+    "fields": [
+      "firstFrame",
+      "failed"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoDetailViewPresentationState",
+    "fields": [
+      "selectedContentTab",
+      "sheetRoute",
+      "isShowingDanmakuSettings",
+      "isShowingFavoriteFolders",
+      "isShowingCoinPicker",
+      "isShowingNetworkDiagnostics",
+      "isClosingDetail"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenPlaybackSessionStore",
+    "fields": [
+      "entries",
+      "maximumEntryCount"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenPlaybackSessionStore.context_2_c32dec.Entry",
+    "fields": [
+      "state",
+      "updatedAt"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenPlaybackSessionState",
+    "fields": [
+      "audioPreferenceKey",
+      "wantsPlayback"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenSleepTimerOption",
+    "fields": [
+      "off",
+      "minutes15",
+      "minutes30",
+      "minutes45",
+      "minutes60",
+      "endOfCurrent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenQueueSession",
+    "fields": [
+      "source",
+      "videos",
+      "nextPage",
+      "nextCursor",
+      "listenerPreviousToken",
+      "listenerNextToken",
+      "hasMore",
+      "isLoadingInitial",
+      "isLoadingMore",
+      "errorMessage",
+      "generation"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenAudioInterruptionState",
+    "fields": [
+      "isActive",
+      "shouldResume"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenPlaybackOrder",
+    "fields": [
+      "sequential",
+      "repeatCurrent",
+      "stopAfterCurrent"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenQueuePaginationDirection",
+    "fields": [
+      "previous",
+      "next"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenQueueEntry",
+    "fields": [
+      "id",
+      "title",
+      "subtitle",
+      "isCurrent",
+      "target"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenQueueSource",
+    "fields": [
+      "officialListener",
+      "uploader",
+      "pgcSeason",
+      "related",
+      "currentVideo"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoListenQueueTarget",
+    "fields": [
+      "page",
+      "video",
+      "episode"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRotationFrameReportStore",
+    "fields": [
+      "_latestReport"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRotationFrameProbe",
+    "fields": [
+      "displayLink",
+      "finishTask",
+      "metricsID",
+      "title",
+      "startTimestamp",
+      "previousFrameTimestamp",
+      "samples",
+      "events"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRotationFrameProbe.context_2_c32f98.ProbeEvent",
+    "fields": [
+      "elapsedMilliseconds",
+      "message"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRotationFrameProbe.context_2_c32fbc.Sample",
+    "fields": [
+      "elapsedMilliseconds",
+      "frameMilliseconds"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRotationFrameReport",
+    "fields": [
+      "id",
+      "date",
+      "metricsID",
+      "title",
+      "message"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRotationFrameReportFloatingWindow",
+    "fields": [
+      "_store",
+      "metricsID",
+      "contentInsets",
+      "__dismissedReportID",
+      "__didCopy"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c33058.PrewarmVideoRouteActionKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c3307c.OpenVideoActionKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c330a0.OpenVideoOwnerRouteActionKey",
+    "fields": [],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoRouteLink",
+    "fields": [
+      "video",
+      "onOpen",
+      "label",
+      "_openVideo",
+      "_prewarmVideoRoute"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c33148.VideoRoutePrewarmButtonStyle",
+    "fields": [
+      "onPress"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c3316c.VideoRouteTapLink",
+    "fields": [
+      "video",
+      "openVideo",
+      "prewarmVideoRoute",
+      "onOpen",
+      "label"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoOwnerRouteLink",
+    "fields": [
+      "owner",
+      "label",
+      "_openVideoOwnerRoute"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c33238.VideoRouteTapPrewarmButtonStyle",
+    "fields": [
+      "onPress"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoSurfaceContainerView",
+    "fields": [
+      "drawableView",
+      "nativePlayerViewController",
+      "onBoundsChange",
+      "disablesImplicitLayoutAnimations",
+      "playerViewModel",
+      "nativeSurfaceGestureController",
+      "prefersNativePlaybackControls",
+      "showsSystemPlaybackControls",
+      "isPictureInPictureEnabled",
+      "isNativePlaybackControllerEnabled",
+      "usesLiveSurfaceDuringLayoutTransition",
+      "isLayoutTransitioningForSurfaceHandoff",
+      "lastReportedBounds",
+      "isPendingSurfaceDetach",
+      "surfaceBindingGeneration",
+      "coordinatedSurfaceLayoutTask",
+      "deferredSurfaceDetachTask",
+      "deferredBoundSurfaceLayoutRefreshTask"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.VideoSurfaceView",
+    "fields": [
+      "_viewModel",
+      "prefersNativePlaybackControls",
+      "isPictureInPictureEnabled",
+      "disablesImplicitLayoutAnimations",
+      "usesLiveSurfaceDuringLayoutTransition",
+      "isLayoutTransitioningForSurfaceHandoff"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.YouTubeStyleVideoFeedCardView",
+    "fields": [
+      "display",
+      "showsMetadataSummary",
+      "showsPlayBadge",
+      "usesGenericAuthorIcon",
+      "placesViewAndPublishTimeTrailing",
+      "fixedCoverAspectRatio",
+      "fixedCoverSize",
+      "coverMaximumPixelLength",
+      "coverShadowLevel"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.YouTubeStyleVideoFeedMetadataRow",
+    "fields": [
+      "_dynamicTypeSize",
+      "display",
+      "showsMetadataSummary",
+      "usesGenericAuthorIcon",
+      "placesViewAndPublishTimeTrailing"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.YouTubeStyleVideoFeedThumbnail",
+    "fields": [
+      "_showsVideoCoverDurationBadges",
+      "display",
+      "showsPlayBadge",
+      "coverAspectRatio",
+      "fixedCoverSize",
+      "coverMaximumPixelLength",
+      "coverShadowLevel",
+      "__coverLoadedState"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c33564.ZoomyLiveVideoHostView",
+    "fields": [
+      "isDismissGestureEnabled",
+      "onTapExit",
+      "onDismissDragChanged",
+      "onDismissDragEnded",
+      "playerLayer",
+      "player",
+      "currentURL",
+      "endObserver",
+      "$__lazy_storage_$_dismissPanController"
+    ],
+    "declared_in_source": true
+  },
+  {
+    "name": "CiliCiliKit.context_2_c33758.ZoomyLiveVideoView",
+    "fields": [
+      "videoURL",
+      "placeholderImage",
+      "isDismissGestureEnabled",
+      "onTapExit",
+      "onDismissDragChanged",
+      "onDismissDragEnded"
+    ],
+    "declared_in_source": true
+  }
+]
