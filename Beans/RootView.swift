@@ -213,6 +213,10 @@ struct RootView: View {
     /// surface. Page and tab animations are enabled after the first frame.
     @State private var rootLayoutSettled = false
 
+    private var isUITestSmoke: Bool {
+        ProcessInfo.processInfo.arguments.contains("--beans-ui-smoke")
+    }
+
     private var tabIconStyle: BeansTabIconStyle {
         BeansTabIconStyle(rawValue: tabIconStyleRaw) ?? .sfSymbols
     }
@@ -437,7 +441,10 @@ struct RootView: View {
                 .environmentObject(theme)
         }
         .task(id: disclaimerAccepted) {
-            guard disclaimerAccepted else { return }
+            // UI smoke runs must exercise the actual Beans/CiliCili surfaces,
+            // not an unrelated remote update prompt that can cover the
+            // navigation controls and make the test depend on server state.
+            guard disclaimerAccepted, !isUITestSmoke else { return }
             if let info = await UpdateChecker.checkIfNeeded() {
                 updateInfo = info
                 showUpdateAlert = true
