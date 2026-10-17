@@ -18,6 +18,11 @@ struct VideoDetailInitialPlaybackStage: View {
                 layoutWidth: layout.width,
                 topInset: layout.playerHeight,
                 mountsSecondaryContent: !runtimeSettings.defersVideoDetailSecondaryContent,
+                // Keep the same bottom controls mounted while the detail view
+                // is still resolving. This lets the user switch to comments
+                // immediately without waiting for the secondary content page
+                // to replace the initial playback stage.
+                onOpenCommentComposer: {},
                 onScrollOffsetChange: nil
             ) { tab, mountsSecondaryContent in
                 InitialVideoDetailContentPage(

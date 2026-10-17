@@ -289,6 +289,7 @@ struct RootTabView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("beans.bilibili.channel.\(tab.rawValue)")
+                    .accessibilityValue(selectedTab == tab ? "已选中" : "未选中")
                     .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
                 }
             }.padding(.horizontal, 18)
