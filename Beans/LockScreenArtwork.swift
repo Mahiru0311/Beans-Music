@@ -14,7 +14,7 @@ final class BeansLockScreenArtwork {
     var onReady: (() -> Void)?
 
     func artwork(sourceURL: URL) -> [String: MPMediaItemAnimatedArtwork] {
-        guard UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true,
+        guard UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true,
               !sourceURL.isFileURL || FileManager.default.fileExists(atPath: sourceURL.path) else { return [:] }
         let revision = (try? sourceURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]))
         let identifier = "beans-lock-screen|\(sourceURL.absoluteString)|\(revision?.fileSize ?? 0)|\(revision?.contentModificationDate?.timeIntervalSince1970 ?? 0)"
