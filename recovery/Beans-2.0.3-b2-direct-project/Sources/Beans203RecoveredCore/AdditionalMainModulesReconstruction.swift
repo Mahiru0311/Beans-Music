@@ -867,9 +867,9 @@ public struct Artist_2_0_3 {
     /// Original field: name; encoding: SS; decoded typeref: SS; flags: 0x0.
     public var name: String = ""
     /// Original field: coverURL; encoding: <unresolved>; decoded typeref: symbolic@0xb0e014Sg; flags: 0x0.
-    public var coverURL: Any = ()
+    public var coverURL: URL? = nil
     /// Original field: source; encoding: <unresolved>; decoded typeref: symbolic@0xb09084; flags: 0xffdcd7ae.
-    public var source: Any = ()
+    public var source: SongSource_2_0_3 = .netease
     public init() {}
 }
 

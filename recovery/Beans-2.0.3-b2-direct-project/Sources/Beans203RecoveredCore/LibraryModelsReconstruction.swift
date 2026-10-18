@@ -1,17 +1,5 @@
 import Foundation
 
-/// Original nominal: Artist; fields decoded from the IPA.
-public struct Artist_2_0_3 {
-    public var id: String
-    public var name: String
-    public var coverURL: URL?
-    public var source: SongSource_2_0_3
-    public init(id: String = "", name: String = "", coverURL: URL? = nil,
-                source: SongSource_2_0_3 = .netease) {
-        self.id = id; self.name = name; self.coverURL = coverURL; self.source = source
-    }
-}
-
 /// Original nominal: PlaylistSnapshot; its queue element type is Song.
 public struct PlaylistSnapshot_2_0_3 {
     public var key: String
