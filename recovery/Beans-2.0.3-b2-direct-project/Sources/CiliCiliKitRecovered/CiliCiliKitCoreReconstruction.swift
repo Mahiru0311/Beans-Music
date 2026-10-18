@@ -187,9 +187,21 @@ public extension CiliCiliRuntime_2_0_3 {
     static var hasActivePlayback: Bool { false }
 
     func listenSource(for request: CiliCiliVideoListenRequest_2_0_3) -> CiliCiliListenSource_2_0_3 {
-        _ = request
-        if let listenSource { return listenSource }
-        let created = CiliCiliListenSource_2_0_3()
+        // The recovered ARM64 body unwraps the optional storage, walks its
+        // request array, and compares the first request identity words before
+        // returning the existing source.  Those words are the stable BVID and
+        // optional AID fields in the nine-field request record; the remaining
+        // display/playback fields are deliberately not identity components.
+        if let listenSource,
+           listenSource.items.contains(where: { $0.bvid == request.bvid && $0.aid == request.aid }) {
+            return listenSource
+        }
+
+        // The no-match branch allocates a fresh source and copies the request
+        // into its item array before returning it.  Keeping the request here is
+        // important: callers use the returned source as the initial queue
+        // snapshot, rather than receiving an empty placeholder.
+        let created = CiliCiliListenSource_2_0_3(items: [request])
         listenSource = created
         return created
     }
