@@ -27,6 +27,6 @@ let package = Package(
         .target(name: "CiliCiliKitReflectionEvidence"),
         .target(name: "Beans203RecoveredNominalCatalog"),
         .target(name: "CiliCiliKitRecoveredNominalCatalog"),
-        .testTarget(name: "Beans203RecoveredCoreTests", dependencies: ["Beans203RecoveredCore"])
+        .testTarget(name: "Beans203RecoveredCoreTests", dependencies: ["Beans203RecoveredCore", "CiliCiliKitRecovered"])
     ]
 )
