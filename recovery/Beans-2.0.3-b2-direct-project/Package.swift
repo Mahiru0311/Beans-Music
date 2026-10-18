@@ -4,10 +4,7 @@ import PackageDescription
 let package = Package(
     name: "Beans203Recovered",
     defaultLocalization: "en",
-    platforms: [
-        .iOS(.v15),
-        .macOS(.v12)
-    ],
+    platforms: [.iOS(.v15)],
     products: [
         .library(name: "Beans203RecoveredCore", targets: ["Beans203RecoveredCore"]),
         .library(name: "CiliCiliKitRecovered", targets: ["CiliCiliKitRecovered"]),

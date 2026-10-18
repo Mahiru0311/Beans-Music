@@ -29,4 +29,9 @@ jobs:
         run: swift package --package-path recovery/Beans-2.0.3-b2-direct-project describe
 
       - name: Build every recovered target
-        run: swift build --package-path recovery/Beans-2.0.3-b2-direct-project
+        run: |
+          IOS_SDK_PATH="$(xcrun --sdk iphoneos --show-sdk-path)"
+          swift build \
+            --sdk "$IOS_SDK_PATH" \
+            --triple arm64-apple-ios16.1 \
+            --package-path recovery/Beans-2.0.3-b2-direct-project
