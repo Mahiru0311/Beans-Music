@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import Combine
 
 // Additional main-program state reconstruction from Beans 2.0.3 build 2 field metadata only.
@@ -318,73 +319,73 @@ public final class SongFileDownloadTransfer_2_0_3 {
 /// Original type: PlayerManager; kind: class; descriptor: 0x7c8814; fields: 109.
 public final class PlayerManager_2_0_3 {
     /// Original field: _queue; encoding: <unresolved>; flags: 0x2.
-    public var _queue: Any = ()
+    public var _queue: [Song_2_0_3] = []
     /// Original field: _currentIndex; encoding: <unresolved>; flags: 0x2.
-    public var _currentIndex: Any = ()
+    public var _currentIndex: Int = 0
     /// Original field: _isPlaying; encoding: <unresolved>; flags: 0x2.
-    public var _isPlaying: Any = ()
+    public var _isPlaying: Bool = false
     /// Original field: _isBuffering; encoding: <unresolved>; flags: 0x2.
-    public var _isBuffering: Any = ()
+    public var _isBuffering: Bool = false
     /// Original field: _loadFailed; encoding: <unresolved>; flags: 0x2.
-    public var _loadFailed: Any = ()
+    public var _loadFailed: Bool = false
     /// Original field: loadGeneration; encoding: Si; flags: 0x0.
     public var loadGeneration: Int = 0
     /// Original field: clock; encoding: <unresolved>; flags: 0x2.
-    public var clock: Any = ()
+    public var clock: PlaybackClock_2_0_3 = PlaybackClock_2_0_3()
     /// Original field: progress; encoding: Sd; flags: 0x2.
     public var progress: Double = 0
     /// Original field: duration; encoding: Sd; flags: 0x2.
     public var duration: Double = 0
     /// Original field: _playMode; encoding: <unresolved>; flags: 0x2.
-    public var _playMode: Any = ()
+    public var _playMode: PlayMode_2_0_3 = .sequential
     /// Original field: _rate; encoding: <unresolved>; flags: 0x2.
-    public var _rate: Any = ()
+    public var _rate: Double = 1
     /// Original field: _softwareVolume; encoding: <unresolved>; flags: 0x2.
-    public var _softwareVolume: Any = ()
+    public var _softwareVolume: Double = 1
     /// Original field: _sleepTimerEndsAt; encoding: <unresolved>; flags: 0x2.
-    public var _sleepTimerEndsAt: Any = ()
+    public var _sleepTimerEndsAt: Date? = nil
     /// Original field: _sleepTimerRemaining; encoding: <unresolved>; flags: 0x2.
-    public var _sleepTimerRemaining: Any = ()
+    public var _sleepTimerRemaining: Int = 0
     /// Original field: _stopAfterCurrentSong; encoding: <unresolved>; flags: 0x2.
-    public var _stopAfterCurrentSong: Any = ()
+    public var _stopAfterCurrentSong: Bool = false
     /// Original field: _history; encoding: <unresolved>; flags: 0x2.
-    public var _history: Any = ()
+    public var _history: [Song_2_0_3] = []
     /// Original field: _playCounts; encoding: <unresolved>; flags: 0x2.
-    public var _playCounts: Any = ()
+    public var _playCounts: [String: Int] = [:]
     /// Original field: _listeningDuration; encoding: <unresolved>; flags: 0x2.
-    public var _listeningDuration: Any = ()
+    public var _listeningDuration: Double = 0
     /// Original field: _seekRevision; encoding: <unresolved>; flags: 0x2.
-    public var _seekRevision: Any = ()
+    public var _seekRevision: Int = 0
     /// Original field: lyricProgress; encoding: Sd; flags: 0x2.
     public var lyricProgress: Double = 0
     /// Original field: player; encoding: So8AVPlayerCSg; flags: 0x2.
-    public var player: Any = ()
+    public var player: AVPlayer? = nil
     /// Original field: timeObserver; encoding: ypSg (`Any?`); flags: 0x2.
     public var timeObserver: Any? = nil
     /// Original field: endObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var endObserver: Any = ()
+    public var endObserver: NSObjectProtocol? = nil
     /// Original field: failureObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var failureObserver: Any = ()
+    public var failureObserver: NSObjectProtocol? = nil
     /// Original field: itemStatusObserver; encoding: <unresolved>; flags: 0x2.
     public var itemStatusObserver: Any = ()
     /// Original field: timeControlStatusObserver; encoding: <unresolved>; flags: 0x2.
     public var timeControlStatusObserver: Any = ()
     /// Original field: equalizerSettingsObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var equalizerSettingsObserver: Any = ()
+    public var equalizerSettingsObserver: NSObjectProtocol? = nil
     /// Original field: backendBlockObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var backendBlockObserver: Any = ()
+    public var backendBlockObserver: NSObjectProtocol? = nil
     /// Original field: customCoverObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var customCoverObserver: Any = ()
+    public var customCoverObserver: NSObjectProtocol? = nil
     /// Original field: lockScreenArtworkObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var lockScreenArtworkObserver: Any = ()
+    public var lockScreenArtworkObserver: NSObjectProtocol? = nil
     /// Original field: $__lazy_storage_$_lockScreenArtwork; encoding: <unresolved>; flags: 0x2.
     public var field_30____lazy_storage___lockScreenArtwork: Any = ()
     /// Original field: listeningStatsObserver; encoding: So8NSObject_pSg; flags: 0x2.
-    public var listeningStatsObserver: Any = ()
+    public var listeningStatsObserver: NSObjectProtocol? = nil
     /// Original field: playbackConfirmed; encoding: Sb; flags: 0x2.
     public var playbackConfirmed: Bool = false
     /// Original field: pendingThirdPartyVIPNotice; encoding: <unresolved>; flags: 0x2.
-    public var pendingThirdPartyVIPNotice: Any = ()
+    public var pendingThirdPartyVIPNotice: ThirdPartyVIPNotice_2_0_3? = nil
     /// Original field: sessionConfigured; encoding: Sb; flags: 0x2.
     public var sessionConfigured: Bool = false
     /// Original field: systemPlaybackPrepared; encoding: Sb; flags: 0x2.
@@ -408,7 +409,7 @@ public final class PlayerManager_2_0_3 {
     /// Original field: orderPosition; encoding: Si; flags: 0x2.
     public var orderPosition: Int = 0
     /// Original field: sleepTimer; encoding: So7NSTimerCSg; flags: 0x2.
-    public var sleepTimer: Any = ()
+    public var sleepTimer: Timer? = nil
     /// Original field: lastCountedSongID; encoding: SSSg; flags: 0x2.
     public var lastCountedSongID: String? = nil
     /// Original field: wasPlayingBeforeInterruption; encoding: Sb; flags: 0x2.
@@ -420,7 +421,7 @@ public final class PlayerManager_2_0_3 {
     /// Original field: audioRecoveryWorkItem; encoding: <unresolved>; flags: 0x2.
     public var audioRecoveryWorkItem: Any = ()
     /// Original field: audioSessionWatchdogTimer; encoding: So7NSTimerCSg; flags: 0x2.
-    public var audioSessionWatchdogTimer: Any = ()
+    public var audioSessionWatchdogTimer: Timer? = nil
     /// Original field: shouldResumeAfterAudioLoss; encoding: Sb; flags: 0x2.
     public var shouldResumeAfterAudioLoss: Bool = false
     /// Original field: audioLossInProgress; encoding: Sb; flags: 0x2.
@@ -430,7 +431,7 @@ public final class PlayerManager_2_0_3 {
     /// Original field: lastPublishedProgress; encoding: Sd; flags: 0x2.
     public var lastPublishedProgress: Double = 0
     /// Original field: seekState; encoding: <unresolved>; flags: 0x2.
-    public var seekState: Any = ()
+    public var seekState: PlaybackSeekState_2_0_3 = PlaybackSeekState_2_0_3()
     /// Original field: lastPersistedProgress; encoding: Sd; flags: 0x2.
     public var lastPersistedProgress: Double = 0
     /// Original field: lastListeningProgress; encoding: SdSg; flags: 0x2.
@@ -444,7 +445,7 @@ public final class PlayerManager_2_0_3 {
     /// Original field: lastListeningPublishUptime; encoding: Sd; flags: 0x0.
     public var lastListeningPublishUptime: Double = 0
     /// Original field: playbackPersistenceQueue; encoding: So17OS_dispatch_queueC; flags: 0x2.
-    public var playbackPersistenceQueue: Any = ()
+    public var playbackPersistenceQueue: DispatchQueue = DispatchQueue(label: "Beans203Recovered.PlayerPersistence")
     /// Original field: lastNowPlayingArtworkKey; encoding: SSSg; flags: 0x2.
     public var lastNowPlayingArtworkKey: String? = nil
     /// Original field: nowPlayingArtworkImage; encoding: So7UIImageCSg; flags: 0x2.
@@ -460,7 +461,7 @@ public final class PlayerManager_2_0_3 {
     /// Original field: preparationTimeoutWorkItem; encoding: <unresolved>; flags: 0x2.
     public var preparationTimeoutWorkItem: Any = ()
     /// Original field: preparationFailure; encoding: yycSg; flags: 0x2.
-    public var preparationFailure: Any = ()
+    public var preparationFailure: (() -> Void)? = nil
     /// Original field: nowPlayingSongKey; encoding: SSSg; flags: 0x2.
     public var nowPlayingSongKey: String? = nil
     /// Original field: nowPlayingInfo; encoding: SDySSypG (`[String: Any]`); flags: 0x2.
@@ -468,23 +469,23 @@ public final class PlayerManager_2_0_3 {
     /// Original field: kugouStandardFallbackSongKey; encoding: SSSg; flags: 0x2.
     public var kugouStandardFallbackSongKey: String? = nil
     /// Original field: thirdPartyRetryExcludedHostsBySong; encoding: SDySSShySSGG; flags: 0x2.
-    public var thirdPartyRetryExcludedHostsBySong: Any = ()
+    public var thirdPartyRetryExcludedHostsBySong: [String: Set<String>] = [:]
     /// Original field: attemptedThirdPartyQualitiesBySong; encoding: SDySSShySSGG; flags: 0x2.
-    public var attemptedThirdPartyQualitiesBySong: Any = ()
+    public var attemptedThirdPartyQualitiesBySong: [String: Set<String>] = [:]
     /// Original field: activeThirdPartyQuality; encoding: <unresolved>; flags: 0x2.
-    public var activeThirdPartyQuality: Any = ()
+    public var activeThirdPartyQuality: ThirdPartyAudioQuality_2_0_3? = nil
     /// Original field: attemptedQQOfficialBRsBySong; encoding: SDySSShySSGG; flags: 0x2.
-    public var attemptedQQOfficialBRsBySong: Any = ()
+    public var attemptedQQOfficialBRsBySong: [String: Set<String>] = [:]
     /// Original field: activeQQOfficialBR; encoding: SSSg; flags: 0x2.
     public var activeQQOfficialBR: String? = nil
     /// Original field: bilibiliPlaybackAlternatives; encoding: <unresolved>; flags: 0x2.
-    public var bilibiliPlaybackAlternatives: Any = ()
+    public var bilibiliPlaybackAlternatives: [URL] = []
     /// Original field: bilibiliRetryScheduled; encoding: Sb; flags: 0x2.
     public var bilibiliRetryScheduled: Bool = false
     /// Original field: bilibiliQueueLoader; encoding: yycSg; flags: 0x2.
-    public var bilibiliQueueLoader: Any = ()
+    public var bilibiliQueueLoader: (() -> Void)? = nil
     /// Original field: bilibiliQueueID; encoding: <unresolved>; flags: 0x2.
-    public var bilibiliQueueID: Any = ()
+    public var bilibiliQueueID: UUID? = nil
     /// Original field: playbackRecoveryInFlightSongKey; encoding: SSSg; flags: 0x2.
     public var playbackRecoveryInFlightSongKey: String? = nil
     /// Original field: finalizedFailureSongKey; encoding: SSSg; flags: 0x2.
