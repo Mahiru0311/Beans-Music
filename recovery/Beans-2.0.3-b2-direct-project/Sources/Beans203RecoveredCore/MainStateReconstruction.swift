@@ -128,20 +128,55 @@ public final class BeansLogger_2_0_3 {
     public var device: String = ""
 }
 
+/// Original nominal: BiquadState; descriptor: 0x7c3a10; fields: 2.
+public struct BiquadState_2_0_3: Sendable, Hashable {
+    public var z1: Float
+    public var z2: Float
+    public init(z1: Float = 0, z2: Float = 0) {
+        self.z1 = z1; self.z2 = z2
+    }
+}
+
+/// Original nominal: BiquadCoefficients; descriptor: 0x7c3a34; fields: 6.
+public struct BiquadCoefficients_2_0_3: Sendable, Hashable {
+    public var b0: Float
+    public var b1: Float
+    public var b2: Float
+    public var a1: Float
+    public var a2: Float
+    public init(b0: Float = 0, b1: Float = 0, b2: Float = 0,
+                a1: Float = 0, a2: Float = 0) {
+        self.b0 = b0; self.b1 = b1; self.b2 = b2
+        self.a1 = a1; self.a2 = a2
+    }
+}
+
+/// Original nominal: BeansEqualizerCustomPreset; descriptor: 0x7c3a50; fields: 4.
+public struct BeansEqualizerCustomPreset_2_0_3: Sendable, Hashable {
+    public var id: String
+    public var name: String
+    public var gains: [Double]
+    public var preampGain: Double
+    public init(id: String = "", name: String = "", gains: [Double] = [], preampGain: Double = 0) {
+        self.id = id; self.name = name; self.gains = gains; self.preampGain = preampGain
+    }
+}
+
+/// Original nominal: BeansEqualizerPreset; descriptor: 0x7c3a6c; fields: 8.
+public enum BeansEqualizerPreset_2_0_3: CaseIterable, Hashable, Sendable {
+    case flat, bass, vocal, pop, rock, classical, jazz, electronic
+}
+
 /// Original type: BeansEqualizer; kind: class; descriptor: 0x7c39c0; fields: 16.
 public final class BeansEqualizer_2_0_3 {
-    /// Original field: _isEnabled; encoding: <unresolved>; flags: 0x2.
-    public var _isEnabled: Any = ()
-    /// Original field: _bandGains; encoding: <unresolved>; flags: 0x2.
-    public var _bandGains: Any = ()
-    /// Original field: _selectedPreset; encoding: <unresolved>; flags: 0x2.
-    public var _selectedPreset: Any = ()
-    /// Original field: _selectedCustomPresetName; encoding: <unresolved>; flags: 0x2.
-    public var _selectedCustomPresetName: Any = ()
-    /// Original field: _preampGain; encoding: <unresolved>; flags: 0x2.
-    public var _preampGain: Any = ()
-    /// Original field: _customPresets; encoding: <unresolved>; flags: 0x0.
-    public var _customPresets: Any = ()
+    /// Published backing fields decoded as `Bool`, `[Double]`, preset,
+    /// optional String, and Double respectively.
+    @Published public var isEnabled: Bool = false
+    @Published public var bandGains: [Double] = []
+    @Published public var selectedPreset: BeansEqualizerPreset_2_0_3 = .flat
+    @Published public var selectedCustomPresetName: String? = nil
+    @Published public var preampGain: Double = 0
+    public var customPresets: [BeansEqualizerCustomPreset_2_0_3] = []
     /// Original field: defaults; encoding: So14NSUserDefaultsC; flags: 0x0.
     public var defaults: UserDefaults = .standard
     /// Original field: configurationLock; encoding: So6NSLockC; flags: 0x2.
@@ -149,19 +184,21 @@ public final class BeansEqualizer_2_0_3 {
     /// Original field: processingEnabled; encoding: Sb; flags: 0x2.
     public var processingEnabled: Bool = false
     /// Original field: processingGains; encoding: SaySdG; flags: 0x2.
-    public var processingGains: Any = ()
+    public var processingGains: [Double] = []
     /// Original field: processingPreampLinear; encoding: Sf; flags: 0x2.
     public var processingPreampLinear: Float = 0
     /// Original field: processingFormatIsFloat32; encoding: Sb; flags: 0x2.
     public var processingFormatIsFloat32: Bool = false
     /// Original field: sampleRate; encoding: Sd; flags: 0x2.
     public var sampleRate: Double = 0
-    /// Original field: coefficients; encoding: <unresolved>; flags: 0x2.
-    public var coefficients: Any = ()
-    /// Original field: filterStates; encoding: <unresolved>; flags: 0x2.
-    public var filterStates: Any = ()
+    /// Original field: coefficients; decoded type: `[BiquadCoefficients]`.
+    public var coefficients: [BiquadCoefficients_2_0_3] = []
+    /// Original field: filterStates; decoded type: `[BiquadState]`.
+    public var filterStates: [BiquadState_2_0_3] = []
     /// Original field: pendingPersistWorkItem; encoding: <unresolved>; flags: 0xffd6857a.
     public var pendingPersistWorkItem: Any = ()
+
+    public init() {}
 }
 
 /// Original type: CustomSongCoverStore; kind: class; descriptor: 0x7c5abc; fields: 5.
