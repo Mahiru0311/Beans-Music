@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // State-bearing API/store reconstruction from the 2.0.3 build 2 IPA.
 // Field names are direct reflection records. Types mapped to Any remain unresolved.
@@ -158,13 +159,13 @@ public final class BatchDownloadManager_2_0_3 {
 /// Original nominal kind: class; descriptor: 0x7c68cc; fields: 9.
 public final class FavoritesStore_2_0_3 {
     /// Original field: _qqFavoriteSongs; encoding: <unresolved>; flags: 0x2.
-    public var _qqFavoriteSongs: Any = ()
+    @Published public var qqFavoriteSongs: [Song_2_0_3] = []
     /// Original field: _neteaseFavoriteSongs; encoding: <unresolved>; flags: 0x2.
-    public var _neteaseFavoriteSongs: Any = ()
+    @Published public var neteaseFavoriteSongs: [Song_2_0_3] = []
     /// Original field: _kugouFavoriteSongs; encoding: <unresolved>; flags: 0x2.
-    public var _kugouFavoriteSongs: Any = ()
+    @Published public var kugouFavoriteSongs: [Song_2_0_3] = []
     /// Original field: _kugouOfficialFavoriteSongs; encoding: <unresolved>; flags: 0x0.
-    public var _kugouOfficialFavoriteSongs: Any = ()
+    public var kugouOfficialFavoriteSongs: [Song_2_0_3] = []
     /// Original field: defaults; encoding: So14NSUserDefaultsC; flags: 0x0.
     public var defaults: UserDefaults = .standard
     /// Original field: neteaseKey; encoding: SS; flags: 0x0.
@@ -180,11 +181,11 @@ public final class FavoritesStore_2_0_3 {
 /// Original nominal kind: class; descriptor: 0x7c6914; fields: 7.
 public final class MusicCollectionsStore_2_0_3 {
     /// Original field: _albums; encoding: <unresolved>; flags: 0x2.
-    public var _albums: Any = ()
+    @Published public var albums: [Album_2_0_3] = []
     /// Original field: _artists; encoding: <unresolved>; flags: 0x2.
-    public var _artists: Any = ()
+    @Published public var artists: [Artist_2_0_3] = []
     /// Original field: _playlists; encoding: <unresolved>; flags: 0x0.
-    public var _playlists: Any = ()
+    @Published public var playlists: [Playlist_2_0_3] = []
     /// Original field: defaults; encoding: So14NSUserDefaultsC; flags: 0x0.
     public var defaults: UserDefaults = .standard
     /// Original field: albumsKey; encoding: SS; flags: 0x0.
