@@ -77,7 +77,7 @@ public enum WebDAVError_2_0_3: Error {
 }
 
 /// Field layout is directly present in Swift reflection metadata.
-public final class WebDAVListingParser_2_0_3 {
+public final class WebDAVListingParser_2_0_3: NSObject {
     // Main-binary typeref records resolve both fields to the nominal `Response`
     // record (renamed here to avoid collision with Foundation types).
     var current = WebDAVListingResponse_2_0_3()
@@ -114,7 +114,7 @@ public final class WebDAVListingParser_2_0_3 {
 }
 
 extension WebDAVListingParser_2_0_3: XMLParserDelegate {
-    func parser(_ parser: XMLParser, didStartElement elementName: String,
+    public func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,
                 attributes attributeDict: [String : String] = [:]) {
         let local = (elementName.split(separator: ":").last.map(String.init) ?? elementName).lowercased()
@@ -137,9 +137,9 @@ extension WebDAVListingParser_2_0_3: XMLParserDelegate {
         property = activeProperty
     }
 
-    func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
+    public func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
 
-    func parser(_ parser: XMLParser, didEndElement elementName: String,
+    public func parser(_ parser: XMLParser, didEndElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?) {
         let local = (elementName.split(separator: ":").last.map(String.init) ?? elementName).lowercased()
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -174,11 +174,11 @@ extension WebDAVListingParser_2_0_3: XMLParserDelegate {
         text = ""
     }
 
-    func parser(_ parser: XMLParser, foundInternalEntityDeclarationWithName name: String, value: String?) {
+    public func parser(_ parser: XMLParser, foundInternalEntityDeclarationWithName name: String, value: String?) {
         rejected = true; parser.abortParsing()
     }
 
-    func parser(_ parser: XMLParser, foundExternalEntityDeclarationWithName name: String,
+    public func parser(_ parser: XMLParser, foundExternalEntityDeclarationWithName name: String,
                 publicID: String?, systemID: String?) {
         rejected = true; parser.abortParsing()
     }
