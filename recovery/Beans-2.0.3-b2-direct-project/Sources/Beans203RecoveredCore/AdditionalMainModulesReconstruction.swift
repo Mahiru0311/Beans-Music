@@ -870,7 +870,10 @@ public struct Artist_2_0_3 {
     public var coverURL: URL? = nil
     /// Original field: source; encoding: <unresolved>; decoded typeref: symbolic@0xb09084; flags: 0xffdcd7ae.
     public var source: SongSource_2_0_3 = .netease
-    public init() {}
+    public init(id: String = "", name: String = "", coverURL: URL? = nil,
+                source: SongSource_2_0_3 = .netease) {
+        self.id = id; self.name = name; self.coverURL = coverURL; self.source = source
+    }
 }
 
 /// Original nominal: LyricWord; kind: struct; descriptor: 0x7c819c; fields: 3.
