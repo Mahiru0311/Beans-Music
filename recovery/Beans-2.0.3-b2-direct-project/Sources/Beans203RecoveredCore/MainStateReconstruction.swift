@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // Additional main-program state reconstruction from Beans 2.0.3 build 2 field metadata only.
 // Unknown generic/closure/framework payloads remain Any.
@@ -41,12 +42,15 @@ public final class AuthStore_2_0_3 {
 
 /// Original type: BeansCacheManager; kind: class; descriptor: 0x7c3674; fields: 3.
 public final class BeansCacheManager_2_0_3 {
-    /// Original field: _usage; encoding: <unresolved>; flags: 0x2.
-    public var _usage: Any = ()
-    /// Original field: _working; encoding: <unresolved>; flags: 0x2.
-    public var _working: Any = ()
-    /// Original field: _message; encoding: <unresolved>; flags: 0xffd637a6.
-    public var _message: Any = ()
+    /// `Published<[BeansCacheUsage]>` is decoded from `_usage`
+    /// (`ySayBeansCacheUsageGG`).
+    @Published public var usage: [BeansCacheUsage_2_0_3] = []
+    /// `Published<Bool>` is decoded from `_working` (`ySbG`).
+    @Published public var working: Bool = false
+    /// `Published<String?>` is decoded from `_message` (`ySSSgG`).
+    @Published public var message: String? = nil
+
+    public init() {}
 }
 
 /// Original type: BeansDiagnostics; kind: class; descriptor: 0x7c3808; fields: 13.

@@ -67,43 +67,49 @@ public struct ArtistHomeSheet_2_0_3 {
 
 /// Original nominal: BeansCacheUsage; kind: struct; descriptor: 0x7c36bc; fields: 3.
 public struct BeansCacheUsage_2_0_3 {
-    /// Original field: category; encoding: <unresolved>; decoded typeref: BeansCacheCategory; flags: 0x0.
-    public var category: Any = ()
-    /// Original field: diskBytes; encoding: <unresolved>; decoded typeref: symbolic@0xb0d2fc; flags: 0x2.
-    public var diskBytes: Any = ()
-    /// Original field: memoryBytes; encoding: <unresolved>; decoded typeref: symbolic@0xb0d2fc; flags: 0xffd63778.
-    public var memoryBytes: Any = ()
-    public init() {}
+    /// The category enum and both size fields are direct field metadata.
+    /// `symbolic@0xb0d2fc` is the same nominal used by `CMTime.value` and
+    /// `CMTime.epoch`; it is retained as `Int64` rather than narrowed to Int.
+    public var category: BeansCacheCategory_2_0_3
+    public var diskBytes: Int64
+    public var memoryBytes: Int64
+    public init(category: BeansCacheCategory_2_0_3 = .images,
+                diskBytes: Int64 = 0, memoryBytes: Int64 = 0) {
+        self.category = category
+        self.diskBytes = diskBytes
+        self.memoryBytes = memoryBytes
+    }
 }
 
 /// Original nominal: BeansCacheCategory; kind: enum; descriptor: 0x7c36d8; fields: 7.
-public enum BeansCacheCategory_2_0_3 {
+public enum BeansCacheCategory_2_0_3: CaseIterable, Hashable, Sendable {
     /// Original field: images; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0x0.
-    public static let images: Any = ()
+    case images
     /// Original field: immersive; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0x0.
-    public static let immersive: Any = ()
+    case immersive
     /// Original field: metadata; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0x0.
-    public static let metadata: Any = ()
+    case metadata
     /// Original field: lyrics; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0x0.
-    public static let lyrics: Any = ()
+    case lyrics
     /// Original field: network; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0x0.
-    public static let network: Any = ()
+    case network
     /// Original field: bilibili; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0x0.
-    public static let bilibili: Any = ()
+    case bilibili
     /// Original field: logs; encoding: <unresolved>; decoded typeref: <unresolved>; flags: 0xffd63790.
-    public static let logs: Any = ()
+    case logs
 }
 
 /// Original nominal: BeansCacheSettingsSection; kind: struct; descriptor: 0x7c36f4; fields: 4.
 public struct BeansCacheSettingsSection_2_0_3 {
     /// Original field: _manager; encoding: <unresolved>; decoded typeref: symbolic@0xb0a66cyBeansCacheManagerG; flags: 0x2.
     public var _manager: Any = ()
-    /// Original field: __expanded; encoding: <unresolved>; decoded typeref: symbolic@0xb0c3f4ySbG; flags: 0x2.
-    public var __expanded: Any = ()
-    /// Original field: __pending; encoding: <unresolved>; decoded typeref: symbolic@0xb0c3f4ySayBeansCacheCategoryGG; flags: 0x2.
-    public var __pending: Any = ()
-    /// Original field: __confirm; encoding: <unresolved>; decoded typeref: symbolic@0xb0c3f4ySbG; flags: 0xffd64cbe.
-    public var __confirm: Any = ()
+    /// `State<Bool>` backing storage; the wrapped value is retained directly
+    /// here because SwiftUI's property-wrapper payload is not source-visible.
+    public var __expanded: Bool = false
+    /// `State<[BeansCacheCategory]>` backing storage.
+    public var __pending: [BeansCacheCategory_2_0_3] = []
+    /// `State<Bool>` backing storage.
+    public var __confirm: Bool = false
     public init() {}
 }
 
