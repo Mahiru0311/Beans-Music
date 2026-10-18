@@ -12,7 +12,7 @@ final class APIModelRecoveryTests: XCTestCase {
     }
 
     func testChangelogRemoteLogsUseRecoveredVersionLogArray() {
-        let view = ChangelogListView_2_0_3()
+        var view = ChangelogListView_2_0_3()
         view.__remoteLogs = [VersionLog_2_0_3(id: "v1", version: "2.0.3")]
 
         XCTAssertEqual(view.__remoteLogs.first?.id, "v1")
