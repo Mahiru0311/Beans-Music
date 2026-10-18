@@ -55,13 +55,11 @@ public final class BeansCacheManager_2_0_3 {
 
 /// Original type: BeansDiagnostics; kind: class; descriptor: 0x7c3808; fields: 13.
 public final class BeansDiagnostics_2_0_3 {
-    /// Original field: _lastRoute; encoding: <unresolved>; flags: 0x2.
-    public var _lastRoute: Any = ()
-    /// Original field: _lastSnapshotDate; the IPA-relative typeref resolves
-    /// to the same `Foundation.Date?` target used by persisted snapshot records.
-    public var _lastSnapshotDate: Date? = nil
-    /// Original field: _enabled; encoding: <unresolved>; flags: 0x0.
-    public var _enabled: Any = ()
+    /// The three underscore fields are `Published` backing storage in the
+    /// binary (`ySSG`, `yDate?G`, and `ySbG`).
+    @Published public var lastRoute: String = ""
+    @Published public var lastSnapshotDate: Date? = nil
+    @Published public var enabled: Bool = false
     /// Original field: lock; encoding: So6NSLockC; flags: 0x2.
     public var lock: NSLock = NSLock()
     /// Original field: recordingEnabled; encoding: Sb; flags: 0x2.
@@ -71,9 +69,9 @@ public final class BeansDiagnostics_2_0_3 {
     /// Original field: started; encoding: Sb; flags: 0x2.
     public var started: Bool = false
     /// Original field: timer; encoding: So24OS_dispatch_source_timer_pSg; flags: 0x0.
-    public var timer: Any = ()
+    public var timer: DispatchSourceTimer? = nil
     /// Original field: monitorQueue; encoding: So17OS_dispatch_queueC; flags: 0x2.
-    public var monitorQueue: Any = ()
+    public var monitorQueue: DispatchQueue = DispatchQueue(label: "Beans203Recovered.Diagnostics")
     /// Original field: pendingBeat; encoding: SdSg; flags: 0x2.
     public var pendingBeat: Double? = nil
     /// Original field: reportedHang; encoding: Sb; flags: 0x2.
@@ -81,7 +79,9 @@ public final class BeansDiagnostics_2_0_3 {
     /// Original field: foreground; encoding: Sb; flags: 0x2.
     public var foreground: Bool = false
     /// Original field: observers; encoding: SaySo8NSObject_pG; flags: 0xffd64d74.
-    public var observers: Any = ()
+    public var observers: [NSObjectProtocol] = []
+
+    public init() {}
 }
 
 /// Original type: BeansLogger; kind: class; descriptor: 0x7c3c28; fields: 20.

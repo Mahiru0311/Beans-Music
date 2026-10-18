@@ -157,11 +157,15 @@ public struct BeansDiagnosticPageModifier_2_0_3 {
 
 /// Original nominal: BeansDiagnosticFile; kind: struct; descriptor: 0x7c3858; fields: 2.
 public struct BeansDiagnosticFile_2_0_3 {
-    /// Original field: url; encoding: <unresolved>; decoded typeref: symbolic@0xb0e014; flags: 0x0.
-    public var url: Any = ()
+    /// The same `symbolic@0xb0e014` target is resolved as `Foundation.URL`
+    /// by the WebDAV root and request records in this IPA.
+    public var url: URL
     /// Original field: bytes; encoding: Si; decoded typeref: Si; flags: 0xffd68042.
-    public var bytes: Int = 0
-    public init() {}
+    public var bytes: Int
+    public init(url: URL = URL(fileURLWithPath: "/"), bytes: Int = 0) {
+        self.url = url
+        self.bytes = bytes
+    }
 }
 
 /// Original nominal: BeansDiagnosticsSettingsView; kind: struct; descriptor: 0x7c3880; fields: 9.
