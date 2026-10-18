@@ -6,7 +6,9 @@ on:
     branches:
       - codex/beans-2.0.3-direct-spm-recovery-20261018
     paths:
-      - recovery/Beans-2.0.3-b2-direct-project/**
+      - recovery/Beans-2.0.3-b2-direct-project/Package.swift
+      - recovery/Beans-2.0.3-b2-direct-project/Sources/**
+      - recovery/Beans-2.0.3-b2-direct-project/Tests/**
       - .github/workflows/validate-direct-reconstruction.yml
 
 permissions:
