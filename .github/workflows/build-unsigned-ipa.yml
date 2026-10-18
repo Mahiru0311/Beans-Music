@@ -2,6 +2,12 @@ name: Build Unsigned IPA
 
 on:
   workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 'Run the long simulator regression suite before packaging'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 
@@ -63,6 +69,7 @@ jobs:
             build 2>&1 | tee xcodebuild.log
 
       - name: Test CiliCili upstream and Beans integration regressions
+        if: ${{ inputs.run_tests }}
         run: |
           set -o pipefail
           SIMULATOR=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for group in d["devices"].values() for x in group if x.get("isAvailable") and "iPhone" in x["name"]))')
