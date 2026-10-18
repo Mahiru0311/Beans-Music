@@ -84,48 +84,97 @@ public final class BeansDiagnostics_2_0_3 {
     public init() {}
 }
 
+/// Original nominal: BeansResourceSnapshot; descriptor: 0x7c3cb8; fields: 4.
+public struct BeansResourceSnapshot_2_0_3 {
+    /// The IPA keeps this symbolic integer unresolved; it is retained as Any
+    /// rather than choosing signedness from the field name alone.
+    public var memoryBytes: Any
+    public var cpuPercent: Double
+    public var sampledAt: Date
+    public var available: Bool
+    public init(memoryBytes: Any = 0, cpuPercent: Double = 0,
+                sampledAt: Date = Date(), available: Bool = false) {
+        self.memoryBytes = memoryBytes; self.cpuPercent = cpuPercent
+        self.sampledAt = sampledAt; self.available = available
+    }
+}
+
+/// Original nominal: BeansLogLevel; descriptor: 0x7c3d50; fields: 5.
+public enum BeansLogLevel_2_0_3: CaseIterable, Hashable, Sendable {
+    case debug, info, warn, error, fatal
+}
+
+/// Original nominal: BeansLogEntry; descriptor: 0x7c3ce0; fields: 14.
+public struct BeansLogEntry_2_0_3 {
+    public var id: UUID
+    public var date: Date
+    public var level: BeansLogLevel_2_0_3
+    public var message: String
+    public var module: String
+    public var file: String
+    public var function: String
+    public var sourceLine: Int
+    /// The typeref is retained symbolically in the IPA; no signedness guess.
+    public var threadID: Any
+    public var isMainThread: Bool
+    public var device: String
+    public var resources: BeansResourceSnapshot_2_0_3
+    public var context: [String: String]
+    public init(id: UUID = UUID(), date: Date = Date(), level: BeansLogLevel_2_0_3 = .debug,
+                message: String = "", module: String = "", file: String = "",
+                function: String = "", sourceLine: Int = 0, threadID: Any = 0,
+                isMainThread: Bool = false, device: String = "",
+                resources: BeansResourceSnapshot_2_0_3 = BeansResourceSnapshot_2_0_3(),
+                context: [String: String] = [:]) {
+        self.id = id; self.date = date; self.level = level; self.message = message
+        self.module = module; self.file = file; self.function = function
+        self.sourceLine = sourceLine; self.threadID = threadID
+        self.isMainThread = isMainThread; self.device = device
+        self.resources = resources; self.context = context
+    }
+}
+
 /// Original type: BeansLogger; kind: class; descriptor: 0x7c3c28; fields: 20.
 public final class BeansLogger_2_0_3 {
-    /// Original field: _entries; encoding: <unresolved>; flags: 0x0.
-    public var _entries: Any = ()
+    /// `Published<[BeansLogEntry]>` is decoded from `_entries`.
+    @Published public var entries: [BeansLogEntry_2_0_3] = []
     /// Original field: queue; encoding: So17OS_dispatch_queueC; flags: 0x0.
-    public var queue: Any = ()
+    public var queue: DispatchQueue = DispatchQueue(label: "Beans203Recovered.Logger")
     /// Original field: queueKey; encoding: <unresolved>; flags: 0x0.
     public var queueKey: Any = ()
-    /// Original field: root; encoding: <unresolved>; flags: 0x0.
-    public var root: Any = ()
+    /// The same IPA symbolic target is resolved as Foundation.URL elsewhere.
+    public var root: URL = URL(fileURLWithPath: "/")
     /// Original field: maxFileBytes; encoding: Si; flags: 0x0.
     public var maxFileBytes: Int = 0
     /// Original field: maxTotalBytes; encoding: Si; flags: 0x0.
     public var maxTotalBytes: Int = 0
     /// Original field: consoleEnabled; encoding: Sb; flags: 0x0.
     public var consoleEnabled: Bool = false
-    /// Original field: console; encoding: <unresolved>; flags: 0x0.
+    /// Original field: console; encoding: unresolved.
     public var console: Any = ()
     /// Original field: stateLock; encoding: So6NSLockC; flags: 0x2.
     public var stateLock: NSLock = NSLock()
-    /// Original field: snapshot; encoding: <unresolved>; flags: 0x2.
-    public var snapshot: Any = ()
-    /// Original field: recent; encoding: <unresolved>; flags: 0x2.
-    public var recent: Any = ()
+    /// Original fields: snapshot/recent; decoded type `[BeansLogEntry]`.
+    public var snapshot: [BeansLogEntry_2_0_3] = []
+    public var recent: [BeansLogEntry_2_0_3] = []
     /// Original field: viewers; encoding: Si; flags: 0x2.
     public var viewers: Int = 0
     /// Original field: publicationPending; encoding: Sb; flags: 0x2.
     public var publicationPending: Bool = false
     /// Original field: handle; encoding: So12NSFileHandleCSg; flags: 0x2.
-    public var handle: Any = ()
+    public var handle: FileHandle? = nil
     /// Original field: activeDay; encoding: SS; flags: 0x2.
     public var activeDay: String = ""
     /// Original field: activeBytes; encoding: Si; flags: 0x2.
     public var activeBytes: Int = 0
-    /// Original field: activeURL; encoding: <unresolved>; flags: 0x2.
-    public var activeURL: Any = ()
-    /// Original field: lastPrune; encoding: <unresolved>; flags: 0x2.
-    public var lastPrune: Any = ()
-    /// Original field: lastContextWrite; encoding: <unresolved>; flags: 0x0.
-    public var lastContextWrite: Any = ()
+    /// URL/Date symbolic targets are resolved by the same Foundation records.
+    public var activeURL: URL? = nil
+    public var lastPrune: Date? = nil
+    public var lastContextWrite: Date? = nil
     /// Original field: device; encoding: SS; flags: 0xffd687ac.
     public var device: String = ""
+
+    public init() {}
 }
 
 /// Original nominal: BiquadState; descriptor: 0x7c3a10; fields: 2.
