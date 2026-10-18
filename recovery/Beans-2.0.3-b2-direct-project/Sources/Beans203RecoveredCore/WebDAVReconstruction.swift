@@ -100,6 +100,15 @@ public final class WebDAVListingParser_2_0_3: NSObject {
     public func parse(_ data: Data, baseURL: URL) throws -> [WebDAVEntry_2_0_3] {
         self.baseURL = baseURL
         guard data.count <= 0x800000 else { throw WebDAVError_2_0_3.tooLarge }
+        let source = String(data: data, encoding: .utf8)
+            ?? String(data: data, encoding: .utf16)
+            ?? String(data: data, encoding: .utf16LittleEndian)
+            ?? String(data: data, encoding: .utf16BigEndian)
+        if let source,
+           source.range(of: "<!DOCTYPE", options: .caseInsensitive) != nil
+            || source.range(of: "<!ENTITY", options: .caseInsensitive) != nil {
+            throw WebDAVError_2_0_3.invalidListing
+        }
         let parser = XMLParser(data: data)
         parser.shouldProcessNamespaces = true
         parser.shouldResolveExternalEntities = false
