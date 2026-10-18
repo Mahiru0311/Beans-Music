@@ -1,11 +1,11 @@
 # Beans Music 🎵
 
-> 一款基于 **iOS 26 原生液态玻璃（Liquid Glass）** 的第三方音乐播放器（兼容 iOS 16+，低版本自动使用系统材质），聚合网易云音乐与 QQ 音乐，纯 SwiftUI 实现。
-> 本软件完全开源，仅供学习研究使用。
+> 一款基于 **iOS 26 原生液态玻璃（Liquid Glass）** 的第三方音乐播放器（最低支持 iOS 26.1），聚合网易云音乐、QQ 音乐与 CiliCili 哔哩哔哩界面，纯 SwiftUI 实现。
+> 本软件完全开源，仅供学习研究使用；组合发行版按 GPL-3.0-only 发布。
 
 [![GitHub Pages 预览](https://img.shields.io/badge/在线预览-GitHub%20Pages-blue)](https://xiaodou0416.github.io/Beans-Music/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-iOS%2016+-orange)]()
+[![License: GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-iOS%2026.1%2B-orange)]()
 [![Swift](https://img.shields.io/badge/Swift-5-orange)]()
 
 **👀 在线预览（HTML 介绍页）：** https://xiaodou0416.github.io/Beans-Music/
@@ -15,7 +15,7 @@
 - 作者本人**什么都不会**，连这篇介绍都是 **AI 写的** 🤡
 - 本软件由 **OpenAI Codex** 编程助手开发，从需求分析、UI 设计到代码实现全程由 AI 完成
 - **不喜勿喷**，纯新手小学生，欢迎温柔指教 🙏
-- 软件完全开源（MIT License），欢迎任何人学习、修改、二次开发
+- 组合发行版按 GPL-3.0-only 发布；Beans 原有 MIT 版权声明及第三方许可证仍按 `THIRD_PARTY_NOTICES.md` 保留
 
 ## 📱 界面预览
 
@@ -140,7 +140,7 @@ Beans/
 
 ## 🔨 构建
 
-GitHub Actions（`Build Unsigned IPA`）自动构建，产物发布到 [Releases](https://github.com/XIaodou0416/Beans-Music/releases)。
+GitHub Actions（`Build Unsigned IPA`）自动构建，产物保存在对应工作流运行的 Artifacts 中，不创建 GitHub Release。
 
 本地构建（需要 Mac + Xcode 26）：
 
@@ -158,7 +158,7 @@ ditto -c -k --sequesterRsrc --keepParent Payload Beans-unsigned.ipa
 ## 📲 安装
 
 未签名 IPA 需自行签名安装：Sideloadly / AltStore / 爱思助手，使用 Apple ID 签名（免费自签 7 天有效）。
-- 支持 iOS 16+（iOS 26 上为原生液态玻璃，低版本自动使用系统材质）
+- 支持 iOS 26.1+
 - Bundle ID：`com.beans.app`
 
 ---
@@ -174,6 +174,6 @@ ditto -c -k --sequesterRsrc --keepParent Payload Beans-unsigned.ipa
 
 ## 📄 License
 
-[MIT](LICENSE) © 2026 XIaodou0416
+[GPL-3.0-only](LICENSE) © 2026 XIaodou0416；Beans 原有 MIT 版权声明与第三方许可证见 `THIRD_PARTY_NOTICES.md`。
 
 **开源说明：** 本项目为开源软件，代码公开透明，接受 Issue 反馈与 Fork 学习。非官方 API 属逆向学习范畴，请尊重各平台服务条款，合理使用。
