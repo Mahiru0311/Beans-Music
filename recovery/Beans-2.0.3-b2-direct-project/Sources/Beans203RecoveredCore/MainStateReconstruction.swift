@@ -10,13 +10,13 @@ public final class QishuiAPI_2_0_3 {
     /// Original field: session; encoding: So12NSURLSessionC; flags: 0x0.
     public var session: URLSession = .shared
     /// Original field: songSearchCache; encoding: <unresolved>; flags: 0x0.
-    public var songSearchCache: Any = ()
+    public var songSearchCache: NSCache<NSString, QishuiCacheBox_2_0_3<[Song_2_0_3]>> = NSCache()
     /// Original field: playlistSearchCache; encoding: <unresolved>; flags: 0x0.
-    public var playlistSearchCache: Any = ()
+    public var playlistSearchCache: NSCache<NSString, QishuiCacheBox_2_0_3<[Playlist_2_0_3]>> = NSCache()
     /// Original field: recommendationCache; encoding: <unresolved>; flags: 0x0.
-    public var recommendationCache: Any = ()
+    public var recommendationCache: NSCache<NSString, QishuiCacheBox_2_0_3<[Playlist_2_0_3]>> = NSCache()
     /// Original field: playlistDetailsCache; encoding: <unresolved>; flags: 0x0.
-    public var playlistDetailsCache: Any = ()
+    public var playlistDetailsCache: NSCache<NSString, QishuiCacheBox_2_0_3<QishuiPlaylistDetails_2_0_3>> = NSCache()
     /// Original field: songSearchTTL; encoding: Sd; flags: 0x0.
     public var songSearchTTL: Double = 0
     /// Original field: playlistSearchTTL; encoding: Sd; flags: 0x0.

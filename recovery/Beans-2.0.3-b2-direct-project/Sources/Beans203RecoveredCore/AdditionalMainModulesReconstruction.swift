@@ -1048,13 +1048,16 @@ public struct PlaylistSquareToolbarModifier_2_0_3 {
     public init() {}
 }
 
-/// Original nominal: QishuiCacheBox; kind: unknown; descriptor: 0x7c982c; fields: 2.
-public struct QishuiCacheBox_2_0_3 {
-    /// Original field: value; encoding: x; decoded typeref: x; flags: 0x0.
-    public var value: Any = ()
+/// Original nominal: QishuiCacheBox; generic reference type used by NSCache.
+public final class QishuiCacheBox_2_0_3<Value> {
+    /// Original field: value; encoding: x; the concrete Value is supplied by each cache.
+    public var value: Value
     /// Original field: savedAt; encoding: <unresolved>; decoded typeref: symbolic@0xb0e184; flags: 0xfff4e49c.
-    public var savedAt: Date = Date()
-    public init() {}
+    public var savedAt: Date
+    public init(value: Value, savedAt: Date = Date()) {
+        self.value = value
+        self.savedAt = savedAt
+    }
 }
 
 /// Original nominal: RecordModeMiniLyrics; kind: struct; descriptor: 0x7c9a24; fields: 4.

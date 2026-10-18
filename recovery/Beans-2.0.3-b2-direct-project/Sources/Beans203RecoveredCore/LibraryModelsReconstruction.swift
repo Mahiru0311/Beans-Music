@@ -9,6 +9,15 @@ public struct PlaylistSnapshot_2_0_3 {
     }
 }
 
+/// Original nominal: QishuiPlaylistDetails; fields decoded from IPA typerefs.
+public struct QishuiPlaylistDetails_2_0_3 {
+    public var playlist: Playlist_2_0_3?
+    public var songs: [Song_2_0_3]
+    public init(playlist: Playlist_2_0_3? = nil, songs: [Song_2_0_3] = []) {
+        self.playlist = playlist; self.songs = songs
+    }
+}
+
 /// Original nominal: Playlist; all scalar and optional types are direct IPA typerefs.
 public struct Playlist_2_0_3 {
     public var id: Int
