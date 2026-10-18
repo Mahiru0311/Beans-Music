@@ -1,0 +1,32 @@
+name: Validate Beans 2.0.3 build 2 direct reconstruction
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/beans-2.0.3-direct-spm-recovery-20261018
+    paths:
+      - recovery/Beans-2.0.3-b2-direct-project/**
+      - .github/workflows/validate-direct-reconstruction.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out recovered project
+        uses: actions/checkout@v4
+
+      - name: Show Apple toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Validate Swift package manifest
+        run: swift package --package-path recovery/Beans-2.0.3-b2-direct-project describe
+
+      - name: Build every recovered target
+        run: swift build --package-path recovery/Beans-2.0.3-b2-direct-project
