@@ -48,10 +48,14 @@ struct WebDAVConnectionView_2_0_3: View {
         Form {
             Section {
                 TextField("beans.webdav.address", text: $draft.address)
+#if os(iOS)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+#endif
                 TextField("beans.webdav.username", text: $draft.username)
+#if os(iOS)
                     .textInputAutocapitalization(.never)
+#endif
                 SecureField("beans.webdav.password", text: $password)
                 Toggle("beans.webdav.http", isOn: $draft.allowHTTP)
             }
