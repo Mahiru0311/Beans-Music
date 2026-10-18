@@ -21,7 +21,7 @@ import SwiftUI
 /// HStack/VStack view, and Dynamic Island regions. The source below preserves
 /// that structure; system-image names are explicitly marked inferred because
 /// the string argument is not retained in the field/symbol metadata.
-#if canImport(ActivityKit) && canImport(WidgetKit) && canImport(SwiftUI)
+#if os(iOS) && canImport(ActivityKit) && canImport(WidgetKit) && canImport(SwiftUI)
 @available(iOS 16.1, macOS 13.0, *)
 @main
 public struct BeansLiveActivity_2_0_3: Widget {
@@ -120,7 +120,7 @@ public struct BeansNowPlayingAttributes_2_0_3: Codable, Hashable, Sendable {
     }
 }
 
-#if canImport(ActivityKit)
+#if os(iOS) && canImport(ActivityKit)
 extension BeansNowPlayingAttributes_2_0_3: ActivityAttributes {}
 #endif
 

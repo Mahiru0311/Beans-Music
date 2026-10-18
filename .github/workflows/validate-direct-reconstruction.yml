@@ -35,3 +35,6 @@ jobs:
             --sdk "$IOS_SDK_PATH" \
             --triple arm64-apple-ios16.1 \
             --package-path recovery/Beans-2.0.3-b2-direct-project
+
+      - name: Run WebDAV reconstruction tests
+        run: swift test --package-path recovery/Beans-2.0.3-b2-direct-project

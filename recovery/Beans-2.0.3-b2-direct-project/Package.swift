@@ -4,7 +4,10 @@ import PackageDescription
 let package = Package(
     name: "Beans203Recovered",
     defaultLocalization: "en",
-    platforms: [.iOS(.v15)],
+    platforms: [
+        .iOS(.v15),
+        .macOS(.v12)
+    ],
     products: [
         .library(name: "Beans203RecoveredCore", targets: ["Beans203RecoveredCore"]),
         .library(name: "CiliCiliKitRecovered", targets: ["CiliCiliKitRecovered"]),
@@ -23,6 +26,7 @@ let package = Package(
         .target(name: "Beans203ReflectionEvidence"),
         .target(name: "CiliCiliKitReflectionEvidence"),
         .target(name: "Beans203RecoveredNominalCatalog"),
-        .target(name: "CiliCiliKitRecoveredNominalCatalog")
+        .target(name: "CiliCiliKitRecoveredNominalCatalog"),
+        .testTarget(name: "Beans203RecoveredCoreTests", dependencies: ["Beans203RecoveredCore"])
     ]
 )
