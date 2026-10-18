@@ -53,7 +53,7 @@ public final class NetEaseAPI_2_0_3 {
     /// Original field: storedCookies; encoding: SDyS2SG; flags: 0x2.
     public var storedCookies: [String: String] = [:]
     /// Original field: personalFMCache; encoding: <unresolved>; flags: 0x2.
-    public var personalFMCache: Any = ()
+    public var personalFMCache: [Song_2_0_3] = []
     /// Original field: personalFMCacheDate; same IPA-relative typeref as
     /// `Foundation.Date` (`savedAt`, `createdAt`, and `lastRefresh` records).
     public var personalFMCacheDate: Date = Date()
