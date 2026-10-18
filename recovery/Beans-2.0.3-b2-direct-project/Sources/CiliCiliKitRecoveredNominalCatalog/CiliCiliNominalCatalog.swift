@@ -2755,7 +2755,7 @@ public struct C203_AccountPrivateMessageEmotePicker_c1856c {
     /// Original field/case: emotes; encoding: <unresolved>; flags: 0x0.
     public var emotes: Any = ()
     /// Original field/case: onSelect; encoding: ySSc; flags: 0x2.
-    public var onSelect: (String) -> Void = ()
+    public var onSelect: (String) -> Void = { _ in }
     /// Original field/case: _dismiss; encoding: <unresolved>; flags: 0x0.
     public var _dismiss: Any = ()
     /// Original field/case: columns; encoding: <unresolved>; flags: 0xffecd6be.
@@ -7088,11 +7088,11 @@ public struct C203_BiliPlayerLifecycleActions_c1b2a8 {
     /// Original field/case: onPresentationChanged; encoding: yyc; flags: 0x0.
     public var onPresentationChanged: () -> Void = {}
     /// Original field/case: onLayoutTransitionChanged; encoding: ySbc; flags: 0x0.
-    public var onLayoutTransitionChanged: (Bool) -> Void = ()
+    public var onLayoutTransitionChanged: (Bool) -> Void = { _ in }
     /// Original field/case: onSecondaryControlsPresentedChanged; encoding: ySbc; flags: 0x0.
-    public var onSecondaryControlsPresentedChanged: (Bool) -> Void = ()
+    public var onSecondaryControlsPresentedChanged: (Bool) -> Void = { _ in }
     /// Original field/case: onPictureInPictureEnabledChanged; encoding: ySbc; flags: 0xffecfb8e.
-    public var onPictureInPictureEnabledChanged: (Bool) -> Void = ()
+    public var onPictureInPictureEnabledChanged: (Bool) -> Void = { _ in }
     public init() {}
 }
 
@@ -7293,7 +7293,7 @@ public struct C203_BiliPlayerSurfaceGestureLayer_c1b448 {
     /// Original field/case: onHorizontalSeekCancelled; encoding: yyc; flags: 0x0.
     public var onHorizontalSeekCancelled: () -> Void = {}
     /// Original field/case: onHorizontalSeekCancelPendingChanged; encoding: ySbc; flags: 0x2.
-    public var onHorizontalSeekCancelPendingChanged: (Bool) -> Void = ()
+    public var onHorizontalSeekCancelPendingChanged: (Bool) -> Void = { _ in }
     /// Original field/case: __horizontalSeekStartProgress; encoding: <unresolved>; flags: 0x2.
     public var __horizontalSeekStartProgress: Any = ()
     /// Original field/case: __horizontalSeekCurrentProgress; encoding: <unresolved>; flags: 0x2.
@@ -7919,7 +7919,7 @@ public struct C203_CiliCiliHomeView_c1ba70 {
     /// Original field/case: platforms; encoding: SaySSG; flags: 0x0.
     public var platforms: [String] = []
     /// Original field/case: selectPlatform; encoding: ySSc; flags: 0x0.
-    public var selectPlatform: (String) -> Void = ()
+    public var selectPlatform: (String) -> Void = { _ in }
     /// Original field/case: startsWithSearch; encoding: Sb; flags: 0xffed7eea.
     public var startsWithSearch: Bool = false
     public init() {}
@@ -8898,7 +8898,7 @@ public final class C203_DanmakuAnimationOverlayView_c1d2ec {
 /// Original nominal: DanmakuAnimationCompletionDelegate; kind: class; descriptor: 0xc1d320; fields: 2.
 public final class C203_DanmakuAnimationCompletionDelegate_c1d320 {
     /// Original field/case: completion; encoding: ySbc; flags: 0x2.
-    public var completion: (Bool) -> Void = ()
+    public var completion: (Bool) -> Void = { _ in }
     /// Original field/case: isCancelled; encoding: Sb; flags: 0xffedc116.
     public var isCancelled: Bool = false
     public init() {}
@@ -9484,7 +9484,7 @@ public struct C203_DynamicInlineCommentEmotePicker_c1dac0 {
     /// Original field/case: bottomSafeAreaInset; encoding: <unresolved>; flags: 0x0.
     public var bottomSafeAreaInset: Any = ()
     /// Original field/case: onSelect; encoding: ySSc; flags: 0x2.
-    public var onSelect: (String) -> Void = ()
+    public var onSelect: (String) -> Void = { _ in }
     /// Original field/case: onDelete; encoding: yycSg; flags: 0x0.
     public var onDelete: (() -> Void)? = nil
     /// Original field/case: columns; encoding: <unresolved>; flags: 0xffee06a6.
@@ -10826,7 +10826,7 @@ public struct C203_DynamicImageCellRemoteContent_c1f21c {
     /// Original field/case: contentAlignment; encoding: <unresolved>; flags: 0x0.
     public var contentAlignment: Any = ()
     /// Original field/case: onViewerPresentationChange; encoding: ySbc; flags: 0xffeef1fe.
-    public var onViewerPresentationChange: (Bool) -> Void = ()
+    public var onViewerPresentationChange: (Bool) -> Void = { _ in }
     public init() {}
 }
 
@@ -11512,7 +11512,7 @@ public struct C203_FavoriteFolderSelectionSheetActions_c20040 {
     /// Original field/case: saveFavoriteFolders; encoding: <unresolved>; flags: 0x0.
     public var saveFavoriteFolders: Any = ()
     /// Original field/case: initializeSelectionIfNeeded; encoding: ySbc; flags: 0xffef68c0.
-    public var initializeSelectionIfNeeded: (Bool) -> Void = ()
+    public var initializeSelectionIfNeeded: (Bool) -> Void = { _ in }
     public init() {}
 }
 
@@ -21501,7 +21501,7 @@ public final class C203_PlayerStateViewModel_c2983c {
 /// Original nominal: PictureInPictureRestoreCompletion; kind: class; descriptor: 0xc2988c; fields: 1.
 public final class C203_PictureInPictureRestoreCompletion_c2988c {
     /// Original field/case: handler; encoding: ySbc; flags: 0xfff2a74c.
-    public var handler: (Bool) -> Void = ()
+    public var handler: (Bool) -> Void = { _ in }
     public init() {}
 }
 
@@ -22836,7 +22836,7 @@ public final class C203_Coordinator_c2b0d4 {
     /// Original field/case: _draft; encoding: <unresolved>; flags: 0x2.
     public var _draft: Any = ()
     /// Original field/case: onFocusChange; encoding: ySbc; flags: 0x2.
-    public var onFocusChange: (Bool) -> Void = ()
+    public var onFocusChange: (Bool) -> Void = { _ in }
     /// Original field/case: onHeightChange; encoding: <unresolved>; flags: 0x2.
     public var onHeightChange: Any = ()
     /// Original field/case: isApplyingDraft; encoding: Sb; flags: 0x2.
@@ -23041,7 +23041,7 @@ public struct C203_RichCommentTextView_c2b2e0 {
     /// Original field/case: dynamicTypeSize; encoding: <unresolved>; flags: 0x0.
     public var dynamicTypeSize: Any = ()
     /// Original field/case: onFocusChange; encoding: ySbc; flags: 0x0.
-    public var onFocusChange: (Bool) -> Void = ()
+    public var onFocusChange: (Bool) -> Void = { _ in }
     /// Original field/case: onEditorTap; encoding: yyc; flags: 0x0.
     public var onEditorTap: () -> Void = {}
     /// Original field/case: onHeightChange; encoding: <unresolved>; flags: 0xfff2fe8c.
@@ -23136,7 +23136,7 @@ public struct C203_RootTabView_c2b530 {
     /// Original field/case: platformNames; encoding: SaySSG; flags: 0x2.
     public var platformNames: [String] = []
     /// Original field/case: onSelectPlatform; encoding: ySSc; flags: 0x2.
-    public var onSelectPlatform: (String) -> Void = ()
+    public var onSelectPlatform: (String) -> Void = { _ in }
     /// Original field/case: __mountedTabs; encoding: <unresolved>; flags: 0x2.
     public var __mountedTabs: Any = ()
     /// Original field/case: __navigationOwner; encoding: <unresolved>; flags: 0x2.

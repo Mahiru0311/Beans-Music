@@ -6675,7 +6675,7 @@ public struct M203_OfficialPlaylistPickerSheet_7c8a14 {
     /// Original field/case: onSelect; encoding: <unresolved>; flags: 0x0.
     public var onSelect: Any = ()
     /// Original field/case: onCreate; encoding: ySSc; flags: 0x0.
-    public var onCreate: (String) -> Void = ()
+    public var onCreate: (String) -> Void = { _ in }
     /// Original field/case: onDelete; encoding: <unresolved>; flags: 0x2.
     public var onDelete: Any = ()
     /// Original field/case: _dismiss; encoding: <unresolved>; flags: 0x2.
@@ -7873,7 +7873,7 @@ public struct M203_QueueReorderHandle_7c9940 {
     /// Original field/case: rowStep; encoding: <unresolved>; flags: 0x0.
     public var rowStep: Any = ()
     /// Original field/case: onMove; encoding: ySi_Sitc; flags: 0x0.
-    public var onMove: (Int, Int) -> Void = ()
+    public var onMove: (Int, Int) -> Void = { _, _ in }
     /// Original field/case: onCommit; encoding: yyc; flags: 0x2.
     public var onCommit: () -> Void = {}
     /// Original field/case: __originPosition; encoding: <unresolved>; flags: 0x2.
@@ -8301,7 +8301,7 @@ public struct M203_AppleMusicCompactQueueRow_7c9de0 {
     /// Original field/case: song; encoding: <unresolved>; flags: 0x0.
     public var song: Any = ()
     /// Original field/case: onMove; encoding: ySi_Sitc; flags: 0x0.
-    public var onMove: (Int, Int) -> Void = ()
+    public var onMove: (Int, Int) -> Void = { _, _ in }
     /// Original field/case: onCommit; encoding: yyc; flags: 0xfff76230.
     public var onCommit: () -> Void = {}
     public init() {}
@@ -10083,7 +10083,7 @@ public struct M203_SearchTextField_7cb9ac {
     /// Original field/case: textColor; encoding: So7UIColorC; flags: 0x0.
     public var textColor: Any = ()
     /// Original field/case: onSubmit; encoding: ySSc; flags: 0xfff95b60.
-    public var onSubmit: (String) -> Void = ()
+    public var onSubmit: (String) -> Void = { _ in }
     public init() {}
 }
 
@@ -10098,7 +10098,7 @@ public struct M203_NativeSearchBar_7cb9c8 {
     /// Original field/case: onTextChange; encoding: ySScSg; flags: 0x0.
     public var onTextChange: ((String) -> Void)? = nil
     /// Original field/case: onSubmit; encoding: ySSc; flags: 0xffdaa814.
-    public var onSubmit: (String) -> Void = ()
+    public var onSubmit: (String) -> Void = { _ in }
     public init() {}
 }
 
@@ -10291,7 +10291,7 @@ public struct M203_BeansUnifiedSearchField_7cbae0 {
     /// Original field/case: onClear; encoding: yyc; flags: 0x0.
     public var onClear: () -> Void = {}
     /// Original field/case: onSubmit; encoding: ySSc; flags: 0xfffc7456.
-    public var onSubmit: (String) -> Void = ()
+    public var onSubmit: (String) -> Void = { _ in }
     public init() {}
 }
 
@@ -10836,7 +10836,7 @@ public struct M203_SourceRow_7cc150 {
     /// Original field/case: onMoveDown; encoding: yyc; flags: 0x0.
     public var onMoveDown: () -> Void = {}
     /// Original field/case: onToggle; encoding: ySbc; flags: 0x0.
-    public var onToggle: (Bool) -> Void = ()
+    public var onToggle: (Bool) -> Void = { _ in }
     /// Original field/case: onCheck; encoding: yyc; flags: 0x0.
     public var onCheck: () -> Void = {}
     /// Original field/case: isChecking; encoding: Sb; flags: 0x0.
