@@ -12,7 +12,7 @@ public final class ArtistHomeCache_2_0_3 {
     /// Original field: lock; encoding: So6NSLockC; decoded typeref: So6NSLockC; flags: 0x0.
     public var lock: NSLock = NSLock()
     /// Original field: persistenceQueue; encoding: So17OS_dispatch_queueC; decoded typeref: So17OS_dispatch_queueC; flags: 0x2.
-    public var persistenceQueue: Any = ()
+    public var persistenceQueue: DispatchQueue = DispatchQueue(label: "Beans203Recovered.SyncedPlaylistCache")
     /// Original field: entries; encoding: <unresolved>; decoded typeref: SDySSEntryG; flags: 0x0.
     public var entries: Any = ()
     /// Original field: ttl; encoding: Sd; decoded typeref: Sd; flags: 0xffd54fca.
@@ -1203,9 +1203,9 @@ public final class SyncedPlaylistCache_2_0_3 {
     /// Original field: persistenceQueue; encoding: So17OS_dispatch_queueC; decoded typeref: So17OS_dispatch_queueC; flags: 0x2.
     public var persistenceQueue: Any = ()
     /// Original field: playlistEntries; encoding: <unresolved>; decoded typeref: SDySSPlaylistEntryG; flags: 0x2.
-    public var playlistEntries: Any = ()
+    public var playlistEntries: [String: PlaylistEntry_2_0_3] = [:]
     /// Original field: songEntries; encoding: <unresolved>; decoded typeref: SDySSSongEntryG; flags: 0x0.
-    public var songEntries: Any = ()
+    public var songEntries: [String: SongEntry_2_0_3] = [:]
     /// Original field: playlistTTL; encoding: Sd; decoded typeref: Sd; flags: 0x0.
     public var playlistTTL: Double = 0
     /// Original field: songTTL; encoding: Sd; decoded typeref: Sd; flags: 0xfffd48a4.
