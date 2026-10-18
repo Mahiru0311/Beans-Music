@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 // Additional direct field reconstruction generated from Beans 2.0.3 build 2 main-binary metadata only.
 // Property bodies and unresolved generic/framework substitutions remain explicit Any.
@@ -229,7 +228,7 @@ public struct ChangelogListView_2_0_3 {
     /// Original field: _dismiss; encoding: <unresolved>; decoded typeref: symbolic@0xb0a63cysymbolic@0xb0a85cG; flags: 0x2.
     public var _dismiss: Any = ()
     /// Original field: __remoteLogs; encoding: <unresolved>; decoded typeref: symbolic@0xb0c3f4ySayVersionLogGG; flags: 0x2.
-    @Published public var remoteLogs: [VersionLog_2_0_3] = []
+    public var __remoteLogs: [VersionLog_2_0_3] = []
     /// Original field: __isLoading; encoding: <unresolved>; decoded typeref: symbolic@0xb0c3f4ySbG; flags: 0xffd6b278.
     public var __isLoading: Any = ()
     public init() {}
