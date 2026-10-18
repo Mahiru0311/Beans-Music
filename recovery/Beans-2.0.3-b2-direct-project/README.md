@@ -10,8 +10,8 @@ The nominal catalogs remain metadata reconstructions; unresolved source-level ge
 
 The focused `CiliCiliRuntime.listenSource(for:)` path now follows the recovered
 ARM64 control flow: it seeds a new source with the first request, reuses a
-source only when its BVID/AID identity matches, and starts a fresh source for a
-different identity. `CiliCiliListenSourceTests` covers those three cases. The
-identity rule is deliberately limited to the two request words compared by the
-binary; title, cover, duration, and playback URL are not guessed as identity
-fields.
+source when the request's BVID String matches, and starts a fresh source for a
+different BVID. `CiliCiliListenSourceTests` covers those three cases, including
+an AID change. The identity rule is deliberately limited to the first two
+request words compared by the binary; AID, title, cover, duration, and playback
+URL are not guessed as identity fields.

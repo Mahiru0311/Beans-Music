@@ -188,12 +188,13 @@ public extension CiliCiliRuntime_2_0_3 {
 
     func listenSource(for request: CiliCiliVideoListenRequest_2_0_3) -> CiliCiliListenSource_2_0_3 {
         // The recovered ARM64 body unwraps the optional storage, walks its
-        // request array, and compares the first request identity words before
-        // returning the existing source.  Those words are the stable BVID and
-        // optional AID fields in the nine-field request record; the remaining
-        // display/playback fields are deliberately not identity components.
+        // request array, and compares the first two words of each request
+        // before returning the existing source.  In the recovered nine-field
+        // layout those two words are the Swift String storage for `bvid`
+        // (pointer and count); the following `aid` field is not read by this
+        // identity path.  Display and playback fields are likewise not used.
         if let listenSource,
-           listenSource.items.contains(where: { $0.bvid == request.bvid && $0.aid == request.aid }) {
+           listenSource.items.contains(where: { $0.bvid == request.bvid }) {
             return listenSource
         }
 

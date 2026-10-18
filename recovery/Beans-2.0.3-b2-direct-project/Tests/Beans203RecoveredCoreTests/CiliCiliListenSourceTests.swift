@@ -23,10 +23,10 @@ final class CiliCiliListenSourceTests: XCTestCase {
         XCTAssertEqual(source.items.first?.aid, 1)
     }
 
-    func testMatchingBVIDAndAIDReuseTheExistingSource() {
+    func testMatchingBVIDReusesTheExistingSourceEvenWhenAIDChanges() {
         let runtime = CiliCiliRuntime_2_0_3()
         let first = runtime.listenSource(for: request("BV-same", aid: 2, title: "first"))
-        let second = runtime.listenSource(for: request("BV-same", aid: 2, title: "changed"))
+        let second = runtime.listenSource(for: request("BV-same", aid: 99, title: "changed"))
 
         XCTAssertEqual(first.id, second.id)
         XCTAssertEqual(second.items.first?.title, "first")
