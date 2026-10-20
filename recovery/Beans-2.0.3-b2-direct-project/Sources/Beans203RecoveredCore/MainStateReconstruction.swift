@@ -18,13 +18,36 @@ public final class QishuiAPI_2_0_3 {
     /// Original field: playlistDetailsCache; encoding: <unresolved>; flags: 0x0.
     public var playlistDetailsCache: NSCache<NSString, QishuiCacheBox_2_0_3<QishuiPlaylistDetails_2_0_3>> = NSCache()
     /// Original field: songSearchTTL; encoding: Sd; flags: 0x0.
-    public var songSearchTTL: Double = 0
+    public var songSearchTTL: Double = 300
     /// Original field: playlistSearchTTL; encoding: Sd; flags: 0x0.
-    public var playlistSearchTTL: Double = 0
+    public var playlistSearchTTL: Double = 300
     /// Original field: recommendationTTL; encoding: Sd; flags: 0x0.
-    public var recommendationTTL: Double = 0
+    public var recommendationTTL: Double = 1800
     /// Original field: playlistDetailsTTL; encoding: Sd; flags: 0xfff4e4a0.
-    public var playlistDetailsTTL: Double = 0
+    public var playlistDetailsTTL: Double = 1800
+
+    // Reconstruction-only dependency seams; these are not claimed as IPA fields.
+    let recoveryDefaults: UserDefaults
+    let recoveryVersion: String?
+
+    /// Initialization recovered from 0x10056a5d0 (session and cache settings).
+    public init(session: URLSession? = nil, defaults: UserDefaults = .standard, version: String? = nil) {
+        recoveryDefaults = defaults
+        recoveryVersion = version
+        if let session {
+            self.session = session
+        } else {
+            let configuration = URLSessionConfiguration.default
+            configuration.timeoutIntervalForRequest = 20
+            configuration.timeoutIntervalForResource = 30
+            configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            self.session = URLSession(configuration: configuration)
+        }
+        songSearchCache.countLimit = 40
+        playlistSearchCache.countLimit = 40
+        recommendationCache.countLimit = 8
+        playlistDetailsCache.countLimit = 24
+    }
 }
 
 /// Original type: AuthStore; kind: class; descriptor: 0x7c358c; fields: 5.
