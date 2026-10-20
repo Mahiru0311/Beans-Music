@@ -125,14 +125,14 @@ extension QishuiAPI_2_0_3 {
     }
 
     /// NSNumber then String(Double), otherwise zero: 0x10057157c.
-    private static func number(_ value: Any?) -> Double {
+    static func number(_ value: Any?) -> Double {
         if let value = value as? NSNumber { return value.doubleValue }
         if let value = value as? String { return Double(value) ?? 0 }
         return 0
     }
 
     /// Ordered nonempty String / NSNumber.stringValue lookup: 0x1005702f0.
-    private static func firstString(_ object: [String: Any], keys: [String]) -> String? {
+    static func firstString(_ object: [String: Any], keys: [String]) -> String? {
         for key in keys {
             if let value = object[key] as? String, !value.isEmpty { return value }
             if let value = object[key] as? NSNumber { return value.stringValue }
