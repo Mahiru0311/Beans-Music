@@ -1,7 +1,7 @@
 import Foundation
 
 /// Plain LRC path reconstructed from the supplied 2.0.3 build 2 executable.
-/// Karaoke parsing and its line-merging path remain separate recovery work.
+/// Karaoke parsing and combined line matching are in KaraokeParserReconstruction.swift.
 public enum LyricParser_2_0_3 {
     // Exact UTF-8 literals at file offsets 0x79a050, 0x7aa290 and 0x7aa2c0.
     static let offsetPattern = #"\[offset:([+-]?\d+)\]"#

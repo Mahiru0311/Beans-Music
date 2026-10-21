@@ -881,13 +881,13 @@ public struct Artist_2_0_3 {
 
 /// Original nominal: LyricWord; kind: struct; descriptor: 0x7c819c; fields: 3.
 public struct LyricWord_2_0_3 {
-    /// Original field: text; encoding: SS; decoded typeref: SS; flags: 0x0.
-    public var text: String = ""
-    /// Original field: start; encoding: Sd; decoded typeref: Sd; flags: 0x0.
-    public var start: Double = 0
-    /// Original field: duration; encoding: Sd; decoded typeref: Sd; flags: 0xffdf6064.
-    public var duration: Double = 0
-    public init() {}
+    public var text: String
+    public var start: Double
+    public var duration: Double
+    // Fields are direct metadata; caller-friendly initializer is reconstructed.
+    public init(text: String = "", start: Double = 0, duration: Double = 0) {
+        self.text = text; self.start = start; self.duration = duration
+    }
 }
 
 /// Original nominal: LyricPreviewRow; kind: struct; descriptor: 0x7c8a68; fields: 2.
