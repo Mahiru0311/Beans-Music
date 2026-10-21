@@ -847,17 +847,20 @@ public struct MiniPlayerLyricLine_2_0_3 {
 
 /// Original nominal: LyricLine; kind: struct; descriptor: 0x7c7fb4; fields: 5.
 public struct LyricLine_2_0_3 {
-    /// Original field: id; encoding: <unresolved>; decoded typeref: symbolic@0xb0e1e4; flags: 0x0.
-    public var id: Any = ()
-    /// Original field: time; encoding: Sd; decoded typeref: Sd; flags: 0x0.
-    public var time: Double = 0
-    /// Original field: text; encoding: SS; decoded typeref: SS; flags: 0x2.
-    public var text: String = ""
-    /// Original field: translation; encoding: SSSg; decoded typeref: SSSg; flags: 0x2.
-    public var translation: String? = nil
-    /// Original field: words; encoding: <unresolved>; decoded typeref: SayLyricWordGSg; flags: 0xffd5a918.
-    public var words: Any = ()
-    public init() {}
+    /// UUID construction at 0x1003323cc confirms the symbolic id field.
+    public var id: UUID
+    public var time: Double
+    public var text: String
+    public var translation: String?
+    /// Field encoding SayLyricWordGSg: optional array, nil on plain LRC creation.
+    public var words: [LyricWord_2_0_3]?
+
+    // Callable initializer spelling/defaults are a reconstruction seam.
+    public init(id: UUID = UUID(), time: Double = 0, text: String = "",
+                translation: String? = nil, words: [LyricWord_2_0_3]? = nil) {
+        self.id = id; self.time = time; self.text = text
+        self.translation = translation; self.words = words
+    }
 }
 
 /// Original nominal: Artist; kind: struct; descriptor: 0x7c7fdc; fields: 4.
