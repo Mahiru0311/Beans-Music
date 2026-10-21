@@ -226,4 +226,64 @@ final class QishuiSearchRecoveryTests: XCTestCase {
         }
         XCTAssertThrowsError(try QishuiAPI_2_0_3.searchPagination([:], offset: Int.max, mappedCount: 1))
     }
+    func testArtistNormalizationPreservesSymbolsAndRemovesAccentsAndPunctuation() {
+        XCTAssertEqual(QishuiAPI_2_0_3.normalizedArtistName(" + Sé-lè娜!💛 "), "+sele娜💛")
+        XCTAssertEqual(QishuiAPI_2_0_3.normalizedArtistName("歌 手（现场）"), "歌手现场")
+    }
+
+    func testArtistSplittingUsesAllRecoveredSeparatorsAndKeepsDuplicates() {
+        XCTAssertEqual(QishuiAPI_2_0_3.artistNames(in: " A / B／C,D，E、F&G＆H+I＋J|K｜L;M； A "),
+                       ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "A"])
+        XCTAssertEqual(QishuiAPI_2_0_3.artistNames(in: " / ; "), [])
+    }
+
+    func testArtistMatchingFiltersBeforeApplyingLimit() async throws {
+        try enqueue(["tracks": [
+            ["id": "wrong", "name": "wrong", "artists_text": "Other"],
+            ["id": "accent", "name": "accent", "artists_text": "Guest ／ BÉ-YONCÉ"],
+            ["id": "long", "name": "long", "artists_text": "Beyoncé Live"]
+        ]])
+        let result = try await api.songsByArtist(name: "  Beyoncé ", limit: 1)
+        XCTAssertEqual(result.compactMap(\.qishuiID), ["accent"])
+        XCTAssertEqual(query(requests()[0])["count"], "100")
+        XCTAssertEqual(query(requests()[0])["keywords"], "Beyoncé")
+    }
+
+    func testArtistMatchingAcceptsEitherContainsDirection() async throws {
+        try enqueue(["tracks": [
+            ["id": "short", "name": "short", "artist": "Muse"],
+            ["id": "long", "name": "long", "artist": "Muse Live Orchestra"],
+            ["id": "other", "name": "other", "artist": "Other"]
+        ]])
+        let result = try await api.songsByArtist(name: "Muse Live", limit: 10)
+        XCTAssertEqual(result.compactMap(\.qishuiID), ["short", "long"])
+    }
+
+    func testArtistNoMatchesFallsBackToSearchOrderAndOriginalLimit() async throws {
+        try page(["a", "b", "c"])
+        let result = try await api.songsByArtist(name: "Unknown", limit: 2)
+        XCTAssertEqual(result.compactMap(\.qishuiID), ["a", "b"])
+    }
+
+    func testArtistZeroLimitStillPerformsSearch() async throws {
+        try page(["a"])
+        let result = try await api.songsByArtist(name: "Artist", limit: 0)
+        XCTAssertTrue(result.isEmpty)
+        XCTAssertEqual(requests().count, 1)
+        XCTAssertEqual(query(requests()[0])["count"], "100")
+    }
+
+    func testArtistUsesSearchUpperBoundBeforeFiltering() async throws {
+        try page((0..<100).map(String.init), more: true, next: 100)
+        try page((100..<205).map(String.init), more: true, next: 205)
+        let result = try await api.songsByArtist(name: "Artist", limit: 999)
+        XCTAssertEqual(result.count, 200)
+        XCTAssertEqual(requests().count, 2)
+    }
+
+    func testArtistSearchErrorPropagates() async {
+        do { _ = try await api.songsByArtist(name: "Artist", limit: 5); XCTFail("Expected error") }
+        catch { XCTAssertEqual((error as? URLError)?.code, .notConnectedToInternet) }
+        XCTAssertEqual(requests().count, 1)
+    }
 }
