@@ -2,7 +2,7 @@
 
 This isolated Swift Package mirrors the source files reconstructed directly from the supplied `Beans-2.0.3-b2-WebDAV-unsigned.ipa`; no 1.8.1 or other-version source files are used as its implementation base.
 
-GitHub Actions run [39145911492](https://github.com/XIaodou0416/Beans-Music/actions/runs/39145911492) compiled all eight package targets against the iOS 16.1 SDK and ran the WebDAV, CiliCili listen-source, and cache-state tests on macOS. All checks passed. The workflow does not build or upload an IPA and does not create a Release.
+Current source validation and remaining work are recorded in [RECOVERY_STATUS.md](RECOVERY_STATUS.md); Qishui binary anchors and behavioral boundaries are recorded in [QISHUI_RECOVERY_EVIDENCE.md](QISHUI_RECOVERY_EVIDENCE.md). Lyrics parser/cache anchors are in [LYRICS_RECOVERY_EVIDENCE.md](LYRICS_RECOVERY_EVIDENCE.md). The workflow compiles all eight library targets with the iPhoneOS SDK for the arm64-apple-ios16.1 deployment target and runs offline XCTest on macOS. It does not build or upload an IPA and does not create a Release. A successful package build is not proof of a fully reconstructed app.
 
 The complete reverse-engineering catalogs, binary-address evidence, decoders, and resource hashes are retained with the local recovery package's `Evidence/` directory. This mirror contains only the package manifest, compilable sources, localized resources, and focused XCTest target needed for the build check.
 
