@@ -1,7 +1,7 @@
 import Foundation
 
 /// Plain LRC path reconstructed from the supplied 2.0.3 build 2 executable.
-/// This does not claim karaoke parsing or translation-merging parity yet.
+/// Karaoke parsing and its line-merging path remain separate recovery work.
 public enum LyricParser_2_0_3 {
     // Exact UTF-8 literals at file offsets 0x79a050, 0x7aa290 and 0x7aa2c0.
     static let offsetPattern = #"\[offset:([+-]?\d+)\]"#
@@ -9,8 +9,10 @@ public enum LyricParser_2_0_3 {
     static let timestampRemovalPattern = #"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]"#
 
     /// Offset prelude of 0x100327ed0 followed by the plain path 0x100331fac.
-    public static func parseLRC(_ text: String) -> [LyricLine_2_0_3] {
-        parseLRC(text, offsetSeconds: offsetSeconds(in: text))
+    public static func parseLRC(_ text: String, translation: String? = nil) -> [LyricLine_2_0_3] {
+        var lines = parseLRC(text, offsetSeconds: offsetSeconds(in: text))
+        applyTranslation(translation, to: &lines)
+        return lines
     }
 
     /// First case-sensitive offset tag; milliseconds are added to each timestamp.
@@ -48,5 +50,23 @@ public enum LyricParser_2_0_3 {
         }
         // 0x100327b14 -> 0x1003355b0; comparator at 0x100335bdc.
         return lines.sorted { $0.time < $1.time }
+    }
+
+    /// 0x1003335d0: nearest translated line, strict 0.35-second tolerance.
+    static func applyTranslation(_ text: String?, to lines: inout [LyricLine_2_0_3]) {
+        guard let text, !text.isEmpty else { return }
+        let translations = parseLRC(text, offsetSeconds: offsetSeconds(in: text))
+        guard let first = translations.first else { return }
+        for index in lines.indices {
+            let time = lines[index].time
+            var nearest = first
+            for candidate in translations.dropFirst() {
+                if abs(candidate.time - time) < abs(nearest.time - time) { nearest = candidate }
+            }
+            // A nearest empty line blocks further candidates; matches are not consumed.
+            if abs(nearest.time - time) < 0.35, !nearest.text.isEmpty {
+                lines[index].translation = nearest.text
+            }
+        }
     }
 }

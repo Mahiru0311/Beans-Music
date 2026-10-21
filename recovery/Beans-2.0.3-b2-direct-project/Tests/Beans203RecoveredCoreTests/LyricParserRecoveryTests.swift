@@ -89,4 +89,68 @@ final class LyricParserRecoveryTests: XCTestCase {
         let parsed = LyricParser_2_0_3.parseLRC("[00:01]word", offsetSeconds: .nan)
         XCTAssertEqual(parsed.first?.time, 0)
     }
+
+    func testTranslationUsesItsOwnOffset() {
+        let parsed = LyricParser_2_0_3.parseLRC("[00:02]original", translation: """
+        [offset:1000]
+        [00:01]译文
+        """)
+        XCTAssertEqual(parsed.first?.translation, "译文")
+    }
+
+    func testTranslationToleranceIsStrictlyLessThan035Seconds() {
+        let accepted = LyricParser_2_0_3.parseLRC("[00:00]original", translation: "[00:00.349]near")
+        let rejected = LyricParser_2_0_3.parseLRC("[00:00]original", translation: "[00:00.350]edge")
+        XCTAssertEqual(accepted.first?.translation, "near")
+        XCTAssertNil(rejected.first?.translation)
+    }
+
+    func testEquidistantTranslationKeepsFirstSortedCandidate() {
+        let parsed = LyricParser_2_0_3.parseLRC("[00:01]original", translation: """
+        [00:01.250]later
+        [00:00.750]earlier
+        """)
+        XCTAssertEqual(parsed.first?.translation, "earlier")
+    }
+
+    func testClosestTranslationWinsOverFirstCandidate() {
+        let parsed = LyricParser_2_0_3.parseLRC("[00:01]original", translation: """
+        [00:00.700]farther
+        [00:01.100]closer
+        """)
+        XCTAssertEqual(parsed.first?.translation, "closer")
+    }
+
+    func testNearestEmptyTranslationBlocksFurtherNonemptyCandidate() {
+        let parsed = LyricParser_2_0_3.parseLRC("[00:01]original", translation: """
+        [00:01]
+        [00:01.100]nearby
+        """)
+        XCTAssertNil(parsed.first?.translation)
+    }
+
+    func testTranslationCanBeReusedBySeveralOriginalLines() {
+        let parsed = LyricParser_2_0_3.parseLRC("[00:01][00:01.100]original", translation: "[00:01]shared")
+        XCTAssertEqual(parsed.map { $0.translation }, ["shared", "shared"])
+    }
+
+    func testTranslationMergePreservesIdentityWordsAndExistingUnmatchedTranslation() {
+        let id = UUID()
+        var lines = [LyricLine_2_0_3(id: id, time: 1, text: "original", translation: "old", words: [])]
+        LyricParser_2_0_3.applyTranslation("[00:10]far away", to: &lines)
+        XCTAssertEqual(lines[0].translation, "old")
+        LyricParser_2_0_3.applyTranslation("[00:01]new", to: &lines)
+        XCTAssertEqual(lines[0].translation, "new")
+        XCTAssertEqual(lines[0].id, id)
+        XCTAssertEqual(lines[0].text, "original")
+        XCTAssertEqual(lines[0].words?.count, 0)
+    }
+
+    func testNilEmptyOrUntimedTranslationLeavesLinesUnchanged() {
+        for translation: String? in [nil, "", "plain translation"] {
+            let parsed = LyricParser_2_0_3.parseLRC("[00:01]original", translation: translation)
+            XCTAssertEqual(parsed.count, 1)
+            XCTAssertNil(parsed[0].translation)
+        }
+    }
 }
