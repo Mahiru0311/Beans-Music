@@ -45,7 +45,7 @@ extension QishuiAPI_2_0_3 {
         let object = try await requestObject("/comment", query: [
             "track_id": id, "count": String(min(50, max(1, limit)))
         ])
-        let comments = Self.dictionaryArray(object["comments"] ?? object["data"] ?? object)
+        let comments = dictionaryArray(object["comments"] ?? object["data"] ?? object)
             .compactMap { Self.makeComment($0) }
         return SongCommentPage_2_0_3(total: comments.count, hot: [], comments: comments)
     }
