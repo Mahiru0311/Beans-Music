@@ -843,7 +843,7 @@ public struct MiniPlayerLyricLine_2_0_3 {
     /// Original field: _lyricOffset; encoding: <unresolved>; decoded typeref: symbolic@0xb0a40cySdG; flags: 0x0.
     public var _lyricOffset: Any = ()
     /// Original field: lyrics; encoding: <unresolved>; decoded typeref: Saysymbolic@0xb0991cG; flags: 0x0.
-    public var lyrics: Any = ()
+    public var lyrics: [LyricLine_2_0_3] = []
     /// Original field: artist; encoding: SS; decoded typeref: SS; flags: 0x0.
     public var artist: String = ""
     /// Original field: isInline; encoding: Sb; decoded typeref: Sb; flags: 0xffdf636a.

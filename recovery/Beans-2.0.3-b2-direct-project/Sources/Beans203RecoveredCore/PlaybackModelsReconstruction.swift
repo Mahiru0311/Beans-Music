@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// Original nominal: SongSource; IPA exposes eight cases.
 public enum SongSource_2_0_3: CaseIterable, Hashable, Sendable {
@@ -6,7 +7,7 @@ public enum SongSource_2_0_3: CaseIterable, Hashable, Sendable {
 }
 
 /// Original nominal: PlaybackClock; fields are `Published<Double>` backing values.
-public final class PlaybackClock_2_0_3 {
+public final class PlaybackClock_2_0_3: ObservableObject {
     @Published public var progress: Double = 0
     @Published public var duration: Double = 0
     public init() {}
