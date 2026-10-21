@@ -286,4 +286,29 @@ final class QishuiSearchRecoveryTests: XCTestCase {
         catch { XCTAssertEqual((error as? URLError)?.code, .notConnectedToInternet) }
         XCTAssertEqual(requests().count, 1)
     }
+
+    func testArtistAlbumSearchOverfetchesAtLeast160SongsBeforeGrouping() async throws {
+        let first = (0..<100).map { ["id": String($0), "name": String($0), "artist": "Artist", "album_name": "Album 10"] }
+        try enqueue(["tracks": first, "has_more": true, "next_cursor": 100])
+        try enqueue(["tracks": [["id": "last", "name": "last", "artist": "Artist", "album_name": "Album 2"]]])
+        let result = try await api.albumsByArtist(name: "Artist", limit: 1)
+        XCTAssertEqual(result.map { $0.name }, ["Album 2"])
+        XCTAssertEqual(requests().count, 2)
+        XCTAssertEqual(query(requests()[1])["count"], "60")
+    }
+
+    func testArtistAlbumSearchUsesFourTimesRequestedLimit() async throws {
+        try page((0..<100).map(String.init), more: true, next: 100)
+        try page(["last"])
+        let result = try await api.albumsByArtist(name: "Artist", limit: 45)
+        XCTAssertTrue(result.isEmpty)
+        XCTAssertEqual(query(requests()[1])["count"], "80")
+    }
+
+    func testArtistAlbumZeroLimitStillSearches() async throws {
+        try enqueue(["tracks": [["id": "one", "name": "one", "album_name": "Album"]]])
+        let result = try await api.albumsByArtist(name: "Artist", limit: 0)
+        XCTAssertTrue(result.isEmpty)
+        XCTAssertEqual(requests().count, 1)
+    }
 }

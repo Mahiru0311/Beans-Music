@@ -27,4 +27,33 @@ extension QishuiAPI_2_0_3 {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
     }
+
+    /// 0x100564d38 / 0x100564d58: overfetch songs, then project album groups.
+    /// As in the binary, limit must be nonnegative and limit * 4 must fit Int.
+    public func albumsByArtist(name: String, limit: Int) async throws -> [Album_2_0_3] {
+        let songs = try await songsByArtist(name: name, limit: max(limit * 4, 160))
+        return Self.albums(from: songs, limit: limit)
+    }
+
+    /// Grouping 0x10056de7c; projection 0x1005725bc; comparison 0x10057467c.
+    static func albums(from songs: [Song_2_0_3], limit: Int) -> [Album_2_0_3] {
+        var groups: [String: [Song_2_0_3]] = [:]
+        for song in songs {
+            let name = song.album.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { continue }
+            let key = normalizedArtistName(name) + "|" + normalizedArtistName(song.artists)
+            groups[key, default: []].append(song)
+        }
+        let albums = groups.values.compactMap { group -> Album_2_0_3? in
+            guard let first = group.first else { return nil }
+            // Identity/display use the first song's original strings, not the normalized key.
+            return Album_2_0_3(
+                id: "qishui-album-" + String(stableID(first.album + "|" + first.artists)),
+                name: first.album, artistName: first.artists, coverURL: first.coverURL,
+                source: .qishui, trackCount: group.count
+            )
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        // Equal-name order inherits dictionary enumeration; the binary has no tie breaker.
+        return Array(albums.prefix(limit))
+    }
 }
