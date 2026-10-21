@@ -823,11 +823,17 @@ public struct LyricDiagnosticReport_2_0_3 {
 
 /// Original nominal: LyricsCache; kind: class; descriptor: 0x7c7d58; fields: 2.
 public final class LyricsCache_2_0_3 {
-    /// Original field: prefix; encoding: SS; decoded typeref: SS; flags: 0x0.
-    public var prefix: String = ""
-    /// Original field: maxAge; encoding: Sd; decoded typeref: Sd; flags: 0xffdf4a40.
-    public var maxAge: Double = 0
-    public init() {}
+    /// Original static object at 0x100b3d238; prefix is stored at +0x10.
+    public var prefix: String = "beans.lyrics.cache.v1."
+    public var maxAge: Double = 1_209_600
+    let defaults: UserDefaults
+    let now: () -> Date
+
+    /// Dependency injection is a reconstruction seam; the original uses standard defaults and Date().
+    public init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init) {
+        self.defaults = defaults
+        self.now = now
+    }
 }
 
 /// Original nominal: MiniPlayerLyricLine; kind: struct; descriptor: 0x7c7e7c; fields: 5.

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Descriptive reconstruction names for the byte tags tested by 0x100332514.
-/// Provider-specific source enum names have not been established.
+/// Cache tables map tags 0/1/2 to neteaseYRC/qqQRC/kugouKRC; descriptive case names are retained.
 public enum KaraokeSyntax_2_0_3: Int {
     case parenthesizedAbsolute = 0
     case parenthesizedAutomatic = 1
