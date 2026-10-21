@@ -15,7 +15,19 @@ Updated 2026-10-21. These behaviors are recovered from the supplied unencrypted 
 
 The duration merge uses checked Double-to-Int conversion after flooring. An infinite or out-of-Int-range current value traps when a non-nil duration is merged, as does overflowing Int arithmetic. The reconstruction retains normal Swift checked arithmetic rather than adding undocumented saturating behavior. The focused XCTest suite does not deliberately crash its runner to test traps.
 
-The original routines use `UserDefaults.standard`; the recovered static methods on PlayerManager accept an explicit defaults instance for isolated tests and default to `.standard`. These routines do not update the in-memory published statistics fields. Notification-driven refresh and ongoing audio session accumulation remain separate work.
+The original routines use `UserDefaults.standard`; the recovered static methods on PlayerManager accept an explicit defaults instance for isolated tests and default to `.standard`. These routines do not update the in-memory published statistics fields. Notification registration remains separate work.
+
+## Listening session accumulation
+
+- `0x10037ff28` samples `ProcessInfo.systemUptime` only if `listeningSegmentStartedUptime` is nil. Repeated starts preserve the existing timestamp.
+- `0x10037f99c` returns immediately if no segment exists. Otherwise it adds a strictly positive uptime delta to `pendingListeningDuration`, clears the segment, then calls `0x10037cf18` even if that delta was nonpositive. NaN deltas fail the comparison.
+- `0x10037cf18` returns unless pending duration is strictly positive. It adds pending duration to the in-memory listening duration, resets pending to zero, persists a nonnegative/NaN-to-zero view of the updated total using the instance's defaults, then samples uptime for `lastListeningPublishUptime`. The in-memory total itself is not clamped.
+- `0x1003921fc` requires both the manager's playing flag and AVPlayer time-control status 2. Otherwise it ends the segment and clears `lastListeningProgress`/`lastListeningSongKey` through `0x10037fa4c`. While playing it begins a segment if needed, accumulates each positive delta, advances the segment start only for a positive delta, and flushes when a separately sampled uptime is at least 15 seconds past the last publication. The assembly's `b.ge` rejects an unordered/NaN threshold comparison.
+- The paths use elapsed system uptime, not the song position or playback rate. Testable clock closures preserve separate begin/delta/threshold/publication samples. Tests cover exact 15-second equality, pause gaps, repeated starts, skipped flushes and persisted-versus-in-memory clamping.
+
+The original Combine storage key path at `0x10077f550` points to the field-offset slot `0x100b3a110`; its wrapped-property path at `0x10077f830` names getter `0x1003787e4`. The reconstruction currently restores state and storage behavior on the metadata-derived PlayerManager; its full ObservableObject publication and audio callback registration are not yet reconstructed.
+
+An exploratory export at `0x10037cb00` was inside a function and is excluded. The correct LC_FUNCTION_STARTS entry is `0x10037caec`; its weak-self notification callback refreshes duration against persisted duration and sends objectWillChange. The Ghidra database boundary was repaired and the exact function was exported. That callback is evidence, not an implemented notification path.
 
 ## Validation and evidence
 
