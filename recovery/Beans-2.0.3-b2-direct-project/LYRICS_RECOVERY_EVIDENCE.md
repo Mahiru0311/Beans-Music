@@ -43,6 +43,14 @@ Raw regex bytes, decoded double constants and raw enum string words are recorded
 - 0x100375e68 returns the current queue element only for a valid nonnegative index. 0x10040cca4 applies parsed lines only when the current playback key equals the request key and the result array is nonempty. Rejected results leave displayed lyrics unchanged. No generation-token check is added to this observed gate.
 - PlayerView descriptor 0x7c89bc is confirmed through metadata accessor 0x100421924. The recovered application policy is extracted into a testable helper; diagnostics and native SwiftUI state wiring are still separate work.
 
+## Mini-player lyric text
+
+- The MiniPlayerLyricLine metadata accessor at `0x100321ef8` resolves descriptor `0x7c7e7c`. The caller at `0x10031fd88` passes the song artist, lyric lines and inline flag; it creates the PlaybackClock environment object and `beans.lyricOffset` AppStorage with a zero default.
+- `0x100320884` adds clock progress and lyric offset, selects zero for negative or NaN adjusted time, and binary-searches the existing array for its rightmost timestamp at or before that time. It neither sorts nor filters. Duplicate timestamps select the last matching element. No match falls back to the artist; matching empty text stays empty. Translation and word payloads do not affect this component.
+- `0x100320a18` uses regular system text at 8 points inline / 10 points otherwise, secondary foreground style, one line, trailing truncation, and an ease-in-out animation of 0.25 seconds keyed on the text.
+- `MiniPlayerLyricLineView_2_0_3` is a recovered component, not the entire mini-player screen or its enclosing layout. The type spelling, helper API and injection seams are reconstruction choices.
+- Source checkpoint `bcb92f8` adds 12 selection tests; run `39556162533` compiled all targets and passed 204 total tests. Raw local exports are indexed in `Evidence/Beans-2.0.3-b2-player-arm64-manifest.json`.
+
 ## Validation and remaining scope
 
 See `RECOVERY_STATUS.md` for the exact tested commit and completed GitHub run. Focused tests cover ordinary and boundary behavior, malformed data, cache persistence, raw format mapping, timing, translations and UTF-16 spans. The tests are offline and exercise reconstructed Swift; they do not execute the original executable as an oracle. Compilation and passing tests therefore do not establish complete installed-app equivalence.

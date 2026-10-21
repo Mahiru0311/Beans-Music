@@ -4,10 +4,10 @@ Updated 2026-10-21. This is an independently reconstructed Swift Package based o
 
 ## Verified source checkpoint
 
-- Source commit: f45f06658aea28a60dd2131ad0de516272c15aa2.
-- GitHub Actions run: 39555100145; completed 2026-10-21T06:25:38Z; success.
+- Source commit: bcb92f8fd9426606024a8f600efbe5b1e3825fc1.
+- GitHub Actions run: 39556162533; completed 2026-10-21T06:35:32Z; success.
 - Eight library targets compiled with the iPhoneOS SDK for arm64-apple-ios16.1.
-- Offline macOS XCTest: 192 tests, 0 failures.
+- Offline macOS XCTest: 204 tests, 0 failures.
 - Workflow: .github/workflows/validate-direct-reconstruction.yml. It runs package description, compilation and tests; no IPA packaging, signing, upload or Release.
 - Local evidence: Evidence/Beans-2.0.3-b2-recovery-validation.json and Evidence/Validation/ contain exact revisions, run metadata, logs and log hashes. Documentation commits after this checkpoint do not imply a new source test.
 
@@ -18,9 +18,11 @@ Updated 2026-10-21. This is an independently reconstructed Swift Package based o
 - LRC timestamps and offsets, translation matching, three karaoke formats, word-to-line matching, concrete LyricLine and LyricWord models.
 - LyricsCache JSON persistence, percent-encoded storage keys, strict 14-day expiry and the original empty-content gates.
 - Song playback identity, provider-specific lyric cache keys, current-song lookup and the stale lyric application guard.
+- Mini-player lyric binary search, offset/clamping, artist fallback and focused SwiftUI text styling.
+- Persisted listening duration/count reads and monotonic remote-total merge. This addition has 17 new focused tests and awaits its own Apple CI checkpoint.
 - Byte-for-byte localization resources from the IPA; original type/field metadata retained separately.
 
-See QISHUI_RECOVERY_EVIDENCE.md and LYRICS_RECOVERY_EVIDENCE.md for function addresses, exact constants, preserved edge cases and explicitly marked reconstruction choices. Public API names and dependency-injection seams are not claimed to be original source spelling.
+See QISHUI_RECOVERY_EVIDENCE.md, LYRICS_RECOVERY_EVIDENCE.md and PLAYBACK_RECOVERY_EVIDENCE.md for function addresses, exact constants, preserved edge cases and explicitly marked reconstruction choices. Public API names and dependency-injection seams are not claimed to be original source spelling.
 
 ## Still incomplete
 
@@ -42,6 +44,7 @@ The 678 main-app and 2,195 framework nominal catalogs are metadata inventories, 
 | 658c7f2 | 39553657725 | 166 | 0 |
 | 6f98206 | 39554434399 | 182 | 0 |
 | f45f066 | 39555100145 | 192 | 0 |
+| bcb92f8 | 39556162533 | 204 | 0 |
 
 ## Input identity
 
