@@ -1006,6 +1006,7 @@ struct DiscoverView: View {
         }
     }
 
+    @ViewBuilder
     private var homePlatformSelectionMenu: some View {
         let current = SearchProvider(rawValue: homeSourceRaw) ?? homeProviders.first ?? .netease
         ForEach(homeProviders) { provider in

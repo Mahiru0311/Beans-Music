@@ -192,9 +192,6 @@ struct ProfileView: View {
             guard !didRefreshProfileAccount else { return }
             didRefreshProfileAccount = true
             await auth.refreshAccount()
-            if false {
-                await qqAuth.fetchVIPStatus()
-            }
         }
         .background {
             HighRefreshConfigurator()

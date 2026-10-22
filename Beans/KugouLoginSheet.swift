@@ -1,5 +1,15 @@
 import SwiftUI
 
+/// 酷狗扫码登录状态（原定义随已删的网易云 LoginView 一起被删，Co 在此恢复，与 KugouLoginSheet 用法一致）。
+enum QRStatus: Equatable {
+    case loading
+    case waiting
+    case scanned
+    case success
+    case expired
+    case error(String)
+}
+
 struct KugouLoginSheet: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.dismiss) private var dismiss

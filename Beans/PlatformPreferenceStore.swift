@@ -19,7 +19,7 @@ final class PlatformPreferenceStore: ObservableObject {
     private init() {
         let saved = UserDefaults.standard.stringArray(forKey: Self.key) ?? []
         if saved.isEmpty {
-            selectedRaw = [.kugou]
+            selectedRaw = ["kugou"]
         } else {
             selectedRaw = Set(saved.map(Self.migrateRawValue))
         }
@@ -71,7 +71,7 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     func resetToDefault() {
-        selectedRaw = [.kugou]
+        selectedRaw = ["kugou"]
         resetOrder()
         save()
     }
@@ -97,7 +97,7 @@ final class PlatformPreferenceStore: ObservableObject {
         let allowed = Set(SearchProvider.allCases.map(\.rawValue))
         selectedRaw = selectedRaw.intersection(allowed)
         if selectedRaw.isEmpty {
-            selectedRaw = [.kugou]
+            selectedRaw = ["kugou"]
         }
     }
 
