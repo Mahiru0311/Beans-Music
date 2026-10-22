@@ -284,7 +284,7 @@ struct ProfileView: View {
                                 .foregroundStyle(Color.beansLabel)
                                 .lineLimit(1)
                             if auth.isLoggedIn, let badge = auth.user?.vipBadge {
-                                VIPBadgeView(text: badge)
+                                VIPBadgeView(text: badge, animated: true)
                             }
                         }
                         Text(accountStatusLine)
@@ -337,7 +337,7 @@ struct ProfileView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
             if let badge {
-                VIPBadgeView(text: badge)
+                VIPBadgeView(text: badge, animated: true)
             }
         }
         .padding(.horizontal, 10)

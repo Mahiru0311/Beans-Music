@@ -547,6 +547,12 @@ struct CoverImage: View {
 
 struct VIPBadgeView: View {
     let text: String
+    /// Co 自有轻动效：仅“我的”页传入 true 时开启；其他调用点默认静态，不耗电。
+    /// 动效为 2.8 秒一次的细微扫光（白光带横过徽标），无常驻定时器，视图消失即停，
+    /// 并遵循系统“减弱动态效果”设置；过期/无 VIP 时不传入 true，故不显示动态。
+    var animated: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shimmerOn = false
 
     var body: some View {
         Text(text)
@@ -557,6 +563,30 @@ struct VIPBadgeView: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
             .background(Capsule().fill(text == "SVIP" ? Color(red: 0.85, green: 0.62, blue: 0.18) : Color(red: 0.93, green: 0.25, blue: 0.22)))
+            .overlay {
+                if animated && !reduceMotion {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [.clear, .white.opacity(0.35), .clear],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+                        .frame(width: 14)
+                        .offset(x: shimmerOn ? 14 : -14)
+                        .clipShape(Capsule())
+                        .opacity(shimmerOn ? 1 : 0)
+                }
+            }
+            .clipShape(Capsule())
+            .onAppear {
+                guard animated && !reduceMotion else { return }
+                shimmerOn = false
+                withAnimation(.linear(duration: 2.8).repeatForever(autoreverses: false)) {
+                    shimmerOn = true
+                }
+            }
+            .onDisappear { shimmerOn = false }
     }
 }
 
