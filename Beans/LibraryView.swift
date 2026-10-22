@@ -69,7 +69,6 @@ struct LibraryView: View {
     @State private var showDeleteConfirm = false
     @State private var source: LibraryProvider = .netease
     @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
-    @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
     @State private var qqPlaylists: [Playlist] = []
     @State private var qqLoading = false
     @State private var qqSavedAt = Date.distantPast
@@ -150,9 +149,6 @@ struct LibraryView: View {
                         appleHeader
                     } else {
                         header
-                    }
-                    if !hidePlatformPicker {
-                        providerPicker
                     }
                     // 板块按用户自定义顺序渲染（可拖拽排序）
                     ForEach(libraryOrder, id: \.self) { key in
@@ -502,46 +498,6 @@ struct LibraryView: View {
         }
     }
 
-    /// 平台选择（网易云 / QQ音乐，样式与主页一致）
-    private var providerPicker: some View {
-        HStack(spacing: 4) {
-            ForEach(libraryProviders) { p in
-                Button {
-                    BeansHaptics.tap()
-                    if source != p { source = p }
-                } label: {
-                    HStack(spacing: 6) {
-                        if let brandImageName = p.brandImageName {
-                            Image(brandImageName)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 16, height: 16)
-                        } else {
-                            Image(systemName: p.icon)
-                                .font(.system(size: 11, weight: .semibold))
-                        }
-                        Text(LocalizedStringKey(p.rawValue))
-                            .font(BeansFont.appFont(13, .semibold))
-                    }
-                    .foregroundStyle(source == p ? Color.white : Color.beansComment)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background {
-                        if source == p {
-                            Capsule().fill(p.tint)
-                        } else {
-                            Capsule().fill(.clear)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-                .background { BeansSurface(shape: Capsule()) }
-                .clipShape(Capsule())
-        .beansCardShadow(radius: isNativeClean ? 1 : 6, y: isNativeClean ? 0.5 : 2)
-    }
 
     private func refreshCurrentSource(force: Bool) async {
         switch source {

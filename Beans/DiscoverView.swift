@@ -24,7 +24,6 @@ struct DiscoverView: View {
     @State private var navigationPath: [DiscoverRoute] = []
     @State private var legacyRoute: DiscoverRoute?
     @State private var recommendationActionLoading: String?
-    @State private var showHomePlatformMenu = false
     @State private var showSectionSort = false
     /// 主页板块顺序（每日推荐 / 排行榜 / 歌单广场，可自定义）
     @State private var homeOrder = SectionOrderStore.load(SectionOrderStore.homeKey, defaults: SectionOrderStore.homeDefaults)
@@ -63,9 +62,7 @@ struct DiscoverView: View {
     @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
-    @AppStorage("beans.homePlatformHintDismissed") private var homePlatformHintDismissed = false
     @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
-    @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
     private var homeProviders: [SearchProvider] { platformPrefs.enabledSearchProviders }
@@ -120,9 +117,6 @@ struct DiscoverView: View {
                     ScrollViewReader { proxy in
                     VStack(alignment: .leading, spacing: isNativeClean ? 34 : 26) {
                         header
-                        if !hidePlatformPicker {
-                            providerPicker
-                        }
                         if let errorMessage {
                             ErrorStateView(message: errorMessage) {
                                 Task { await load(force: true) }
@@ -162,9 +156,6 @@ struct DiscoverView: View {
             .refreshable {
                 guard !homeRenderingPaused else { return }
                 await load(force: true)
-            }
-            .confirmationDialog("主页平台", isPresented: $showHomePlatformMenu, titleVisibility: .visible) {
-                homePlatformSelectionMenu
             }
             .task(id: "\(source.rawValue)-\(homeRenderingPaused)") {
                 guard !homeRenderingPaused else { return }
@@ -306,30 +297,10 @@ struct DiscoverView: View {
                                     )
                                     .fixedSize(horizontal: false, vertical: true)
                                     .offset(y: greetingLineOffsetY(index))
-                                if index == 0 && isNativeClean && !homePlatformHintDismissed {
-                                    Button {
-                                        homePlatformHintDismissed = true
-                                        UserDefaults.standard.set(true, forKey: "beans.homePlatformHintDismissed")
-                                    } label: {
-                                        Text("长按这里可切换平台")
-                                            .font(BeansFont.appFont(11, .medium))
-                                            .foregroundStyle(Color.beansComment)
-                                            .fixedSize()
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel("关闭平台切换提示")
-                                }
                             }
                         }
                     }
                     .contentShape(Rectangle())
-                    .simultaneousGesture(
-                        LongPressGesture(minimumDuration: 0.55)
-                            .onEnded { _ in
-                                BeansHaptics.select()
-                                showHomePlatformMenu = true
-                            }
-                    )
                     if !homeHideUsername {
                         Group {
                             if let nickname = auth.user?.nickname, !nickname.isEmpty {
@@ -364,52 +335,6 @@ struct DiscoverView: View {
         .frame(minHeight: homeGreetingHeight > 0 ? homeGreetingHeight : nil, alignment: .top)
     }
 
-    /// 平台选择（网易云 / QQ音乐 / 酷狗音乐，样式与搜索页一致）
-    private var providerPicker: some View {
-        HStack(spacing: 4) {
-            ForEach(homeProviders) { p in
-                Button {
-                    BeansHaptics.tap()
-                    if source != p { homeSourceRaw = p.rawValue }
-                } label: {
-                    HStack(spacing: 6) {
-                        if let imageName = p.brandImageName {
-                            Image(imageName)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 14, height: 14)
-                        } else {
-                            Image(systemName: p.icon)
-                                .font(.system(size: 11, weight: .semibold))
-                        }
-                        Text(LocalizedStringKey(p.rawValue))
-                            .font(BeansFont.appFont(13, .semibold))
-                    }
-                    .foregroundStyle(source == p ? Color.white : Color.beansComment)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background {
-                        if source == p {
-                            Capsule().fill(p.tint)
-                        } else {
-                            Capsule().fill(.clear)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background {
-            if isNativeClean {
-                BeansSurface(shape: Capsule())
-            } else {
-                BeansGlass(shape: Capsule())
-            }
-        }
-        .clipShape(Capsule())
-        .beansCardShadow(radius: isNativeClean ? 2 : 6, y: isNativeClean ? 1 : 2)
-    }
 
     private var greeting: String {
         let custom = homeGreetingText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1006,18 +931,6 @@ struct DiscoverView: View {
         }
     }
 
-    @ViewBuilder
-    private var homePlatformSelectionMenu: some View {
-        let current = SearchProvider(rawValue: homeSourceRaw) ?? homeProviders.first ?? .netease
-        ForEach(homeProviders) { provider in
-            Button {
-                BeansHaptics.select()
-                homeSourceRaw = provider.rawValue
-            } label: {
-                Label(LocalizedStringKey(provider.rawValue), systemImage: provider == current ? "checkmark" : provider.icon)
-            }
-        }
-    }
 
     // MARK: - 歌单广场（官方分类 + 双列网格）
 
@@ -1929,7 +1842,7 @@ private struct HomeUnifiedSearchSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .navigationTitle("全平台搜索")
+            .navigationTitle("搜索")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1965,7 +1878,7 @@ private struct HomeUnifiedSearchSheet: View {
             SearchTextField(
                 text: $keyword,
                 controller: searchController,
-                placeholder: beansLocalized("搜索三平台歌曲", "Search across three platforms"),
+                placeholder: beansLocalized("搜索酷狗歌曲", "Search Kugou songs"),
                 textColor: UIColor.beansLabel,
                 onSubmit: { text in
                     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2050,7 +1963,7 @@ private struct HomeUnifiedSearchSheet: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        Text(beansLocalized("找到 \(results.count) 首 · 全平台", "Found \(results.count) songs · All Platforms"))
+                        Text(beansLocalized("找到 \(results.count) 首", "Found \(results.count) songs"))
                             .font(BeansFont.appFont(12))
                             .foregroundStyle(Color.beansComment)
                             .lineLimit(1)
@@ -2117,7 +2030,7 @@ private struct HomeUnifiedSearchSheet: View {
             guard !Task.isCancelled else { return }
             results = deduplicated(merged)
             if results.isEmpty {
-                errorMessage = "三个平台都没有返回可展示的歌曲"
+                errorMessage = "酷狗没有返回可展示的歌曲"
             } else {
                 BeansHaptics.success()
             }

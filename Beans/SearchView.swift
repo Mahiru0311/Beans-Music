@@ -90,7 +90,6 @@ struct SearchView: View {
     @EnvironmentObject private var auth: AuthStore
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
 
     @State private var keyword = ""
     @AppStorage("beans.search.provider") private var providerRaw = SearchProvider.netease.rawValue
@@ -135,12 +134,6 @@ struct SearchView: View {
                 searchField
                     .padding(.horizontal, 20)
                     .padding(.bottom, 10)
-
-                if !hidePlatformPicker {
-                    providerPicker
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
-                }
 
                 contentArea
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -339,44 +332,6 @@ struct SearchView: View {
 
     // MARK: - 平台选择（等宽分段控件）
 
-    private var providerPicker: some View {
-        HStack(spacing: 4) {
-            ForEach(searchProviders) { p in
-                Button {
-                    BeansHaptics.tap()
-                    if provider != p { provider = p }
-                } label: {
-                    HStack(spacing: 6) {
-                        if let imageName = p.brandImageName {
-                            Image(imageName)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 14, height: 14)
-                        } else {
-                            Image(systemName: p.icon)
-                                .font(.system(size: 11, weight: .semibold))
-                        }
-                        Text(LocalizedStringKey(p.rawValue))
-                            .font(BeansFont.appFont(13, .semibold))
-                    }
-                    .foregroundStyle(provider == p ? Color.white : Color.beansComment)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background {
-                        if provider == p {
-                            Capsule().fill(p.tint)
-                        } else {
-                            Capsule().fill(.clear)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .background { BeansSurface(shape: Capsule()) }
-        .clipShape(Capsule())
-    }
 
     // MARK: - 分类选择（歌曲 / 歌手 / 专辑）
 
@@ -436,7 +391,7 @@ struct SearchView: View {
                     historyStore.record(word)
                     Task { await startSearch(word) }
                 }
-                SectionHeader(title: provider == .netease ? "网易云音乐热搜" : provider == .qq ? "QQ音乐热搜" : "酷狗音乐热搜")
+                SectionHeader(title: "酷狗音乐热搜")
                 if hotWords.isEmpty {
                     LoadingStateView()
                 } else {
@@ -547,7 +502,7 @@ struct SearchView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         HStack(spacing: 8) {
-                            Text(beansLocalized("找到 \(songResults.count) 首 · \(provider.rawValue)", "Found \(songResults.count) songs · \(beansPlatformName(provider))"))
+                            Text(beansLocalized("找到 \(songResults.count) 首", "Found \(songResults.count) songs"))
                                 .font(BeansFont.appFont(12))
                                 .foregroundStyle(Color.beansComment)
                                 .lineLimit(1)
@@ -613,7 +568,7 @@ struct SearchView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         HStack {
-                            Text(beansLocalized("找到 \(artistResults.count) 位 · \(provider.rawValue)", "Found \(artistResults.count) artists · \(beansPlatformName(provider))"))
+                            Text(beansLocalized("找到 \(artistResults.count) 位", "Found \(artistResults.count) artists"))
                                 .font(BeansFont.appFont(12))
                                 .foregroundStyle(Color.beansComment)
                                 .lineLimit(1)
@@ -686,7 +641,7 @@ struct SearchView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         HStack {
-                            Text(beansLocalized("找到 \(albumResults.count) 张 · \(provider.rawValue)", "Found \(albumResults.count) albums · \(beansPlatformName(provider))"))
+                            Text(beansLocalized("找到 \(albumResults.count) 张", "Found \(albumResults.count) albums"))
                                 .font(BeansFont.appFont(12))
                                 .foregroundStyle(Color.beansComment)
                                 .lineLimit(1)
