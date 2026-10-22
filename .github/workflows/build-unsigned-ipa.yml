@@ -1,6 +1,8 @@
 name: Build Unsigned IPA
 
 on:
+  push:
+    branches: [coco]
   workflow_dispatch:
     inputs:
       publish_release:
