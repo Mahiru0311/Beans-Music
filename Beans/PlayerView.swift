@@ -1416,7 +1416,7 @@ struct PlayerView: View {
                     CoverImage(url: song?.coverURL, size: size, cornerRadius: coverRadius, emptyHint: player.isBuffering ? "等待开始播放…" : nil)
                         .matchedGeometryEffect(id: "playerCover", in: coverNS)
                         .id(song?.identityKey ?? "empty-cover")
-                        .modifier(CoverSpin(enabled: circularCover && circularCoverSpin, isPlaying: playerVisualsActive))
+                        .modifier(CoverSpin(enabled: coverPlayerStyle == .vinyl && circularCoverSpin, isPlaying: playerVisualsActive))
                         .overlay {
                             RoundedRectangle(cornerRadius: coverRadius, style: .continuous)
                                 .strokeBorder(.white.opacity(0.28), lineWidth: 1)
@@ -1544,7 +1544,7 @@ struct PlayerView: View {
                         )
                         .frame(width: panelWidth - 28, height: coverHeight)
                         .clipped()
-                        .modifier(CoverSpin(enabled: circularCover && circularCoverSpin, isPlaying: playerVisualsActive))
+                        .modifier(CoverSpin(enabled: coverPlayerStyle == .vinyl && circularCoverSpin, isPlaying: playerVisualsActive))
                         .scaleEffect(coverSwitchPulse ? 0.96 : 1)
                         .blur(radius: coverSwitchPulse ? 1.5 : 0)
                         .rotation3DEffect(.degrees(Double(coverDrag.height / -24)), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
@@ -1835,7 +1835,7 @@ struct PlayerView: View {
                 } label: {
                     CoverImage(url: song?.coverURL, size: 48, cornerRadius: circularCover ? 24 : 12)
                         .matchedGeometryEffect(id: "playerCover", in: coverNS)
-                        .modifier(CoverSpin(enabled: circularCover && circularCoverSpin, isPlaying: playerVisualsActive))
+                        .modifier(CoverSpin(enabled: coverPlayerStyle == .vinyl && circularCoverSpin, isPlaying: playerVisualsActive))
                         .overlay {
                             RoundedRectangle(cornerRadius: circularCover ? 24 : 12, style: .continuous)
                                 .strokeBorder(.white.opacity(0.2), lineWidth: 1)
@@ -4668,7 +4668,7 @@ struct CoverSpin: ViewModifier {
 
     func body(content: Content) -> some View {
         if enabled {
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !isPlaying)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isPlaying)) { context in
                 let angle = (context.date.timeIntervalSinceReferenceDate * 15)
                     .truncatingRemainder(dividingBy: 360)
                 return content
