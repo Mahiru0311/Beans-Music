@@ -3,9 +3,9 @@ import Foundation
 
 /// Co Live Activity 管理器：把 2.0.3 的 BeansNowPlayingLiveActivity 移植为酷狗单平台版。
 /// 不依赖网易云/QQ/CiliCili，只接收 PlayerManager 传来的当前歌曲与播放态。
-/// 调用方（PlayerManager）必须用 `if #available(iOS 16.1, *)` 包裹调用，
-/// 因为主 App 的部署目标低于 16.1，ActivityKit 只在 iOS 16.1+ 可用。
-@available(iOS 16.1, *)
+/// 调用方（PlayerManager）必须用 `if #available(iOS 16.2, *)` 包裹调用，
+/// 因为主 App 的部署目标低于 16.2，ActivityKit 只在 iOS 16.2+ 可用。
+@available(iOS 16.2, *)
 @MainActor
 final class CocoNowPlayingLiveActivity {
     static let shared = CocoNowPlayingLiveActivity()

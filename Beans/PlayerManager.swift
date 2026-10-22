@@ -1059,8 +1059,10 @@ final class PlayerManager: NSObject, ObservableObject {
 
     private func updateNowPlaying() {
         guard let song = currentSong else {
-            if #available(iOS 16.1, *) {
-                CocoNowPlayingLiveActivity.shared.end()
+            if #available(iOS 16.2, *) {
+                Task { @MainActor in
+                    CocoNowPlayingLiveActivity.shared.end()
+                }
             }
             return
         }
@@ -1107,8 +1109,10 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         // Live Activity 同步：管理器内部按歌 key + 播放态去重，频繁调用不产生重复请求。
-        if #available(iOS 16.1, *) {
-            CocoNowPlayingLiveActivity.shared.update(song: song, isPlaying: isPlaying)
+        if #available(iOS 16.2, *) {
+            Task { @MainActor in
+                CocoNowPlayingLiveActivity.shared.update(song: song, isPlaying: isPlaying)
+            }
         }
     }
 

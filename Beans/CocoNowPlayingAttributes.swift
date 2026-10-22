@@ -6,7 +6,7 @@ import Foundation
 /// 原因：封面大图塞进 Activity 状态会超限、且扩展进程读不到主 App 的图片缓存；
 /// 封面由系统 Now Playing（MPNowPlayingInfoCenter）负责，见 PlayerManager.updateNowPlaying；
 /// 进度每秒更新会触 ActivityKit 限频且费电，进度由系统 Now Playing 与锁屏媒体控制负责。
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 struct CocoNowPlayingAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         let isPlaying: Bool
