@@ -77,7 +77,8 @@ struct RootView: View {
 
     var body: some View {
         let _ = theme.accent
-        let rootTabs = TabView(selection: $selection) {
+        // 旧系统路径：保留旧式 .tabItem 标签栏（iOS 26 以下走自绘胶囊底栏）。
+        let legacyTabView = TabView(selection: $selection) {
             DiscoverView()
                 .tabItem { Label(tabLabelsVisible ? "主页" : "", systemImage: "house.fill") }
                 .tag(RootTab.discover)
@@ -92,10 +93,6 @@ struct RootView: View {
                 .tag(RootTab.profile)
         }
         .tint(Color.beansAmber)
-        // Co 底栏动画（参照 2.0.3 RootView:723/773，但只取行为不抄样式）：
-        // iOS 26+ 系统悬浮标签栏下滑缩小、上滑恢复；有歌在播才生效，无歌不缩小。
-        // 选中的标签色仍走 Co 的主题强调色（默认红），底栏样式本身是系统悬浮栏，Co 不另做一套。
-        .modifier(CoTabBarMinimizeModifier(enabled: player.currentSong != nil))
         .background {
             TabBarAppearanceConfigurator(
                 hidesSystemTabBarOnLegacy: !usesSystemFloatingTabBar,
@@ -106,7 +103,7 @@ struct RootView: View {
         ZStack {
             // iOS 26 用系统 tab accessory，把迷你播放器缩进底栏槽位；旧系统走自绘胶囊底栏。
             if #available(iOS 26.0, *) {
-                rootTabs
+                nativeTabView
                     .modifier(
                         MiniPlayerAccessoryModifier(
                             isActive: player.currentSong != nil,
@@ -117,7 +114,7 @@ struct RootView: View {
                         )
                     )
             } else {
-                rootTabs
+                legacyTabView
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         legacyFloatingTabBar
                             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -396,15 +393,50 @@ private struct ClearSheetBackground: ViewModifier {
     }
 }
 
-/// iOS 26+ 系统标签栏滚动缩小：部署目标低于 26 时用 #available 守住，旧系统直接原样透传。
-private struct CoTabBarMinimizeModifier: ViewModifier {
-    let enabled: Bool
+/// iOS 26+ 系统标签栏（参照 2.0.3 RootView:689-725/729-775 的 nativeTabContent 结构，只取结构不抄样式）：
+/// 顺序为主页 / 音乐库 / 我的，搜索为 role: .search 的特殊位（不是普通标签）。
+/// 2.0.3 另有“精选”歌单广场标签，Co 不另立——歌单广场已在 Co 主页里，避免重复标签。
+/// 旧式 .tabItem 把搜索当普通标签，iOS 26 缩小后搜索位会被收起；
+/// role: .search 的搜索位由系统固定保留，下滑缩小/上滑恢复后仍在底栏里，这就是“交互后三个 vs 两个缺搜索”的结构根因。
+/// 图标按 2.0.3 nativeTabLabel 的 25pt semibold 系统图标对齐（2.0.3 的 BottomHome/BottomLibrary 图片资源 Co 没有，不另引资源）。
+@available(iOS 26.0, *)
+private extension RootView {
+    var nativeTabView: some View {
+        TabView(selection: $selection) {
+            Tab(value: .discover) {
+                DiscoverView()
+            } label: {
+                nativeTabLabel(.discover)
+            }
+            Tab(value: .library) {
+                LibraryView()
+            } label: {
+                nativeTabLabel(.library)
+            }
+            Tab(value: .profile) {
+                ProfileView()
+            } label: {
+                nativeTabLabel(.profile)
+            }
+            Tab(value: .search, role: .search) {
+                SearchView()
+            } label: {
+                nativeTabLabel(.search)
+            }
+        }
+        .tint(Color.beansAmber)
+        .tabBarMinimizeBehavior(player.currentSong != nil ? .onScrollDown : .never)
+        .toolbarBackground(.hidden, for: .tabBar)
+        .background(Color.clear)
+    }
 
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.tabBarMinimizeBehavior(enabled ? .onScrollDown : .never)
-        } else {
-            content
+    @ViewBuilder
+    func nativeTabLabel(_ tab: RootTab) -> some View {
+        Label {
+            Text(tabLabelsVisible ? tab.title : "")
+        } icon: {
+            Image(systemName: tab.icon)
+                .font(.system(size: 25, weight: .semibold))
         }
     }
 }
