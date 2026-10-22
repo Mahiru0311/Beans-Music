@@ -126,7 +126,7 @@ struct LibraryView: View {
     var body: some View {
         let _ = theme.accent
         BeansNavigationStackWithPath(path: $navigationPath) {
-        ZStack {
+        ZStack(alignment: .top) {
             // 页面背景：同步开启时显示壁纸/背景色，否则默认氛围渐变
             GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
@@ -175,6 +175,7 @@ struct LibraryView: View {
                 .frame(maxWidth: .infinity)
             }
             .beansScrollIndicatorsHidden()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .refreshable {
                 await refreshCurrentSource(force: true)
             }

@@ -95,7 +95,7 @@ struct DiscoverView: View {
     var body: some View {
         let _ = theme.accent
         BeansNavigationStackWithPath(path: $navigationPath) {
-        ZStack {
+        ZStack(alignment: .top) {
             // 主页背景：壁纸/背景色永远在发现页生效（homeMode），同步开启时其他页面也生效
             GlassBackdrop(customColor: theme.customBackground, homeMode: true, wallpaperBlur: CGFloat(homeWallpaperBlur))
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
@@ -153,6 +153,7 @@ struct DiscoverView: View {
                 }
             }
             .beansScrollIndicatorsHidden()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .refreshable {
                 guard !homeRenderingPaused else { return }
                 await load(force: true)

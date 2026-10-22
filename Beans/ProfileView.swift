@@ -154,7 +154,7 @@ struct ProfileView: View {
 
     var body: some View {
         let _ = theme.accent
-        ZStack {
+        ZStack(alignment: .top) {
             // 页面背景：同步开启时显示壁纸/背景色，否则默认氛围渐变
             GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
@@ -177,7 +177,10 @@ struct ProfileView: View {
                             EmptyView()
                         }
                     }
-                    // 更新入口固定放在“我的”页面最底部，避免被板块排序隐藏。
+                    // 我的功能（播放历史 / 账号与登录）：原先定义了却没放进页面，恢复它。
+                    featuresGrid
+                    // 常听排行：PlayerManager 已按播放次数算好 topPlayed，此前界面上没有入口。
+                    topPlayedSection
                     profileVersionFooter
                 }
                 .padding(.horizontal, isNativeClean ? 24 : 16)
@@ -187,6 +190,7 @@ struct ProfileView: View {
                 .frame(maxWidth: .infinity)
             }
             .beansScrollIndicatorsHidden()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .task {
             guard !didRefreshProfileAccount else { return }
@@ -428,12 +432,69 @@ struct ProfileView: View {
     }
 
     private var profileVersionFooter: some View {
-        Text(appVersionText)
-            .font(BeansFont.appFont(11))
-            .foregroundStyle(Color.beansComment.opacity(0.7))
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 2)
+        VStack(spacing: 4) {
+            Text(appVersionText)
+                .font(BeansFont.appFont(11))
+                .foregroundStyle(Color.beansComment.opacity(0.7))
+            Text("基于 Beans 主分支")
+                .font(BeansFont.appFont(11))
+                .foregroundStyle(Color.beansComment.opacity(0.7))
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 2)
+    }
+
+    /// 常听排行：按本地播放次数排序（MD3 用户中心的听歌排行同款，数据已在本地，不调新接口）。
+    private var topPlayedSection: some View {
+        let ranked = player.topPlayed
+        return VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "常听排行")
+            if ranked.isEmpty {
+                Text("还没有播放记录，播几首歌后这里会出现你最常听的歌")
+                    .font(BeansFont.appFont(13))
+                    .foregroundStyle(Color.beansComment)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(ranked.enumerated()), id: \.element.song.identityKey) { index, entry in
+                        Button {
+                            BeansHaptics.tap()
+                            player.play(songs: ranked.map(\.song), startAt: index)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Text("\(index + 1)")
+                                    .font(BeansFont.appFont(14, .bold))
+                                    .foregroundStyle(index < 3 ? Color.red : Color.beansComment)
+                                    .frame(width: 20)
+                                CoverImage(url: entry.song.coverURL, size: 40, cornerRadius: 8)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.song.name)
+                                        .font(BeansFont.appFont(14, .semibold))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Text(entry.song.artists)
+                                        .font(BeansFont.appFont(12))
+                                        .foregroundStyle(Color.beansComment)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                }
+                                Spacer()
+                                Text("播 \(entry.count) 次")
+                                    .font(BeansFont.appFont(12))
+                                    .foregroundStyle(Color.beansComment)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 
     private struct Donor {
