@@ -180,6 +180,9 @@ struct ProfileView: View {
                             EmptyView()
                         }
                     }
+                    // 统计行（wy.dwkc.cn 布局思路：头像+会员下方一条统计行；只用 Co 真实数据，
+                    // 不编造关注/粉丝/等级/小时数，酷狗账号没有这些字段）。
+                    myStatsRow
                     // 我的功能（播放历史 / 账号与登录）：原先定义了却没放进页面，恢复它。
                     featuresGrid
                     // 我的歌单（网易云“我的”页同款分区思路，只用现有酷狗歌单接口，点歌单即播）。
@@ -395,6 +398,36 @@ struct ProfileView: View {
     }
 
     /// 功能宫格：常用功能统一整合排版
+    /// 统计行：我喜欢 / 歌单 / 历史 / 常听，全部取本地真实数据。
+    /// 未登录时歌单数为当前已加载数（0 即暂无），不写假数字；不含关注/粉丝/等级/小时数。
+    private var myStatsRow: some View {
+        HStack(spacing: 0) {
+            myStatCell(value: "\(FavoritesStore.shared.kugouFavoriteSongs.count)", label: "我喜欢")
+            Divider().frame(height: 28)
+            myStatCell(value: "\(myPlaylists.count)", label: "歌单")
+            Divider().frame(height: 28)
+            myStatCell(value: "\(player.history.count)", label: "历史")
+            Divider().frame(height: 28)
+            myStatCell(value: "\(player.topPlayed.count)", label: "常听")
+        }
+        .padding(.vertical, 12)
+        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+    }
+
+    private func myStatCell(value: String, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(BeansFont.appFont(16, .bold))
+                .foregroundStyle(Color.beansLabel)
+                .lineLimit(1)
+            Text(label)
+                .font(BeansFont.appFont(11))
+                .foregroundStyle(Color.beansComment)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     private var featuresGrid: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "快捷入口")
