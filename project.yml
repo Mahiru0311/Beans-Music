@@ -35,6 +35,16 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UIBackgroundModes: [audio]
         NSSupportsLiveActivities: true
+        UILaunchScreen:
+          UIImageName: LaunchBackground
+          UIColorName: LaunchBackgroundColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        CADisableMinimumFrameDurationOnPhone: true
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
   CoLiveActivity:
     type: app-extension
     platform: iOS
@@ -57,16 +67,6 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
-        UILaunchScreen:
-          UIImageName: LaunchBackground
-          UIColorName: LaunchBackgroundColor
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        UIFileSharingEnabled: true
-        LSSupportsOpeningDocumentsInPlace: true
-        CADisableMinimumFrameDurationOnPhone: true
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
 
 schemes:
   Beans:

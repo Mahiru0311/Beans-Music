@@ -120,6 +120,9 @@ struct RootView: View {
                     }
             }
         }
+        // 窗口级保险：强制 TabView 内容区占满窗口高、顶对齐，不让上层容器把内容压矮或居中
+        // （1.7.0 黑空的主因是主 App 丢了启动屏导致的系统级黑边，本行只是防 SwiftUI 层再被压矮，不单独起效）。
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             HighRefreshConfigurator()
                 .frame(width: 0, height: 0)
