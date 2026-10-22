@@ -1270,6 +1270,27 @@ struct SettingsView: View {
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
                 HStack {
+                    Image(systemName: "paintbrush.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.beansAmber)
+                        .frame(width: 28)
+                    Text("强调色")
+                        .font(BeansFont.appFont(15))
+                        .foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Picker("强调色", selection: Binding(
+                        get: { theme.accent },
+                        set: { theme.set($0) }
+                    )) {
+                        ForEach(BeansAccent.allCases) { accent in
+                            Text(LocalizedStringKey(accent.rawValue)).tag(accent)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Color.beansAmber)
+                }
+
+                HStack {
                     Image(systemName: "eyedropper.halffull")
                         .font(.system(size: 14))
                         .foregroundStyle(Color.beansAmber)

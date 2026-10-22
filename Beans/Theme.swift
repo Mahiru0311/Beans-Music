@@ -351,9 +351,10 @@ final class ThemeStore: ObservableObject {
     private var wallpapersRestored = false
 
     private init() {
-        accent = .red  // Co 锁定：默认/唯一强调色为系统红，旧 Beans 9 套主题不再读取
+        // Co 1.8.0：恢复 2.0.3 主题系统，默认仍为系统红，未存过则回退红
+        accent = BeansAccent(rawValue: UserDefaults.standard.string(forKey: AccentTheme.key) ?? "") ?? .red
         let savedAccent = UserDefaults.standard.string(forKey: customAccentKey)
-        customAccentHex = nil  // Co 锁定红白：忽略旧自定义强调色
+        customAccentHex = (savedAccent?.isEmpty ?? true) ? nil : savedAccent
         let legacyBackground = UserDefaults.standard.string(forKey: backgroundKey) ?? ""
         let hasSplitBackground = UserDefaults.standard.object(forKey: backgroundLightKey) != nil
             || UserDefaults.standard.object(forKey: backgroundDarkKey) != nil
@@ -471,8 +472,11 @@ final class ThemeStore: ObservableObject {
     }
 
     func set(_ newAccent: BeansAccent) {
-        // Co 锁定红白：只接受系统红，其他 Beans 主题色不再生效
-        guard newAccent == .red else { return }
+        // 选预设即用预设：先清自定义色，否则色盘色会盖住预设
+        if customAccentHex != nil {
+            customAccentHex = nil
+            UserDefaults.standard.set("", forKey: customAccentKey)
+        }
         guard accent != newAccent else { return }
         accent = newAccent
         UserDefaults.standard.set(newAccent.rawValue, forKey: AccentTheme.key)
@@ -480,10 +484,9 @@ final class ThemeStore: ObservableObject {
 
     /// 自定义强调色（色盘选色）
     func setCustomAccent(_ hex: String?) {
-        // Co 锁定红白：忽略色盘自定义强调色，始终用系统红
-        customAccentHex = nil
-        UserDefaults.standard.set("", forKey: customAccentKey)
-        _ = hex
+        let normalized = hex?.isEmpty == true ? nil : hex
+        customAccentHex = normalized
+        UserDefaults.standard.set(normalized ?? "", forKey: customAccentKey)
     }
 
     func clearCustomAccent() {
