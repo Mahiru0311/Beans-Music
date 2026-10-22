@@ -1058,7 +1058,12 @@ final class PlayerManager: NSObject, ObservableObject {
     // MARK: - 系统正在播放
 
     private func updateNowPlaying() {
-        guard let song = currentSong else { return }
+        guard let song = currentSong else {
+            if #available(iOS 16.1, *) {
+                CocoNowPlayingLiveActivity.shared.end()
+            }
+            return
+        }
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: song.name,
             MPMediaItemPropertyArtist: song.artists,
@@ -1072,13 +1077,28 @@ final class PlayerManager: NSObject, ObservableObject {
             if let cached = Self.nowPlayingArtworkCache.object(forKey: artworkURL as NSURL) {
                 info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: cached.size) { _ in cached }
             } else if lastNowPlayingArtworkKey != artworkKey {
-                lastNowPlayingArtworkKey = artworkKey
+                // 封面链路修复：原先用无超时、无重试的 Data(contentsOf:)，
+                // 一次失败就把 lastNowPlayingArtworkKey 置为该歌、整首歌不再重试，
+                // 导致锁屏/灵动岛整首歌无封面。改为：只有成功才标记已取，
+                // 失败留待下次 updateNowPlaying（切歌/播放/暂停）再试；
+                // 用 URLSession 10 秒超时 + HTTP 200 校验 + 缩放到 400px 再缓存，
+                // 避免大图直接进 Now Playing 导致内存与解码负担。
                 Task {
-                    if let data = try? Data(contentsOf: artworkURL), let image = UIImage(data: data) {
-                        Self.nowPlayingArtworkCache.setObject(image, forKey: artworkURL as NSURL)
+                    var request = URLRequest(url: artworkURL, timeoutInterval: 10)
+                    request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard (response as? HTTPURLResponse)?.statusCode == 200,
+                              let image = UIImage(data: data),
+                              self.currentSong?.coverURL == artworkURL else { return }
+                        let scaled = Self.downscaledArtwork(image)
+                        Self.nowPlayingArtworkCache.setObject(scaled, forKey: artworkURL as NSURL)
+                        self.lastNowPlayingArtworkKey = artworkKey
                         var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-                        updated[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                        updated[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: scaled.size) { _ in scaled }
                         MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
+                    } catch {
+                        // 失败不标记，留待下次 updateNowPlaying 重试。
                     }
                 }
             }
@@ -1086,6 +1106,20 @@ final class PlayerManager: NSObject, ObservableObject {
             lastNowPlayingArtworkKey = nil
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        // Live Activity 同步：管理器内部按歌 key + 播放态去重，频繁调用不产生重复请求。
+        if #available(iOS 16.1, *) {
+            CocoNowPlayingLiveActivity.shared.update(song: song, isPlaying: isPlaying)
+        }
+    }
+
+    /// 把 Now Playing 封面缩放到最长边 400px，避免原图直接进锁屏/灵动岛。
+    private static func downscaledArtwork(_ image: UIImage) -> UIImage {
+        let maxSide: CGFloat = 400
+        guard max(image.size.width, image.size.height) > maxSide else { return image }
+        let scale = maxSide / max(image.size.width, image.size.height)
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
     }
 
     private func setupRemoteCommands() {

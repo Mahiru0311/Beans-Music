@@ -16,6 +16,8 @@ targets:
     resources:
       - Beans/en.lproj
       - Beans/zh-Hans.lproj
+    dependencies:
+      - target: CoLiveActivity
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.music.coco
@@ -32,6 +34,29 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UIBackgroundModes: [audio]
+        NSSupportsLiveActivities: true
+  CoLiveActivity:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "16.1"
+    sources:
+      - CoLiveActivity
+      - Beans/CocoNowPlayingAttributes.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.liveactivity
+        MARKETING_VERSION: "1.6.5.1"
+        CURRENT_PROJECT_VERSION: "39"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: CoLiveActivity/Info.plist
+      properties:
+        CFBundleDisplayName: Co Now Playing
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
         UILaunchScreen:
           UIImageName: LaunchBackground
           UIColorName: LaunchBackgroundColor
