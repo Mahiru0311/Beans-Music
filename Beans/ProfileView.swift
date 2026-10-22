@@ -687,7 +687,6 @@ struct SettingsView: View {
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
     @State private var appearanceExpanded = false
-    @State private var platformExpanded = false
     @State private var playbackExpanded = false
     @State private var showWallpaperPicker = false
     @State private var wallpaperAppearanceTarget: BeansWallpaperAppearance = .light
@@ -708,6 +707,32 @@ struct SettingsView: View {
     @State private var backupMessage: String?
     /// 日志
     @State private var showLogViewer = false
+    @State private var settingsSearchText = ""
+
+    /// 设置搜索（参照 2.0.3 与 MD3 的设置搜索，关键词为空时全部显示）。
+    private func settingsMatches(_ terms: String...) -> Bool {
+        let query = settingsSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return true }
+        return terms.joined(separator: " ").localizedCaseInsensitiveContains(query)
+    }
+
+    private var showThemeSettings: Bool { settingsMatches("主题 外观 背景 壁纸 字体 底栏 颜色 问候语") }
+    private var showPlaybackSettings: Bool { settingsMatches("播放 音质 睡眠 定时 触感 混音") }
+    private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
+    private var showChangelogSettings: Bool { settingsMatches("更新 日志 版本") }
+    private var showBackupSettings: Bool { settingsMatches("备份 恢复 导出 导入 缓存") }
+    private var showLogSettings: Bool { settingsMatches("日志 诊断 崩溃") }
+    private var hasSettingsSearchResults: Bool {
+        showThemeSettings || showPlaybackSettings || showEqualizerSettings
+            || showChangelogSettings || showBackupSettings || showLogSettings
+    }
+
+    private func settingsGroupTitle(_ title: String) -> some View {
+        Text(title)
+            .font(BeansFont.appFont(13, .semibold))
+            .foregroundStyle(Color.beansComment)
+            .padding(.leading, 4)
+    }
 
     private var themeMode: BeansThemeMode {
         BeansThemeMode(rawValue: themeModeRaw) ?? .system
@@ -952,12 +977,53 @@ struct SettingsView: View {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        themeSection
-                        playbackSection
-                        equalizerSection
-                        changelogSection
-                        backupSection
-                        logSection
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(Color.beansComment)
+                            TextField("搜索设置", text: $settingsSearchText)
+                                .font(BeansFont.appFont(14))
+                                .foregroundStyle(Color.beansLabel)
+                                .textInputAutocapitalization(.never)
+                                .disableAutocorrection(true)
+                            if !settingsSearchText.isEmpty {
+                                Button { settingsSearchText = "" } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(Color.beansComment)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                        if !settingsSearchText.isEmpty && !hasSettingsSearchResults {
+                            Text("没有找到相关设置")
+                                .font(BeansFont.appFont(14))
+                                .foregroundStyle(Color.beansComment)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 12)
+                        }
+                        if showThemeSettings {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settingsGroupTitle("外观")
+                                themeSection
+                            }
+                        }
+                        if showPlaybackSettings || showEqualizerSettings {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settingsGroupTitle("播放与音效")
+                                if showPlaybackSettings { playbackSection }
+                                if showEqualizerSettings { equalizerSection }
+                            }
+                        }
+                        if showChangelogSettings || showBackupSettings || showLogSettings {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settingsGroupTitle("数据与支持")
+                                if showChangelogSettings { changelogSection }
+                                if showBackupSettings { backupSection }
+                                if showLogSettings { logSection }
+                            }
+                        }
                         footerNote
                     }
                     .padding(.horizontal, 16)
@@ -1054,7 +1120,6 @@ struct SettingsView: View {
     private var themeSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             appearanceSection
-            platformSection
         }
     }
 
@@ -1085,49 +1150,6 @@ struct SettingsView: View {
             ToastCenter.shared.show("主页问候字体已应用：\(name)")
         } else {
             ToastCenter.shared.show("主页问候字体安装失败，请使用 ttf / otf 文件")
-        }
-    }
-
-    private var platformSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                BeansHaptics.select()
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    platformExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("平台显示")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                    Spacer()
-                    Image(systemName: platformExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
-                .background {
-                    BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-
-            if platformExpanded {
-                PlatformPreferencePicker()
-                    .padding(14)
-                    .background {
-                        BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
         }
     }
 
