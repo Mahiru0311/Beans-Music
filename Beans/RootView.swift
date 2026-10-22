@@ -502,18 +502,40 @@ private struct MiniPlayerAccessoryModifier: ViewModifier {
     func body(content: Content) -> some View {
         if isActive {
             content.tabViewBottomAccessory {
-                MiniPlayerView(
+                CoMiniPlayerAccessory(
                     showPlayer: $showPlayer,
-                    presentation: .accessory,
+                    clock: clock,
+                    colorScheme: colorScheme,
                     transitionNamespace: transitionNamespace
                 )
-                    .padding(.horizontal, 12)
-                    .environmentObject(clock)
-                    .environment(\.colorScheme, colorScheme)
             }
         } else {
             content
         }
+    }
+}
+
+/// 底栏 accessory 包装（2.0.3 RootMiniPlayerAccessory 同款逻辑）：
+/// 系统把 accessory 放进底栏行（placement == .inline）时用紧凑版（封面+歌名+副标题+仅播放键），
+/// 否则用完整版；紧凑版不加横向内边距，避免窄槽里再被挤。
+@available(iOS 26.0, *)
+private struct CoMiniPlayerAccessory: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @Binding var showPlayer: Bool
+    let clock: PlaybackClock
+    let colorScheme: ColorScheme
+    let transitionNamespace: Namespace.ID?
+
+    var body: some View {
+        let isInline = placement.map { $0 == .inline } == true
+        MiniPlayerView(
+            showPlayer: $showPlayer,
+            presentation: isInline ? .inlineAccessory : .accessory,
+            transitionNamespace: transitionNamespace
+        )
+            .padding(.horizontal, isInline ? 0 : 12)
+            .environmentObject(clock)
+            .environment(\.colorScheme, colorScheme)
     }
 }
 

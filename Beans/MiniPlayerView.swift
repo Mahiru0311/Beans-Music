@@ -4,8 +4,12 @@ struct MiniPlayerView: View {
     enum Presentation {
         case dock
         case accessory
+        /// 底行紧凑版（2.0.3 inlineAccessory 同款）：系统把 accessory 放进底栏行时使用，
+        /// 只留封面+歌名+副标题+播放键，不塞上一首/下一首/VIP，避免窄槽里把封面歌名挤掉。
+        case inlineAccessory
 
         var showsCardSurface: Bool { self == .dock }
+        var isInline: Bool { self == .inlineAccessory }
     }
 
     @EnvironmentObject private var theme: ThemeStore
@@ -19,9 +23,9 @@ struct MiniPlayerView: View {
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
 
-    private var coverSize: CGFloat { 36 }
-    private var controlSize: CGFloat { 32 }
-    private var containerRadius: CGFloat { 18 }
+    private var coverSize: CGFloat { presentation.isInline ? 28 : 36 }
+    private var controlSize: CGFloat { presentation.isInline ? 28 : 32 }
+    private var containerRadius: CGFloat { presentation.isInline ? 14 : 18 }
     private var verticalPadding: CGFloat { 4 }
 
     /// 二分查找当前播放到的歌词行（歌词按时间升序）
@@ -48,24 +52,26 @@ struct MiniPlayerView: View {
             BeansHaptics.tap()
             showPlayer = true
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: presentation.isInline ? 8 : 12) {
                 ZStack {
-                    Circle()
-                        .fill(theme.accent.highlight.opacity(0.32))
-                        .frame(width: 42, height: 42)
-                        .blur(radius: 9)
+                    if !presentation.isInline {
+                        Circle()
+                            .fill(theme.accent.highlight.opacity(0.32))
+                            .frame(width: 42, height: 42)
+                            .blur(radius: 9)
+                    }
                     CoverImage(url: player.currentSong?.coverURL, size: coverSize, cornerRadius: 7)
                 }
-                .frame(width: 42, height: 42)
+                .frame(width: presentation.isInline ? coverSize : 42, height: presentation.isInline ? coverSize : 42)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
                         Text(player.currentSong?.name ?? "")
-                            .font(BeansFont.appFont(12, .semibold))
+                            .font(BeansFont.appFont(presentation.isInline ? 11 : 12, .semibold))
                             .foregroundStyle(Color.beansLabel)
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(1)
-                        if showSongVIPBadge, player.currentSong?.isVIP == true {
+                        if !presentation.isInline, showSongVIPBadge, player.currentSong?.isVIP == true {
                             Text("VIP")
                                 .font(BeansFont.appFont(8, .bold))
                                 .foregroundStyle(.white)
@@ -77,17 +83,18 @@ struct MiniPlayerView: View {
                         }
                     }
                     Text(currentLyricLine?.text ?? player.currentSong?.artists ?? "")
-                        .font(BeansFont.appFont(10))
+                        .font(BeansFont.appFont(presentation.isInline ? 9 : 10))
                         .foregroundStyle(Color.beansComment)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .animation(.easeInOut(duration: 0.25), value: currentLyricLine?.text)
                 }
                 Spacer(minLength: 8)
-                Button {
-                    BeansHaptics.tap()
-                    player.previous()
-                } label: {
+                if !presentation.isInline {
+                    Button {
+                        BeansHaptics.tap()
+                        player.previous()
+                    } label: {
                     Image(systemName: "backward.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.beansLabel)
@@ -95,6 +102,7 @@ struct MiniPlayerView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(GlassPressButtonStyle())
+                }
                 Button {
                     BeansHaptics.tap()
                     player.togglePlayPause()
@@ -105,6 +113,7 @@ struct MiniPlayerView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(GlassPressButtonStyle())
+                if !presentation.isInline {
                 Button {
                     BeansHaptics.tap()
                     player.next()
@@ -116,9 +125,10 @@ struct MiniPlayerView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(GlassPressButtonStyle())
+                }
             }
-            .padding(.leading, 10)
-            .padding(.trailing, 6)
+            .padding(.leading, presentation.isInline ? 6 : 10)
+            .padding(.trailing, presentation.isInline ? 2 : 6)
             .padding(.vertical, verticalPadding)
             .background {
                 if presentation.showsCardSurface {
