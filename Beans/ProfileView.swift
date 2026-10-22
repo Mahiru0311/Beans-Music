@@ -25,6 +25,9 @@ struct ProfileView: View {
     /// 设置页（外观 + 歌词翻译等）
     @State private var showSettings = false
     @State private var showSectionSort = false
+    @State private var myPlaylists: [Playlist] = []
+    @State private var myPlaylistsLoaded = false
+    @State private var myPlaylistsLoading = false
     /// 我的界面板块顺序（账号 / 关于，可自定义）
     @State private var profileOrder = SectionOrderStore.load(SectionOrderStore.profileKey, defaults: SectionOrderStore.profileDefaults)
     /// 手动检查更新
@@ -179,6 +182,8 @@ struct ProfileView: View {
                     }
                     // 我的功能（播放历史 / 账号与登录）：原先定义了却没放进页面，恢复它。
                     featuresGrid
+                    // 我的歌单（网易云“我的”页同款分区思路，只用现有酷狗歌单接口，点歌单即播）。
+                    myPlaylistsSection
                     // 常听排行：PlayerManager 已按播放次数算好 topPlayed，此前界面上没有入口。
                     topPlayedSection
                     profileVersionFooter
@@ -196,6 +201,15 @@ struct ProfileView: View {
             guard !didRefreshProfileAccount else { return }
             didRefreshProfileAccount = true
             await auth.refreshAccount()
+        }
+        .task(id: kugouAuth.userId) {
+            guard kugouAuth.isLoggedIn, !myPlaylistsLoaded else { return }
+            myPlaylistsLoading = true
+            if let list = try? await KugouMusicAPI.shared.userPlaylists() {
+                myPlaylists = list
+            }
+            myPlaylistsLoaded = true
+            myPlaylistsLoading = false
         }
         .background {
             HighRefreshConfigurator()
@@ -383,52 +397,126 @@ struct ProfileView: View {
     /// 功能宫格：常用功能统一整合排版
     private var featuresGrid: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "我的功能")
-            VStack(spacing: 12) {
-                featureCell(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: String(format: NSLocalizedString("最近播放 %d 首", comment: ""), player.history.count)) {
+            SectionHeader(title: "快捷入口")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                featureGridCell(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: "\(player.history.count) 首") {
                     showHistory = true
                 }
-                featureCell(icon: hasVisibleAccountLogin ? "checkmark.seal.fill" : "globe", title: isEnglish ? "Accounts and Sign-in" : "账号与登录", subtitle: hasVisibleAccountLogin ? accountStatusLine : (isEnglish ? "Sign in to \(displayPlatformSummary)" : "登录 \(platformPrefs.summaryText)")) {
+                featureGridCell(icon: "heart.fill", title: "我喜欢", subtitle: "\(FavoritesStore.shared.kugouFavoriteSongs.count) 首") {
+                    let liked = FavoritesStore.shared.kugouFavoriteSongs
+                    if liked.isEmpty {
+                        ToastCenter.shared.show("还没有喜欢的歌曲，点歌曲旁的爱心收藏")
+                    } else {
+                        player.play(songs: liked, startAt: 0)
+                    }
+                }
+                featureGridCell(icon: "checkmark.seal.fill", title: "账号与登录", subtitle: hasVisibleAccountLogin ? "已登录" : "未登录") {
                     BeansHaptics.tap()
                     showAccountHub = true
+                }
+                featureGridCell(icon: "gearshape.fill", title: "设置", subtitle: "主题与播放") {
+                    BeansHaptics.tap()
+                    homeRenderingPaused = true
+                    showSettings = true
                 }
             }
         }
     }
 
-    private func featureCell(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func featureGridCell(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button {
             BeansHaptics.tap()
             action()
         } label: {
-            HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 15))
+                    .font(.system(size: 17))
                     .foregroundStyle(Color.beansAmber)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 36, height: 36)
                     .background(Color.beansGlassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey(title))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.82)
-                    Text(subtitle)
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.78)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
+                Text(LocalizedStringKey(title))
+                    .font(BeansFont.appFont(14, .semibold))
+                    .foregroundStyle(Color.beansLabel)
+                    .lineLimit(1)
+                Text(subtitle)
+                    .font(BeansFont.appFont(11))
+                    .foregroundStyle(Color.beansComment)
+                    .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(GlassPressButtonStyle(scale: 0.97))
+    }
+
+    private var myPlaylistsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "我的歌单")
+            if !kugouAuth.isLoggedIn {
+                Button {
+                    BeansHaptics.tap()
+                    showAccountHub = true
+                } label: {
+                    Text("登录酷狗后，这里会显示你的歌单")
+                        .font(BeansFont.appFont(13))
+                        .foregroundStyle(Color.beansComment)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                }
+                .buttonStyle(.plain)
+            } else if myPlaylistsLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+            } else if myPlaylists.isEmpty {
+                Text("暂无歌单")
+                    .font(BeansFont.appFont(13))
+                    .foregroundStyle(Color.beansComment)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(myPlaylists.prefix(8))) { playlist in
+                        Button {
+                            BeansHaptics.tap()
+                            Task {
+                                if let songs = try? await KugouMusicAPI.shared.playlistSongs(listID: playlist.id), !songs.isEmpty {
+                                    player.play(songs: songs, startAt: 0)
+                                } else {
+                                    ToastCenter.shared.show("该歌单暂无可播歌曲")
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                CoverImage(url: playlist.coverURL, size: 44, cornerRadius: 10)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(playlist.name)
+                                        .font(BeansFont.appFont(14, .semibold))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Text(playlist.trackCount > 0 ? "\(playlist.trackCount) 首" : "歌单")
+                                        .font(BeansFont.appFont(12))
+                                        .foregroundStyle(Color.beansComment)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.beansComment.opacity(0.7))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 
     private var profileVersionFooter: some View {
