@@ -641,7 +641,8 @@ final class PlayerManager: NSObject, ObservableObject {
             bumpPlayCount(song)
             lastCountedSongID = song.identityKey
         }
-        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1.0, preferredTimescale: 600)  // Co 省电：进度按秒级更新，不再 5 次/秒重绘, queue: .main) { [weak self] time in
+        // Co 省电：进度按秒级更新，不再 5 次/秒重绘
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1.0, preferredTimescale: 600), queue: .main) { [weak self] time in
             guard let self, let player = self.player else { return }
             if time.seconds.isFinite {
                 if abs(time.seconds - self.lastPublishedProgress) >= 0.9 {
