@@ -19,7 +19,7 @@ final class PlatformPreferenceStore: ObservableObject {
     private init() {
         let saved = UserDefaults.standard.stringArray(forKey: Self.key) ?? []
         if saved.isEmpty {
-            selectedRaw = Set(SearchProvider.allCases.map(\.rawValue))
+            selectedRaw = [.kugou]
         } else {
             selectedRaw = Set(saved.map(Self.migrateRawValue))
         }
@@ -31,7 +31,7 @@ final class PlatformPreferenceStore: ObservableObject {
 
     var enabledSearchProviders: [SearchProvider] {
         let list = orderedSearchProviders.filter { selectedRaw.contains($0.rawValue) }
-        return list.isEmpty ? [.netease] : list
+        return [.kugou]
     }
 
     var enabledLibraryProviders: [LibraryProvider] {
@@ -45,7 +45,7 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     func isEnabled(_ provider: SearchProvider) -> Bool {
-        selectedRaw.contains(provider.rawValue)
+        provider == .kugou
     }
 
     func isEnabled(_ provider: LibraryProvider) -> Bool {
@@ -63,15 +63,15 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     func ensureVisible(_ provider: SearchProvider) -> SearchProvider {
-        isEnabled(provider) ? provider : enabledSearchProviders.first ?? .netease
+        SearchProvider.kugou
     }
 
     func ensureVisible(_ provider: LibraryProvider) -> LibraryProvider {
-        isEnabled(provider) ? provider : enabledLibraryProviders.first ?? .netease
+        LibraryProvider.kugou
     }
 
     func resetToDefault() {
-        selectedRaw = Set(SearchProvider.allCases.map(\.rawValue))
+        selectedRaw = [.kugou]
         resetOrder()
         save()
     }
@@ -83,7 +83,7 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     var orderedSearchProviders: [SearchProvider] {
-        orderedRaw.compactMap(SearchProvider.init(rawValue:))
+        [.kugou]
     }
 
     func moveProviders(from offsets: IndexSet, to destination: Int) {
@@ -97,7 +97,7 @@ final class PlatformPreferenceStore: ObservableObject {
         let allowed = Set(SearchProvider.allCases.map(\.rawValue))
         selectedRaw = selectedRaw.intersection(allowed)
         if selectedRaw.isEmpty {
-            selectedRaw = [SearchProvider.netease.rawValue]
+            selectedRaw = [.kugou]
         }
     }
 

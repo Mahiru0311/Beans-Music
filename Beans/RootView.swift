@@ -44,20 +44,13 @@ struct RootView: View {
     @AppStorage("beans.tabLabelsVisible") private var tabLabelsVisible = true
     @AppStorage("beans.homeSource") private var homeSourceRaw = SearchProvider.netease.rawValue
     /// 强制高刷新率：用于修复部分页面被系统稳定在 60Hz 的问题。
-    @AppStorage("beans.enableHighRefresh") private var enableHighRefresh = true
+    @AppStorage("beans.enableHighRefresh") private var enableHighRefresh = false
     @AppStorage("beans.legacyTabCornerRadius") private var legacyTabCornerRadius = 32.0
     @AppStorage("beans.legacyTabWidth") private var legacyTabWidth = 356.0
     @AppStorage("beans.legacyTabOffsetX") private var legacyTabOffsetX = 0.0
     @AppStorage("beans.legacyTabOffsetY") private var legacyTabOffsetY = 0.0
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @State private var showWhatsNew = false
-    @State private var updateInfo: UpdateChecker.ReleaseInfo?
-    @State private var showUpdateAlert = false
-    @ObservedObject private var ipaDownloader = IPADownloader.shared
-    @State private var showUpdateDownloadOverlay = false
-    @State private var updateShareFile: ShareFileItem?
-    @State private var updateShareFileURL: URL?
-    @State private var updateDownloadError = ""
     @State private var showUpdateDownloadError = false
     @State private var showHomePlatformMenu = false
     private var themeMode: BeansThemeMode {
@@ -162,14 +155,11 @@ struct RootView: View {
             if disclaimerAccepted, ChangelogStore.shouldShowWhatsNew {
                 showWhatsNew = true
             }
-            enableHighRefresh = true
-            HighRefreshKeeper.shared.configure(enabled: true)
+            // Co 省电：不再强制开启高刷新
+            HighRefreshKeeper.shared.configure(enabled: false)
         }
         .onChange(of: enableHighRefresh) { _ in
-            if !enableHighRefresh {
-                enableHighRefresh = true
-            }
-            HighRefreshKeeper.shared.configure(enabled: true)
+            HighRefreshKeeper.shared.configure(enabled: enableHighRefresh)
         }
         .onChange(of: disclaimerAccepted) { accepted in
             if accepted, ChangelogStore.shouldShowWhatsNew {
@@ -180,117 +170,8 @@ struct RootView: View {
             WhatsNewSheet()
         }
         .task(id: disclaimerAccepted) {
+            // Co：启动更新检查已删（原 UpdateChecker 已删）。
             guard disclaimerAccepted else { return }
-            if let info = await UpdateChecker.checkIfNeeded() {
-                updateInfo = info
-                showUpdateAlert = true
-            }
-        }
-        .overlay {
-            if showUpdateAlert, let info = updateInfo {
-                UpdatePromptOverlay(
-                    info: info,
-                    onOpen: {
-                        showUpdateAlert = false
-                        if let assetURL = info.assetURL {
-                            startUpdateDownload(info: info, assetURL: assetURL)
-                        } else {
-                            UIApplication.shared.open(info.htmlURL)
-                        }
-                    },
-                    onRemindLater: {
-                        UpdateChecker.suppress(version: info.version)
-                        showUpdateAlert = false
-                    },
-                    onDismiss: {
-                        showUpdateAlert = false
-                    }
-                )
-                .transition(.opacity)
-                .zIndex(20)
-            }
-        }
-        .overlay {
-            if showUpdateDownloadOverlay {
-                updateDownloadProgressOverlay
-                    .zIndex(21)
-            }
-        }
-        .sheet(item: $updateShareFile, onDismiss: cleanupUpdateShareFile) { item in
-            ShareSheet(items: [item.url])
-        }
-        .alert("更新下载失败", isPresented: $showUpdateDownloadError) {
-            Button("好", role: .cancel) {}
-            Button("打开 GitHub") {
-                UIApplication.shared.open(UpdateChecker.releasePageURL)
-            }
-        } message: {
-            Text(updateDownloadError)
-        }
-    }
-
-    private func startUpdateDownload(info: UpdateChecker.ReleaseInfo, assetURL: URL) {
-        showUpdateDownloadOverlay = true
-        Task {
-            do {
-                let url = try await ipaDownloader.download(assetURL: assetURL, version: info.version)
-                await MainActor.run {
-                    showUpdateDownloadOverlay = false
-                    updateShareFileURL = url
-                    updateShareFile = ShareFileItem(url: url)
-                }
-            } catch {
-                await MainActor.run {
-                    showUpdateDownloadOverlay = false
-                    updateDownloadError = error.localizedDescription
-                    showUpdateDownloadError = true
-                }
-            }
-        }
-    }
-
-    private func cleanupUpdateShareFile() {
-        guard let url = updateShareFileURL else { return }
-        try? FileManager.default.removeItem(at: url)
-        updateShareFile = nil
-        updateShareFileURL = nil
-    }
-
-    private var updateDownloadProgressOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-            VStack(spacing: 14) {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.beansHighlight)
-                    Text("正在下载最新版 IPA")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                }
-                if ipaDownloader.progress >= 0 {
-                    ProgressView(value: ipaDownloader.progress)
-                        .progressViewStyle(.linear)
-                        .tint(Color.beansAmber)
-                    Text("\(Int(ipaDownloader.progress * 100))%")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                } else {
-                    ProgressView()
-                        .tint(Color.beansAmber)
-                    Text("正在获取更新…")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-            }
-            .padding(22)
-            .frame(maxWidth: 300)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-            .beansCardShadow(radius: 12, y: 6)
-            .padding(32)
         }
     }
 
@@ -681,111 +562,6 @@ private struct VisualEffectBlur: UIViewRepresentable {
         uiView.effect = UIBlurEffect(style: style)
     }
 }
-
-private struct UpdatePromptOverlay: View {
-    let info: UpdateChecker.ReleaseInfo
-    let onOpen: () -> Void
-    let onRemindLater: () -> Void
-    let onDismiss: () -> Void
-
-    private var details: String {
-        let body = info.body.trimmingCharacters(in: .whitespacesAndNewlines)
-        return body.isEmpty ? "本次更新暂无详细说明。" : body
-    }
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onDismiss)
-
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("发现新版本")
-                            .font(BeansFont.appFont(20, .bold))
-                            .foregroundStyle(Color.beansLabel)
-                        Text("Beans Music \(info.version)")
-                            .font(BeansFont.appFont(13, .semibold))
-                            .foregroundStyle(Color.beansAmber)
-                    }
-                    Spacer(minLength: 8)
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(Color.beansComment)
-                            .frame(width: 30, height: 30)
-                            .background(Color.beansGlassFill, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("关闭")
-                }
-
-                Divider()
-                    .overlay(Color.beansComment.opacity(0.16))
-                    .padding(.vertical, 14)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("更新内容")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                        Text(details)
-                            .font(BeansFont.appFont(13))
-                            .foregroundStyle(Color.beansComment)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let imageURL = info.notesImageURL {
-                            AsyncImage(url: imageURL) { phase in
-                                if let image = phase.image {
-                                    image.resizable().scaledToFit()
-                                } else if phase.error == nil {
-                                    ProgressView().frame(maxWidth: .infinity, minHeight: 70)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 260)
-
-                VStack(spacing: 10) {
-                    Button(action: onOpen) {
-                        Text("立即更新")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Capsule().fill(Color.beansAmber))
-                    }
-                    .buttonStyle(.plain)
-
-                    Button("以后再说", action: onRemindLater)
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansComment)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        .buttonStyle(.plain)
-                }
-                .padding(.top, 18)
-            }
-            .padding(20)
-            .frame(maxWidth: 360)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-            .beansCardShadow(radius: 16, y: 8)
-            .padding(.horizontal, 24)
-        }
-    }
-}
-
-// MARK: - 系统 TabBar 清透风格（实例级配置）
-// 系统 TabView 创建之后，`UITabBar.appearance()` 全局代理对已存在的实例不再生效，
-// 所以每个 tab 页面内放一个 TabBarAppearanceConfigurator，通过 tabBarController
-// 拿到当前 UITabBar 实例，直接设置固定清透外观（全透明、无阴影）。
 
 struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
     var hidesSystemTabBarOnLegacy = true

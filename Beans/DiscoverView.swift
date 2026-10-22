@@ -922,8 +922,8 @@ struct DiscoverView: View {
     }
 
     private func startPersonalFM() {
-        guard auth.isLoggedIn else {
-            ToastCenter.shared.show("请先登录网易云音乐")
+        guard KugouMusicAuth.shared.isLoggedIn else {
+            ToastCenter.shared.show("请先登录酷狗音乐")
             return
         }
         guard recommendationActionLoading == nil else { return }
@@ -931,7 +931,7 @@ struct DiscoverView: View {
         Task {
             defer { Task { @MainActor in recommendationActionLoading = nil } }
             do {
-                let songs = try await NetEaseAPI.shared.personalFM()
+                let songs = try await KugouMusicAPI.shared.personalFM(limit: 12)
                 await MainActor.run {
                     if songs.isEmpty {
                         ToastCenter.shared.show("私人漫游暂时没有推荐")
@@ -978,8 +978,9 @@ struct DiscoverView: View {
     }
 
     private func startHeartbeatMode() {
-        guard let uid = auth.user?.uid else {
-            ToastCenter.shared.show("请先登录网易云音乐")
+        // Co：酷狗无心动模式接口，改用酷狗私人漫游作为等价入口（不跨平台匹配）。
+        guard KugouMusicAuth.shared.isLoggedIn else {
+            ToastCenter.shared.show("请先登录酷狗音乐")
             return
         }
         guard recommendationActionLoading == nil else { return }
@@ -987,24 +988,7 @@ struct DiscoverView: View {
         Task {
             defer { Task { @MainActor in recommendationActionLoading = nil } }
             do {
-                let playlists = try await NetEaseAPI.shared.userPlaylists(uid: uid)
-                let liked = playlists.first(where: { $0.isNetEaseLikedPlaylist })
-                let songs: [Song]
-                if let liked {
-                    let likedSongs = try await NetEaseAPI.shared.playlistTracks(id: liked.id)
-                    guard let seed = likedSongs.randomElement() else {
-                        await MainActor.run { ToastCenter.shared.show("先收藏一些喜欢的歌曲吧") }
-                        return
-                    }
-                    songs = try await NetEaseAPI.shared.intelligenceList(songID: seed.id, playlistID: liked.id)
-                    BeansLogger.shared.log("心动模式：喜欢歌单 specialType=\(liked.specialType) id=\(liked.id) seed=\(seed.id) 返回 \(songs.count) 首", level: songs.isEmpty ? .warn : .info)
-                } else if let seed = dailySongs.randomElement() ?? player.currentSong {
-                    songs = try await NetEaseAPI.shared.simiSongs(id: seed.id)
-                    BeansLogger.shared.log("心动模式：未找到喜欢歌单，使用相似歌曲兜底 seed=\(seed.id) 返回 \(songs.count) 首", level: songs.isEmpty ? .warn : .info)
-                } else {
-                    await MainActor.run { ToastCenter.shared.show("先播放或收藏一些歌曲吧") }
-                    return
-                }
+                let songs = try await KugouMusicAPI.shared.personalFM(limit: 12)
                 await MainActor.run {
                     if songs.isEmpty {
                         ToastCenter.shared.show("心动模式暂时不可用")
@@ -1022,7 +1006,6 @@ struct DiscoverView: View {
         }
     }
 
-    @ViewBuilder
     private var homePlatformSelectionMenu: some View {
         let current = SearchProvider(rawValue: homeSourceRaw) ?? homeProviders.first ?? .netease
         ForEach(homeProviders) { provider in
@@ -1309,15 +1292,13 @@ struct DiscoverView: View {
     /// 网易云歌单广场：切换官方分类时单独拉取（不写缓存）
     @MainActor
     private func loadPlaylists(cat: String) async {
-        guard source == .netease else { return }
+        // Co：歌单广场只走酷狗，分类参数不再区分网易云分类。
+        _ = cat
         do {
-            let pp = cat == "全部"
-                ? try await NetEaseAPI.shared.highQualityPlaylists(limit: 18)
-                : try await NetEaseAPI.shared.playlistSquare(cat: cat, order: "hot", limit: 18)
-            personalized = pp
+            personalized = try await KugouMusicAPI.shared.recommendPlaylists(limit: 12)
             errorMessage = nil
         } catch {
-            // 分类拉取失败：保留现有歌单，不打断用户
+            // 拉取失败：保留现有歌单，不打断用户
         }
     }
 
@@ -1325,25 +1306,10 @@ struct DiscoverView: View {
         var snapshot = DiscoverCache.Snapshot()
         snapshot.savedAt = Date()
         switch source {
-        case .qq:
-            async let a: [Song] = (try? await QQMusicAPI.shared.recommendSongs(limit: 30)) ?? []
-            async let b: [QQTopInfo] = (try? await QQMusicAPI.shared.topLists()) ?? []
-            async let c: [Playlist] = (try? await QQMusicAPI.shared.hotPlaylists(limit: 18)) ?? []
-            let (dr, tl, pp) = await (a, b, c)
-            if pp.isEmpty {
-                BeansLogger.shared.log("QQ音乐热门歌单为空：保留板块并显示空状态", level: .warn)
-            }
-            snapshot.dailySongs = dr
-            snapshot.qqTopLists = tl
-            snapshot.personalized = pp
-        case .netease:
-            async let a = NetEaseAPI.shared.topLists()
-            async let b = NetEaseAPI.shared.dailyRecommend()
-            async let c = NetEaseAPI.shared.recommendedHomePlaylists(loggedIn: auth.isLoggedIn, limit: 18)
-            let (tl, dr, pp) = try await (a, b, c)
-            snapshot.topLists = tl
-            snapshot.dailySongs = dr
-            snapshot.personalized = pp
+        case .qq, .netease:
+            // Co：旧平台分支不再发请求（source 运行时恒为酷狗），返回空快照即可。
+            snapshot.dailySongs = []
+            snapshot.personalized = []
         case .kugou:
             async let songs = loadKugouDailySongs(limit: 30)
             async let ranks = KugouMusicAPI.shared.topLists(limit: 10)
@@ -1473,7 +1439,7 @@ struct QQTopListDetailView: View {
             errorMessage = nil
         }
         do {
-            let songs = try await QQMusicAPI.shared.topListSongs(topid: topID)
+            let songs = try await KugouMusicAPI.shared.rankSongs(rankID: topID)
             if !songs.isEmpty {
                 tracks = songs
                 cache.save(songs, for: cacheKey)
@@ -1571,7 +1537,7 @@ struct QQPlaylistSongsSheet: View {
         loading = true
         errorMessage = nil
         do {
-            tracks = try await QQMusicAPI.shared.playlistSongs(listID: playlist.id)
+            tracks = try await KugouMusicAPI.shared.playlistSongs(listID: playlist.id)
             loading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -1766,7 +1732,7 @@ struct TopListDetailView: View {
             errorMessage = nil
         }
         do {
-            let songs = try await NetEaseAPI.shared.playlistTracks(id: topList.id)
+            let songs = try await KugouMusicAPI.shared.rankSongs(rankID: topList.id)  // Co：旧网易云榜单详情已收敛到酷狗榜单，运行时不可达
             if !songs.isEmpty {
                 tracks = songs
                 cache.save(songs, for: cacheKey)
@@ -2162,10 +2128,8 @@ private struct HomeUnifiedSearchSheet: View {
     private func searchSongs(on provider: SearchProvider, keyword: String, enabledProviders: [SearchProvider]) async -> [Song] {
         guard enabledProviders.contains(provider) else { return [] }
         switch provider {
-        case .netease:
-            return (try? await NetEaseAPI.shared.search(keyword: keyword, limit: 30)) ?? []
-        case .qq:
-            return (try? await QQMusicAPI.shared.searchSongs(keyword: keyword, limit: 30)) ?? []
+        case .netease, .qq:
+            return (try? await KugouMusicAPI.shared.searchSongs(keyword: keyword, limit: 30)) ?? []
         case .kugou:
             return (try? await KugouMusicAPI.shared.searchSongs(keyword: keyword, limit: 30)) ?? []
         }

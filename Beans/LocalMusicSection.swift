@@ -195,45 +195,6 @@ struct LocalMusicSection: View {
         syncMessage = ""
         var songs: [Song] = []
         var details: [String] = []
-        if targets.contains(.netease), let user = auth.user, auth.isLoggedIn {
-            do {
-                let lists = try await NetEaseAPI.shared.userPlaylists(uid: user.uid)
-                let liked = lists.first { list in
-                    let name = list.name.replacingOccurrences(of: " ", with: "")
-                    return name.contains("喜欢") || name.contains("我喜欢")
-                }
-                if let liked {
-                    let neteaseSongs = try await NetEaseAPI.shared.playlistTracks(id: liked.id)
-                    songs.append(contentsOf: neteaseSongs)
-                    details.append(platformSongCount("网易云", neteaseSongs.count))
-                } else {
-                    details.append(NSLocalizedString("网易云未找到喜欢歌单", comment: ""))
-                }
-            } catch {
-                BeansLogger.shared.log("三平台同步：网易云失败 \(error.localizedDescription)", level: .error)
-                details.append(NSLocalizedString("网易云请求失败", comment: ""))
-            }
-        } else if targets.contains(.netease) {
-            details.append(NSLocalizedString("网易云未登录", comment: ""))
-        }
-        if targets.contains(.netease), !favorites.neteaseFavoriteSongs.isEmpty {
-            let cachedIDs = Set(songs.filter { $0.source == .netease }.map(\.id))
-            let cached = favorites.neteaseFavoriteSongs.filter { !cachedIDs.contains($0.id) }
-            songs.append(contentsOf: cached)
-            if !cached.isEmpty { details.append(String(format: NSLocalizedString("网易云缓存补充 %d 首", comment: ""), cached.count)) }
-        }
-        if targets.contains(.qq), QQMusicAuth.shared.isLoggedIn {
-            do {
-                let qqSongs = try await QQMusicAPI.shared.favoriteSongs(limit: 0)
-                songs.append(contentsOf: qqSongs)
-                details.append(platformSongCount("QQ音乐", qqSongs.count))
-            } catch {
-                BeansLogger.shared.log("三平台同步：QQ音乐失败 \(error.localizedDescription)", level: .error)
-                details.append(NSLocalizedString("QQ音乐请求失败", comment: ""))
-            }
-        } else if targets.contains(.qq) {
-            details.append(NSLocalizedString("QQ音乐未登录", comment: ""))
-        }
         if targets.contains(.kugou), KugouMusicAuth.shared.isLoggedIn {
             do {
                 let lists = try await KugouMusicAPI.shared.userPlaylists()
@@ -707,9 +668,9 @@ struct LocalSearchAddSheet: View {
                 let songs: [Song]
                 switch provider {
                 case .netease:
-                    songs = try await NetEaseAPI.shared.search(keyword: trimmed, limit: 30)
+                    songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed)
                 case .qq:
-                    songs = try await QQMusicAPI.shared.searchSongs(keyword: trimmed)
+                    songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed)
                 case .kugou:
                     songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed)
                 }

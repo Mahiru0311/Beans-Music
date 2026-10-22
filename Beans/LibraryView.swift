@@ -32,8 +32,7 @@ enum LibraryProvider: String, CaseIterable, Identifiable {
 
     var brandImageName: String? {
         switch self {
-        case .netease: return "BrandNetease"
-        case .qq: return "BrandQQ"
+        case .netease, .qq: return nil  // Co：已删网易云/QQ 品牌图
         case .kugou: return "BrandKugou"
         }
     }
@@ -54,7 +53,6 @@ struct LibraryView: View {
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var favorites: FavoritesStore
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
@@ -94,8 +92,8 @@ struct LibraryView: View {
     }
 
     private var qqCacheAccountID: String {
-        let raw = qqAuth.rawUin
-        return raw.isEmpty ? qqAuth.playlistUin : raw
+        let raw = ""
+        return raw.isEmpty ? "" : raw
     }
 
     private var kugouCacheAccountID: String {
@@ -573,14 +571,14 @@ struct LibraryView: View {
     /// 我的 QQ 歌单（登录后从 QQ 音乐拉取）
     private var qqPlaylistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "我的 QQ 歌单", trailing: qqAuth.isLoggedIn ? (qqPlaylists.isEmpty ? "新建" : "新建 · \(qqPlaylists.count) 个") : nil) {
-                if qqAuth.isLoggedIn {
+            SectionHeader(title: "我的 QQ 歌单", trailing: false ? (qqPlaylists.isEmpty ? "新建" : "新建 · \(qqPlaylists.count) 个") : nil) {
+                if false {
                     BeansHaptics.tap()
                     newPlaylistName = ""
                     showCreatePlaylist = true
                 }
             }
-            if !qqAuth.isLoggedIn {
+            if !false {
                 EmptyStateView(icon: "music.note.list", text: "登录 QQ 音乐后即可查看你的歌单")
             } else if qqLoading {
                 LoadingStateView()
@@ -686,7 +684,7 @@ struct LibraryView: View {
     // MARK: - 歌单新建 / 删除
 
     private func loadQQPlaylists(force: Bool = false) async {
-        guard qqAuth.isLoggedIn else {
+        guard false else {
             qqPlaylists = []
             qqLoading = false
             return
@@ -700,7 +698,7 @@ struct LibraryView: View {
         // 持久化缓存仍新鲜时直接展示；下拉刷新会跳过缓存。
         if !force, !qqPlaylists.isEmpty, Date().timeIntervalSince(qqSavedAt) < cache.playlistTTL { return }
         qqLoading = qqPlaylists.isEmpty
-        let list = (try? await QQMusicAPI.shared.userPlaylists(uin: qqAuth.uin)) ?? []
+        let list: [Playlist] = []  // Co：QQ 歌单已删
         if !list.isEmpty {
             qqPlaylists = list
             cache.savePlaylists(list, source: .qq, accountID: qqCacheAccountID)
@@ -750,7 +748,8 @@ struct LibraryView: View {
         await withTaskGroup(of: (Int, URL?).self) { group in
             for playlist in missing {
                 group.addTask {
-                    let cover = try? await QQMusicAPI.shared.firstSongCover(listID: playlist.id)
+                    let songs = try? await KugouMusicAPI.shared.playlistSongs(listID: playlist.id)
+                    let cover = songs?.first?.coverURL
                     return (playlist.id, cover)
                 }
             }
@@ -764,90 +763,20 @@ struct LibraryView: View {
     }
 
     private func createPlaylist() {
-        let name = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else {
-            ToastCenter.shared.show("请输入歌单名称")
-            return
-        }
-        switch source {
-        case .netease:
-            guard auth.isLoggedIn else {
-                ToastCenter.shared.show("请先登录后再创建歌单")
-                return
-            }
-            Task {
-                do {
-                    _ = try await NetEaseAPI.shared.createPlaylist(name: name)
-                    ToastCenter.shared.show("歌单「\(name)」已创建")
-                    newPlaylistName = ""
-                    await auth.loadLibrary()
-                } catch {
-                    ToastCenter.shared.show("创建失败：\(error.localizedDescription)")
-                }
-            }
-        case .qq:
-            guard qqAuth.isLoggedIn else {
-                ToastCenter.shared.show("请先登录 QQ 音乐后再创建歌单")
-                return
-            }
-            Task {
-                do {
-                    let ok = try await QQMusicAPI.shared.createPlaylist(name: name)
-                    if ok {
-                        ToastCenter.shared.show("歌单「\(name)」已创建")
-                        newPlaylistName = ""
-                        await loadQQPlaylists(force: true)
-                    } else {
-                        ToastCenter.shared.show("创建失败，请确认已登录 QQ 音乐")
-                    }
-                } catch {
-                    ToastCenter.shared.show("创建失败：\(error.localizedDescription)")
-                }
-            }
-        case .kugou:
-            ToastCenter.shared.show("酷狗歌单暂不支持新建")
-        }
+        // Co：酷狗暂不支持云端新建歌单（原网易云/QQ 新建已删）。
+        ToastCenter.shared.show("暂不支持新建歌单")
+        newPlaylistName = ""
+    }
+
+    private func confirmDeletePlaylist() {
+        // Co：酷狗暂不支持云端删除歌单（原网易云/QQ 删除已删）。
+        pendingDelete = nil
+        ToastCenter.shared.show("暂不支持删除歌单")
     }
 
     private func requestDelete(_ playlist: Playlist) {
         pendingDelete = playlist
         showDeleteConfirm = true
-    }
-
-    private func confirmDeletePlaylist() {
-        guard let playlist = pendingDelete else { return }
-        switch source {
-        case .netease:
-            Task {
-                do {
-                    let ok = try await NetEaseAPI.shared.deletePlaylist(id: playlist.id)
-                    if ok {
-                        ToastCenter.shared.show("已删除歌单「\(playlist.name)」")
-                        await auth.loadLibrary()
-                    } else {
-                        ToastCenter.shared.show("删除失败，请稍后再试")
-                    }
-                } catch {
-                    ToastCenter.shared.show("删除失败：\(error.localizedDescription)")
-                }
-            }
-        case .qq:
-            Task {
-                do {
-                    let ok = try await QQMusicAPI.shared.deletePlaylist(dirid: playlist.id)
-                    if ok {
-                        ToastCenter.shared.show("已删除歌单「\(playlist.name)」")
-                        await loadQQPlaylists(force: true)
-                    } else {
-                        ToastCenter.shared.show("删除失败，请确认已登录 QQ 音乐")
-                    }
-                } catch {
-                    ToastCenter.shared.show("删除失败：\(error.localizedDescription)")
-                }
-            }
-        case .kugou:
-            ToastCenter.shared.show("酷狗歌单暂不支持删除")
-        }
     }
 
     private func playFromHistory(_ song: Song) {

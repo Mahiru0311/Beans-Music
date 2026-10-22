@@ -76,34 +76,17 @@ struct AddToPlaylistSheet: View {
     }
 
     private func add(to playlist: Playlist) async {
-        let ok = (try? await NetEaseAPI.shared.addToPlaylist(playlistID: playlist.id, songIDs: [song.id])) ?? false
-        if ok {
-            if !favorites.isLiked(song) {
-                _ = await favorites.toggle(song)
-            }
-            dismiss()
-        } else {
-            message = "添加失败，请重试"
+        // Co：酷狗无云端添加到歌单接口，改为本地收藏并提示（原网易云接口已删）。
+        _ = playlist
+        if !favorites.isLiked(song) {
+            _ = await favorites.toggle(song)
         }
+        message = "酷狗歌单暂不支持云端添加，已改为本地收藏"
     }
 
     private func createAndAdd() async {
-        let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        do {
-            let playlistID = try await NetEaseAPI.shared.createPlaylist(name: name)
-            let ok = try await NetEaseAPI.shared.addToPlaylist(playlistID: playlistID, songIDs: [song.id])
-            if ok {
-                if !favorites.isLiked(song) {
-                    _ = await favorites.toggle(song)
-                }
-                try? await auth.loadLibrary()
-                dismiss()
-            } else {
-                message = "歌单已创建，但添加歌曲失败"
-            }
-        } catch {
-            message = error.localizedDescription
-        }
+        // Co：酷狗暂不支持云端新建歌单（原网易云接口已删）。
+        newName = ""
+        message = "暂不支持新建歌单"
     }
 }

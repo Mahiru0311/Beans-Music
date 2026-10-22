@@ -83,7 +83,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private var timeControlStatusObserver: NSKeyValueObservation?
     private var equalizerSettingsObserver: NSObjectProtocol?
     private var playbackConfirmed = false
-    private var pendingThirdPartyVIPNotice: ThirdPartyVIPNotice?
     private var sessionConfigured = false
     private var systemPlaybackPrepared = false
     private var routeObserverInstalled = false
@@ -99,22 +98,12 @@ final class PlayerManager: NSObject, ObservableObject {
     private var lastNowPlayingArtworkKey: String?
     /// 酷狗高音质地址在部分账号/系统上会返回但无法由 AVPlayer 打开；每首歌只自动降级一次。
     private var kugouStandardFallbackSongKey: String?
-    /// 第三方地址偶发过期或节点不可用时，按失败域名重试，避免同一节点反复进入播放器。
-    private var thirdPartyRetryExcludedHostsBySong: [String: Set<String>] = [:]
-    /// 记录已经交给 AVPlayer 的第三方音质，失败后选择下一个更低档位。
-    private var attemptedThirdPartyQualitiesBySong: [String: Set<String>] = [:]
-    private var activeThirdPartyQuality: ThirdPartyAudioQuality?
-    /// 记录 QQ 官方 vkey 已经尝试过的 BR，官方地址实际打不开时继续换档位。
-    private var attemptedQQOfficialBRsBySong: [String: Set<String>] = [:]
-    private var activeQQOfficialBR: String?
     /// KVO 与 AVPlayerItemFailedToPlayToEndTime 可能同时报告同一次失败。
     private var playbackRecoveryInFlightSongKey: String?
     /// 同一首歌的多个 AVFoundation 失败回调只允许弹一次提示并自动切歌一次。
     private var finalizedFailureSongKey: String?
     /// 播放失败后延迟自动切歌，避免失败回调刚到就立刻跳过歌曲。
     private var failureAutoSkipWorkItem: DispatchWorkItem?
-    /// QQ 官方地址返回成功但实际不可播放时，只切换到第三方一次，避免官方/第三方之间循环。
-    private var qqThirdPartyFallbackSongKey: String?
     private var playbackConfirmationWorkItem: DispatchWorkItem?
     private var playbackStallWorkItem: DispatchWorkItem?
     private static let nowPlayingArtworkCache = NSCache<NSURL, UIImage>()
@@ -126,19 +115,9 @@ final class PlayerManager: NSObject, ObservableObject {
     private let playModeKey = "beans.player.playMode"
     private let autoSkipOnFailureKey = "beans.playback.autoSkipOnFailure"
     private let autoResumeLastPlaybackKey = "beans.playback.autoResumeLast"
-    private let thirdPartyVIPNoticeKey = "beans.showThirdPartyVIPNotice"
     private let defaults = UserDefaults.standard
     private var didAttemptAutoResume = false
 
-    /// 只要存在启用的自定义音源，就允许官方地址失败后进行兜底解析。
-    private var externalSourcesEnabled: Bool {
-        UnblockSourceStore.shared.sources.contains(where: \.enabled)
-    }
-
-    private struct ThirdPartyVIPNotice {
-        let songKey: String
-        let message: String
-    }
 
     private struct PersistedPlaybackState: Codable {
         let queue: [Song]
@@ -466,20 +445,13 @@ final class PlayerManager: NSObject, ObservableObject {
         guard let song = currentSong else { return }
         loadGeneration += 1
         let generation = loadGeneration
-        thirdPartyRetryExcludedHostsBySong.removeValue(forKey: song.identityKey)
-        attemptedThirdPartyQualitiesBySong.removeValue(forKey: song.identityKey)
-        attemptedQQOfficialBRsBySong.removeValue(forKey: song.identityKey)
-        activeThirdPartyQuality = nil
-        activeQQOfficialBR = nil
         playbackRecoveryInFlightSongKey = nil
         finalizedFailureSongKey = nil
         failureAutoSkipWorkItem?.cancel()
         failureAutoSkipWorkItem = nil
         playbackStallWorkItem?.cancel()
         playbackStallWorkItem = nil
-        qqThirdPartyFallbackSongKey = nil
         let initialProgress = max(0, min(resumeAt ?? 0, max(song.duration, 0)))
-        // 切歌立即暂停旧音频，避免新歌加载期间旧歌继续播放造成“切歌卡住”感
         player?.pause()
         duration = song.duration
         progress = initialProgress
@@ -489,66 +461,15 @@ final class PlayerManager: NSObject, ObservableObject {
         pushHistory(song)
         savePersistedPlaybackState()
         Task {
-            var urlString: String?
-            var resolvedThirdParty: UnblockService.Resolved?
-            var qqOfficialBR: String?
-            var attemptedQQOfficialBRs: [String] = []
-            // 官方地址失败后，使用已启用的自定义音源兜底。
-            let enableUnblock = externalSourcesEnabled
-            let strictUnlock = shouldLockOfficialOnly(song)
+            // Co 纯酷狗：只走酷狗官方地址，音质按设置取，失败时由下方音质降级处理。
+            // 不再走网易云/QQ/第三方音源兜底；非酷狗来源的旧队列歌曲（无酷狗 hash）直接判为不可播。
             let quality = (forceKugouStandard && song.source == .kugou) ? .standard : BeansAudioQuality.current
-            let thirdPartyQuality = ThirdPartyAudioQuality.current
-            BeansLogger.shared.log("▶ 开始播放：\(song.name) - \(song.artists)｜平台=\(song.source.rawValue) id=\(song.id) 音质=\(quality.level) 第三方音质=\(thirdPartyQuality.rawValue) 自定义音源=\(enableUnblock ? "开" : "关") 官方受限=\(strictUnlock ? "是" : "否")", level: .info)
-            if song.source == .kugou {
+            BeansLogger.shared.log("▶ 开始播放：\(song.name) - \(song.artists)｜平台=酷狗 id=\(song.id) 音质=\(quality.level)", level: .info)
+            var urlString: String?
+            if song.source == .kugou || song.kugouHash != nil || song.kugouAlbumAudioId != nil {
                 urlString = try? await KugouMusicAPI.shared.songURL(song: song, quality: quality)
-                if urlString == nil {
-                    resolvedThirdParty = await kugouFallback(
-                        song: song,
-                        thirdPartyQuality: thirdPartyQuality,
-                        enableUnblock: enableUnblock
-                    )
-                }
-            } else if song.source == .qq, let mid = song.qqMid {
-                // QQ 官方地址失败后只走 QQ 第三方音源，不跨平台匹配同名歌曲。
-                let officialResult = try? await QQMusicAPI.shared.songURLResult(
-                    songmid: mid,
-                    mediaMid: song.qqMediaMid,
-                    quality: quality
-                )
-                urlString = officialResult?.url
-                qqOfficialBR = officialResult?.br
-                attemptedQQOfficialBRs = officialResult?.attemptedBRs ?? []
-                if urlString == nil {
-                    (urlString, resolvedThirdParty) = await qqFallback(
-                        song: song,
-                        quality: quality,
-                        thirdPartyQuality: thirdPartyQuality,
-                        enableUnblock: enableUnblock,
-                        strict: strictUnlock
-                    )
-                }
             } else {
-                (urlString, resolvedThirdParty) = await neteaseResolve(
-                    song: song,
-                    quality: quality,
-                    thirdPartyQuality: thirdPartyQuality,
-                    enableUnblock: enableUnblock,
-                    strict: strictUnlock
-                )
-            }
-            if let resolved = resolvedThirdParty {
-                let notice = self.thirdPartyVIPNotice(for: song, sourceTitle: resolved.sourceTitle)
-                await MainActor.run {
-                    guard generation == self.loadGeneration else { return }
-                    self.setupPlayer(
-                        url: resolved.url,
-                        thirdPartyVIPNotice: notice,
-                        resumeAt: initialProgress,
-                        isThirdParty: true,
-                        thirdPartyQuality: resolved.quality
-                    )
-                }
-                return
+                BeansLogger.shared.log("播放跳过非酷狗歌曲：\(song.name) 来源=\(song.source.rawValue)", level: .warn)
             }
             guard let urlString, let url = URL(string: urlString) else {
                 await MainActor.run {
@@ -570,164 +491,15 @@ final class PlayerManager: NSObject, ObservableObject {
             }
             await MainActor.run {
                 guard generation == self.loadGeneration else { return }
-                self.setupPlayer(
-                    url: url,
-                    resumeAt: initialProgress,
-                    qqOfficialBR: qqOfficialBR,
-                    attemptedQQOfficialBRs: attemptedQQOfficialBRs
-                )
+                self.setupPlayer(url: url, resumeAt: initialProgress)
             }
         }
     }
 
-    /// 网易云播放地址解析：按设置音质取 URL，VIP/灰色歌曲交给第三方解锁。
-    private func neteaseResolve(
-        song: Song,
-        quality: BeansAudioQuality,
-        thirdPartyQuality: ThirdPartyAudioQuality = .current,
-        enableUnblock: Bool,
-        strict: Bool = false
-    ) async -> (String?, UnblockService.Resolved?) {
-        var urlString: String?
-        var resolved: UnblockService.Resolved?
-        let infos = try? await NetEaseAPI.shared.songURLInfo(ids: [song.id], level: quality.level)
-        var info = infos?[song.id]
-        if (info?.url == nil || info?.freeTrial == true), quality != .standard {
-            // 高音质拿不到时自动回落到标准音质
-            let fallback = try? await NetEaseAPI.shared.songURLInfo(ids: [song.id], level: "standard")
-            info = fallback?[song.id]
-        }
-        BeansLogger.shared.log("网易云解析：\(song.name) 音质=\(quality.level) 官方URL=\(info?.url == nil ? "无" : "有") 试听=\(info?.freeTrial == true ? "是" : "否")", level: .debug)
-        // 试听片段 / 无 URL 一律不直接播放，交给第三方解锁，避免"只能试听"
-        if let u = info?.url, info?.freeTrial != true {
-            urlString = u
-        }
-        if urlString == nil, enableUnblock {
-            resolved = await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: song.id,
-                songSource: .netease,
-                quality: thirdPartyQuality,
-                strict: strict
-            )
-        }
-        BeansLogger.shared.log("网易云结果：\(song.name) 官方=\(urlString != nil ? "是" : "否") 第三方=\(resolved != nil ? "命中" : "未用/未命中")", level: .debug)
-        return (urlString, resolved)
-    }
-
-    /// QQ 歌曲兜底：官方失败后只走 QQ 第三方接口，不跨平台匹配同名歌曲。
-    private func qqFallback(
-        song: Song,
-        quality _: BeansAudioQuality,
-        thirdPartyQuality: ThirdPartyAudioQuality = .current,
-        enableUnblock: Bool,
-        strict: Bool = false,
-        excludedHosts: Set<String> = []
-    ) async -> (String?, UnblockService.Resolved?) {
-        guard enableUnblock else {
-            BeansLogger.shared.log("QQ兜底：\(song.name) 第三方=未启用", level: .debug)
-            return (nil, nil)
-        }
-        let resolved = await UnblockService.resolve(
-            name: song.name,
-            artists: song.artists,
-            // QQ 专属音源要求传数字 songId；mid 仅作为兼容接口的后备参数。
-            neteaseID: song.id,
-            songSource: .qq,
-            qqMid: song.qqMid,
-            qqMediaMid: song.qqMediaMid,
-            quality: thirdPartyQuality,
-            strict: strict,
-            excludedHosts: excludedHosts
-        )
-        BeansLogger.shared.log("QQ兜底：\(song.name) QQ第三方=\(resolved != nil ? "命中" : "未命中")", level: .debug)
-        return (nil, resolved)
-    }
-
-    /// 酷狗兜底：官方播放失败后使用内置音源作为备选。
-    private func kugouFallback(
-        song: Song,
-        thirdPartyQuality: ThirdPartyAudioQuality = .current,
-        enableUnblock: Bool
-    ) async -> UnblockService.Resolved? {
-        guard enableUnblock else { return nil }
-        let kugouID = song.kugouHash ?? song.kugouAlbumAudioId ?? ""
-        if kugouID.isEmpty {
-            BeansLogger.shared.log("酷狗兜底跳过：缺少 album_audio_id/hash", level: .debug)
-        } else {
-            let resolved = await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: 0,
-                songSource: .kugou,
-                kugouID: kugouID,
-                quality: thirdPartyQuality
-            )
-            if let resolved {
-                BeansLogger.shared.log("酷狗兜底：\(song.name) 酷狗音源=命中", level: .debug)
-                return resolved
-            }
-        }
-
-        let strict = shouldLockOfficialOnly(song)
-        if let matched = await matchNetEaseSong(
-            name: song.name,
-            artists: song.artists,
-            durationMS: Int(song.duration * 1000),
-            strict: strict
-        ) {
-            let resolved = await UnblockService.resolve(
-                name: matched.name,
-                artists: matched.artists,
-                neteaseID: matched.id,
-                songSource: .netease,
-                quality: thirdPartyQuality,
-                strict: strict
-            )
-            BeansLogger.shared.log("酷狗兜底转网易云音源：\(song.name) -> \(matched.name) 第三方=\(resolved != nil ? "命中" : "未命中")", level: .debug)
-            return resolved
-        }
-
-        BeansLogger.shared.log("酷狗兜底：\(song.name) 第三方=未命中", level: .debug)
-        return nil
-    }
-
-    /// 不再按歌手硬拦截跨平台兜底，避免 QQ 官方失败后把可播的网易云链路一并阻断。
     private func shouldLockOfficialOnly(_ song: Song) -> Bool {
         false
     }
 
-    /// 在网易云按 歌名+歌手 匹配同名歌曲（QQ vkey 失败时的免费播放兜底）
-    private func matchNetEaseSong(name: String, artists: String, durationMS: Int, strict: Bool = false) async -> Song? {
-        let keyword = ([name, artists].filter { !$0.isEmpty }).joined(separator: " ")
-        guard !keyword.isEmpty,
-              let results = try? await NetEaseAPI.shared.search(keyword: keyword, limit: 8),
-              !results.isEmpty else { return nil }
-        let target = Double(durationMS) / 1000.0
-        let artistTokens = artists.lowercased().split(whereSeparator: { $0 == " " || $0 == "/" || $0 == "&" }).map(String.init)
-        // 优先：歌手匹配 + 时长接近（兼容 Jay Chou 别名）
-        if let hit = results.first(where: { song in
-            let durOK = abs(song.duration - target) < 12
-            let songArtists = song.artists.lowercased()
-            let artistOK = artistTokens.contains { !$0.isEmpty && songArtists.contains($0) }
-                || (songArtists.contains("周杰伦") && artists.lowercased().contains("jay chou"))
-            return durOK && artistOK
-        }) { return hit }
-        // 严格模式（周杰伦等版权歌手）：找不到原唱直接放弃，绝不返回翻唱
-        if strict { return nil }
-        // 其次：仅时长接近（必须足够接近才用，避免张冠李戴）
-        if let hit = results.min(by: { abs($0.duration - target) < abs($1.duration - target) }),
-           abs(hit.duration - target) < 20 {
-            return hit
-        }
-        // 找不到可靠匹配：宁可播放失败，也不播放错误歌曲
-        return nil
-    }
-
-    /// 仅在高音质地址已经交给 AVPlayer 但实际无法打开时回退标准音质。
-    /// 这样正常账号仍优先使用高音质，兼容部分旧系统或账号返回的不可解码资源。
-    @discardableResult
     private func retryKugouAtStandardIfNeeded(error: Error?) -> Bool {
         guard let song = currentSong,
               song.source == .kugou,
@@ -741,251 +513,20 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     @discardableResult
-    private func retryThirdPartyIfNeeded(excludingHost: String? = nil) -> Bool {
-        guard let song = currentSong,
-              externalSourcesEnabled else { return false }
-        if playbackRecoveryInFlightSongKey == song.identityKey {
-            return true
-        }
-
-        let generation = loadGeneration
-        let resume = progress
-        let strict = shouldLockOfficialOnly(song)
-        let currentQuality = activeThirdPartyQuality ?? ThirdPartyAudioQuality.current
-        let attempted = attemptedThirdPartyQualitiesBySong[song.identityKey] ?? []
-        guard let thirdPartyQuality = currentQuality.fallbackChain.first(where: {
-            !attempted.contains($0.rawValue)
-        }) else {
-            BeansLogger.shared.log(
-                "第三方播放地址重试停止：歌曲=\(song.name)｜已无更低可用音质｜当前=\(currentQuality.rawValue)",
-                level: .debug
-            )
-            return false
-        }
-        attemptedThirdPartyQualitiesBySong[song.identityKey, default: []].insert(thirdPartyQuality.rawValue)
-        var excludedHosts = thirdPartyRetryExcludedHostsBySong[song.identityKey] ?? []
-        if let excludingHost, !excludingHost.isEmpty {
-            excludedHosts.insert(excludingHost.lowercased())
-        }
-        guard excludedHosts.count <= 6 else {
-            BeansLogger.shared.log(
-                "第三方播放地址重试停止：歌曲=\(song.name)｜已排除域名=\(excludedHosts.sorted().joined(separator: ","))",
-                level: .debug
-            )
-            return false
-        }
-        thirdPartyRetryExcludedHostsBySong[song.identityKey] = excludedHosts
-        playbackRecoveryInFlightSongKey = song.identityKey
-        BeansLogger.shared.log(
-            "第三方播放地址失效，自动降级重试：歌曲=\(song.name)｜音质=\(thirdPartyQuality.rawValue)｜系统=\(UIDevice.current.systemVersion)｜排除域名=\(excludedHosts.sorted().joined(separator: ","))",
-            level: .debug
-        )
-        Task {
-            let resolved = await self.resolveThirdParty(
-                song: song,
-                quality: thirdPartyQuality,
-                strict: strict,
-                excludedHosts: excludedHosts
-            )
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == song.identityKey else {
-                    if self.playbackRecoveryInFlightSongKey == song.identityKey {
-                        self.playbackRecoveryInFlightSongKey = nil
-                    }
-                    return
-                }
-                self.playbackRecoveryInFlightSongKey = nil
-                if let resolved {
-                    let notice = self.thirdPartyVIPNotice(for: song, sourceTitle: resolved.sourceTitle)
-                    self.setupPlayer(
-                        url: resolved.url,
-                        thirdPartyVIPNotice: notice,
-                        resumeAt: resume,
-                        isThirdParty: true,
-                        thirdPartyQuality: resolved.quality
-                    )
-                    BeansLogger.shared.log(
-                        "第三方播放地址重试成功：\(song.name)｜音质=\(resolved.quality.rawValue)｜域名=\(resolved.url.host ?? "?")",
-                        level: .info
-                    )
-                } else {
-                    BeansLogger.shared.log(
-                        "第三方播放地址重试未命中：歌曲=\(song.name)｜已排除域名=\(excludedHosts.sorted().joined(separator: ","))",
-                        level: .debug
-                    )
-                    if self.retryThirdPartyIfNeeded() { return }
-                    self.finishUnrecoverablePlaybackFailure(song: song, reason: "第三方播放地址重试失败")
-                }
-            }
-        }
-        return true
-    }
-
-    @discardableResult
-    private func retryQQOfficialIfNeeded() -> Bool {
-        guard let song = currentSong,
-              song.source == .qq,
-              let qqMid = song.qqMid,
-              !qqMid.isEmpty else { return false }
-        if playbackRecoveryInFlightSongKey == song.identityKey {
-            return true
-        }
-
-        let officialBRs = ["F000", "M800", "M500", "C400"]
-        let attempted = attemptedQQOfficialBRsBySong[song.identityKey] ?? []
-        guard let nextBR = officialBRs.first(where: { !attempted.contains($0) }) else {
-            return false
-        }
-        attemptedQQOfficialBRsBySong[song.identityKey, default: []].insert(nextBR)
-        playbackRecoveryInFlightSongKey = song.identityKey
-        let generation = loadGeneration
-        let resume = progress
-        BeansLogger.shared.log(
-            "QQ 官方地址实际不可播放，继续切换官方音质：歌曲=\(song.name)｜BR=\(nextBR)",
-            level: .debug
-        )
-        Task {
-            let urlString = try? await QQMusicAPI.shared.songURL(
-                songmid: qqMid,
-                mediaMid: song.qqMediaMid,
-                br: nextBR
-            )
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == song.identityKey else {
-                    if self.playbackRecoveryInFlightSongKey == song.identityKey {
-                        self.playbackRecoveryInFlightSongKey = nil
-                    }
-                    return
-                }
-                self.playbackRecoveryInFlightSongKey = nil
-                if let urlString, let url = URL(string: urlString) {
-                    self.setupPlayer(
-                        url: url,
-                        resumeAt: resume,
-                        qqOfficialBR: nextBR
-                    )
-                    return
-                }
-                if self.retryQQOfficialIfNeeded() { return }
-                if self.fallbackQQToThirdPartyIfNeeded() { return }
-                self.finishUnrecoverablePlaybackFailure(song: song, reason: "QQ 官方音质均不可播放")
-            }
-        }
-        return true
-    }
-
-    @discardableResult
-    private func fallbackQQToThirdPartyIfNeeded() -> Bool {
-        guard let song = currentSong,
-              song.source == .qq,
-              let qqMid = song.qqMid,
-              !qqMid.isEmpty,
-              qqThirdPartyFallbackSongKey != song.identityKey,
-              externalSourcesEnabled else { return false }
-        if playbackRecoveryInFlightSongKey == song.identityKey {
-            return true
-        }
-
-        qqThirdPartyFallbackSongKey = song.identityKey
-        playbackRecoveryInFlightSongKey = song.identityKey
-        let generation = loadGeneration
-        let resume = progress
-        let strict = shouldLockOfficialOnly(song)
-        let thirdPartyQuality = ThirdPartyAudioQuality.current
-        BeansLogger.shared.log(
-            "QQ 官方地址实际不可播放，切换第三方解析：歌曲=\(song.name)｜系统=\(UIDevice.current.systemVersion)",
-            level: .debug
-        )
-        Task {
-            let (_, resolved) = await self.qqFallback(
-                song: song,
-                quality: BeansAudioQuality.current,
-                thirdPartyQuality: thirdPartyQuality,
-                enableUnblock: true,
-                strict: strict
-            )
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == song.identityKey else {
-                    if self.playbackRecoveryInFlightSongKey == song.identityKey {
-                        self.playbackRecoveryInFlightSongKey = nil
-                    }
-                    return
-                }
-                self.playbackRecoveryInFlightSongKey = nil
-                if let resolved {
-                    let notice = self.thirdPartyVIPNotice(for: song, sourceTitle: resolved.sourceTitle)
-                    self.setupPlayer(
-                        url: resolved.url,
-                        thirdPartyVIPNotice: notice,
-                        resumeAt: resume,
-                        isThirdParty: true,
-                        thirdPartyQuality: resolved.quality
-                    )
-                    BeansLogger.shared.log(
-                        "QQ 官方失败后第三方切换成功：\(song.name)｜域名=\(resolved.url.host ?? "?")",
-                        level: .info
-                    )
-                } else {
-                    BeansLogger.shared.log("QQ 官方失败后 QQ 第三方仍未命中：\(song.name)", level: .debug)
-                    self.finishUnrecoverablePlaybackFailure(song: song, reason: "QQ 第三方解析失败")
-                }
-            }
-        }
-        return true
-    }
-
     private func setupPlayer(
         url: URL,
-        thirdPartyVIPNotice: ThirdPartyVIPNotice? = nil,
-        resumeAt: Double = 0,
-        isThirdParty: Bool = false,
-        thirdPartyQuality: ThirdPartyAudioQuality? = nil,
-        qqOfficialBR: String? = nil,
-        attemptedQQOfficialBRs: [String] = []
+        resumeAt: Double = 0
     ) {
         guard ensurePlaybackAllowed(), let loadedSong = currentSong else { return }
-        if isThirdParty {
-            let quality = thirdPartyQuality ?? ThirdPartyAudioQuality.current
-            activeThirdPartyQuality = quality
-            activeQQOfficialBR = nil
-            if let songKey = currentSong?.identityKey {
-                attemptedThirdPartyQualitiesBySong[songKey, default: []].insert(quality.rawValue)
-            }
-        } else {
-            activeThirdPartyQuality = nil
-            activeQQOfficialBR = qqOfficialBR
-            if let songKey = currentSong?.identityKey, !attemptedQQOfficialBRs.isEmpty {
-                attemptedQQOfficialBRsBySong[songKey, default: []].formUnion(attemptedQQOfficialBRs)
-            }
-        }
+        let isThirdParty = false
         prepareForSystemPlayback()
         configureAudioSession()
         UIApplication.shared.beginReceivingRemoteControlEvents()
         removeCurrentObservers()
-        pendingThirdPartyVIPNotice = thirdPartyVIPNotice
-        // QQ CDN 地址需要基础请求头；第三方地址也可能落在
-        // ptqqmusic.gitv.tv / aqqmusic.tc.qq.com 等 QQ CDN 域名。
-        // 这些地址在低系统上如果缺少 Referer/Cookie，常见表现是先进入
-        // playing，随后以 AVFoundation -11849 失败。
+        // 酷狗 CDN 地址需要基础请求头与登录 Cookie（VIP 权益靠它传递）。
         let item: AVPlayerItem
         var playbackHeaders: [String: String] = [:]
-        if isQQAudioHost(url.host) {
-            playbackHeaders = [
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:80.0) Gecko/20100101 Firefox/80.0",
-                "Referer": "https://y.qq.com/",
-            ]
-            let cookie = QQMusicAuth.shared.cookieHeader
-            if !cookie.isEmpty {
-                playbackHeaders["Cookie"] = cookie
-            }
-            let asset = AVURLAsset(url: url, options: [
-                "AVURLAssetHTTPHeaderFieldsKey": playbackHeaders
-            ])
-            item = AVPlayerItem(asset: asset)
-        } else if url.host?.contains("kugou.com") == true || url.host?.contains("kgimg.com") == true {
+        if url.host?.contains("kugou.com") == true || url.host?.contains("kgimg.com") == true {
             playbackHeaders = [
                 "User-Agent": "Android15-1070-11440-46-0-DiscoveryDRADProtocol-wifi",
                 "Referer": "https://www.kugou.com/",
@@ -1026,9 +567,6 @@ final class PlayerManager: NSObject, ObservableObject {
                     isThirdParty: isThirdParty,
                     playbackHeaders: playbackHeaders
                 )
-                if isThirdParty && self.retryThirdPartyIfNeeded(excludingHost: url.host) { return }
-                if !isThirdParty && self.retryQQOfficialIfNeeded() { return }
-                if !isThirdParty && self.fallbackQQToThirdPartyIfNeeded() { return }
                 if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
                 self.finishUnrecoverablePlaybackFailure(song: loadedSong, reason: "AVPlayerItem 加载失败")
             }
@@ -1053,9 +591,6 @@ final class PlayerManager: NSObject, ObservableObject {
                             "播放地址长时间未开始：歌曲=\(self.currentSong?.name ?? "?")｜第三方=\(isThirdParty ? "是" : "否")｜URL=\(self.playbackURLSummary(url))",
                             level: .debug
                         )
-                        if isThirdParty && self.retryThirdPartyIfNeeded(excludingHost: url.host) { return }
-                        if !isThirdParty && self.retryQQOfficialIfNeeded() { return }
-                        if !isThirdParty && self.fallbackQQToThirdPartyIfNeeded() { return }
                         if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
                         self.finishUnrecoverablePlaybackFailure(
                             song: loadedSong,
@@ -1086,7 +621,6 @@ final class PlayerManager: NSObject, ObservableObject {
                             level: .info
                         )
                     }
-                    self.showPendingThirdPartyVIPNoticeIfNeeded()
                 }
                 self.playbackConfirmationWorkItem = confirmation
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: confirmation)
@@ -1107,10 +641,10 @@ final class PlayerManager: NSObject, ObservableObject {
             bumpPlayCount(song)
             lastCountedSongID = song.identityKey
         }
-        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.2, preferredTimescale: 600), queue: .main) { [weak self] time in
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1.0, preferredTimescale: 600)  // Co 省电：进度按秒级更新，不再 5 次/秒重绘, queue: .main) { [weak self] time in
             guard let self, let player = self.player else { return }
             if time.seconds.isFinite {
-                if abs(time.seconds - self.lastPublishedProgress) >= 0.18 {
+                if abs(time.seconds - self.lastPublishedProgress) >= 0.9 {
                     self.lastPublishedProgress = time.seconds
                     self.progress = time.seconds
                     if abs(time.seconds - self.lastPersistedProgress) >= 2.0 {
@@ -1150,9 +684,6 @@ final class PlayerManager: NSObject, ObservableObject {
                 isThirdParty: isThirdParty,
                 playbackHeaders: playbackHeaders
             )
-            if !isThirdParty && self.retryQQOfficialIfNeeded() { return }
-            if !isThirdParty && self.fallbackQQToThirdPartyIfNeeded() { return }
-            if isThirdParty && self.retryThirdPartyIfNeeded(excludingHost: url.host) { return }
             if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
             self.finishUnrecoverablePlaybackFailure(song: loadedSong, reason: "播放中断失败")
         }
@@ -1221,55 +752,6 @@ final class PlayerManager: NSObject, ObservableObject {
 
     private func ensurePlaybackAllowed() -> Bool {
         return true
-    }
-
-    /// 统一按当前歌曲平台重新解析第三方地址，失败重试时不跨平台匹配同名歌曲。
-    private func resolveThirdParty(
-        song: Song,
-        quality: ThirdPartyAudioQuality,
-        strict: Bool,
-        excludedHosts: Set<String> = []
-    ) async -> UnblockService.Resolved? {
-        switch song.source {
-        case .netease:
-            return await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: song.id,
-                songSource: .netease,
-                quality: quality,
-                strict: strict,
-                excludedHosts: excludedHosts
-            )
-        case .qq:
-            return await qqFallback(
-                song: song,
-                quality: BeansAudioQuality.current,
-                thirdPartyQuality: quality,
-                enableUnblock: true,
-                strict: strict,
-                excludedHosts: excludedHosts
-            ).1
-        case .kugou:
-            let kugouID = song.kugouHash ?? song.kugouAlbumAudioId
-            guard let kugouID, !kugouID.isEmpty else { return nil }
-            return await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: 0,
-                songSource: .kugou,
-                kugouID: kugouID,
-                quality: quality,
-                excludedHosts: excludedHosts
-            )
-        }
-    }
-
-    private func isQQAudioHost(_ host: String?) -> Bool {
-        guard let host = host?.lowercased() else { return false }
-        return host.contains("qq.com")
-            || host.contains("qqmusic")
-            || host.contains("ptqqmusic")
     }
 
     private func playbackURLSummary(_ url: URL) -> String {
@@ -1359,7 +841,6 @@ final class PlayerManager: NSObject, ObservableObject {
         playbackStallWorkItem?.cancel()
         playbackStallWorkItem = nil
         playbackConfirmed = false
-        pendingThirdPartyVIPNotice = nil
         lastPublishedProgress = -1
     }
 
@@ -1392,50 +873,6 @@ final class PlayerManager: NSObject, ObservableObject {
                       BeansEqualizer.shared.isEnabled else { return }
                 item.audioMix = mix
             }
-        }
-    }
-
-    private func thirdPartyVIPNotice(for song: Song, sourceTitle: String) -> ThirdPartyVIPNotice? {
-        guard song.isVIP else { return nil }
-        guard defaults.object(forKey: thirdPartyVIPNoticeKey) as? Bool ?? true else { return nil }
-        guard !hasMembership(for: song.source) else { return nil }
-        let sourceName = sourceTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let suffix = sourceName.isEmpty ? "第三方音源" : "第三方音源「\(sourceName)」"
-        return ThirdPartyVIPNotice(
-            songKey: song.identityKey,
-            message: "当前账号未识别到对应会员，《\(song.name)》已通过\(suffix)播放"
-        )
-    }
-
-    private func showPendingThirdPartyVIPNoticeIfNeeded() {
-        guard let notice = pendingThirdPartyVIPNotice else { return }
-        guard currentSong?.identityKey == notice.songKey else {
-            pendingThirdPartyVIPNotice = nil
-            return
-        }
-        guard defaults.object(forKey: thirdPartyVIPNoticeKey) as? Bool ?? true else {
-            pendingThirdPartyVIPNotice = nil
-            return
-        }
-        Task { @MainActor in
-            ToastCenter.shared.show(notice.message)
-        }
-        BeansLogger.shared.log("第三方音源会员歌提醒：\(notice.message)", level: .info)
-        pendingThirdPartyVIPNotice = nil
-    }
-
-    private func hasMembership(for source: SongSource) -> Bool {
-        switch source {
-        case .qq:
-            return QQMusicAuth.shared.vipBadge != nil
-        case .kugou:
-            return KugouMusicAuth.shared.vipBadge != nil
-        case .netease:
-            guard let data = defaults.data(forKey: "beans.user"),
-                  let user = try? JSONDecoder().decode(NetEaseUser.self, from: data) else {
-                return false
-            }
-            return user.vipBadge != nil
         }
     }
 

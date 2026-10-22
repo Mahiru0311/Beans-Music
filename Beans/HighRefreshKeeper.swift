@@ -12,8 +12,8 @@ final class HighRefreshKeeper {
     private init() {}
 
     static func registerDefaults() {
-        UserDefaults.standard.register(defaults: [defaultsKey: true])
-        UserDefaults.standard.set(true, forKey: defaultsKey)
+        UserDefaults.standard.register(defaults: [defaultsKey: false])
+        // Co 省电：默认关闭高刷新常驻，不再强制 120Hz 空转；动画需要时由调用方临时开启
     }
 
     func configureFromDefaults() {
@@ -30,8 +30,9 @@ final class HighRefreshKeeper {
     }
 
     func attach(to view: UIView) {
+        // Co 省电：底栏配置器不再自动启动 CADisplayLink 常驻；
+        // 需要高刷的过渡动画由系统自身处理，不靠空转 DisplayLink 保频。
         _ = view
-        start()
     }
 
     private func start() {

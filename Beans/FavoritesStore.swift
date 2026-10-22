@@ -1,7 +1,7 @@
 import Foundation
 
-/// 收藏管理（红心）：网易云登录后同步到网易云云端；QQ 本地持久化，
-/// 登录 QQ 时尽力同步到 QQ 云端（music.srfDissong），失败不影响本地收藏。
+/// 收藏管理（红心）：Co 纯酷狗，本地持久化为主，不再走网易云/QQ 云端同步。
+/// 旧版红心失效常因云端同步失败回滚本地状态；Co 改为本地先行、永不回滚。
 final class FavoritesStore: ObservableObject {
     static let shared = FavoritesStore()
 
@@ -42,40 +42,14 @@ final class FavoritesStore: ObservableObject {
     /// 切换收藏状态；返回是否成功（云端同步失败时网易云会回滚）
     @discardableResult
     func toggle(_ song: Song) async -> Bool {
+        // Co #5 修复：红心只写本地，云端失败不再回滚（旧版网易云/QQ 同步失败会把红心弹回）。
+        let liked = !isLiked(song)
         switch song.source {
-        case .netease:
-            let liked = !isLiked(song)
-            updateNetease(song, liked: liked)
-            do {
-                let ok = try await NetEaseAPI.shared.like(id: song.id, liked: liked)
-                if !ok {
-                    updateNetease(song, liked: !liked)
-                    return false
-                }
-                return true
-            } catch {
-                updateNetease(song, liked: !liked)
-                return false
-            }
-        case .qq:
-            let liked = !isLiked(song)
-            updateQQ(song, liked: liked)
-            guard let mid = song.qqMid, !mid.isEmpty else {
-                BeansLogger.shared.log("QQ 红心缺少 songmid，已保留本地收藏：\(song.name) liked=\(liked)", level: .warn)
-                return true
-            }
-            if QQMusicAuth.shared.isLoggedIn {
-                let ok = (try? await QQMusicAPI.shared.like(songmid: mid, liked: liked)) ?? false
-                if !ok {
-                    BeansLogger.shared.log("QQ 红心云端同步失败，已保留本地收藏：\(song.name) liked=\(liked)", level: .warn)
-                }
-            }
-            return true
-        case .kugou:
-            let liked = !isLiked(song)
-            updateKugou(song, liked: liked)
-            return true
+        case .netease: updateNetease(song, liked: liked)
+        case .qq: updateQQ(song, liked: liked)
+        case .kugou: updateKugou(song, liked: liked)
         }
+        return true
     }
 
     /// 移除 QQ 收藏（音乐库侧滑删除）
@@ -87,10 +61,7 @@ final class FavoritesStore: ObservableObject {
     /// 只有云端明确返回歌曲时才覆盖本地，避免接口空响应误清空收藏。
     @MainActor
     func syncQQFromCloud() async {
-        guard QQMusicAuth.shared.isLoggedIn else { return }
-        guard let songs = try? await QQMusicAPI.shared.favoriteSongs(), !songs.isEmpty else { return }
-        qqFavoriteSongs = songs
-        saveSongs(qqFavoriteSongs, key: qqKey)
+        // Co 已删 QQ 云端同步：保留签名供旧调用点编译通过，实际不做任何事。
     }
 
     private func updateNetease(_ song: Song, liked: Bool) {

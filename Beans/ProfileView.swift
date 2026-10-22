@@ -29,20 +29,10 @@ struct ProfileView: View {
     @State private var profileOrder = SectionOrderStore.load(SectionOrderStore.profileKey, defaults: SectionOrderStore.profileDefaults)
     /// 手动检查更新
     @State private var checkingUpdate = false
-    @State private var updateResult: UpdateChecker.CheckResult?
-    @State private var showUpdateResult = false
     /// 自动下载新版 IPA
-    @ObservedObject private var ipaDownloader = IPADownloader.shared
-    @State private var showDownloadOverlay = false
-    @State private var downloadOutcome: DownloadOutcome?
-    @State private var showDownloadOutcome = false
-    @State private var pendingUpdateInfo: UpdateChecker.ReleaseInfo?
-    @State private var updateShareFile: ShareFileItem?
-    @State private var updateShareFileURL: URL?
     @State private var didRefreshProfileAccount = false
     @State private var donationExpanded = false
     @State private var showWeChatOpenError = false
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
@@ -83,8 +73,8 @@ struct ProfileView: View {
                 parts.append("网易云音乐 UID \(auth.user?.uid ?? 0)")
             }
         }
-        if platformPrefs.isEnabled(SearchProvider.qq), qqAuth.isLoggedIn {
-                parts.append(qqAuth.nickname.isEmpty ? (isEnglish ? "QQ Music Logged In" : "QQ 已登录") : qqAuth.nickname)
+        if platformPrefs.isEnabled(SearchProvider.qq), false {
+                parts.append("".isEmpty ? (isEnglish ? "QQ Music Logged In" : "QQ 已登录") : "")
         }
         if platformPrefs.isEnabled(SearchProvider.kugou), kugouAuth.isLoggedIn {
                 parts.append(kugouAuth.nickname.isEmpty ? (isEnglish ? "Kugou Music Logged In" : "酷狗已登录") : kugouAuth.nickname)
@@ -97,7 +87,7 @@ struct ProfileView: View {
 
     private var hasVisibleAccountLogin: Bool {
         (platformPrefs.isEnabled(SearchProvider.netease) && auth.isLoggedIn)
-            || (platformPrefs.isEnabled(SearchProvider.qq) && qqAuth.isLoggedIn)
+            || (platformPrefs.isEnabled(SearchProvider.qq) && false)
             || (platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn)
     }
 
@@ -188,9 +178,6 @@ struct ProfileView: View {
                         }
                     }
                     // 更新入口固定放在“我的”页面最底部，避免被板块排序隐藏。
-                    updateLinkCard
-                    communityCard
-                    donationCard
                     profileVersionFooter
                 }
                 .padding(.horizontal, isNativeClean ? 24 : 16)
@@ -205,7 +192,7 @@ struct ProfileView: View {
             guard !didRefreshProfileAccount else { return }
             didRefreshProfileAccount = true
             await auth.refreshAccount()
-            if qqAuth.isLoggedIn {
+            if false {
                 await qqAuth.fetchVIPStatus()
             }
         }
@@ -248,92 +235,6 @@ struct ProfileView: View {
             )
                 .onDisappear { SectionOrderStore.save(SectionOrderStore.profileKey, profileOrder) }
         }
-        .sheet(item: $updateShareFile, onDismiss: cleanupUpdateShareFile) { item in
-            ShareSheet(items: [item.url])
-        }
-        .alert("检查更新", isPresented: $showUpdateResult, presenting: updateResult) { result in
-            switch result {
-            case .update(let info):
-                Button("立即更新") { UIApplication.shared.open(info.htmlURL) }
-                Button("取消", role: .cancel) {}
-            case .upToDate:
-                Button("好", role: .cancel) {}
-            case .failed:
-                Button("好", role: .cancel) {}
-            }
-        } message: { result in
-            switch result {
-            case .update(let info):
-                Text("发现新版本 \(info.version)，是否前往 GitHub 下载更新？")
-            case .upToDate:
-                Text("当前已是最新版本 \(UpdateChecker.currentVersion)")
-            case .failed:
-                Text("检查失败，请检查网络后重试")
-            }
-        }
-        .overlay {
-            if showDownloadOverlay { downloadProgressOverlay }
-        }
-        .alert("下载新版", isPresented: $showDownloadOutcome, presenting: downloadOutcome) { outcome in
-            switch outcome {
-            case .success:
-                Button("好", role: .cancel) {}
-            case .failure:
-                Button("好", role: .cancel) {}
-                Button("前往更新页") {
-                    if let info = pendingUpdateInfo {
-                        UIApplication.shared.open(info.htmlURL)
-                    }
-                }
-            }
-        } message: { outcome in
-            switch outcome {
-            case .success(let fileName):
-                Text("新版 IPA 已下载完成，但未能打开分享面板。\n文件名：\(fileName)")
-            case .failure(let message):
-                Text("下载失败：\(message)")
-            }
-        }
-    }
-
-    /// 下载进度浮层（居中卡片，兼容所有系统版本）
-    private var downloadProgressOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35).ignoresSafeArea()
-            VStack(spacing: 14) {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.beansHighlight)
-                    Text("正在下载新版 IPA")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                }
-                if ipaDownloader.progress >= 0 {
-                    ProgressView(value: ipaDownloader.progress)
-                        .progressViewStyle(.linear)
-                        .tint(Color.beansAmber)
-                    Text("\(Int(ipaDownloader.progress * 100))%")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                } else {
-                    ProgressView()
-                        .tint(Color.beansAmber)
-                    Text("正在获取更新…")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-                EmptyView()
-            }
-            .padding(22)
-            .frame(maxWidth: 300)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-            .beansCardShadow(radius: 12, y: 6)
-            .padding(32)
-        }
-        .transition(.opacity)
     }
 
     private var userCard: some View {
@@ -360,7 +261,7 @@ struct ProfileView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "NetEase Cloud Music Logged In" : "网易云音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
+                            Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "Kugou Music Logged In" : "酷狗音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
                                 .font(BeansFont.appFont(20, .bold))
                                 .foregroundStyle(Color.beansLabel)
                                 .lineLimit(1)
@@ -382,9 +283,7 @@ struct ProfileView: View {
             }
             .buttonStyle(.plain)
 
-            if (platformPrefs.isEnabled(SearchProvider.netease) && auth.isLoggedIn)
-                || (platformPrefs.isEnabled(SearchProvider.qq) && qqAuth.isLoggedIn)
-                || (platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn) {
+            if platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn {
                 platformStatusRow
             }
         }
@@ -398,12 +297,6 @@ struct ProfileView: View {
     /// 每个登录平台单独展示登录成功状态（网易云 / QQ 音乐）
     private var platformStatusRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if platformPrefs.isEnabled(SearchProvider.netease), auth.isLoggedIn {
-                platformChip(imageName: "BrandNetease", name: "网易云音乐", status: auth.user?.nickname ?? "已登录", badge: auth.user?.vipBadge)
-            }
-            if platformPrefs.isEnabled(SearchProvider.qq), qqAuth.isLoggedIn {
-                platformChip(imageName: "BrandQQ", name: "QQ 音乐", status: qqAuth.nickname.isEmpty ? "已登录" : qqAuth.nickname, badge: qqAuth.vipBadge)
-            }
             if platformPrefs.isEnabled(SearchProvider.kugou), kugouAuth.isLoggedIn {
                 platformChip(imageName: "BrandKugou", name: "酷狗音乐", status: kugouAuth.nickname.isEmpty ? "已登录" : kugouAuth.nickname, badge: kugouAuth.vipBadge)
             }
@@ -537,152 +430,6 @@ struct ProfileView: View {
         .buttonStyle(GlassPressButtonStyle(scale: 0.97))
     }
 
-    private func startAutoDownload(info: UpdateChecker.ReleaseInfo, assetURL: URL) {
-        showDownloadOverlay = true
-        Task {
-            do {
-                let url = try await ipaDownloader.download(assetURL: assetURL, version: info.version)
-                await MainActor.run {
-                    showDownloadOverlay = false
-                    updateShareFileURL = url
-                    updateShareFile = ShareFileItem(url: url)
-                }
-            } catch {
-                await MainActor.run {
-                    showDownloadOverlay = false
-                    downloadOutcome = .failure(message: error.localizedDescription)
-                    showDownloadOutcome = true
-                }
-            }
-        }
-    }
-
-    private func cleanupUpdateShareFile() {
-        guard let url = updateShareFileURL else { return }
-        try? FileManager.default.removeItem(at: url)
-        updateShareFile = nil
-        updateShareFileURL = nil
-    }
-
-    /// 更新地址 + 检查更新（GitHub 项目，可点击交互）
-    private var updateLinkCard: some View {
-        VStack(spacing: 0) {
-            Button {
-                BeansHaptics.tap()
-                if let url = URL(string: "https://github.com/XIaodou0416/Beans-Music") {
-                    UIApplication.shared.open(url)
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.beansHighlight)
-                        .frame(width: 26)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("更新地址")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                        Text("GitHub：XIaodou0416/Beans-Music")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
-                }
-                .padding(16)
-            }
-            .buttonStyle(.plain)
-
-            Divider()
-                .overlay(Color.beansComment.opacity(0.16))
-                .padding(.horizontal, 16)
-
-            Button {
-                BeansHaptics.tap()
-                guard !checkingUpdate else { return }
-                checkingUpdate = true
-                Task {
-                    let result = await UpdateChecker.checkNow()
-                    await MainActor.run {
-                        checkingUpdate = false
-                        updateResult = result
-                        if case .update(let info) = result {
-                            pendingUpdateInfo = info
-                            if let assetURL = info.assetURL {
-                                startAutoDownload(info: info, assetURL: assetURL)
-                            } else {
-                                showUpdateResult = true
-                            }
-                        } else {
-                            showUpdateResult = true
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: checkingUpdate ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.beansHighlight)
-                        .frame(width: 26)
-                        .rotationEffect(.degrees(checkingUpdate ? 360 : 0))
-                        .animation(checkingUpdate ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: checkingUpdate)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(checkingUpdate ? "正在检查…" : "检查更新")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                    Spacer()
-                }
-                .padding(16)
-            }
-            .buttonStyle(.plain)
-            .disabled(checkingUpdate)
-        }
-        .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
-    /// 我的页底部交流群入口
-    private var communityCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if let url = URL(string: "https://t.me/+k8oYhsIU4sgzOTM1") {
-                UIApplication.shared.open(url)
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Color.beansHighlight)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("交流群")
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text("点击跳转 Telegram")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-                Spacer()
-                Image(systemName: "arrow.up.forward.app")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
-            }
-            .padding(16)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            }
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
     private var profileVersionFooter: some View {
         Text(appVersionText)
             .font(BeansFont.appFont(11))
@@ -690,122 +437,6 @@ struct ProfileView: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.top, 2)
-    }
-
-    /// 我的页底部赞助入口与赞助排行榜
-    private var donationCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Button {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                    donationExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "heart.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.beansAmber)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("自愿赞助")
-                            .font(BeansFont.appFont(16, .bold))
-                            .foregroundStyle(Color.beansLabel)
-                        Text(donationExpanded ? "点击收起赞助信息" : "点击展开赞助信息")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                    Spacer()
-                    Image(systemName: donationExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
-                }
-            }
-            .buttonStyle(.plain)
-
-            if donationExpanded {
-                Image("DonationQR")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 300)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.beansComment.opacity(0.14), lineWidth: 0.8)
-                }
-
-                Button {
-                    openWeChatPayment()
-                } label: {
-                    Label("打开微信", systemImage: "arrow.up.forward.app")
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(Color.beansAmber.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-
-                VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("赞助人员")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Spacer()
-                    Text("按金额排序")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-
-                ForEach(displayedDonors.indices, id: \.self) { index in
-                    let donor = displayedDonors[index]
-                    HStack(spacing: 10) {
-                        Text("\(index + 1)")
-                            .font(BeansFont.appFont(13, .bold))
-                            .foregroundStyle(index == 0 ? Color.beansAmber : Color.beansComment)
-                            .frame(width: 24, height: 24)
-                            .background(
-                                (index == 0 ? Color.beansAmber : Color.beansComment).opacity(index == 0 ? 0.16 : 0.08),
-                                in: Circle()
-                            )
-                        Text(donor.name)
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansLabel)
-                        Spacer()
-                        Text(String(format: "¥ %.2f", donor.amount))
-                            .font(BeansFont.appFont(13, .semibold))
-                            .foregroundStyle(index == 0 ? Color.beansAmber : Color.beansLabel)
-                    }
-                    if index < displayedDonors.count - 1 {
-                        Divider().overlay(Color.beansComment.opacity(0.12))
-                    }
-                }
-                }
-            }
-        }
-        .padding(16)
-        .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
-    private func openWeChatPayment() {
-        guard let paymentURL = URL(string: "wxp://f2f03Cvy7dWnLLRbIhQJqY-MxVACiIS4JBNSui8VmUk3_Qg") else {
-            showWeChatOpenError = true
-            return
-        }
-
-        UIApplication.shared.open(paymentURL, options: [:]) { opened in
-            guard !opened, let weChatURL = URL(string: "weixin://") else { return }
-            UIApplication.shared.open(weChatURL, options: [:]) { openedWeChat in
-                if !openedWeChat {
-                    showWeChatOpenError = true
-                }
-            }
-        }
-    }
-
-    private var displayedDonors: [Donor] {
-        Self.donors
     }
 
     private struct Donor {
@@ -821,67 +452,17 @@ struct ProfileView: View {
     ]
 }
 
-// MARK: - 交流群二维码
-
-struct CommunityQRSheet: View {
-    @EnvironmentObject private var theme: ThemeStore
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        BeansNavigationStack {
-            ZStack {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-                VStack(spacing: 18) {
-                    Image("CommunityQR")
-                        .resizable()
-                        .interpolation(.none)
-                        .scaledToFit()
-                        .padding(12)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(Color.beansComment.opacity(0.16), lineWidth: 0.8)
-                        }
-                        .padding(.horizontal, 24)
-                    Text("扫码加入交流群")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text("如二维码过期，可在 GitHub 或更新说明中获取最新入口")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 30)
-                }
-                .padding(.vertical, 22)
-            }
-            .navigationTitle("交流群")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
-                }
-            }
-        }
-        .modifier(BeansSheetModifier(detents: [.medium, .large]))
-    }
-}
-
 // MARK: - 统一账号登录面板（网易云 + QQ 音乐整合）
 
 struct AccountHubSheet: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var auth: AuthStore
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showNeteaseLogin = false
-    @State private var showQQLogin = false
     @State private var showKugouLogin = false
-    @State private var confirmNeteaseLogout = false
-    @State private var confirmQQLogout = false
     @State private var confirmKugouLogout = false
 
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
@@ -903,8 +484,6 @@ struct AccountHubSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionHeader(title: "账号")
-                        if platformPrefs.isEnabled(SearchProvider.netease) { neteaseCard }
-                        if platformPrefs.isEnabled(SearchProvider.qq) { qqCard }
                         if platformPrefs.isEnabled(SearchProvider.kugou) { kugouCard }
                         Text(isEnglish ? "Sign in to \(displayPlatformSummary) to sync playlists and improve playback availability" : "\(platformPrefs.summaryText) 登录后可同步歌单并提升可播成功率")
                             .font(BeansFont.appFont(11))
@@ -923,34 +502,9 @@ struct AccountHubSheet: View {
                 }
             }
         }
-        .sheet(isPresented: $showNeteaseLogin) {
-            LoginView()
-                .environmentObject(auth)
-                .environmentObject(theme)
-        }
-        .sheet(isPresented: $showQQLogin) {
-            QQLoginSheet()
-                .environmentObject(theme)
-        }
         .sheet(isPresented: $showKugouLogin) {
             KugouLoginSheet()
                 .environmentObject(theme)
-        }
-        .confirmationDialog("退出网易云登录？", isPresented: $confirmNeteaseLogout, titleVisibility: .visible) {
-            Button("退出登录", role: .destructive) {
-                auth.logout()
-                WebLoginDataCleaner.clearNetEase()
-                ToastCenter.shared.show("已退出网易云账号")
-            }
-            Button("取消", role: .cancel) {}
-        }
-        .confirmationDialog("退出 QQ 音乐？", isPresented: $confirmQQLogout, titleVisibility: .visible) {
-            Button("退出登录", role: .destructive) {
-                qqAuth.logout()
-                WebLoginDataCleaner.clearQQMusic()
-                ToastCenter.shared.show("已退出 QQ 音乐")
-            }
-            Button("取消", role: .cancel) {}
         }
         .confirmationDialog("退出酷狗音乐？", isPresented: $confirmKugouLogout, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) {
@@ -960,116 +514,6 @@ struct AccountHubSheet: View {
             }
             Button("取消", role: .cancel) {}
         }
-    }
-
-    /// 网易云账号卡片
-    private var neteaseCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if auth.isLoggedIn { confirmNeteaseLogout = true } else { showNeteaseLogin = true }
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.white.opacity(0.06))
-                        .frame(width: 48, height: 48)
-                    Image("BrandNetease")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("网易云音乐")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    HStack(spacing: 6) {
-                        Group {
-                            if auth.isLoggedIn {
-                                Text(auth.user?.nickname ?? NSLocalizedString("已登录", comment: ""))
-                            } else {
-                                Text(LocalizedStringKey("未登录 · 扫码登录同步歌单"))
-                            }
-                        }
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        if auth.isLoggedIn, let badge = auth.user?.vipBadge {
-                            VIPBadgeView(text: badge)
-                        }
-                    }
-                }
-                Spacer()
-                Text(auth.isLoggedIn ? "退出" : "登录")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(auth.isLoggedIn ? Color.red : Color.beansAmber)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-            }
-            .padding(14)
-            .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
-    }
-
-    /// QQ 音乐账号卡片
-    private var qqCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if qqAuth.isLoggedIn { confirmQQLogout = true } else { showQQLogin = true }
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.white.opacity(0.06))
-                        .frame(width: 48, height: 48)
-                    Image("BrandQQ")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("QQ 音乐")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    HStack(spacing: 6) {
-                        Group {
-                            if qqAuth.isLoggedIn {
-                                Text(qqAuth.nickname.isEmpty ? NSLocalizedString("已登录", comment: "") : qqAuth.nickname)
-                            } else {
-                                Text(LocalizedStringKey("未登录 · 网页 / 扫码 / Cookie 登录"))
-                            }
-                        }
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        if qqAuth.isLoggedIn, let badge = qqAuth.vipBadge {
-                            VIPBadgeView(text: badge)
-                        }
-                    }
-                }
-                Spacer()
-                Text(qqAuth.isLoggedIn ? "退出" : "登录")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(qqAuth.isLoggedIn ? Color.red : Color.beansAmber)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-            }
-            .padding(14)
-            .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
     }
 
     private var kugouCard: some View {
@@ -1143,7 +587,7 @@ struct SettingsView: View {
     @AppStorage("beans.showThirdPartyVIPNotice") private var showThirdPartyVIPNotice = true
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
     /// 高刷新率请求，默认开启
-    @AppStorage("beans.enableHighRefresh") private var enableHighRefresh = true
+    @AppStorage("beans.enableHighRefresh") private var enableHighRefresh = false  // Co：默认关闭高刷新（省电）
     @AppStorage("beans.audio.mixothers.v1") private var mixesWithOthers = false
     @AppStorage("beans.audioQuality") private var playbackAudioQualityRaw = BeansAudioQuality.hires.rawValue
     @AppStorage(BeansHaptics.enabledKey) private var hapticsEnabled = true
@@ -1180,7 +624,6 @@ struct SettingsView: View {
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
     @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
-    @ObservedObject private var sourceStore = UnblockSourceStore.shared
     @ObservedObject private var equalizer = BeansEqualizer.shared
     @AppStorage(ThirdPartyAudioQuality.storageKey) private var thirdPartyAudioQualityRaw = ThirdPartyAudioQuality.kb320.rawValue
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
@@ -1213,11 +656,11 @@ struct SettingsView: View {
     }
 
     private var customSourceCount: Int {
-        sourceStore.managementVisibleSources.count
+        0  // Co：第三方音源已删
     }
 
     private var thirdPartyAudioQualityOptions: [ThirdPartyAudioQuality] {
-        let options = sourceStore.availableThirdPartyQualities()
+        let options = ThirdPartyAudioQuality.allCases
         return options.isEmpty ? ThirdPartyAudioQuality.allCases : options
     }
 
@@ -1522,7 +965,7 @@ struct SettingsView: View {
                 .environmentObject(theme)
         }
         .sheet(isPresented: $showSourceManager) {
-            ThirdPartySourceManagerSheet()
+            Text("第三方音源已删")
                 .environmentObject(theme)
         }
         .sheet(isPresented: $showEqualizer) {
@@ -2349,7 +1792,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansAmber)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("120Hz 高刷新")
+                        Text("高刷新已关闭（省电模式）")
                             .font(BeansFont.appFont(15))
                             .foregroundStyle(Color.beansLabel)
                     }
@@ -2359,8 +1802,8 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansAmber)
                 }
                 .onAppear {
-                    enableHighRefresh = true
-                    HighRefreshKeeper.shared.configure(enabled: true)
+                    enableHighRefresh = false
+                    HighRefreshKeeper.shared.configure(enabled: false)
                 }
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
@@ -2436,7 +1879,7 @@ struct SettingsView: View {
                 }
 
                 Button {
-                    showSourceManager = true
+                    ToastCenter.shared.show("第三方音源已删")
                     BeansHaptics.tap()
                 } label: {
                     HStack(spacing: 8) {

@@ -18,8 +18,7 @@ struct BeansApp: App {
         // 主页暂停只应在设置页打开期间生效，避免异常退出后把暂停状态永久写入本地。
         UserDefaults.standard.set(false, forKey: "beans.pauseHomeRendering")
         // 新安装默认开启高刷新率；老用户保留自己手动关闭的选择。
-        HighRefreshKeeper.registerDefaults()
-        HighRefreshKeeper.shared.configureFromDefaults()
+        HighRefreshKeeper.registerDefaults()  // Co 省电：默认关，configureFromDefaults 在关时不启动 DisplayLink
         UserDefaults.standard.register(defaults: [
             "beans.uiStyle": BeansUIStyle.nativeClean.rawValue,
             "beans.coverPlayerStyle": BeansCoverPlayerStyle.appleMusic.rawValue,

@@ -70,8 +70,7 @@ enum SearchProvider: String, CaseIterable, Identifiable, Hashable {
 
     var brandImageName: String? {
         switch self {
-        case .netease: return "BrandNetease"
-        case .qq: return "BrandQQ"
+        case .netease, .qq: return nil  // Co：已删网易云/QQ 品牌图，运行时恒为酷狗
         case .kugou: return "BrandKugou"
         }
     }
@@ -772,15 +771,7 @@ struct SearchView: View {
     }
 
     private func loadHotWords() async {
-        if provider == .qq {
-            if let words = try? await QQMusicAPI.shared.hotKeys() {
-                hotWords = words
-            }
-        } else if provider == .kugou {
-            hotWords = await KugouMusicAPI.shared.hotWords()
-        } else if let words = try? await NetEaseAPI.shared.hotSearch() {
-            hotWords = words
-        }
+        hotWords = await KugouMusicAPI.shared.hotWords()
     }
 
     private func startSearch(_ text: String) async {
@@ -803,33 +794,33 @@ struct SearchView: View {
             do {
                 switch (selectedProvider, selectedType) {
                 case (.netease, .song):
-                    let songs = try await NetEaseAPI.shared.search(keyword: trimmed, limit: 40)
+                    let songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed, limit: 40)
                     guard !Task.isCancelled else { return }
                     await MainActor.run {
                         songResults = songs
                         if !songs.isEmpty { BeansHaptics.success() }
                     }
                 case (.netease, .artist):
-                    let artists = try await NetEaseAPI.shared.searchArtists(keyword: trimmed)
+                    let artists = try await KugouMusicAPI.shared.searchArtists(keyword: trimmed)
                     guard !Task.isCancelled else { return }
                     await MainActor.run { artistResults = artists }
                 case (.netease, .album):
-                    let albums = try await NetEaseAPI.shared.searchAlbums(keyword: trimmed)
+                    let albums = try await KugouMusicAPI.shared.searchAlbums(keyword: trimmed)
                     guard !Task.isCancelled else { return }
                     await MainActor.run { albumResults = albums }
                 case (.qq, .song):
-                    let songs = try await QQMusicAPI.shared.searchSongs(keyword: trimmed)
+                    let songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed)
                     guard !Task.isCancelled else { return }
                     await MainActor.run {
                         songResults = songs
                         if !songs.isEmpty { BeansHaptics.success() }
                     }
                 case (.qq, .artist):
-                    let artists = try await QQMusicAPI.shared.searchArtists(keyword: trimmed)
+                    let artists = try await KugouMusicAPI.shared.searchArtists(keyword: trimmed)
                     guard !Task.isCancelled else { return }
                     await MainActor.run { artistResults = artists }
                 case (.qq, .album):
-                    let albums = try await QQMusicAPI.shared.searchAlbums(keyword: trimmed)
+                    let albums = try await KugouMusicAPI.shared.searchAlbums(keyword: trimmed)
                     guard !Task.isCancelled else { return }
                     await MainActor.run { albumResults = albums }
                 case (.kugou, .song):
@@ -951,26 +942,12 @@ struct AlbumDetailView: View {
         do {
             let result: [Song]
             switch album.source {
-            case .netease:
-                guard let id = Int(album.id.replacingOccurrences(of: "netease-", with: "")) else {
-                    throw NSError(domain: "BeansAlbum", code: 1, userInfo: [NSLocalizedDescriptionKey: "专辑 ID 无效"])
-                }
-                let direct = (try? await NetEaseAPI.shared.albumSongs(albumID: id)) ?? []
-                if !direct.isEmpty {
-                    result = direct
-                } else {
-                    result = await searchFallbackSongs(
-                        queries: [albumSearchQuery, album.name],
-                        search: { query in
-                            (try? await NetEaseAPI.shared.search(keyword: query, limit: 100)) ?? []
-                        }
-                    )
-                }
-            case .qq:
+            case .netease, .qq:
+                // Co：酷狗无专辑曲目直取接口，改用酷狗搜索兜底
                 result = await searchFallbackSongs(
                     queries: [albumSearchQuery, album.name],
                     search: { query in
-                        (try? await QQMusicAPI.shared.searchSongs(keyword: query, limit: 100)) ?? []
+                        (try? await KugouMusicAPI.shared.searchSongs(keyword: query, limit: 100)) ?? []
                     }
                 )
             case .kugou:

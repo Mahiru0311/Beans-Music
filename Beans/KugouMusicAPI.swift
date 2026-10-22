@@ -72,7 +72,7 @@ final class KugouMusicAPI {
         )
         let json = response.json
         let key = Self.deepString(json, names: ["qrcode", "key"])
-        guard !key.isEmpty else { throw NetEaseError.unknown("酷狗二维码生成失败") }
+        guard !key.isEmpty else { throw CocoError.unknown("酷狗二维码生成失败") }
         return QRLogin(key: key, url: "https://h5.kugou.com/apps/loginQRCode/html/index.html?qrcode=\(Self.urlEncode(key))")
     }
 
@@ -270,7 +270,7 @@ final class KugouMusicAPI {
             URLQueryItem(name: "pagesize", value: "\(min(max(limit, 1), 100))"),
         ]
         guard let url = components.url else {
-            throw NetEaseError.unknown("酷狗搜索地址无效")
+            throw CocoError.unknown("酷狗搜索地址无效")
         }
         let json = try await getJSON(url, ua: Self.browserUA)
         let raw = Self.deepArrays(json, names: ["info", "songs", "song", "list", "data"])
@@ -383,7 +383,7 @@ final class KugouMusicAPI {
 
         var components = URLComponents(string: "https://gateway.kugou.com/complexsearch/v3/search/mixed")!
         components.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        guard let url = components.url else { throw NetEaseError.unknown("酷狗综合搜索地址无效") }
+        guard let url = components.url else { throw CocoError.unknown("酷狗综合搜索地址无效") }
         let headers = [
             "KG-RF": "D4407D2505656C0FDC1621BA6FA3FEB5",
             "KG-FAKE": "359933394",
@@ -640,12 +640,12 @@ final class KugouMusicAPI {
             return lists
         }
         guard let url = URL(string: "https://m.kugou.com/rank/list?json=true") else {
-            throw NetEaseError.unknown("酷狗排行榜地址无效")
+            throw CocoError.unknown("酷狗排行榜地址无效")
         }
         let json = try await getJSON(url, ua: Self.browserUA)
         guard let rank = json["rank"] as? [String: Any],
               let list = rank["list"] as? [[String: Any]] else {
-            throw NetEaseError.decoding("酷狗排行榜数据格式异常")
+            throw CocoError.decoding("酷狗排行榜数据格式异常")
         }
         return list.prefix(limit).compactMap { item in
             let id = Self.int(item["rankid"] ?? item["id"])
@@ -765,7 +765,7 @@ final class KugouMusicAPI {
         }
 
         if merged.isEmpty {
-            throw NetEaseError.decoding("酷狗排行榜歌曲为空")
+            throw CocoError.decoding("酷狗排行榜歌曲为空")
         }
 
         // If the main source has rows but missing covers, enrich them without
@@ -793,7 +793,7 @@ final class KugouMusicAPI {
                 URLQueryItem(name: "pagesize", value: "\(pageSize)"),
                 URLQueryItem(name: "json", value: "true"),
             ]
-            guard let url = components.url else { throw NetEaseError.unknown("酷狗排行榜地址无效") }
+            guard let url = components.url else { throw CocoError.unknown("酷狗排行榜地址无效") }
             let json = try await getJSON(url, ua: Self.browserUA)
             let rows = (json["songs"] as? [String: Any])?["list"] as? [[String: Any]] ?? []
             let batch = rows.compactMap(Self.mapCompleteTrack)
@@ -820,7 +820,7 @@ final class KugouMusicAPI {
             return playlists
         }
         guard let url = URL(string: "https://m.kugou.com/plist/index?json=true&page=1") else {
-            throw NetEaseError.unknown("酷狗歌单广场地址无效")
+            throw CocoError.unknown("酷狗歌单广场地址无效")
         }
         let json = try await getJSON(url, ua: Self.browserUA)
         let rows = (((json["plist"] as? [String: Any])?["list"] as? [String: Any])?["info"] as? [[String: Any]]) ?? []
@@ -889,7 +889,7 @@ final class KugouMusicAPI {
 
     private func officialWebTopLists(limit: Int) async throws -> [KugouTopInfo] {
         guard let url = URL(string: "https://www.kugou.com/yy/html/rank.html") else {
-            throw NetEaseError.unknown("酷狗官网排行榜地址无效")
+            throw CocoError.unknown("酷狗官网排行榜地址无效")
         }
         let html = try await getString(url, ua: Self.browserUA)
         let pattern = #"<a title="([^"]+)"[^>]*href="https://www\.kugou\.com/yy/rank/home/1-(\d+)\.html\?from=rank"[\s\S]*?background-image:url\(([^\)]+)\)"#
@@ -912,11 +912,11 @@ final class KugouMusicAPI {
 
     private func officialWebRankSongs(rankID: Int, limit: Int) async throws -> [Song] {
         guard let url = URL(string: "https://www.kugou.com/yy/rank/home/1-\(rankID).html?from=rank") else {
-            throw NetEaseError.unknown("酷狗官网排行榜歌曲地址无效")
+            throw CocoError.unknown("酷狗官网排行榜歌曲地址无效")
         }
         let html = try await getString(url, ua: Self.browserUA)
         guard let rows = Self.javascriptArray(named: "global.features", in: html) else {
-            throw NetEaseError.decoding("酷狗官网排行榜歌曲格式异常")
+            throw CocoError.decoding("酷狗官网排行榜歌曲格式异常")
         }
         let songs = rows.prefix(limit).compactMap(Self.mapCompleteTrack)
         BeansLogger.shared.log("酷狗官网排行榜歌曲：rankid=\(rankID) 返回 \(songs.count) 首", level: .debug)
@@ -925,7 +925,7 @@ final class KugouMusicAPI {
 
     private func officialWebPlaylists(limit: Int) async throws -> [Playlist] {
         guard let url = URL(string: "https://www.kugou.com/yy/html/special.html") else {
-            throw NetEaseError.unknown("酷狗官网歌单广场地址无效")
+            throw CocoError.unknown("酷狗官网歌单广场地址无效")
         }
         let html = try await getString(url, ua: Self.browserUA)
         let pattern = #"<li class="s_(\d+)"[\s\S]*?<a[^>]+title="([^"]+)" href="https://www\.kugou\.com/songlist/(gcid_[^/]+)/"[\s\S]*?_src="([^"]+)""#
@@ -949,11 +949,11 @@ final class KugouMusicAPI {
 
     private func officialWebPlaylistSongs(listID: Int) async throws -> [Song] {
         guard let url = URL(string: "https://www.kugou.com/yy/special/single/\(listID).html") else {
-            throw NetEaseError.unknown("酷狗官网歌单歌曲地址无效")
+            throw CocoError.unknown("酷狗官网歌单歌曲地址无效")
         }
         let html = try await getString(url, ua: Self.browserUA)
         guard let rows = Self.javascriptArray(named: "data", in: html) else {
-            throw NetEaseError.decoding("酷狗官网歌单歌曲格式异常")
+            throw CocoError.decoding("酷狗官网歌单歌曲格式异常")
         }
         let songs = rows.compactMap(Self.mapCompleteTrack)
         BeansLogger.shared.log("酷狗官网歌单歌曲：specialid=\(listID) 返回 \(songs.count) 首", level: .debug)
@@ -1376,7 +1376,7 @@ final class KugouMusicAPI {
             commentID = try await commentAudioID(hash: hash) ?? commentID
         }
         guard !commentID.isEmpty else {
-            throw NetEaseError.unknown("酷狗评论缺少歌曲 ID")
+            throw CocoError.unknown("酷狗评论缺少歌曲 ID")
         }
         let params = [
             "mixsongid": commentID,
@@ -1447,7 +1447,7 @@ final class KugouMusicAPI {
             URLQueryItem(name: "p", value: "\(max(page, 1))"),
             URLQueryItem(name: "pagesize", value: "\(min(max(limit, 1), 30))"),
         ]
-        guard let url = components.url else { throw NetEaseError.network }
+        guard let url = components.url else { throw CocoError.network }
         return try await getJSON(url, ua: Self.browserUA)
     }
 
@@ -1676,15 +1676,15 @@ final class KugouMusicAPI {
     }
 
     private func request(_ path: String, baseURL: String, method: String, params: [String: String], body: Data?, headers: [String: String]) async throws -> RawResponse {
-        guard var comps = URLComponents(string: baseURL + path) else { throw NetEaseError.network }
+        guard var comps = URLComponents(string: baseURL + path) else { throw CocoError.network }
         comps.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        guard let url = comps.url else { throw NetEaseError.network }
+        guard let url = comps.url else { throw CocoError.network }
         var request = URLRequest(url: url)
         request.httpMethod = method
         headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         request.httpBody = body
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw NetEaseError.network }
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw CocoError.network }
         let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         return RawResponse(json: json, rawData: data)
     }
@@ -1731,7 +1731,7 @@ final class KugouMusicAPI {
         headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw NetEaseError.network }
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw CocoError.network }
         return obj
     }
 
@@ -1741,7 +1741,7 @@ final class KugouMusicAPI {
         request.setValue("https://www.kugou.com/", forHTTPHeaderField: "Referer")
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
-              let text = String(data: data, encoding: .utf8) else { throw NetEaseError.network }
+              let text = String(data: data, encoding: .utf8) else { throw CocoError.network }
         return text
     }
 

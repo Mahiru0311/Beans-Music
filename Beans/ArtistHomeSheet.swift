@@ -278,10 +278,10 @@ struct ArtistHomeSheet: View {
     }
 
     private func playAlbum(_ album: Album) {
-        guard let id = Int(album.id.replacingOccurrences(of: "netease-", with: "")) else { return }
+        // Co：酷狗无专辑曲目直取接口，改用酷狗搜索兜底（原网易云接口已删）。
         BeansHaptics.tap()
         Task {
-            if let songs = try? await NetEaseAPI.shared.albumSongs(albumID: id), !songs.isEmpty {
+            if let songs = try? await KugouMusicAPI.shared.searchSongs(keyword: album.name, limit: 30), !songs.isEmpty {
                 player.play(songs: songs, startAt: 0)
                 dismiss()
             } else {
@@ -291,82 +291,12 @@ struct ArtistHomeSheet: View {
     }
 
     private func load() async {
+        // Co：歌手页只走酷狗（原网易云/QQ 加载已删）。
         loading = true
         errorMessage = nil
-        if artistSource == .qq {
-            await loadQQArtist()
-        } else if artistSource == .kugou {
-            await loadKugouArtist()
-        } else {
-            await loadNetEaseArtist()
-        }
+        await loadKugouArtist()
     }
 
-    private func loadNetEaseArtist() async {
-        do {
-            let id: Int
-            if let artistID, let parsed = Int(artistID.replacingOccurrences(of: "netease-", with: "")), parsed > 0 {
-                id = parsed
-            } else {
-                let artists = try await NetEaseAPI.shared.searchArtists(keyword: artistName, limit: 5)
-                guard let first = artists.first else {
-                    errorMessage = "未找到歌手「\(artistName)」"
-                    loading = false
-                    return
-                }
-                artist = first
-                id = Int(first.id.replacingOccurrences(of: "netease-", with: "")) ?? 0
-            }
-            async let songs = (try? NetEaseAPI.shared.artistHotSongs(artistID: id, limit: 300)) ?? []
-            async let albums = (try? NetEaseAPI.shared.artistAlbums(artistID: id)) ?? []
-            let (s, a) = await (songs, albums)
-            hotSongs = s
-            self.albums = a
-            // 接口异常时兜底：分页搜索补全歌手歌曲（避免再次退回 30 首）。
-            if hotSongs.isEmpty {
-                var fallback: [Song] = []
-                for offset in stride(from: 0, to: 300, by: 30) {
-                    let page = (try? await NetEaseAPI.shared.search(keyword: artistName, limit: 30, offset: offset)) ?? []
-                    if page.isEmpty { break }
-                    fallback.append(contentsOf: page)
-                    if page.count < 30 { break }
-                }
-                hotSongs = fallback
-            }
-            loading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            loading = false
-        }
-    }
-
-    /// QQ 歌手：优先用歌手 mid 拉热门歌曲，失败则按歌手名搜索 QQ 歌曲（保证不是网易云数据）
-    private func loadQQArtist() async {
-        var mid: String? = nil
-        if let artistID, !artistID.hasPrefix("qq-") {
-            mid = artistID
-        } else if let first = (try? await QQMusicAPI.shared.searchArtists(keyword: artistName, limit: 5))?.first {
-            artist = first
-            mid = first.id
-        }
-        var songs = (try? await QQMusicAPI.shared.artistHotSongs(mid: mid, name: artistName, limit: 300)) ?? []
-        if songs.isEmpty {
-            var fallback: [Song] = []
-            for offset in stride(from: 0, to: 300, by: 30) {
-                let page = (try? await QQMusicAPI.shared.searchSongs(keyword: artistName, limit: 30, offset: offset)) ?? []
-                if page.isEmpty { break }
-                fallback.append(contentsOf: page)
-                if page.count < 30 { break }
-            }
-            var seen = Set<String>()
-            songs = fallback.filter { seen.insert($0.identityKey).inserted }
-        }
-        hotSongs = songs
-        loading = false
-    }
-
-    /// 酷狗歌手主页优先走作者歌曲接口，再补 `singer/song` 和综合搜索结果，
-    /// 避免部分歌手页只停在首批 19 首。
     private func loadKugouArtist() async {
         let resolvedArtist: Artist?
         if let artistID,

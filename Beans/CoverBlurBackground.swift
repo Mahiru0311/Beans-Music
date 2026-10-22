@@ -63,7 +63,7 @@ final class CoverBlurView: UIView {
         addSubview(imageView)
         addSubview(gradientHost)
         addSubview(tintView)
-        startBackgroundAnimations()
+        // Co 省电：静态背景，不启动呼吸/渐变摆动循环动画
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -74,43 +74,6 @@ final class CoverBlurView: UIView {
         gradientLayer.frame = bounds
         imageView.frame = bounds
         tintView.frame = bounds
-    }
-
-    /// 背景动态效果：模糊封面缓慢呼吸缩放（UIView 循环动画，可靠运行）+ 主色渐变端点缓慢摆动。
-    /// 长周期低频 + GPU 合成，不触发 SwiftUI 布局，也几乎不增加耗电。
-    private func startBackgroundAnimations() {
-        // 重新触发时先取消旧动画，避免堆叠
-        imageView.layer.removeAnimation(forKey: "beansBgBreathe")
-        gradientLayer.removeAnimation(forKey: "beansGradStart")
-        gradientLayer.removeAnimation(forKey: "beansGradEnd")
-        imageView.transform = .identity
-
-        let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 1.0
-        scale.toValue = 1.10
-        scale.duration = 14
-        scale.autoreverses = true
-        scale.repeatCount = .infinity
-        scale.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        imageView.layer.add(scale, forKey: "beansBgBreathe")
-
-        let start = CABasicAnimation(keyPath: "startPoint")
-        start.fromValue = NSValue(cgPoint: CGPoint(x: 0.5, y: 0))
-        start.toValue = NSValue(cgPoint: CGPoint(x: 0.68, y: 0))
-        start.duration = 12
-        start.autoreverses = true
-        start.repeatCount = .infinity
-        start.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        gradientLayer.add(start, forKey: "beansGradStart")
-
-        let end = CABasicAnimation(keyPath: "endPoint")
-        end.fromValue = NSValue(cgPoint: CGPoint(x: 0.5, y: 1))
-        end.toValue = NSValue(cgPoint: CGPoint(x: 0.32, y: 1))
-        end.duration = 12
-        end.autoreverses = true
-        end.repeatCount = .infinity
-        end.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        gradientLayer.add(end, forKey: "beansGradEnd")
     }
 
     func updateScheme(_ scheme: ColorScheme) {
@@ -231,7 +194,7 @@ final class CoverBlurView: UIView {
     private func setImage(_ image: UIImage, animated: Bool) {
         guard animated, imageView.image != nil else {
             imageView.image = image
-            startBackgroundAnimations()
+            // Co 省电：静态背景，不启动呼吸/渐变摆动循环动画
             return
         }
         UIView.transition(
@@ -241,8 +204,7 @@ final class CoverBlurView: UIView {
         ) {
             self.imageView.image = image
         } completion: { _ in
-            // 切歌过渡结束后重新确保背景动画持续运行
-            self.startBackgroundAnimations()
+            // Co 省电：切歌过渡后不重启循环动画，背景保持静态
         }
     }
 }

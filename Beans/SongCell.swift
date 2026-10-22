@@ -122,24 +122,8 @@ struct SongCell: View {
 
     @MainActor
     private func downloadSong() async {
-        let quality: DownloadQuality
-        if UserDefaults.standard.object(forKey: ThirdPartyAudioQuality.downloadStorageKey) == nil {
-            quality = ThirdPartyAudioQuality.current
-        } else {
-            quality = DownloadQuality(sourceValue: downloadQualityRaw) ?? ThirdPartyAudioQuality.current
-        }
-        BeansHaptics.medium()
-        ToastCenter.shared.show("开始下载：\(song.name)（\(quality.displayName)）")
-        let result = await DownloadManager.shared.download(song: song, quality: quality)
-        switch result {
-        case .success(let downloaded):
-            if downloaded.downgraded {
-                ToastCenter.shared.show("目标音质不可用，已降级为 \(downloaded.actualQuality.displayName)", duration: 3)
-            }
-            shareFile = ShareFileItem(url: downloaded.url)
-        case .failure(let error):
-            ToastCenter.shared.show("下载失败：\(error.localizedDescription)", duration: 3)
-        }
+        // Co：下载功能已删（原 DownloadManager 已删）。
+        ToastCenter.shared.show("下载功能已删")
     }
 
     var body: some View {
