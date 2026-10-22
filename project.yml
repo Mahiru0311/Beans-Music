@@ -18,7 +18,7 @@ targets:
       - Beans/zh-Hans.lproj
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco
         MARKETING_VERSION: "1.6.5.1"
         CURRENT_PROJECT_VERSION: "39"
         TARGETED_DEVICE_FAMILY: "1"
@@ -27,7 +27,7 @@ targets:
     info:
       path: Beans/Info.plist
       properties:
-        CFBundleDisplayName: Beans Music
+        CFBundleDisplayName: Co
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UIBackgroundModes: [audio]
