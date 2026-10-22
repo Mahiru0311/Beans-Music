@@ -92,6 +92,10 @@ struct RootView: View {
                 .tag(RootTab.profile)
         }
         .tint(Color.beansAmber)
+        // Co 底栏动画（参照 2.0.3 RootView:723/773，但只取行为不抄样式）：
+        // iOS 26+ 系统悬浮标签栏下滑缩小、上滑恢复；有歌在播才生效，无歌不缩小。
+        // 选中的标签色仍走 Co 的主题强调色（默认红），底栏样式本身是系统悬浮栏，Co 不另做一套。
+        .modifier(CoTabBarMinimizeModifier(enabled: player.currentSong != nil))
         .background {
             TabBarAppearanceConfigurator(
                 hidesSystemTabBarOnLegacy: !usesSystemFloatingTabBar,
@@ -386,6 +390,19 @@ private struct ClearSheetBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 16.4, *) {
             content.presentationBackground(.clear)
+        } else {
+            content
+        }
+    }
+}
+
+/// iOS 26+ 系统标签栏滚动缩小：部署目标低于 26 时用 #available 守住，旧系统直接原样透传。
+private struct CoTabBarMinimizeModifier: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(enabled ? .onScrollDown : .never)
         } else {
             content
         }
