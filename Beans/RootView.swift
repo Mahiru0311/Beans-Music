@@ -37,6 +37,28 @@ struct RootView: View {
     @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
 
     @State private var selection: RootTab = .discover
+    /// 导航栏显示开关（参照 2.0.3 BeansTabVisibility 的 UserDefaults 键，Co 按四页适配）：
+    /// beans.tab.discover.visible / .library.visible / .profile.visible / .search.visible，默认全开。
+    @AppStorage("beans.tab.discover.visible") private var tabDiscoverVisible = true
+    @AppStorage("beans.tab.library.visible") private var tabLibraryVisible = true
+    @AppStorage("beans.tab.profile.visible") private var tabProfileVisible = true
+    @AppStorage("beans.tab.search.visible") private var tabSearchVisible = true
+
+    /// 按 2.0.3 顺序（搜索放最后特殊位）的可见标签，精选标签不另立（已在主页里）。
+    private var visibleTabs: [RootTab] {
+        [RootTab.discover, RootTab.library, RootTab.profile, RootTab.search].filter { tab in
+            switch tab {
+            case .discover: return tabDiscoverVisible
+            case .library: return tabLibraryVisible
+            case .profile: return tabProfileVisible
+            case .search: return tabSearchVisible
+            }
+        }
+    }
+
+    private var visibleTabsSignature: String {
+        [tabDiscoverVisible, tabLibraryVisible, tabProfileVisible, tabSearchVisible].map { $0 ? "1" : "0" }.joined()
+    }
     @State private var showPlayer = false
     @Namespace private var nowPlayingTransition
     @AppStorage("beans.disclaimerAccepted") private var disclaimerAccepted = false
@@ -79,18 +101,26 @@ struct RootView: View {
         let _ = theme.accent
         // 旧系统路径：保留旧式 .tabItem 标签栏（iOS 26 以下走自绘胶囊底栏）。
         let legacyTabView = TabView(selection: $selection) {
-            DiscoverView()
-                .tabItem { Label(tabLabelsVisible ? "主页" : "", systemImage: "house.fill") }
-                .tag(RootTab.discover)
-            SearchView()
-                .tabItem { Label(tabLabelsVisible ? "搜索" : "", systemImage: "magnifyingglass") }
-                .tag(RootTab.search)
-            LibraryView()
-                .tabItem { Label(tabLabelsVisible ? "音乐库" : "", systemImage: "music.note.list") }
-                .tag(RootTab.library)
-            ProfileView()
-                .tabItem { Label(tabLabelsVisible ? "我的" : "", systemImage: "person.crop.circle") }
-                .tag(RootTab.profile)
+            if tabDiscoverVisible {
+                DiscoverView()
+                    .tabItem { Label(tabLabelsVisible ? "主页" : "", systemImage: "house.fill") }
+                    .tag(RootTab.discover)
+            }
+            if tabLibraryVisible {
+                LibraryView()
+                    .tabItem { Label(tabLabelsVisible ? "音乐库" : "", systemImage: "music.note.list") }
+                    .tag(RootTab.library)
+            }
+            if tabProfileVisible {
+                ProfileView()
+                    .tabItem { Label(tabLabelsVisible ? "我的" : "", systemImage: "person.crop.circle") }
+                    .tag(RootTab.profile)
+            }
+            if tabSearchVisible {
+                SearchView()
+                    .tabItem { Label(tabLabelsVisible ? "搜索" : "", systemImage: "magnifyingglass") }
+                    .tag(RootTab.search)
+            }
         }
         .tint(Color.beansAmber)
         .background {
@@ -130,6 +160,17 @@ struct RootView: View {
                 .allowsHitTesting(false)
         }
         .preferredColorScheme(themeMode.colorScheme)
+        .onChange(of: visibleTabsSignature) { _ in
+            if visibleTabs.isEmpty {
+                tabDiscoverVisible = true
+                tabLibraryVisible = true
+                tabProfileVisible = true
+                tabSearchVisible = true
+                selection = .discover
+            } else if !visibleTabs.contains(selection) {
+                selection = visibleTabs.first ?? .discover
+            }
+        }
         .confirmationDialog("主页平台", isPresented: $showHomePlatformMenu, titleVisibility: .visible) {
             platformSelectionMenu
         }
@@ -403,25 +444,33 @@ private struct ClearSheetBackground: ViewModifier {
 private extension RootView {
     var nativeTabView: some View {
         TabView(selection: $selection) {
-            Tab(value: .discover) {
-                DiscoverView()
-            } label: {
-                nativeTabLabel(.discover)
+            if tabDiscoverVisible {
+                Tab(value: .discover) {
+                    DiscoverView()
+                } label: {
+                    nativeTabLabel(.discover)
+                }
             }
-            Tab(value: .library) {
-                LibraryView()
-            } label: {
-                nativeTabLabel(.library)
+            if tabLibraryVisible {
+                Tab(value: .library) {
+                    LibraryView()
+                } label: {
+                    nativeTabLabel(.library)
+                }
             }
-            Tab(value: .profile) {
-                ProfileView()
-            } label: {
-                nativeTabLabel(.profile)
+            if tabProfileVisible {
+                Tab(value: .profile) {
+                    ProfileView()
+                } label: {
+                    nativeTabLabel(.profile)
+                }
             }
-            Tab(value: .search, role: .search) {
-                SearchView()
-            } label: {
-                nativeTabLabel(.search)
+            if tabSearchVisible {
+                Tab(value: .search, role: .search) {
+                    SearchView()
+                } label: {
+                    nativeTabLabel(.search)
+                }
             }
         }
         .tint(Color.beansAmber)

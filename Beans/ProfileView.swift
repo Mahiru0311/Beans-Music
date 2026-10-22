@@ -770,6 +770,40 @@ struct SettingsView: View {
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
     @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
+    /// 导航栏显示开关（与 RootView 同一组 UserDefaults 键，参照 2.0.3 BeansTabVisibility，Co 四页版）。
+    @AppStorage("beans.tab.discover.visible") private var navDiscoverVisible = true
+    @AppStorage("beans.tab.library.visible") private var navLibraryVisible = true
+    @AppStorage("beans.tab.profile.visible") private var navProfileVisible = true
+    @AppStorage("beans.tab.search.visible") private var navSearchVisible = true
+
+    private var navVisibleCount: Int {
+        [navDiscoverVisible, navLibraryVisible, navProfileVisible, navSearchVisible].filter { $0 }.count
+    }
+
+    private func navBinding(for tab: String) -> Binding<Bool> {
+        Binding(
+            get: {
+                switch tab {
+                case "discover": return navDiscoverVisible
+                case "library": return navLibraryVisible
+                case "profile": return navProfileVisible
+                default: return navSearchVisible
+                }
+            },
+            set: { newValue in
+                if !newValue && navVisibleCount <= 1 {
+                    ToastCenter.shared.show("至少保留一页导航栏")
+                    return
+                }
+                switch tab {
+                case "discover": navDiscoverVisible = newValue
+                case "library": navLibraryVisible = newValue
+                case "profile": navProfileVisible = newValue
+                default: navSearchVisible = newValue
+                }
+            }
+        )
+    }
     @ObservedObject private var equalizer = BeansEqualizer.shared
     @AppStorage(ThirdPartyAudioQuality.storageKey) private var thirdPartyAudioQualityRaw = ThirdPartyAudioQuality.kb320.rawValue
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
@@ -1290,6 +1324,39 @@ struct SettingsView: View {
                         .font(BeansFont.appFont(12))
                         .foregroundStyle(Color.beansComment)
                 }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 导航栏显示（参照 2.0.3 BeansTabVisibility，Co 四页版，不含精选标签、不含聚合切换）
+            VStack(alignment: .leading, spacing: 14) {
+                Text("导航栏显示")
+                    .font(BeansFont.appFont(13, .semibold))
+                    .foregroundStyle(Color.beansLabel)
+                ForEach([
+                    ("discover", "主页", "house.fill"),
+                    ("library", "音乐库", "music.note.list"),
+                    ("profile", "我的", "person.crop.circle"),
+                    ("search", "搜索", "magnifyingglass"),
+                ], id: \.0) { item in
+                    Toggle(isOn: navBinding(for: item.0)) {
+                        HStack(spacing: 12) {
+                            Image(systemName: item.2)
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.beansAmber)
+                                .frame(width: 28)
+                            Text(item.1)
+                                .font(BeansFont.appFont(15))
+                                .foregroundStyle(Color.beansLabel)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .tint(Color.beansAmber)
+                }
+                Text("关掉即从底栏消失，打开即恢复；至少保留一页；当前页被关闭时自动切到第一个可见页。")
+                    .font(BeansFont.appFont(11))
+                    .foregroundStyle(Color.beansComment)
             }
             .padding(16)
             .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
