@@ -772,7 +772,11 @@ struct ProfileView: View {
             CoSongListSheet(
                 title: "常听",
                 songs: player.topPlayed.map(\.song),
-                subtitles: Dictionary(uniqueKeysWithValues: player.topPlayed.map { ($0.song.identityKey, "\($0.count)次") })
+                subtitles: Dictionary(uniqueKeysWithValues: player.topPlayed.map { ($0.song.identityKey, "\($0.count)次") }),
+                // 外面那格是总播放次数（41 次是 41 次播放，不是 41 首歌），
+                // 里面列表是按次数排的歌 + 对不上的那部分，两者口径写清。
+                totalPlayCount: player.playCounts.values.reduce(0, +),
+                orphanPlayCount: player.orphanPlayCount
             )
                 .environmentObject(player)
                 .environmentObject(theme)
@@ -1545,11 +1549,16 @@ struct CoSongListSheet: View {
     let title: String
     let songs: [Song]
     var subtitles: [String: String] = [:]
+    /// 常听详情专用：外面那格是总播放次数（不是歌数），里面列表是按次数排的歌。
+    /// orphanPlayCount 是有计数、但歌名记录已对不上的那部分，要诚实显示，
+    /// 不能因为它没有歌名就让整页空白。
+    var totalPlayCount: Int? = nil
+    var orphanPlayCount: Int = 0
 
     var body: some View {
         BeansNavigationStack {
             Group {
-                if songs.isEmpty {
+                if songs.isEmpty && orphanPlayCount == 0 {
                     VStack(spacing: 8) {
                         Image(systemName: "music.note")
                             .font(.system(size: 28))
@@ -1557,6 +1566,25 @@ struct CoSongListSheet: View {
                         Text("这里还没有歌曲")
                             .font(.system(size: 15))
                             .foregroundStyle(Color.beansSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if songs.isEmpty {
+                    // 外面有次数、里面没有能显示的歌名时：不要留一个“这里还没有歌曲”
+                    // 就打发掉——总次数是真的，把有计数、无歌名的那部分写出来。
+                    VStack(spacing: 12) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color.beansSecondary)
+                        if let total = totalPlayCount {
+                            Text("共 \(total) 次播放")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color.beansLabel)
+                        }
+                        Text("其中 \(orphanPlayCount) 次的歌名记录已不在（历史被清空或旧记录无法对应），没有编一首假歌；新播放的歌会从这里开始出现。")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.beansSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -1586,6 +1614,28 @@ struct CoSongListSheet: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                        }
+                        // 有歌名、也有对不上的计数时：下面补一行“其他已播放”，
+                        // 不点按、不编歌名，让外面那个总数和里面列表对得上。
+                        if orphanPlayCount > 0 {
+                            HStack(spacing: 12) {
+                                Image(systemName: "music.note")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(Color.beansSecondary)
+                                    .frame(width: 44, height: 44)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("其他已播放歌曲")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .lineLimit(1)
+                                    Text("\(orphanPlayCount)次 · 歌名记录已不在")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Color.beansSecondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
                     .listStyle(.plain)
@@ -2652,6 +2702,9 @@ struct SettingsView: View {
                     )
                 ) {
                     if let picked = pendingHeaderWallpaperCropImage {
+                        // 裁切页不再忽略安全区：上一轮这里加了 ignoresSafeArea，
+                        // 顶部栏被顶到屏幕顶边、和状态栏/灵动岛重叠，“完成”被电量
+                        // 图标挡了一半、点不到。去掉后顶部栏自然落在安全区下方。
                         CoHeaderWallpaperCropView(
                             image: picked,
                             onDone: { cropped in
@@ -2663,7 +2716,6 @@ struct SettingsView: View {
                                 pendingHeaderWallpaperCropImage = nil
                             }
                         )
-                        .ignoresSafeArea()
                     } else {
                         Color.black.ignoresSafeArea()
                     }
@@ -4917,9 +4969,15 @@ struct CoHeaderWallpaperCropView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // 顶部栏：不再贴屏幕顶边（外层已不再忽略安全区，顶部栏自然落在
+            // 安全区下方、灵动岛下面）；取消与完成各给满 44pt 点击区，文字本身
+            // 只有约 20pt 高、之前点不到的一半原因就是点击区太小。
             HStack {
                 Button("取消") { onCancel() }
                     .buttonStyle(.plain)
+                    .font(.system(size: 17))
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
                 Spacer()
                 Text("裁切头部壁纸")
                     .font(.system(size: 17, weight: .semibold))
@@ -4931,10 +4989,14 @@ struct CoHeaderWallpaperCropView: View {
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 17, weight: .semibold))
+                .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                .contentShape(Rectangle())
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            Spacer()
+            // 裁切框紧贴顶部栏，不再用上下两个 Spacer 把它居中、上下留大黑边；
+            // 框内即头部显示范围，框一上来就看得见。
+            .padding(.top, 4)
             ZStack {
                 Color.black
                 Image(uiImage: image)

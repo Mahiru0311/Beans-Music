@@ -334,9 +334,22 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         loadHistory()
         loadPlayCounts()
+        // 恢复播放队列后，再用队列里的歌补一次 countedSongs：上次播过的歌
+        // 很可能就在队列里，历史被清空时这一步能救回一部分歌名，救不回的
+        // 仍走 orphanPlayCount 聚合显示，不编假歌。
+        restorePersistedPlaybackState()
+        var queueRecovered = false
+        for song in queue where countedSongs[song.identityKey] == nil && playCounts[song.identityKey] != nil {
+            countedSongs[song.identityKey] = song
+            queueRecovered = true
+        }
+        if queueRecovered, let data = try? JSONEncoder().encode(countedSongs) {
+            defaults.set(data, forKey: countedSongsKey)
+        }
         listeningDuration = Self.storedListeningDuration
         lastListeningPublishUptime = ProcessInfo.processInfo.systemUptime
-        restorePersistedPlaybackState()
+        // 播放队列恢复已移到上面（loadPlayCounts 之后），这里不再重复恢复，
+        // 避免同一份持久化状态读两遍。
         equalizerSettingsObserver = NotificationCenter.default.addObserver(
             forName: BeansEqualizer.settingsDidChange,
             object: BeansEqualizer.shared,
@@ -1961,6 +1974,18 @@ final class PlayerManager: NSObject, ObservableObject {
                 countedSongs[key] = song
             }
         }
+        // 迁移只填内存是不够的：补进来的歌要落盘，否则下次启动前
+        // countedSongs 又是空的、详情页又可能空白。
+        if let data = try? JSONEncoder().encode(countedSongs) {
+            defaults.set(data, forKey: countedSongsKey)
+        }
+    }
+
+    /// 有计数、但歌名记录已对不上的播放次数合计（历史被清空、旧记录
+    /// 解码失败、或歌已滚出历史时会出现）：不是假数据，是真实播放次数
+    /// 减去能找到歌名的那部分，详情页要把它诚实显示出来，不能直接空白。
+    var orphanPlayCount: Int {
+        playCounts.filter { countedSongs[$0.key] == nil }.values.reduce(0, +)
     }
 
     private func savePersistedPlaybackState() {
