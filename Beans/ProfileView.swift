@@ -1013,6 +1013,11 @@ struct ProfileView: View {
             // 卡片 -24pt 重叠后仍有 24pt 头部可见（原来 12pt），白卡往下移、壁纸可见区反而更大——壁纸没调小，是调大了。
             .padding(.bottom, forceHomeBackdrop ? 36 : 48)
         }
+        // 我的页头像下移：分拆时顶行整行删掉后，我的页头部直接从头像开始，头像区上移了约一行高度，
+        // 真机上头像快挨到灵动岛/状态栏。只在我的 tab 里在头部顶部补 44pt 空白（不加回任何按钮）：
+        // 原顶行约占 52pt（44pt 按钮 + 8pt 顶部），现头像已有 12pt 顶部内边距，补 44pt 后合计 56pt，
+        // 恢复到原来高度附近再多留一点余量；头像界面仍有顶行，顶部间距不动。
+        .padding(.top, forceHomeBackdrop ? 0 : 44)
         .frame(maxWidth: .infinity)
         .background {
             // 常规 tab 页：只上报头部全局 frame，不再在这里贴第二张壁纸图。
