@@ -348,6 +348,12 @@ struct ProfileView: View {
     /// frame 为空（首帧未上报）时按静止状态处理。
     @State private var profileHeaderFrame = CGRect.zero
 
+    /// 头部拖动下拉量（我的 tab 专属，不依赖滚动回弹）：
+    /// 只由头部拖动手势驱动，硬上限 120pt，松手弹回 0。
+    /// 120pt 的理由：头部高约 300pt，120pt 约为头部高的 40%，缩放 1 + 120/300 = 1.4 倍
+    /// 肉眼明显、脸部不至于裁到无法辨认；上一轮拉到 217pt、缩放失控就是没有硬上限的后果。
+    @State private var headerDragPull: CGFloat = 0
+
     /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
     /// 状态栏文字应切回深色；否则头部（黑/壁纸）仍盖住状态栏区，文字应为白色。
     private var profileHeaderScrolledAway: Bool {
@@ -586,36 +592,38 @@ struct ProfileView: View {
                 Color(profileEffectiveScheme == .dark ? .black : .white)
                     .ignoresSafeArea()
             }
-            // 单层壁纸返工：固定条只在无图 + 头部仍盖住状态栏区时起黑色兜底作用。
-            // 有图时绝不再单独贴一张裁剪不同的图（上一轮两层错位的根因）；
-            // 顶部壁纸由头部 ZStack 的直接子视图承担（位置与双层返工，background 已删），
-            // 框顶边固定在屏幕顶边、只做中心缩放、有效下拉量封顶 150pt。
-            if !forceHomeBackdrop && profileHeaderWallpaper.image == nil && !profileHeaderScrolledAway {
-                coProfileTopBar
-                    .frame(height: profileTopSafeArea)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .ignoresSafeArea(edges: .top)
+            // 重建：唯一的一层壁纸在滚动视图之外（见 coFixedHeaderWallpaper），
+            // 框顶边固定在屏幕顶边、只做中心缩放、拖动量硬上限 120pt；
+            // 不再用头部 background、体外 ZStack 直接子视图、固定条三层叠加。
+            if !forceHomeBackdrop {
+                coFixedHeaderWallpaper
             }
-            // 位置与双层返工：体外单层壁纸已删，头部 background 里的壁纸也已删——
-            // background 的溢出会被头部边界裁掉，框顶偏移到不了屏幕顶边，
-            // 真机上壁纸顶边跟着头部往下走、顶部留黑带。壁纸改到头部 ZStack 的
-            // 直接子视图（见 coMyTabHeaderWallpaperLayer），框顶边用全局顶边抵消
-            // 到屏幕顶边、只做中心缩放、有效下拉量封顶 150pt，下拉量 inline 算、
-            // 不写回 @State、不走 PreferenceKey 回写链。
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                    // 返工（位置与双层 + 下拉上限）：我的 tab 的壁纸是头部 ZStack 的直接子视图
-                    // （coMyTabHeaderWallpaperLayer），不是头部 background——background 的溢出会被裁掉，
-                    // 壁纸顶边跟着头部往下走、顶部留黑带。ZStack 里壁纸容器高为 0、不影响布局，
-                    // 壁纸框顶边用全局顶边抵消到屏幕顶边、只做中心缩放、有效下拉量封顶 150pt。
+                    // 重建：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层），
+                    // 下拉只由头部拖动手势驱动：高优先级手势在头部区域胜过滚动视图的平移，
+                    // 所以头部下拉不会再叠加滚动回弹的位移；点按（位移 < 8pt）不触发拖动，头像按钮点按仍可用；
+                    // 向上拖动时拖动量归 0（不放大），向上滚动请从白卡/歌单区拖动。
                     if forceHomeBackdrop {
                         coNeteaseHeader
                     } else {
-                        ZStack(alignment: .top) {
-                            coMyTabHeaderWallpaperLayer
-                            coNeteaseHeader
-                        }
+                        coNeteaseHeader
+                            .highPriorityGesture(
+                                DragGesture(minimumDistance: 8)
+                                    .onChanged { value in
+                                        if value.translation.height > 0 {
+                                            headerDragPull = min(value.translation.height, 120)
+                                        } else {
+                                            headerDragPull = 0
+                                        }
+                                    }
+                                    .onEnded { _ in
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                            headerDragPull = 0
+                                        }
+                                    }
+                            )
                     }
                     // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
                     // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
@@ -628,12 +636,14 @@ struct ProfileView: View {
                 // 300pt → 240pt，仍比叠层高约 75pt 余量，最后一行能完整滑出；不收到 190pt 以下（上一轮 190pt 时底部行曾被盖过）。
                 .padding(.bottom, 240)
                 .beansAdaptiveContentWidth()
+                .offset(y: forceHomeBackdrop ? 0 : headerDragPull)
                 }
                 .beansScrollIndicatorsHidden()
-                // 内容不满屏时下拉也要能触发：默认回弹只在内容满屏时生效，
-                // 我的页只有 1 条歌单时内容可能不满一屏，下拉根本拉不动。
-                // always 让竖直方向始终可回弹，下拉放大与松手复原不依赖内容长度。
-                .scrollBounceBehavior(.always, axes: .vertical)
+                // 重建：不再依赖滚动回弹拉头部（回弹位移无上限、就是上一轮拉到 217pt 的根源）。
+                // basedOnSize：内容不满屏时不回弹（我的页只有 1 条歌单时正好不满屏），
+                // 头部下拉只由上面的拖动手势驱动、硬上限 120pt；内容超过一屏时列表回弹仍在，
+                // 但它不驱动壁纸缩放、壁纸顶边仍固定在屏幕顶边。
+                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                 .coordinateSpace(name: "coProfileScroll")
                 .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
                 .onChange(of: playlistsScrollRequest) { _ in
@@ -956,11 +966,33 @@ struct ProfileView: View {
     // 不再是白色状态栏条 + 黑头拼接；状态栏文字颜色见 updateProfileStatusBarStyle。
     // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距本轮改为 240pt（见 body 处算余量）。
 
-    /// 顶部固定条（状态栏区）：只做无图时的黑色兜底，永不贴壁纸图。
-    /// 上一轮这里单独贴了一张 scaledToFill 壁纸，与头部壁纸裁剪不同，导致同一张脸
-    /// 在固定条与头部各出现一次、中间一条硬接缝；单层返工后有图时本条根本不出现。
-    private var coProfileTopBar: some View {
-        Color.black
+    /// 我的 tab 固定壁纸层（重建后唯一的一层壁纸，滚动视图之外）：
+    /// 放在 body 的 ZStack 里、滚动视图之前，框顶边用 ignoresSafeArea 固定在屏幕顶边，
+    /// 下拉时框顶边一动不动，只有框里的图以中心锚点放大、向左右两边扩。
+    /// 框高 = 屏幕宽 + 30pt 安全余量 + 拖动量：屏幕宽约等于静止时头部高 + 安全区，
+    /// +30pt 保证在任何机型宽度下壁纸底边都压在白卡下面、不在白卡与壁纸之间留缝，
+    /// 多余部分被不透明白卡盖住；框高随拖动量变大，正好抵消内容整体下移量，
+    /// 白卡与壁纸的重叠（-24pt）始终不变。图用 scaleEffect(中心) 后 .clipped() 裁到框里，
+    /// 所以放大后图不会跑到白卡下面再露一段。无图时整张填黑，同样固定顶边、同样封顶。
+    private var coFixedHeaderWallpaper: some View {
+        let base = UIScreen.main.bounds.width + 30
+        let zoom = 1 + headerDragPull / 300
+        return ZStack {
+            if let image = profileHeaderWallpaper.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                Color.black.opacity(0.45)
+            } else {
+                Color.black
+            }
+        }
+        .frame(width: UIScreen.main.bounds.width, height: base + headerDragPull)
+        .scaleEffect(zoom, anchor: .center)
+        .clipped()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
     }
 
     private var coNeteaseHeader: some View {
@@ -1010,7 +1042,8 @@ struct ProfileView: View {
             .buttonStyle(.plain)
             .padding(.top, 12)
             // 数据行已不在黑头里：见下方白卡里的 coNeteaseStatsInCard（只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现）。
-            // 壁纸不在这里贴图：见下方 background 里的头部内拉伸头壁纸（我的 tab），头像 sheet 的静态壁纸仍在 background 里。
+            // 重建：我的 tab 的壁纸不在这里、也不在任何 background 里，唯一的一层在 body 的滚动视图之外
+            // （见 coFixedHeaderWallpaper，框顶边固定在屏幕顶边）；这里只留头像 sheet 的静态壁纸和状态栏用的 frame 上报。
             // 我的页整体下调：头部底部 36pt → 48pt（只在我的 tab 里加，头像 sheet 仍 36pt），
             // 卡片 -24pt 重叠后仍有 24pt 头部可见（原来 12pt），白卡往下移、壁纸可见区反而更大——壁纸没调小，是调大了。
             .padding(.bottom, forceHomeBackdrop ? 36 : 48)
@@ -1022,11 +1055,9 @@ struct ProfileView: View {
         .padding(.top, forceHomeBackdrop ? 0 : 44)
         .frame(maxWidth: .infinity)
         .background {
-            // 返工（位置与双层）：壁纸不再放头部 background 里——background 的溢出部分
-            // 会被头部边界裁掉，框顶偏移写得再对也到不了屏幕顶边，真机上壁纸顶边
-            // 就跟着头部往下走、顶部留黑带。我的 tab 的壁纸改到头部 ZStack 的直接子视图
-            // （见 coMyTabHeaderWallpaperLayer），这里只留头像 sheet 的静态壁纸和
-            // 状态栏用的 frame 上报（只上报、不画图）。
+            // 重建：我的 tab 的壁纸不在 background 里（background 溢出会被裁掉，上一轮黑带的根源），
+            // 唯一的一层在 body 的滚动视图之外（见 coFixedHeaderWallpaper，框顶边固定在屏幕顶边）；
+            // 这里只留头像 sheet 的静态壁纸和状态栏用的 frame 上报（只上报、不画图）。
             ZStack {
                 if forceHomeBackdrop {
                     if let image = profileHeaderWallpaper.image {
@@ -1043,41 +1074,6 @@ struct ProfileView: View {
                 }
             }
         }
-    }
-
-    /// 我的 tab 的壁纸层：头部 ZStack 的直接子视图，不是 background，所以不会被头部边界裁掉。
-    /// 最简单逻辑 + 下拉上限：下拉量由这里的 GeometryReader 直接读全局顶边、inline 算，
-    /// 不写回 @State、不走 PreferenceKey 回写链；有效下拉量封顶 150pt，超过不再放大、框不再变。
-    /// 框全局固定：容器高为 0（不影响 ZStack 布局），框顶偏移取 -头部全局顶边，
-    /// 所以框的全局顶边恒在屏幕顶边（下拉时顶边不动、不是跟着头部往下走），
-    /// 框高取屏幕宽 + 有效下拉量（宽约等于静止时头部高 + 安全区，多余部分被下方白卡盖住），
-    /// 框里的图只做中心缩放：缩放 = 1 + 有效下拉量 / 300，下拉 150pt 时约 1.5 倍封顶，
-    /// 图只原地放大、位置不动，超出框的部分裁掉；松手回弹、顶边回落，倍率回到 1。
-    /// 无图时整张填黑，同样固定填满、不出黑带以外的空白。头像 sheet 不参与。
-    private var coMyTabHeaderWallpaperLayer: some View {
-        GeometryReader { geo in
-            let headerTop = geo.frame(in: .global).minY
-            let pullRaw = max(0, headerTop - profileTopSafeArea)
-            let pull = min(pullRaw, 150)
-            let zoom = min(1.5, 1 + pull / 300)
-            ZStack {
-                if let image = profileHeaderWallpaper.image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .scaleEffect(zoom, anchor: .center)
-                    Color.black.opacity(0.45)
-                } else {
-                    Color.black
-                }
-            }
-            .frame(width: geo.size.width, height: geo.size.width + pull)
-            .offset(y: -headerTop)
-            .clipped()
-        }
-        .frame(height: 0, alignment: .top)
-        .allowsHitTesting(false)
     }
 
     private func coNeteaseStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
