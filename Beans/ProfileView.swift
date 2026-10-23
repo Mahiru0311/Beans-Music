@@ -27,6 +27,15 @@ private struct BeansProfileCardTopKey: PreferenceKey {
     }
 }
 
+/// 我的页头部全局 frame：单层壁纸层据此算顶边与底边。
+private struct CoProfileHeaderFrameKey: PreferenceKey {
+    static let defaultValue = CGRect.zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
 /// 只改窗口级状态栏样式，不改页面颜色：窗口改深色只影响状态栏文字，
 /// 页面颜色由 body 上的 preferredColorScheme（见 profileEffectiveScheme）单独定，
 /// 白卡在浅色主题下仍是白卡、深色文字，不会被窗口样式带翻。
@@ -287,6 +296,16 @@ struct ProfileView: View {
     /// 白卡是否已滑到状态栏区域（卡顶全局 y <= 28pt，约状态栏文字中心高度）。
     @State private var isCardAtTop = false
 
+    /// 我的页头部在全局坐标里的 frame：单层壁纸层据此定位。
+    /// frame 为空（首帧未上报）时按静止状态处理。
+    @State private var profileHeaderFrame = CGRect.zero
+
+    /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
+    /// 状态栏文字应切回深色；否则头部（黑/壁纸）仍盖住状态栏区，文字应为白色。
+    private var profileHeaderScrolledAway: Bool {
+        !profileHeaderFrame.isEmpty && profileHeaderFrame.maxY <= 24
+    }
+
     /// 页面实际生效的深浅色：显式浅色/深色与原来一致；跟随系统时取屏幕级深浅色，
     /// 而不是窗口级——这样窗口为状态栏改深色时，页面颜色不会被带翻。
     private var profileEffectiveScheme: ColorScheme {
@@ -307,7 +326,12 @@ struct ProfileView: View {
     /// 状态栏文字才为白色；白卡/歌单颜色用下方显式颜色，不随本方案翻转。
     private var profileStatusBarScheme: ColorScheme {
         if forceHomeBackdrop { return profileEffectiveScheme }
-        return profileEffectiveScheme == .light ? .dark : profileEffectiveScheme
+        // 单层壁纸返工：头部在顶时用深色方案（白字），头部滑出状态栏区后
+        // 回到生效方案（浅色主题下为深色文字），与窗口桥逻辑一致。
+        if profileEffectiveScheme == .light {
+            return profileHeaderScrolledAway ? .light : .dark
+        }
+        return profileEffectiveScheme
     }
 
     /// 显式颜色（不随 environment 颜色方案翻转）：浅色主题下黑字/灰字/浅灰底，
@@ -322,7 +346,7 @@ struct ProfileView: View {
     private func updateProfileStatusBarStyle() {
         // 返工：固定黑条恒在顶部，浅色主题下状态栏恒为白色文字，不再按白卡位置切换。
         guard !forceHomeBackdrop else { return }
-        if profileEffectiveScheme == .light {
+        if profileEffectiveScheme == .light && !profileHeaderScrolledAway {
             CoProfileStatusBarStyle.applyDark()
         } else {
             CoProfileStatusBarStyle.restore()
@@ -509,15 +533,20 @@ struct ProfileView: View {
                 Color(profileEffectiveScheme == .dark ? .black : .white)
                     .ignoresSafeArea()
             }
-            // 返工：固定黑条（ScrollView 外的 ZStack 兄弟层，不被 ScrollView 裁剪）。
-            // 上一轮黑头背景的 ignoresSafeArea 只贴在 ScrollView 内部子视图上，被 ScrollView
-            // 自身边界裁剪，根本画不到状态栏区；本条在 ScrollView 外，高度 = 顶部安全区，
-            // 与下方黑头拼接成从顶边开始的整片黑色，滚动时仍在顶部，状态栏区恒黑。
-            if !forceHomeBackdrop {
+            // 单层壁纸返工：固定条只在无图 + 头部仍盖住状态栏区时起黑色兜底作用。
+            // 有图时绝不再单独贴一张裁剪不同的图（上一轮两层错位的根因）；
+            // 顶部壁纸由下方 coProfileSingleWallpaper 单层承担。
+            if !forceHomeBackdrop && profileHeaderWallpaper.image == nil && !profileHeaderScrolledAway {
                 coProfileTopBar
                     .frame(height: profileTopSafeArea)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(edges: .top)
+            }
+            // 单层连续壁纸：从屏幕顶边一直盖到头部底边的一整张图，在 ZStack 里放在
+            // ScrollView 之前（即在其下层），据头部全局 frame 定位，不随 ScrollView 裁剪。
+            if !forceHomeBackdrop {
+                coProfileSingleWallpaper
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             ScrollViewReader { proxy in
                 ScrollView {
@@ -581,8 +610,12 @@ struct ProfileView: View {
         }
         .onChange(of: themeModeRaw) { _ in updateProfileStatusBarStyle() }
         .onChange(of: isCardAtTop) { _ in updateProfileStatusBarStyle() }
+        .onChange(of: profileHeaderFrame) { _ in updateProfileStatusBarStyle() }
         .onPreferenceChange(BeansProfileCardTopKey.self) { minY in
             isCardAtTop = minY <= 28
+        }
+        .onPreferenceChange(CoProfileHeaderFrameKey.self) { frame in
+            profileHeaderFrame = frame
         }
         .sheet(isPresented: $showHistory) {
             HistoryView()
@@ -846,28 +879,41 @@ struct ProfileView: View {
     // 不再是白色状态栏条 + 黑头拼接；状态栏文字颜色见 updateProfileStatusBarStyle。
     // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距 300pt。
 
-    /// 顶部固定条（状态栏区）：无图时纯黑；有图时显示壁纸顶部，与下方头部壁纸顶对齐，
-    /// 避免下拉/静止时固定条与头部之间出现色块断层；统一罩 0.45 暗色，保证状态栏白字可读。
+    /// 顶部固定条（状态栏区）：只做无图时的黑色兜底，永不贴壁纸图。
+    /// 上一轮这里单独贴了一张 scaledToFill 壁纸，与头部壁纸裁剪不同，导致同一张脸
+    /// 在固定条与头部各出现一次、中间一条硬接缝；单层返工后有图时本条根本不出现。
     private var coProfileTopBar: some View {
-        ZStack {
+        Color.black
+    }
+
+    /// 单层连续壁纸：从屏幕顶边一直盖到头部底边的一整张图。
+    /// 定位公式（profileHeaderFrame 为头部在全局坐标里的 frame，safe = 顶部安全区）：
+    ///   顶边 top = min(0, frame.minY - safe)：静止时 frame.minY = safe，top = 0；
+    ///     下拉时 frame.minY 变大，top 仍为 0、高度增大，整张图跟手拉伸；
+    ///     上滑时 frame.minY 变小，top = frame.minY - safe（负值，整体上移），图随头部滑走。
+    ///   高度 height = (frame.minY + frame.height) - top，底边恒等于头部底边。
+    /// 首帧 frame 未上报时用 safe + 320pt 估算，避免首屏闪白；上报后立即纠正。
+    /// 暗色罩罩整张连续壁纸（不只头部半截），头像/昵称/状态栏白字可读。
+    private var coProfileSingleWallpaper: some View {
+        let frame = profileHeaderFrame
+        let top: CGFloat = frame.isEmpty ? 0 : min(0, frame.minY - profileTopSafeArea)
+        let height: CGFloat = frame.isEmpty
+            ? profileTopSafeArea + 320
+            : max(0, (frame.minY + frame.height) - top)
+        return ZStack {
             if let image = profileHeaderWallpaper.image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .clipped()
                 Color.black.opacity(0.45)
             } else {
                 Color.black
             }
         }
-    }
-
-    /// 下拉量：头部在全局坐标里的顶边减去顶部安全区，下拉为正、上滑钳为 0；
-    /// 主页头像弹出的 profile 不参与（其顶边不在安全区，无下拉拉伸）。
-    private func coProfileHeaderPull(geo: GeometryProxy) -> CGFloat {
-        if forceHomeBackdrop { return 0 }
-        return max(0, geo.frame(in: .global).minY - profileTopSafeArea)
+        .frame(maxWidth: .infinity)
+        .frame(height: height, alignment: .top)
+        .clipped()
+        .offset(y: top)
     }
 
     private var coNeteaseHeader: some View {
@@ -918,30 +964,23 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .background {
-            // 拉伸壁纸层：背景自身用 GeometryReader 量下拉量，下拉时背景框向上延伸、
-            // 高度随下拉增大、松手随 ScrollView 回弹复原，顶部不再露出白带。
-            // 框顶 = 头部顶边 - (安全区 + 下拉量)，框底 = 头部底边，框高随下拉增大，
-            // scaledToFill 顶对齐，图随框放大（标准 GeometryReader 拉伸头做法，静态图、无连续动画；
-            // 注：已查 2.0.3 歌单页代码，里面并无拉伸头实现，本做法不是从它抄的）。
-            // 无图时就是现在黑色；有图时罩 0.45 暗色，头像/昵称/VIP/状态行白字仍可读。
-            GeometryReader { geo in
-                let pull = coProfileHeaderPull(geo: geo)
-                let topExtension = forceHomeBackdrop ? 0 : profileTopSafeArea + pull
-                ZStack {
+            // 常规 tab 页：只上报头部全局 frame，不再在这里贴第二张壁纸图。
+            // 壁纸由体外 coProfileSingleWallpaper 单层承担，否则两层裁剪不同必然错位。
+            // 主页头像弹出的 profile 不参与单层壁纸，仍保留它原有的头部背景（无固定条、无接缝问题）。
+            ZStack {
+                if forceHomeBackdrop {
                     if let image = profileHeaderWallpaper.image {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
+                        Color.black.opacity(0.45)
                     } else {
                         Color.black
                     }
-                    if profileHeaderWallpaper.image != nil {
-                        Color.black.opacity(0.45)
-                    }
                 }
-                .frame(width: geo.size.width, height: geo.size.height + topExtension, alignment: .top)
-                .offset(y: -topExtension)
-                .clipped()
+                GeometryReader { geo in
+                    Color.clear.preference(key: CoProfileHeaderFrameKey.self, value: geo.frame(in: .global))
+                }
             }
         }
     }
