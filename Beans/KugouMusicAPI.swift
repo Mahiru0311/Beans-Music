@@ -1855,7 +1855,10 @@ final class KugouMusicAPI {
         let name = string(raw["name"] ?? raw["listname"] ?? raw["list_name"] ?? raw["specialname"] ?? raw["title"])
         let cover = string(raw["pic"] ?? raw["img"] ?? raw["cover"] ?? raw["sizable_cover"] ?? raw["list_pic"]).replacingOccurrences(of: "{size}", with: "240")
         let count = int(raw["count"] ?? raw["song_count"] ?? raw["total"] ?? raw["file_count"] ?? raw["songcount"])
-        return Playlist(id: id, name: name.isEmpty ? "酷狗歌单" : name, coverURL: URL(string: cover), trackCount: count, source: .kugou)
+        // 1.8.7：歌单详情页创建者行——只取接口真实返回的创建者名，没有就不显示，不编造。
+        let creatorDict = raw["creator"] as? [String: Any]
+        let creator = clean(string(raw["username"] ?? raw["nickname"] ?? raw["creator_name"] ?? raw["author_name"] ?? raw["user_name"] ?? creatorDict?["nickname"] ?? creatorDict?["username"] ?? ""))
+        return Playlist(id: id, name: name.isEmpty ? "酷狗歌单" : name, coverURL: URL(string: cover), trackCount: count, source: .kugou, creatorName: creator)
     }
 
     private static func mapTrack(_ raw: [String: Any]) -> Song? {
@@ -1875,6 +1878,12 @@ final class KugouMusicAPI {
             } else if title.isEmpty {
                 title = filename
             }
+        }
+        // 1.8.7：歌名本身就是“歌手 - 歌名”且歌手字段为空时（官网歌单数据常见），
+        // 在解析层就拆开，避免歌单行标题里再出现“歌手 - 歌名”这种合并标题。
+        if artist.isEmpty, let range = title.range(of: " - ") {
+            artist = clean(String(title[..<range.lowerBound]))
+            title = clean(String(title[range.upperBound...]))
         }
         guard !title.isEmpty, !hash.isEmpty || !albumAudioId.isEmpty else { return nil }
         let album = string(raw["album_name"] ?? raw["albumname"] ?? raw["album"] ?? (raw["albuminfo"] as? [String: Any])?["name"])

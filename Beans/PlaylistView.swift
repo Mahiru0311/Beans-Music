@@ -50,22 +50,30 @@ struct PlaylistView: View {
                         Task { await load(force: true) }
                     }
                 } else {
-                    List {
-                        header
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                        Section {
+                    // 1.8.7：按 2.0.3 结构用 ScrollView + LazyVStack（不用 List）：
+                    // 小封面头、固定 64pt 行高、底部留 118pt，歌曲行不再被迷你播放器遮住。
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            header
                             ForEach(Array(displayedTracks.enumerated()), id: \.element.identityKey) { index, song in
-                                SongCell(song: song, glassRow: true, playbackContext: displayedTracks, playbackIndex: index) {
+                                SongCell(
+                                    song: song,
+                                    showCover: true,
+                                    suppressNativeCleanRowGlass: true,
+                                    coverSize: 46,
+                                    fixedRowHeight: 64,
+                                    playbackContext: displayedTracks,
+                                    playbackIndex: index
+                                ) {
                                     player.play(songs: displayedTracks, startAt: index)
                                 }
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
+                                .padding(.horizontal, 22)
                             }
                         }
+                        .padding(.top, 12)
+                        .padding(.bottom, 118)
                     }
-                    .beansScrollContentBackgroundHidden()
-                    .listStyle(.plain)
+                    .beansScrollIndicatorsHidden()
                 }
             }
             }
@@ -103,6 +111,18 @@ struct PlaylistView: View {
                         player.play(songs: displayedTracks, startAt: Int.random(in: 0..<displayedTracks.count))
                     }
                 }
+                Spacer()
+                // 1.8.7：歌单详情页内的隐藏入口（与我的页 ··· 入口同一存储）。
+                Menu {
+                    Button("隐藏此歌单", role: .destructive) { hideThisPlaylist() }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.beansAmber)
+                        .frame(width: 38, height: 38)
+                        .background { BeansSurface(shape: Circle()) }
+                }
+                .buttonStyle(GlassPressButtonStyle())
             }
             HStack(spacing: 10) {
                 HStack(spacing: 8) {
@@ -168,6 +188,17 @@ struct PlaylistView: View {
             list.sort { $0.duration < $1.duration }
         }
         return list
+    }
+
+    // 1.8.7：详情页隐藏只藏“我的”页显示，不删酷狗里的歌单；
+    // 我的页下次出现时按同一存储过滤，设置里可恢复。
+    private func hideThisPlaylist() {
+        var entries = CoHiddenPlaylists.load(userId: KugouMusicAuth.shared.userId)
+        if !entries.contains(where: { $0.id == playlist.id }) {
+            entries.append((id: playlist.id, name: playlist.name))
+            CoHiddenPlaylists.save(userId: KugouMusicAuth.shared.userId, entries: entries)
+        }
+        ToastCenter.shared.show("已隐藏，可在设置里恢复")
     }
 
     private func load(force: Bool = false) async {

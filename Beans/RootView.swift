@@ -3,6 +3,7 @@ import UIKit
 
 enum RootTab: String, CaseIterable, Identifiable {
     case discover
+    case featured
     case search
     case library
     case profile
@@ -12,18 +13,38 @@ enum RootTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .discover: return "主页"
+        case .featured: return "精选"
         case .search: return "搜索"
         case .library: return "音乐库"
         case .profile: return "我的"
         }
     }
 
+    // 1.8.7：底栏图标基础名（不带填充），填充/描边/圆润由 CoTabIconStyle 的
+    // symbolVariant 在标签处统一施加，不另引 2.0.3 图片资源。
     var icon: String {
         switch self {
-        case .discover: return "house.fill"
+        case .discover: return "house"
+        case .featured: return "star"
         case .search: return "magnifyingglass"
         case .library: return "music.note.list"
         case .profile: return "person.crop.circle"
+        }
+    }
+}
+
+// 1.8.7：底栏图标样式多选（2.0.3 的 Apple Music / SF Symbols / 圆润样式，
+// 用系统 SF Symbols 变体实现）：Apple Music=填充、SF Symbols=描边、圆润=圆形变体。
+enum CoTabIconStyle: String, CaseIterable, Identifiable {
+    case appleMusic = "Apple Music"
+    case sfSymbols = "SF Symbols"
+    case rounded = "圆润样式"
+    var id: String { rawValue }
+    var variant: SymbolVariants {
+        switch self {
+        case .appleMusic: return .fill
+        case .sfSymbols: return .none
+        case .rounded: return .circle
         }
     }
 }
@@ -37,18 +58,22 @@ struct RootView: View {
     @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
 
     @State private var selection: RootTab = .discover
-    /// 导航栏显示开关（参照 2.0.3 BeansTabVisibility 的 UserDefaults 键，Co 按四页适配）：
-    /// beans.tab.discover.visible / .library.visible / .profile.visible / .search.visible，默认全开。
+    /// 导航栏显示开关（参照 2.0.3 BeansTabVisibility 的 UserDefaults 键，Co 五页版）：
+    /// beans.tab.discover.visible / .featured.visible / .library.visible / .profile.visible / .search.visible，默认全开。
     @AppStorage("beans.tab.discover.visible") private var tabDiscoverVisible = true
     @AppStorage("beans.tab.library.visible") private var tabLibraryVisible = true
     @AppStorage("beans.tab.profile.visible") private var tabProfileVisible = true
     @AppStorage("beans.tab.search.visible") private var tabSearchVisible = true
+    @AppStorage("beans.tab.featured.visible") private var tabFeaturedVisible = true
+    @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = CoTabIconStyle.appleMusic.rawValue
+    private var tabIconStyle: CoTabIconStyle { CoTabIconStyle(rawValue: tabIconStyleRaw) ?? .appleMusic }
 
-    /// 按 2.0.3 顺序（搜索放最后特殊位）的可见标签，精选标签不另立（已在主页里）。
+    /// 按 2.0.3 顺序（主页 / 精选 / 音乐库 / 我的，搜索放最后特殊位）的可见标签。
     private var visibleTabs: [RootTab] {
-        [RootTab.discover, RootTab.library, RootTab.profile, RootTab.search].filter { tab in
+        [RootTab.discover, RootTab.featured, RootTab.library, RootTab.profile, RootTab.search].filter { tab in
             switch tab {
             case .discover: return tabDiscoverVisible
+            case .featured: return tabFeaturedVisible
             case .library: return tabLibraryVisible
             case .profile: return tabProfileVisible
             case .search: return tabSearchVisible
@@ -57,7 +82,7 @@ struct RootView: View {
     }
 
     private var visibleTabsSignature: String {
-        [tabDiscoverVisible, tabLibraryVisible, tabProfileVisible, tabSearchVisible].map { $0 ? "1" : "0" }.joined()
+        [tabDiscoverVisible, tabFeaturedVisible, tabLibraryVisible, tabProfileVisible, tabSearchVisible].map { $0 ? "1" : "0" }.joined()
     }
     @State private var showPlayer = false
     @Namespace private var nowPlayingTransition
@@ -103,22 +128,27 @@ struct RootView: View {
         let legacyTabView = TabView(selection: $selection) {
             if tabDiscoverVisible {
                 DiscoverView()
-                    .tabItem { Label(tabLabelsVisible ? "主页" : "", systemImage: "house.fill") }
+                    .tabItem { Label(tabLabelsVisible ? "主页" : "", systemImage: "house").symbolVariant(tabIconStyle.variant) }
                     .tag(RootTab.discover)
+            }
+            if tabFeaturedVisible {
+                FeaturedView()
+                    .tabItem { Label(tabLabelsVisible ? "精选" : "", systemImage: "star").symbolVariant(tabIconStyle.variant) }
+                    .tag(RootTab.featured)
             }
             if tabLibraryVisible {
                 LibraryView()
-                    .tabItem { Label(tabLabelsVisible ? "音乐库" : "", systemImage: "music.note.list") }
+                    .tabItem { Label(tabLabelsVisible ? "音乐库" : "", systemImage: "music.note.list").symbolVariant(tabIconStyle.variant) }
                     .tag(RootTab.library)
             }
             if tabProfileVisible {
                 ProfileView()
-                    .tabItem { Label(tabLabelsVisible ? "我的" : "", systemImage: "person.crop.circle") }
+                    .tabItem { Label(tabLabelsVisible ? "我的" : "", systemImage: "person.crop.circle").symbolVariant(tabIconStyle.variant) }
                     .tag(RootTab.profile)
             }
             if tabSearchVisible {
                 SearchView()
-                    .tabItem { Label(tabLabelsVisible ? "搜索" : "", systemImage: "magnifyingglass") }
+                    .tabItem { Label(tabLabelsVisible ? "搜索" : "", systemImage: "magnifyingglass").symbolVariant(tabIconStyle.variant) }
                     .tag(RootTab.search)
             }
         }
@@ -163,6 +193,7 @@ struct RootView: View {
         .onChange(of: visibleTabsSignature) { _ in
             if visibleTabs.isEmpty {
                 tabDiscoverVisible = true
+                tabFeaturedVisible = true
                 tabLibraryVisible = true
                 tabProfileVisible = true
                 tabSearchVisible = true
@@ -234,9 +265,10 @@ struct RootView: View {
             }
 
             KumoneGlassTabBar(
-                items: RootTab.allCases.map {
+                items: visibleTabs.map {
                     KumoneGlassTabBar.Item(tab: $0, title: $0.title, icon: $0.icon)
                 },
+                iconVariant: tabIconStyle.variant,
                 selection: $selection,
                 labelsVisible: tabLabelsVisible,
                 accentIsNativeClean: isNativeClean,
@@ -435,8 +467,8 @@ private struct ClearSheetBackground: ViewModifier {
 }
 
 /// iOS 26+ 系统标签栏（参照 2.0.3 RootView:689-725/729-775 的 nativeTabContent 结构，只取结构不抄样式）：
-/// 顺序为主页 / 音乐库 / 我的，搜索为 role: .search 的特殊位（不是普通标签）。
-/// 2.0.3 另有“精选”歌单广场标签，Co 不另立——歌单广场已在 Co 主页里，避免重复标签。
+/// 顺序为主页 / 精选 / 音乐库 / 我的，搜索为 role: .search 的特殊位（不是普通标签）。
+/// 1.8.7：精选标签已按用户要求加上（2.0.3 同款顺序），内容走现有歌单广场与排行榜。
 /// 旧式 .tabItem 把搜索当普通标签，iOS 26 缩小后搜索位会被收起；
 /// role: .search 的搜索位由系统固定保留，下滑缩小/上滑恢复后仍在底栏里，这就是“交互后三个 vs 两个缺搜索”的结构根因。
 /// 图标按 2.0.3 nativeTabLabel 的 25pt semibold 系统图标对齐（2.0.3 的 BottomHome/BottomLibrary 图片资源 Co 没有，不另引资源）。
@@ -449,6 +481,13 @@ private extension RootView {
                     DiscoverView()
                 } label: {
                     nativeTabLabel(.discover)
+                }
+            }
+            if tabFeaturedVisible {
+                Tab(value: .featured) {
+                    FeaturedView()
+                } label: {
+                    nativeTabLabel(.featured)
                 }
             }
             if tabLibraryVisible {
@@ -486,6 +525,7 @@ private extension RootView {
         } icon: {
             Image(systemName: tab.icon)
                 .font(.system(size: 25, weight: .semibold))
+                .symbolVariant(tabIconStyle.variant)
         }
     }
 }
@@ -549,6 +589,7 @@ private struct KumoneGlassTabBar: View {
 
     let items: [Item]
     @Binding var selection: RootTab
+    var iconVariant: SymbolVariants = .fill
     var labelsVisible: Bool
     var accentIsNativeClean: Bool
     var onHomeLongPress: (() -> Void)?
@@ -604,7 +645,7 @@ private struct KumoneGlassTabBar: View {
         return VStack(spacing: 3) {
             Image(systemName: item.icon)
                 .font(.system(size: 23, weight: .semibold))
-                .symbolVariant(.fill)
+                .symbolVariant(iconVariant)
             if labelsVisible {
                 Text(item.title)
                     .font(.system(size: 10, weight: .semibold))

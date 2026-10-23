@@ -10,6 +10,9 @@ struct SongCell: View {
 
     let song: Song
     var showCover = true
+    // 1.8.7（2.0.3 SongCell 同款参数）：歌单详情页用 46pt 封面 + 64pt 固定行高。
+    var coverSize: CGFloat = 46
+    var fixedRowHeight: CGFloat?
     /// 玻璃行模式：为行添加清透液态玻璃底（二级列表页统一风格用）
     var glassRow = false
     /// 需要整体玻璃容器时，单行保持纯净背景
@@ -30,14 +33,32 @@ struct SongCell: View {
         BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
+    // 1.8.7：歌名/歌手分开展示。部分酷狗歌单数据（尤其缓存过的旧数据）
+    // 把“歌手 - 歌名”整个塞进 name、artists 为空，照原样显示就会出现截图里
+    // “任贤齐 - 心太软 / 未知歌手”这种行；这里在显示层拆开，artists 仍为空时
+    // 副标题只显示专辑、专辑也空就干脆不显示副标题，绝不编造“未知歌手”。
+    private var displayName: String {
+        if song.artists.isEmpty, let range = song.name.range(of: " - ") {
+            return String(song.name[range.upperBound...])
+        }
+        return song.name
+    }
+    private var displayArtists: String {
+        if !song.artists.isEmpty { return song.artists }
+        if let range = song.name.range(of: " - ") {
+            return String(song.name[..<range.lowerBound])
+        }
+        return song.album
+    }
+
     private var rowContent: some View {
         HStack(spacing: 12) {
             if showCover {
-                CoverImage(url: song.coverURL, size: 46, cornerRadius: 10)
+                CoverImage(url: song.coverURL, size: coverSize, cornerRadius: 10)
             }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(song.name)
+                    Text(displayName)
                         .font(BeansFont.appFont(15, isCurrent ? .semibold : .regular))
                         .foregroundStyle(isCurrent ? Color.beansAmber : Color.beansLabel)
                         .lineLimit(1)
@@ -53,12 +74,14 @@ struct SongCell: View {
                     }
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                Text(song.artists.isEmpty ? song.album : song.artists)
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                if !displayArtists.isEmpty {
+                    Text(displayArtists)
+                        .font(BeansFont.appFont(12))
+                        .foregroundStyle(Color.beansComment)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                }
             }
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 0)
@@ -71,7 +94,8 @@ struct SongCell: View {
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 6)
+        .frame(height: fixedRowHeight)
+        .padding(.vertical, fixedRowHeight == nil ? 6 : 0)
         .contentShape(Rectangle())
         .scaleEffect(isCurrent ? 1.012 : 1)
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isCurrent)

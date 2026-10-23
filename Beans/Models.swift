@@ -206,12 +206,12 @@ struct Playlist: Identifiable, Hashable, Codable {
     /// 歌单来源（网易云 / QQ音乐），非网易云歌单用对应接口加载
     let source: SongSource
 
-    init(id: Int, name: String, coverURL: URL?, trackCount: Int = 0, source: SongSource = .netease) {
+    init(id: Int, name: String, coverURL: URL?, trackCount: Int = 0, source: SongSource = .netease, creatorName: String = "") {
         self.id = id
         self.name = name
         self.coverURL = coverURL
         self.trackCount = trackCount
-        self.creatorName = ""
+        self.creatorName = creatorName
         self.specialType = 0
         self.source = source
     }

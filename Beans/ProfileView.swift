@@ -37,9 +37,10 @@ struct ProfileView: View {
     @AppStorage("beans.vipIconItemId") private var vipIconItemId = "auto"
     @State private var showVIPIconPicker = false
     @State private var showStatusEditor = false
+    @State private var showHideConfirm = false
+    @State private var hideConfirmPlaylist: Playlist?
     @State private var myStatusText = ""
     @State private var statusDraft = ""
-    @State private var vipPickerExpanded = true
     @State private var vipIconImage: UIImage?
     @State private var vipIconLoadFailed = false
     /// 用户页背景（1.8.5）：默认 auto，不再是纯黑；见 profileHeaderBackground。
@@ -155,12 +156,16 @@ struct ProfileView: View {
                 .overlay(Circle().stroke(profileHeaderForeground.opacity(0.35), lineWidth: 1.5))
             }
             .buttonStyle(.plain)
+            // 1.8.7：昵称+VIP 行居中、限宽（长条 VIP 图不再把昵称挤出屏幕）；
+            // 昵称优先截断，VIP 图固定小尺寸。
             HStack(spacing: 6) {
                 Text(myDisplayNickname)
                     .font(BeansFont.appFont(20, .bold))
                     .foregroundStyle(profileHeaderForeground)
                     .lineLimit(1)
-                // 点徽标弹出图标切换；未登录时点徽标先进账号/登录。
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+                // 点徽标弹出系统弹窗切换；未登录时点徽标先进账号/登录。
                 Button {
                     BeansHaptics.tap()
                     if kugouAuth.isLoggedIn { showVIPIconPicker = true } else { showAccountHub = true }
@@ -168,28 +173,33 @@ struct ProfileView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("切换 VIP 图标")
             }
-            Button {
-                BeansHaptics.tap()
-                statusDraft = myStatusText
-                showStatusEditor = true
-            } label: {
-                HStack(spacing: 4) {
-                    if !myStatusText.isEmpty {
+            .frame(maxWidth: 320)
+            // 1.8.7：只有真的写了状态才显示状态行，空状态不再留一个孤立的铅笔斜杠；
+            // 账号行与昵称完全相同时也不重复显示（截图里“明天见”出现两次的根因之一）。
+            if !myStatusText.isEmpty {
+                Button {
+                    BeansHaptics.tap()
+                    statusDraft = myStatusText
+                    showStatusEditor = true
+                } label: {
+                    HStack(spacing: 4) {
                         Text(myStatusText)
                             .font(BeansFont.appFont(13))
                             .foregroundStyle(profileHeaderForeground)
                             .lineLimit(1)
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(profileHeaderSecondary)
                     }
-                    Image(systemName: "pencil")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(profileHeaderSecondary)
                 }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-            Text(accountStatusLine)
-                .font(BeansFont.appFont(12))
-                .foregroundStyle(profileHeaderSecondary)
-                .lineLimit(1)
+            if accountStatusLine != myDisplayNickname {
+                Text(accountStatusLine)
+                    .font(BeansFont.appFont(12))
+                    .foregroundStyle(profileHeaderSecondary)
+                    .lineLimit(1)
+            }
         }
     }
 
@@ -209,7 +219,9 @@ struct ProfileView: View {
         Group {
             if let item = selectedVIPIconItem, !item.isSelfDrawn {
                 if let img = vipIconImage, !(item.isAnimated && !kugouAuth.hasMembership) {
-                    CoAnimatedImage(image: img).frame(height: 26)
+                    // 1.8.7：远程 VIP 图必须同时限宽限高——只限高时 UIImageView
+                    // 会按原图内在宽度撑开整行（截图里长条图把昵称挤到左边缘的根因）。
+                    CoAnimatedImage(image: img).frame(width: 84, height: 20).clipped()
                 } else {
                     CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
                 }
@@ -265,7 +277,7 @@ struct ProfileView: View {
         vipIconLoadFailed = false
         vipIconItemId = item?.id ?? "auto"
         BeansHaptics.select()
-        // 下载是异步的，失败时面板内会显示红色回落提示（见 vipIconPickerSheet），不在此处同步弹 toast。
+        // 下载是异步的，失败时系统弹窗的 message 会显示回落提示，不在此处同步弹 toast。
         loadVIPIcon(allowDownload: true)
     }
 
@@ -322,106 +334,6 @@ struct ProfileView: View {
     /// 1.8.6 VIP 精简：只用他网站 VIP 档的核心款（普通/动效/已过期/特殊各 1 款，共 4 款），
     /// 不再铺 SVIP/长条形自绘款与 v0-v7 全量网格；展开用系统 DisclosureGroup（系统展开框），
     /// 选款仍按需下载、选新删旧只留一款、CDN 失效回落 Co 自绘（逻辑见 selectVIPIcon/loadVIPIcon）。
-    private var vipIconPickerSheet: some View {
-        BeansNavigationStack {
-            List {
-                Section {
-                    HStack(spacing: 10) {
-                        Text("当前款")
-                        Spacer()
-                        if let item = selectedVIPIconItem, !item.isSelfDrawn, let img = vipIconImage {
-                            CoAnimatedImage(image: img).frame(height: 30)
-                        } else if let item = selectedVIPIconItem {
-                            CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
-                        } else {
-                            CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: true)
-                        }
-                        Text(selectedVIPIconItem?.label ?? "自动")
-                            .foregroundStyle(Color.beansComment)
-                    }
-                    Button("自动（按 VIP 状态自动对应）") { selectVIPIcon(nil) }
-                }
-                Section("VIP 图标（来自 wy.dwkc.cn 面板，精简款）") {
-                    DisclosureGroup("选择图标", isExpanded: $vipPickerExpanded) {
-                        ForEach(CoVIPIconCatalog.vipCore) { item in
-                            let disabled = item.isAnimated && !kugouAuth.hasMembership
-                            Button {
-                                if !disabled { selectVIPIcon(item) }
-                            } label: {
-                                HStack {
-                                    Text(item.label)
-                                    Spacer()
-                                    Text(item.isAnimated ? "动图" : "静态")
-                                        .foregroundStyle(Color.beansComment)
-                                    if vipIconItemId == item.id {
-                                        Image(systemName: "checkmark")
-                                            .foregroundStyle(Color.beansAmber)
-                                    }
-                                }
-                            }
-                            .disabled(disabled)
-                        }
-                        Text("动效款仅 VIP 可用；无 VIP 时选了也不生效，会回落灰色自绘徽标。选款后只下载当前一款并缓存，换一款时旧缓存立即删除；图源为该站面板链接（多托管在 CDN 上），下载失败时自动回落 Co 自绘徽标，不出现破图。")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                }
-                if vipIconLoadFailed {
-                    Section {
-                        Text("当前款图标加载失败（CDN 可能已撤图或网络不通），已回落 Co 自绘徽标；可重选一款重试。")
-                            .foregroundStyle(Color.red)
-                    }
-                }
-            }
-            .navigationTitle("VIP 图标")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showVIPIconPicker = false } } }
-        }
-    }
-
-    /// 主页状态编辑：本地短文本，像真实网易云一样可改/可清空；酷狗无此接口，不假装同步到账号。
-    private var statusEditorSheet: some View {
-        BeansNavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("在头像下方显示一句话状态，例如在听什么、心情如何。只存在本地，换号后按账号区分，不会同步到酷狗账号。")
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-                TextField("写一句话状态", text: $statusDraft)
-                    .font(BeansFont.appFont(15))
-                    .foregroundStyle(Color.beansLabel)
-                    .padding(12)
-                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
-                HStack(spacing: 12) {
-                    Button("保存") {
-                        let text = String(statusDraft.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
-                        myStatusText = text
-                        CoUserStatus.save(userId: kugouAuth.userId, text: text)
-                        BeansHaptics.select()
-                        showStatusEditor = false
-                    }
-                    .buttonStyle(.plain)
-                    .font(BeansFont.appFont(15, .semibold))
-                    .foregroundStyle(Color.beansAmber)
-                    Button("清空状态") {
-                        myStatusText = ""
-                        statusDraft = ""
-                        CoUserStatus.save(userId: kugouAuth.userId, text: "")
-                        showStatusEditor = false
-                    }
-                    .buttonStyle(.plain)
-                    .font(BeansFont.appFont(14))
-                    .foregroundStyle(Color.red)
-                    Spacer()
-                }
-                Spacer()
-            }
-            .padding(16)
-            .navigationTitle("我的状态")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showStatusEditor = false } } }
-        }
-    }
-
     /// 白色主卡（wy 格式）：顶部大圆角压住黑色标题区，内含统计行、快捷入口、歌单、常听排行。
     /// 统计行只用 Co 真实数据，不编造关注/粉丝/等级/小时数。
     private var myWhiteCard: some View {
@@ -510,8 +422,51 @@ struct ProfileView: View {
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         }
-        .sheet(isPresented: $showVIPIconPicker) { vipIconPickerSheet }
-        .sheet(isPresented: $showStatusEditor) { statusEditorSheet }
+        // 1.8.7：VIP 选择改成真正的系统弹窗（confirmationDialog，底部系统弹窗样式），
+        // 不再是自定义居中圆角大面板 / 全页 List 选择页。
+        .confirmationDialog("VIP 图标", isPresented: $showVIPIconPicker, titleVisibility: .visible) {
+            Button("自动（按 VIP 状态自动对应）\(vipIconItemId == "auto" ? " ✓" : "")") { selectVIPIcon(nil) }
+            ForEach(CoVIPIconCatalog.vipCore) { item in
+                let disabled = item.isAnimated && !kugouAuth.hasMembership
+                Button("\(item.label)\(item.isAnimated ? " · 动图" : " · 静态")\(vipIconItemId == item.id ? " ✓" : "")") {
+                    if !disabled { selectVIPIcon(item) }
+                }
+                .disabled(disabled)
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text(vipIconLoadFailed ? "当前款图标加载失败，已回落 Co 自绘徽标；可重选一款重试。" : "选款后只下载当前一款并缓存，换一款时旧缓存立即删除。动效款仅 VIP 可用。")
+        }
+        // 1.8.7：状态编辑改成系统 alert 文本框弹窗（iOS 16+ 文本框；iOS 15 上 alert 只有按钮，入口仍可用）。
+        .alert("我的状态", isPresented: $showStatusEditor) {
+            if #available(iOS 16.0, *) {
+                TextField("写一句话状态", text: $statusDraft)
+            }
+            Button("保存") {
+                let text = String(statusDraft.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+                myStatusText = text
+                CoUserStatus.save(userId: kugouAuth.userId, text: text)
+                BeansHaptics.select()
+            }
+            Button("清空状态", role: .destructive) {
+                myStatusText = ""
+                statusDraft = ""
+                CoUserStatus.save(userId: kugouAuth.userId, text: "")
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("在头像下方显示一句话状态，只存在本地，不同步到酷狗账号。")
+        }
+        // 1.8.7：歌单隐藏确认也用系统弹窗。
+        .confirmationDialog("隐藏此歌单？", isPresented: $showHideConfirm, titleVisibility: .visible) {
+            Button("隐藏此歌单", role: .destructive) {
+                if let target = hideConfirmPlaylist { hidePlaylist(target) }
+                hideConfirmPlaylist = nil
+            }
+            Button("取消", role: .cancel) { hideConfirmPlaylist = nil }
+        } message: {
+            Text("只在“我的”页隐藏，不删除酷狗里的歌单，可在设置里恢复。")
+        }
         .task(id: kugouAuth.userId) { myStatusText = CoUserStatus.load(userId: kugouAuth.userId) }
         .sheet(isPresented: $showAccountHub) {
             AccountHubSheet()
@@ -630,9 +585,17 @@ struct ProfileView: View {
                     .foregroundStyle(Color.beansComment)
             } else {
                 if !hiddenPlaylistEntries.isEmpty {
-                    Text("已隐藏 \(hiddenPlaylistEntries.count) 条歌单（设置 → 外观与界面 → 隐藏的歌单可恢复）")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
+                    // 1.8.7：已隐藏提示可点进设置恢复（不再只是静态文字）。
+                    Button {
+                        BeansHaptics.tap()
+                        homeRenderingPaused = true
+                        showSettings = true
+                    } label: {
+                        Text("已隐藏 \(hiddenPlaylistEntries.count) 条歌单，点此去设置恢复 >")
+                            .font(BeansFont.appFont(11))
+                            .foregroundStyle(Color.beansAmber)
+                    }
+                    .buttonStyle(.plain)
                 }
                 VStack(spacing: 8) {
                     ForEach(Array(visiblePlaylists.prefix(8))) { playlist in
@@ -657,6 +620,20 @@ struct ProfileView: View {
                                         .lineLimit(1)
                                 }
                                 Spacer()
+                                // 1.8.7：看得见的隐藏入口（行内 ··· 钮，点开系统弹窗确认；
+                                // 长按菜单仍保留）。内层按钮优先于 NavigationLink 响应点按。
+                                Button {
+                                    BeansHaptics.tap()
+                                    hideConfirmPlaylist = playlist
+                                    showHideConfirm = true
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Color.beansComment)
+                                        .frame(width: 32, height: 32)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(Color.beansComment.opacity(0.7))
@@ -666,7 +643,7 @@ struct ProfileView: View {
                             .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
                         }
                         .buttonStyle(.plain)
-                        // 长按隐藏：只藏“我的”页显示，不删歌单、不影响酷狗账号内歌单。
+                        // 长按隐藏仍保留：只藏“我的”页显示，不删歌单、不影响酷狗账号内歌单。
                         .contextMenu {
                             Button("隐藏此歌单", role: .destructive) { hidePlaylist(playlist) }
                         }
@@ -868,30 +845,33 @@ struct SettingsView: View {
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
     @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
-    /// 导航栏显示开关（与 RootView 同一组 UserDefaults 键，参照 2.0.3 BeansTabVisibility，Co 四页版）。
+    /// 导航栏显示开关（与 RootView 同一组 UserDefaults 键，参照 2.0.3 BeansTabVisibility，Co 五页版）。
     @AppStorage("beans.tab.discover.visible") private var navDiscoverVisible = true
     @AppStorage("beans.tab.library.visible") private var navLibraryVisible = true
     @AppStorage("beans.tab.profile.visible") private var navProfileVisible = true
     @AppStorage("beans.tab.search.visible") private var navSearchVisible = true
+    @AppStorage("beans.tab.featured.visible") private var navFeaturedVisible = true
+    // 1.8.7：底栏图标样式（与 RootView 共用同一存储键，切换后底栏立即变）。
+    @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = CoTabIconStyle.appleMusic.rawValue
 
     private var navVisibleCount: Int {
-        [navDiscoverVisible, navLibraryVisible, navProfileVisible, navSearchVisible].filter { $0 }.count
+        [navDiscoverVisible, navFeaturedVisible, navLibraryVisible, navProfileVisible, navSearchVisible].filter { $0 }.count
     }
 
-    /// 外观与界面子项收起/展开（默认展开常用项，动态壁纸/高刷新率默认收起以省电提示）。
-    @State private var appearanceExpanded = true
-    @State private var themeModeExpanded = true
-    @State private var interfaceFontWallpaperExpanded = true
-    @State private var navVisibilityExpanded = true
-    @State private var audioQualityExpanded = true
-    @State private var staticWallpaperExpanded = true
+    /// 1.8.7：外观与界面子项收起/展开——打开设置页时全部默认收起，用户点开才展开。
+    @State private var appearanceExpanded = false
+    @State private var themeModeExpanded = false
+    @State private var interfaceFontWallpaperExpanded = false
+    @State private var navVisibilityExpanded = false
+    @State private var audioQualityExpanded = false
+    @State private var staticWallpaperExpanded = false
     @State private var dynamicWallpaperExpanded = false
     @State private var highRefreshExpanded = false
     /// 1.8.4 恢复项（默认收起的高级项）：问候语、隐藏开关、低系统底栏。
     @State private var greetingExpanded = false
     @State private var hideExpanded = false
     @State private var legacyTabExpanded = false
-    @State private var profileBackgroundExpanded = true
+    @State private var profileBackgroundExpanded = false
     @State private var hiddenPlaylistsExpanded = false
     @State private var hiddenAccounts: [(userId: String, entries: [(id: Int, name: String)])] = []
     /// 沉浸详情界面：关闭后播放器详情页不再用封面毛玻璃背景，只用静态渐变（省电）。
@@ -904,6 +884,7 @@ struct SettingsView: View {
             get: {
                 switch tab {
                 case "discover": return navDiscoverVisible
+                case "featured": return navFeaturedVisible
                 case "library": return navLibraryVisible
                 case "profile": return navProfileVisible
                 default: return navSearchVisible
@@ -916,6 +897,7 @@ struct SettingsView: View {
                 }
                 switch tab {
                 case "discover": navDiscoverVisible = newValue
+                case "featured": navFeaturedVisible = newValue
                 case "library": navLibraryVisible = newValue
                 case "profile": navProfileVisible = newValue
                 default: navSearchVisible = newValue
@@ -956,14 +938,15 @@ struct SettingsView: View {
     }
 
     /// 新组“外观与界面”的搜索可见性：界面 / 字体 / 静态壁纸 / 音质任一关键词命中即显示。
-    private var showAppearanceInterfaceSettings: Bool { settingsMatches("外观 界面 主题 强调色 壁纸 字体 音质 底栏 语言 沉浸 液态 高刷新 动态 背景色 问候语 隐藏 低系统 用户页背景 隐藏歌单") }
+    private var showAccountSettings: Bool { settingsMatches("账号 登录 酷狗") }
+    private var showAppearanceInterfaceSettings: Bool { settingsMatches("外观 界面 主题 强调色 壁纸 字体 音质 底栏 语言 沉浸 液态 高刷新 动态 背景色 问候语 隐藏 低系统 用户页背景 隐藏歌单 图标样式 精选") }
     private var showPlaybackSettings: Bool { settingsMatches("播放 音质 睡眠 定时 触感 混音") }
     private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
     private var showChangelogSettings: Bool { settingsMatches("更新 日志 版本") }
     private var showBackupSettings: Bool { settingsMatches("备份 恢复 导出 导入 缓存") }
     private var showLogSettings: Bool { settingsMatches("日志 诊断 崩溃") }
     private var hasSettingsSearchResults: Bool {
-        showAppearanceInterfaceSettings || showPlaybackSettings || showEqualizerSettings
+        showAccountSettings || showAppearanceInterfaceSettings || showPlaybackSettings || showEqualizerSettings
             || showChangelogSettings || showBackupSettings || showLogSettings
     }
 
@@ -1200,12 +1183,40 @@ struct SettingsView: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                        .onChange(of: settingsSearchText) { value in
+                            // 1.8.7：默认收起只管“打开时”；用户主动搜设置项时把外观组展开，
+                            // 否则搜到的项全藏在收起的组里，搜索等于没用。
+                            if !value.isEmpty { appearanceExpanded = true }
+                        }
                         if !settingsSearchText.isEmpty && !hasSettingsSearchResults {
                             Text("没有找到相关设置")
                                 .font(BeansFont.appFont(14))
                                 .foregroundStyle(Color.beansComment)
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .padding(.top, 12)
+                        }
+                        if showAccountSettings {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settingsGroupTitle("账号")
+                                HStack(spacing: 12) {
+                                    Image(systemName: KugouMusicAuth.shared.isLoggedIn ? "person.crop.circle.fill" : "person.crop.circle")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(Color.beansAmber)
+                                        .frame(width: 28)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(KugouMusicAuth.shared.isLoggedIn ? "酷狗已登录" : "酷狗未登录")
+                                            .font(BeansFont.appFont(15))
+                                            .foregroundStyle(Color.beansLabel)
+                                        Text(KugouMusicAuth.shared.isLoggedIn ? "在“我的”页点头像可管理账号与 VIP。" : "在“我的”页点头像可扫码登录，登录后同步歌单与 VIP。")
+                                            .font(BeansFont.appFont(11))
+                                            .foregroundStyle(Color.beansComment)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 13)
+                                .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+                            }
                         }
                         if showAppearanceInterfaceSettings {
                             // 1.8.6：外观与界面归一为一个系统 DisclosureGroup 直接可展开，内部分段列出全部项，不再是 12 张分开的玻璃子卡；开关一个不少。
@@ -1233,15 +1244,22 @@ struct SettingsView: View {
                                 if showEqualizerSettings { equalizerSection }
                             }
                         }
-                        if showChangelogSettings || showBackupSettings || showLogSettings {
+                        if showBackupSettings || showLogSettings {
                             VStack(alignment: .leading, spacing: 12) {
                                 settingsGroupTitle("数据与支持")
-                                if showChangelogSettings { changelogSection }
                                 if showBackupSettings { backupSection }
                                 if showLogSettings { logSection }
                             }
                         }
-                        footerNote
+                        if showChangelogSettings {
+                            VStack(alignment: .leading, spacing: 12) {
+                                settingsGroupTitle("关于")
+                                changelogSection
+                                footerNote
+                            }
+                        } else {
+                            footerNote
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -1341,7 +1359,7 @@ struct SettingsView: View {
     /// 1.8.6 外观与界面归一后的标题行当前值：主题模式 + 导航栏已显示页数。
     private var appearanceSummaryText: String {
         let mode = BeansThemeMode(rawValue: themeModeRaw)?.title ?? "跟随系统"
-        return "\(mode) · 导航 \(navVisibleCount)/4 页"
+        return "\(mode) · 导航 \(navVisibleCount)/5 页"
     }
 
     private var appearanceInterfaceSection: some View {
@@ -1698,11 +1716,12 @@ struct SettingsView: View {
             }
             .padding(.vertical, 2)
 
-            // MARK: - 导航栏显示（参照 2.0.3 BeansTabVisibility，Co 四页版，不含精选标签、不含聚合切换）
+            // MARK: - 导航栏显示（参照 2.0.3 BeansTabVisibility，Co 五页版，含精选标签、不含聚合切换）
             DisclosureGroup(isExpanded: $navVisibilityExpanded) {
                 VStack(alignment: .leading, spacing: 14) {
                 ForEach([
                     ("discover", "主页", "house.fill"),
+                    ("featured", "精选", "square.grid.2x2.fill"),
                     ("library", "音乐库", "music.note.list"),
                     ("profile", "我的", "person.crop.circle"),
                     ("search", "搜索", "magnifyingglass"),
@@ -1721,6 +1740,24 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .tint(Color.beansAmber)
                 }
+                Text("关掉即从底栏消失，打开即恢复；至少保留一页；当前页被关闭时自动切到第一个可见页。精选页内容走现有发现页的歌单广场与排行榜，不做聚合与平台切换。")
+                    .font(BeansFont.appFont(11))
+                    .foregroundStyle(Color.beansComment)
+                Divider().overlay(Color.beansComment.opacity(0.15))
+                // 1.8.7：底栏图标样式多选（2.0.3 同款三档），用系统 SF Symbols
+                // 填充/描边/圆润变体实现，不另引 2.0.3 图片资源；切换后底栏立即变。
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("底栏图标样式").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    Picker("底栏图标样式", selection: $tabIconStyleRaw) {
+                        Text("Apple Music").tag(CoTabIconStyle.appleMusic.rawValue)
+                        Text("SF Symbols").tag(CoTabIconStyle.sfSymbols.rawValue)
+                        Text("圆润样式").tag(CoTabIconStyle.rounded.rawValue)
+                    }
+                    .pickerStyle(.segmented)
+                    Text("Apple Music 为填充图标、SF Symbols 为描边图标、圆润样式为圆形变体；仅改图标样式，不改底栏顺序与颜色。")
+                        .font(BeansFont.appFont(11))
+                        .foregroundStyle(Color.beansComment)
+                }
                 Text("关掉即从底栏消失，打开即恢复；至少保留一页；当前页被关闭时自动切到第一个可见页。")
                     .font(BeansFont.appFont(11))
                     .foregroundStyle(Color.beansComment)
@@ -1731,7 +1768,7 @@ struct SettingsView: View {
                         .font(BeansFont.appFont(13, .semibold))
                         .foregroundStyle(Color.beansLabel)
                     Spacer()
-                    Text("已显示 \(navVisibleCount)/4 页")
+                    Text("已显示 \(navVisibleCount)/5 页")
                         .font(BeansFont.appFont(12))
                         .foregroundStyle(Color.beansComment)
                     Image(systemName: navVisibilityExpanded ? "chevron.up" : "chevron.down")
@@ -2228,27 +2265,8 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
-                HStack(spacing: 12) {
-                    Image(systemName: "speedometer")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("高刷新已关闭（省电模式）")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                    Spacer()
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 17))
-                        .foregroundStyle(Color.beansAmber)
-                }
-                .onAppear {
-                    enableHighRefresh = false
-                    HighRefreshKeeper.shared.configure(enabled: false)
-                }
-
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                // 1.8.7：删旧的“高刷新已关闭”省电行——它一打开就强制关高刷，
+                // 会把用户在外观组里开的高刷新率悄悄关掉；高刷开关只留外观组一处。
 
                 Toggle(isOn: $autoResumeLastPlayback) {
                     HStack(spacing: 12) {
@@ -2271,7 +2289,10 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
-                playbackQualitySection
+                // 1.8.7：音质只在“外观与界面 → 音源与音质”里留一处，这里不再重复。
+                Text("播放音质在“外观与界面 → 音源与音质”里设置，这里不再重复。")
+                    .font(BeansFont.appFont(12))
+                    .foregroundStyle(Color.beansComment)
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
