@@ -392,11 +392,8 @@ struct ProfileView: View {
 
     @ViewBuilder
     private var profileThemeToggleButton: some View {
-        // The profile opened from a header avatar keeps the original profile
-        // layout, but does not expose a second theme control.
-        if !forceHomeBackdrop {
-            BeansThemeToggleButton(colorScheme: colorScheme)
-        }
+        // 分拆后：头像 sheet 里放黑白切换，我的 tab 里不再用头部，所以这里不再按模式藏起按钮。
+        BeansThemeToggleButton(colorScheme: colorScheme)
     }
 
     private func beginProfileThemeReveal(from globalLocation: CGPoint?) {
@@ -564,38 +561,30 @@ struct ProfileView: View {
                 Color(profileEffectiveScheme == .dark ? .black : .white)
                     .ignoresSafeArea()
             }
-            // 单层壁纸返工：固定条只在无图 + 头部仍盖住状态栏区时起黑色兜底作用。
-            // 有图时绝不再单独贴一张裁剪不同的图（上一轮两层错位的根因）；
-            // 顶部壁纸由下方 coProfileSingleWallpaper 单层承担。
-            if !forceHomeBackdrop && profileHeaderWallpaper.image == nil && !profileHeaderScrolledAway {
-                coProfileTopBar
-                    .frame(height: profileTopSafeArea)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .ignoresSafeArea(edges: .top)
-            }
-            // 单层连续壁纸：从屏幕顶边一直盖到头部底边的一整张图，在 ZStack 里放在
-            // ScrollView 之前（即在其下层），据头部全局 frame 定位，不随 ScrollView 裁剪。
-            if !forceHomeBackdrop {
-                coProfileSingleWallpaper
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    // 状态栏白条返工的关键：ignoresSafeArea 必须贴在这里（body ZStack 的直接子视图），
-                    // 而不是只贴在头部 VStack 的 background 或 ScrollView 内部子视图上。
-                    // 之前单层壁纸缺这一层：它的顶边公式是全局坐标（0 = 屏幕顶边），
-                    // 但实际落点是安全区内的 ZStack 局部坐标（0 = 安全区底边），永远差一个安全区高度，白条就是这么来的。
-                    // 贴上后壁纸顶边对齐屏幕顶边，公式里的 top/height 直接就是全局值，不用再减安全区。
-                    // ScrollView 本身不动安全区：内容顶行仍从安全区下方开始（主题/齿轮不被灵动岛盖住），
-                    // 歌单格 scrollTo 锚点仍在安全区顶边，不会被状态栏盖住。
-                    .ignoresSafeArea(edges: .top)
-            }
+            // 分拆后：我的 tab 不再有头部、壁纸层、沉浸桥，单层壁纸与固定黑条都不再放在 body 里；
+            // 头像 sheet 的头部壁纸仍在 coNeteaseHeader 自身 background 里（静态，不拉伸，见该处注释）。
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 0) {
-                    coNeteaseHeader
-                    coNeteaseMainCard
-                        .padding(.top, -24)
-                }
-                // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；300pt 保证最后一行能完整滑出，不被迷你播放器和底栏盖住（上一轮插值修复的内边距，本轮保留不回退）。
-                .padding(.bottom, 300)
+                    if forceHomeBackdrop {
+                        // 头像 sheet：只放用户信息 + 黑白切换 + 设置，不放歌单。
+                        VStack(spacing: 0) {
+                            coNeteaseHeader
+                            coNeteaseMainCard
+                                .padding(.top, -24)
+                        }
+                        .padding(.bottom, 40)
+                    } else {
+                        // 我的 tab：只放歌单，不放头像、黑白切换、设置、头部、壁纸、沉浸桥。
+                        VStack(spacing: 0) {
+                            coPlaylistsSection
+                                .id("coMyPlaylistsSection")
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                        }
+                        // 底部内边距重算（不照抄原 300pt，那是带头部时的量）：
+                        // 迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；220pt 留约 55pt 滑出余量。
+                        .padding(.bottom, 220)
+                    }
                 .beansAdaptiveContentWidth()
                 }
                 .beansScrollIndicatorsHidden()
@@ -638,19 +627,9 @@ struct ProfileView: View {
         } message: {
             Text("只在“我的”页隐藏，不删除酷狗里的歌单，可在设置里恢复。")
         }
-        // The avatar-presented profile is its own sheet, so its content must
-        // receive the selected color scheme instead of only the backdrop.
-        // 状态栏方案（见 profileStatusBarScheme）：浅色主题下也用深色方案，状态栏文字为白色；
-        // 白卡区颜色用显式颜色（coEffective*），不被本方案带翻。
-        .preferredColorScheme(profileStatusBarScheme)
-        .onAppear { updateProfileStatusBarStyle() }
-        .onDisappear {
-            if !forceHomeBackdrop { CoProfileStatusBarStyle.restore() }
-        }
-        .onChange(of: themeModeRaw) { _ in updateProfileStatusBarStyle() }
-        .onChange(of: isCardAtTop) { _ in updateProfileStatusBarStyle() }
-        .onChange(of: profileHeaderFrame) { _ in updateProfileStatusBarStyle() }
-        .onChange(of: profileHeaderWallpaper.topIsLight) { _ in updateProfileStatusBarStyle() }
+        // 分拆后：我的 tab 是普通列表页，状态栏恢复正常，不再用沉浸桥；
+        // 头像 sheet 本来就不参与桥，也不硬搬进 sheet。两边都只用生效方案。
+        .preferredColorScheme(profileEffectiveScheme)
         .onPreferenceChange(BeansProfileCardTopKey.self) { minY in
             isCardAtTop = minY <= 28
         }
@@ -1005,9 +984,9 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .background {
-            // 常规 tab 页：只上报头部全局 frame，不再在这里贴第二张壁纸图。
-            // 壁纸由体外 coProfileSingleWallpaper 单层承担，否则两层裁剪不同必然错位。
-            // 主页头像弹出的 profile 不参与单层壁纸，仍保留它原有的头部背景（无固定条、无接缝问题）。
+            // 分拆后本头部只在头像 sheet 里用：壁纸就在本头部自身 background 里（静态，
+            // 不拉伸、不走单层壁纸层，sheet 呈现形态下不要为了拉伸把 sheet 搞复杂）；
+            // 头部全局 frame 仍上报（沉浸桥已停用，见 body 注释，残留未清）。
             ZStack {
                 if forceHomeBackdrop {
                     if let image = profileHeaderWallpaper.image {
@@ -1054,7 +1033,9 @@ struct ProfileView: View {
         HStack(spacing: 0) {
             coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)") { showFavorites = true }
             coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)") {
-                if !kugouAuth.isLoggedIn { showAccountHub = true } else { playlistsScrollRequest += 1 }
+                // 分拆后头像 sheet 里没有歌单区，已登录时点按不再滚动（无目标）；
+                // 未登录时仍进登录；我的 tab 里不显示数据行，不走这支。
+                if !kugouAuth.isLoggedIn { showAccountHub = true } else if !forceHomeBackdrop { playlistsScrollRequest += 1 }
             }
             coNeteaseStatButton(title: "历史", value: "\(player.history.count)") { showHistory = true }
             coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))") { showTopPlayed = true }
@@ -1062,12 +1043,10 @@ struct ProfileView: View {
     }
 
     private var coNeteaseMainCard: some View {
-        // 简便化：常用整区已删（历史只留数据行、登录只留账号卡、设置只留右上角齿轮）；
-        // 本轮起主卡片里是数据行 + 我的歌单，数据行不再在黑色背景上。
+        // 分拆后：本卡片只在头像 sheet 里用，只放数据行，不放歌单；
+        // 歌单列表只在我的 tab 里单独放（见 body 分支）。
         VStack(alignment: .leading, spacing: 20) {
             coNeteaseStatsInCard
-            coPlaylistsSection
-                .id("coMyPlaylistsSection")
         }
         .padding(.horizontal, 16)
         .padding(.top, 20)
