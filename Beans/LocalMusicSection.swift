@@ -362,6 +362,40 @@ struct LocalPlaylistDetailSheet: View {
         store.playlists.first { $0.id == playlistID }
     }
 
+    @ViewBuilder
+    private func localPlaylistRow(index: Int, song: Song, playlist: LocalPlaylist) -> some View {
+        if multiSelectMode {
+            HStack(spacing: 10) {
+                Image(systemName: selectedSongKeys.contains(song.identityKey) ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(selectedSongKeys.contains(song.identityKey) ? Color.beansAmber : Color.beansComment)
+                SongCell(song: song, glassRow: true) {
+                    toggleSelection(song)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                toggleSelection(song)
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        } else {
+            SongCell(song: song, glassRow: true, playbackContext: playlist.songs, playbackIndex: index) {
+                player.play(songs: playlist.songs, startAt: index)
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    BeansHaptics.tap()
+                    store.removeSong(playlistID: playlistID, songIdentity: song.identityKey)
+                } label: {
+                    Label("移除", systemImage: "trash")
+                }
+            }
+        }
+    }
+
     private var visibleSongs: [(offset: Int, element: Song)] {
         guard let playlist else { return [] }
         let keyword = playlistSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -411,38 +445,7 @@ struct LocalPlaylistDetailSheet: View {
                                     .listRowSeparator(.hidden)
                             } else {
                                 ForEach(visibleSongs, id: \.element.identityKey) { pair in
-                                    let index = pair.offset
-                                    let song = pair.element
-                                    if multiSelectMode {
-                                        HStack(spacing: 10) {
-                                            Image(systemName: selectedSongKeys.contains(song.identityKey) ? "checkmark.circle.fill" : "circle")
-                                                .font(.system(size: 20, weight: .semibold))
-                                                .foregroundStyle(selectedSongKeys.contains(song.identityKey) ? Color.beansAmber : Color.beansComment)
-                                            SongCell(song: song, glassRow: true) {
-                                                toggleSelection(song)
-                                            }
-                                        }
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            toggleSelection(song)
-                                        }
-                                        .listRowBackground(Color.clear)
-                                        .listRowSeparator(.hidden)
-                                    } else {
-                                        SongCell(song: song, glassRow: true, playbackContext: playlist.songs, playbackIndex: index) {
-                                            player.play(songs: playlist.songs, startAt: index)
-                                        }
-                                        .listRowBackground(Color.clear)
-                                        .listRowSeparator(.hidden)
-                                        .swipeActions(edge: .trailing) {
-                                            Button(role: .destructive) {
-                                                BeansHaptics.tap()
-                                                store.removeSong(playlistID: playlistID, songIdentity: song.identityKey)
-                                            } label: {
-                                                Label("移除", systemImage: "trash")
-                                            }
-                                        }
-                                    }
+                                    localPlaylistRow(index: pair.offset, song: pair.element, playlist: playlist)
                                 }
                             }
                         }
