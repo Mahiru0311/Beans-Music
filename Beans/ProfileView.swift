@@ -379,17 +379,15 @@ struct ProfileView: View {
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
             TabBarAppearanceConfigurator()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 20) {
-                    coHeader
-                    coAccountCard
-                    coStatsCard
-                    coPlaylistsSection
-                    coQuickRows
+                VStack(spacing: 0) {
+                    coNeteaseHeader
+                    coNeteaseMainCard
+                        .padding(.top, -24)
                     profileVersionFooter
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；190pt 余量不足，改为 300pt 保证常用最后一行能完整滑出。
+                // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；300pt 保证最后一行能完整滑出，不被迷你播放器和底栏盖住（上一轮插值修复的内边距，本轮保留不回退）。
                 .padding(.bottom, 300)
                 .beansAdaptiveContentWidth()
             }
@@ -714,6 +712,107 @@ struct ProfileView: View {
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+    }
+
+    // MARK: - Co 网易云风格我的页（本页专属，不动其他 tab）
+    // 参考结构：wy.dwkc.cn 已记录的网易云风格我的页（只借鉴版式与信息层级，不抄素材/图标/商标/文案）
+    // 顶部无“我的”大标题；头部区居中圆形头像、昵称旁小 VIP 徽标、状态行、居中数据行；
+    // 下方主卡片用大圆角盖住头部下沿，卡片里是歌单与常用列表行。
+    // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距 300pt。
+
+    private var coNeteaseHeader: some View {
+        VStack(spacing: 0) {
+            HStack {
+                profileThemeToggleButton
+                Spacer()
+                Button {
+                    openSettings()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("设置")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            Button {
+                BeansHaptics.tap()
+                showAccountHub = true
+            } label: {
+                VStack(spacing: 8) {
+                    BeansAvatarView(remoteURL: kugouAuth.avatarURL, size: 88, useCustom: true)
+                    HStack(spacing: 6) {
+                        Text(coDisplayName)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .lineLimit(1)
+                        if kugouAuth.isLoggedIn, let badge = kugouAuth.vipBadge {
+                            VIPBadgeView(text: badge)
+                        }
+                    }
+                    Text(accountStatusLine)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.white.opacity(0.75))
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 12)
+            HStack(spacing: 0) {
+                coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
+                coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
+                    if !kugouAuth.isLoggedIn { showAccountHub = true }
+                }
+                coNeteaseStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
+                coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 36)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.black)
+    }
+
+    private func coNeteaseStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
+        Button {
+            BeansHaptics.tap()
+            action()
+        } label: {
+            VStack(spacing: 4) {
+                Text(value)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(title)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.white.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var coNeteaseMainCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            coPlaylistsSection
+            coQuickRows
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 20)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 28, style: .continuous)
+                .fill(colorScheme == .dark ? Color(.secondarySystemBackground) : Color.white)
+        )
     }
 
     private func coLoadMyPlaylists(force: Bool = false) async {
