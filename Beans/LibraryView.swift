@@ -255,7 +255,11 @@ struct LibraryView: View {
     private func libraryDestination(_ route: LibraryRoute) -> some View {
         switch route {
         case .playlist(let playlist):
-            PlaylistView(playlist: playlist)
+            PlaylistView(playlist: playlist, onBack: {
+                guard !navigationPath.isEmpty else { return false }
+                navigationPath.removeLast()
+                return true
+            })
                 .environmentObject(player)
                 .environmentObject(auth)
                 .environmentObject(theme)

@@ -15,7 +15,17 @@ struct PlaylistView: View {
     @ObservedObject private var favorites = FavoritesStore.shared
 
     let playlist: Playlist
+    /// 1.9.3：路径导航的返回闭包。返回 true 表示已由调用方弹栈，
+    /// 返回 false/未传入时回落到 dismiss()（普通 NavigationLink 栈）。
+    /// 必须存在的原因：Discover/音乐库走 NavigationStack(path:)，
+    /// 该栈里 @Environment dismiss 对路径推送的目的地是无效的
+    /// （点按注册了但不弹栈），12:04 截图的每日推荐页就是这条路。
+    var onBack: (() -> Bool)? = nil
     @Environment(\.dismiss) private var dismiss
+    private func goBack() {
+        if onBack?() == true { return }
+        dismiss()
+    }
     @State private var tracks: [Song] = []
     @State private var loading = true
     @State private var errorMessage: String?
@@ -68,20 +78,17 @@ struct PlaylistView: View {
                 }
             }
             // 1.9.2：返回键悬空固定——从滚动内容里拿出来，盖在整页上方（ZStack 层，
-            // 不随 ScrollView 滚动，加载/报错态也一直在），位置仍是左 16、顶安全区+6（状态栏下方）。
+            // 不随 ScrollView 滚动，加载/报错态也一直在）。
+            // 1.9.3：位置改用窗口真实顶安全区（CoTopInset），不再用导航栈里
+            // 会双重计数的 GeometryReader safeAreaInsets.top；顶距 = 窗口顶安全区+6，
+            // 紧贴状态栏下方；点按走 goBack()（路径栈由调用方弹栈，普通栈回落 dismiss），
+            // 覆盖层在最上层（zIndex），不被滚动视图挡住。
             .overlay(alignment: .topLeading) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background { BeansGlass(shape: Circle()) }
-                        .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 16)
-                .padding(.top, outer.safeAreaInsets.top + 6)
+                CoFloatingBackButton(onTap: goBack)
+                    .padding(.leading, 16)
+                    .padding(.top, CoTopInset.effective(geometryTop: outer.safeAreaInsets.top) + 6)
             }
+            .zIndex(10)
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
@@ -112,8 +119,15 @@ struct PlaylistView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 440 + topInset)
+                    // 1.9.3：顶部渐变模糊——在封面最上层加一段模糊带（安全区+约 120pt，
+                    // 超薄材质采样背后封面 + 渐变遮罩向底部淡出到底部透明 + 顶部压暗），
+                    // 状态栏字与悬空返回键落在模糊区里可读；只盖顶部一段，
+                    // 不整张封面糊掉，封面高度与底部五段渐变不动。
                     // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层，下滑也不滚走），
                     // 这里只留封面 + 渐变，封面高度与渐变不动。
+                    CoTopBlurFade(height: CoTopInset.effective(geometryTop: topInset) + 120)
+                        .frame(width: geo.size.width, alignment: .top)
+                        .frame(maxHeight: .infinity, alignment: .top)
                 }
             }
             .frame(height: 440 + topInset)
@@ -198,11 +212,13 @@ struct PlaylistView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                // 1.8.9 液态玻璃：搜索框容器走 BeansGlass，细描边保深色底可读；播放白 pill 不动。
-                .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
-                .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 0.5) }
+                // 1.9.3：搜索框改全圆角椭圆形胶囊（Capsule，高约 40pt），
+                // 方角圆角矩形已删；放大镜+占位字+清空钮都在胶囊内，
+                // 背景仍走液态玻璃胶囊，细描边保深色底可读。
+                .background { BeansGlass(shape: Capsule()) }
+                .overlay { Capsule().stroke(.white.opacity(0.12), lineWidth: 0.5) }
                 // 1.8.9 液态玻璃：收藏星与 ··· 菜单钮也走 BeansGlass 圆钮（与返回/分享/随机同款），
                 // 不再是裸白图标；播放白 pill 与歌曲行仍不动。
                 Button {

@@ -43,6 +43,73 @@ extension View {
     }
 }
 
+// MARK: - 1.9.3 返回键位置与顶部渐变模糊
+// 根因（12:04 截图量测）：返回键顶部约 140pt、离状态栏约 95pt，
+// 而不是顶安全区+6。GeometryReader 在导航栈目的地里的 safeAreaInsets.top
+// 会把导航栏区域也算进去（即使 navigationBarHidden），导致悬空覆盖层
+// 的顶距被双重抬高。改用窗口真实顶安全区（Dynamic Island 机型约 59pt），
+// 与导航栈安全区无关，返回键就紧贴状态栏下方。
+enum CoTopInset {
+    static var windowTop: CGFloat {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        if let top = windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.top, top > 0 { return top }
+        if let top = windows.first?.safeAreaInsets.top, top > 0 { return top }
+        return 0
+    }
+    /// 窗口顶安全区可用时用它，否则回落到 GeometryReader 的值。
+    static func effective(geometryTop: CGFloat) -> CGFloat {
+        let window = windowTop
+        return window > 0 ? window : geometryTop
+    }
+}
+
+/// 悬空返回键（歌单/每日推荐两页共用，保证位置、样式、点击行为一致）。
+struct CoFloatingBackButton: View {
+    let onTap: () -> Void
+    var body: some View {
+        Button(action: onTap) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background { BeansGlass(shape: Circle()) }
+                .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+    }
+}
+
+/// 顶部渐变模糊带：顶部约 120pt 内从模糊/压暗渐变到清晰封面。
+/// 用超薄材质做模糊（采样背后封面），再用渐变遮罩让模糊从顶部向底部
+/// 渐渐淡出到底部透明，叠加一层顶部压暗保证状态栏字与返回键可读；
+/// 只盖顶部一段，不整张封面糊掉，不挡点击。
+struct CoTopBlurFade: View {
+    let height: CGFloat
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.clear
+                .frame(height: height)
+                .background(.ultraThinMaterial)
+            LinearGradient(
+                colors: [.black.opacity(0.45), .black.opacity(0.18), .clear],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: height)
+        }
+        .mask(
+            LinearGradient(
+                colors: [.black, .black.opacity(0.6), .clear],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+        .frame(height: height)
+        .allowsHitTesting(false)
+    }
+}
+
 // MARK: - 工具
 
 func beansSongCountText(_ count: Int) -> String {

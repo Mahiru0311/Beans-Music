@@ -89,8 +89,7 @@ struct DiscoverView: View {
     @AppStorage("beans.disclaimerAccepted") private var disclaimerAccepted = false
     /// 网易云歌单广场当前分类（「全部」展示官方精品歌单）
     @State private var neteaseCat = "全部"
-    /// 官方歌单分类列表
-    @State private var playlistCats: [String] = []
+    // 1.9.3 审计：playlistCats 声明后全仓 0 调用（歌单广场分类功能已删），删。
 
     var body: some View {
         let _ = theme.accent
@@ -229,7 +228,13 @@ struct DiscoverView: View {
                 .environmentObject(player)
                 .environmentObject(auth)
         case .playlist(let playlist):
-            PlaylistView(playlist: playlist)
+            PlaylistView(playlist: playlist, onBack: {
+                // 路径栈：弹最后一层即返回；路径为空时返回 false，
+                // 让目的地回落到 dismiss()（iOS 15 旧路由等非路径情形）。
+                guard !navigationPath.isEmpty else { return false }
+                navigationPath.removeLast()
+                return true
+            })
                 .environmentObject(player)
                 .environmentObject(auth)
         case .qqTopList(let info):
@@ -241,7 +246,11 @@ struct DiscoverView: View {
                 .environmentObject(player)
                 .environmentObject(auth)
         case .dailySongs(let songs):
-            DailySongsDetailView(songs: songs)
+            DailySongsDetailView(songs: songs, onBack: {
+                guard !navigationPath.isEmpty else { return false }
+                navigationPath.removeLast()
+                return true
+            })
                 .environmentObject(player)
                 .environmentObject(auth)
         }
@@ -1453,6 +1462,12 @@ struct DailySongsDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let songs: [Song]
+    /// 1.9.3：与 PlaylistView 同款路径返回闭包（见 PlaylistView 注释）。
+    var onBack: (() -> Bool)? = nil
+    private func goBack() {
+        if onBack?() == true { return }
+        dismiss()
+    }
 
     private var pageBackground: Color { Color(red: 0.08, green: 0.08, blue: 0.09) }
 
@@ -1474,20 +1489,15 @@ struct DailySongsDetailView: View {
                 .ignoresSafeArea(edges: .top)
             }
             // 1.9.2：返回键悬空固定（与歌单页同款）——盖在整页 ZStack 层上方，
-            // 不随 ScrollView 滚动，位置仍是左 16、顶安全区+6（状态栏下方）。
+            // 不随 ScrollView 滚动。
+            // 1.9.3：位置与点按同歌单页修法——顶距改窗口真实顶安全区+6，
+            // 紧贴状态栏下方；点按走 goBack()（路径栈由调用方弹栈）。
             .overlay(alignment: .topLeading) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background { BeansGlass(shape: Circle()) }
-                        .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 16)
-                .padding(.top, outer.safeAreaInsets.top + 6)
+                CoFloatingBackButton(onTap: goBack)
+                    .padding(.leading, 16)
+                    .padding(.top, CoTopInset.effective(geometryTop: outer.safeAreaInsets.top) + 6)
             }
+            .zIndex(10)
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
@@ -1512,6 +1522,10 @@ struct DailySongsDetailView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 440 + topInset)
+                    // 1.9.3：顶部渐变模糊（与歌单页同款，见 PlaylistView 注释）。
+                    CoTopBlurFade(height: CoTopInset.effective(geometryTop: topInset) + 120)
+                        .frame(width: geo.size.width, alignment: .top)
+                        .frame(maxHeight: .infinity, alignment: .top)
                     // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层），只留封面 + 渐变。
                 }
             }

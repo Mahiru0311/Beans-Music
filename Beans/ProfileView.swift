@@ -29,8 +29,7 @@ struct ProfileView: View {
     @State private var myPlaylistsLoading = false
     /// 我的界面板块顺序（账号 / 关于，可自定义）
     @State private var profileOrder = SectionOrderStore.load(SectionOrderStore.profileKey, defaults: SectionOrderStore.profileDefaults)
-    /// 手动检查更新
-    @State private var checkingUpdate = false
+    // 1.9.3 审计：checkingUpdate 声明后 0 调用（更新检查已删），删。
     /// 自动下载新版 IPA
     @State private var didRefreshProfileAccount = false
     /// VIP 图标选择：点昵称旁徽标弹出（wy.dwkc.cn 面板结构）；"auto" 为自动（Co 自绘）。
@@ -110,19 +109,20 @@ struct ProfileView: View {
                 Color.clear.frame(width: 44, height: 44)
             }
             Spacer()
-            // 1.9.1：设置齿轮改精致——不再是白圆黑粗填充齿轮（44pt 大圆 + 填充齿轮显生硬）：
-            // 改为 36pt 小液态玻璃圆钮 + 描边细齿轮（gearshape 非 fill、常规字重、浅灰色）+ 柔和描边。
+            // 1.9.3：设置齿轮再换一个明显不同的极简样式——去掉圆钮背景与描边，
+            // 只留一个约 20pt 的细齿轮（gearshape 非 fill、常规字重、次要灰色，
+            // 无背景、无边框），与 1.9.1 之前的白圆黑齿轮、1.9.1 的 36pt 玻璃圆钮
+            // 都明显不同；点击区域仍保留 44×44，点按仍进设置页。
             Button {
                 BeansHaptics.tap()
                 homeRenderingPaused = true
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.system(size: 20, weight: .regular))
                     .foregroundStyle(Color.beansComment)
-                    .frame(width: 36, height: 36)
-                    .background { BeansGlass(shape: Circle()) }
-                    .overlay { Circle().stroke(Color.beansComment.opacity(0.15), lineWidth: 0.5) }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

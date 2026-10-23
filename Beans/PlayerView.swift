@@ -19,7 +19,7 @@ struct PlayerView: View {
     @State private var showSleepTimer = false
     @State private var showAddToPlaylist = false
     @State private var showComments = false
-    @State private var showDownloadPicker = false
+    // 1.9.3 审计：showDownloadPicker 声明后 0 调用（下载功能已删），删。
     @State private var showMoreActions = false
     @State private var showNativeMoreActions = false
     @State private var showMoreSettingsHint = false

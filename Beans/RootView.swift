@@ -98,7 +98,7 @@ struct RootView: View {
     @AppStorage("beans.legacyTabOffsetY") private var legacyTabOffsetY = 0.0
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @State private var showWhatsNew = false
-    @State private var showUpdateDownloadError = false
+    // 1.9.3 审计：showUpdateDownloadError 声明后 0 调用（更新下载已删），删。
     @State private var showHomePlatformMenu = false
     private var themeMode: BeansThemeMode {
         BeansThemeMode(rawValue: themeModeRaw) ?? .system
