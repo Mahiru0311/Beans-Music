@@ -7,6 +7,7 @@ private enum DiscoverRoute: Hashable {
     case artist(Artist)
     case kugouTopList(KugouTopInfo)
     case dailySongs([Song])
+    case settings
 }
 
 struct DiscoverView: View {
@@ -27,7 +28,6 @@ struct DiscoverView: View {
     @State private var navigationPath: [DiscoverRoute] = []
     @State private var legacyRoute: DiscoverRoute?
     @State private var recommendationActionLoading: String?
-    @State private var showSettings = false
     @State private var showSectionSort = false
     /// 主页板块顺序（每日推荐 / 排行榜，可自定义）
     @State private var homeOrder = SectionOrderStore.load(SectionOrderStore.homeKey, defaults: SectionOrderStore.homeDefaults)
@@ -225,16 +225,8 @@ struct DiscoverView: View {
                 )
                     .onDisappear { SectionOrderStore.save(SectionOrderStore.homeKey, homeOrder) }
             }
-            // 主页右上角头像直进设置（2026-10-23 用户定）：不再经过头像界面 sheet，
-            // 点头像就是设置页面，头像圆图本身与点按手感不动。
-            .sheet(isPresented: $showSettings) {
-                SettingsView(onClose: { showSettings = false })
-                    .environmentObject(theme)
-                    .environmentObject(auth)
-                    .environmentObject(player)
-                    .modifier(BeansSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
-                    .modifier(SettingsLiquidSheetPresentation())
-            }
+            // 主页右上角头像进设置（2026-10-23 用户纠正）：直接导航推入设置界面，
+            // 全页从右往左推入，不是 sheet 弹窗。上一轮的 sheet + detents 已拆掉。
         }
             .beansNavigationDestination(for: DiscoverRoute.self) { route in
                 discoverDestination(route)
@@ -266,6 +258,17 @@ struct DiscoverView: View {
             }
                 .environmentObject(player)
                 .environmentObject(auth)
+        case .settings:
+            // 与歌单/排行榜详情页同一条导航路：往 navigationPath 里加路由，
+            // 系统推入动画（从右往左、全页），返回靠系统返回键/左滑，路径栈自动弹回。
+            // 不在这里另设关闭按钮：SettingsView 的 dismiss 在路径导航里不起作用，
+            // 歌单页已有同样教训，返回键是唯一可靠关闭路径。
+            SettingsView()
+                .environmentObject(theme)
+                .environmentObject(auth)
+                .environmentObject(player)
+                .navigationTitle("设置")
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -359,10 +362,11 @@ struct DiscoverView: View {
         .frame(minHeight: homeGreetingHeight > 0 ? homeGreetingHeight : nil, alignment: .top)
     }
 
-    /// 主页右上角头像：直进设置（2026-10-23 用户定），复用我的页面头像并保持液态玻璃边框。
+    /// 主页右上角头像：导航推入设置（2026-10-23 用户纠正：是推入，不是弹窗），
+    /// 复用我的页面头像并保持液态玻璃边框，头像圆图本身与点按手感不动。
     private var homeProfileButton: some View {
         BeansProfileShortcutButton {
-            showSettings = true
+            openRoute(.settings)
         }
     }
 
