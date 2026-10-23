@@ -1,7 +1,23 @@
 import Foundation
 
+/// 酷狗专版账号资料（替代原网易云用户类型，字段名保持与旧调用点兼容）。
+struct CoUser: Identifiable, Hashable, Codable {
+    let uid: Int
+    let nickname: String
+    let avatarURL: URL?
+    let vipType: Int
+
+    var id: Int { uid }
+
+    var vipBadge: String? {
+        if vipType >= 11 { return "SVIP" }
+        if vipType > 0 { return "VIP" }
+        return nil
+    }
+}
+
 final class AuthStore: ObservableObject {
-    @Published var user: NetEaseUser?
+    @Published var user: CoUser?
     @Published var isLoggedIn = false
     @Published var playlists: [Playlist] = []
 
@@ -9,88 +25,80 @@ final class AuthStore: ObservableObject {
     private let userKey = "beans.user"
 
     init() {
-        if let data = defaults.data(forKey: userKey),
-           let saved = try? JSONDecoder().decode(NetEaseUser.self, from: data) {
-            user = saved
-            isLoggedIn = true
+        syncFromKugou()
+        if isLoggedIn {
             playlists = SyncedPlaylistCache.shared
-                .cachedPlaylists(source: .netease, accountID: "\(saved.uid)")?
+                .cachedPlaylists(source: .kugou, accountID: KugouMusicAuth.shared.userId)?
                 .playlists
                 .filter { $0.name != "我喜欢的音乐" } ?? []
         }
     }
 
-    @MainActor
-    func finishLogin() async throws {
-        var account: NetEaseUser?
-        for attempt in 0..<3 {
-            do {
-                account = try await NetEaseAPI.shared.account()
-                break
-            } catch {
-                if attempt == 2 { throw error }
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
-            }
-        }
-        guard let account else { throw NetEaseError.unknown("获取账号信息失败") }
-        let playlists = (try? await NetEaseAPI.shared.userPlaylists(uid: account.uid)) ?? []
-        user = account
-        self.playlists = playlists.filter { $0.name != "我喜欢的音乐" }
-        if !self.playlists.isEmpty {
-            SyncedPlaylistCache.shared.savePlaylists(
-                self.playlists,
-                source: .netease,
-                accountID: "\(account.uid)"
+    private func syncFromKugou() {
+        let kugou = KugouMusicAuth.shared
+        isLoggedIn = kugou.isLoggedIn
+        if kugou.isLoggedIn {
+            user = CoUser(
+                uid: Int(kugou.userId) ?? 0,
+                nickname: kugou.nickname,
+                avatarURL: kugou.avatarURL,
+                vipType: kugou.vipType
             )
+        } else {
+            user = nil
         }
-        isLoggedIn = true
-        if let data = try? JSONEncoder().encode(account) {
-            defaults.set(data, forKey: userKey)
-        }
-        DiscoverCache.shared.invalidate(.netease)
-        NotificationCenter.default.post(name: .beansNeteaseLoginDidUpdate, object: nil)
     }
 
-    /// 刷新账号资料（VIP 状态等），登录后保持最新会员标识
+    @MainActor
+    func finishLogin() async throws {
+        syncFromKugou()
+        guard isLoggedIn else { throw CoError.unknown("请先登录酷狗音乐") }
+        let lists = (try? await KugouMusicAPI.shared.userPlaylists()) ?? []
+        playlists = lists.filter { $0.name != "我喜欢的音乐" }
+        if !playlists.isEmpty {
+            SyncedPlaylistCache.shared.savePlaylists(
+                playlists,
+                source: .kugou,
+                accountID: KugouMusicAuth.shared.userId
+            )
+        }
+        if let user, let data = try? JSONEncoder().encode(user) {
+            defaults.set(data, forKey: userKey)
+        }
+        DiscoverCache.shared.invalidate(.kugou)
+    }
+
     @MainActor
     func refreshAccount() async {
-        guard let current = user else { return }
-        if let fresh = try? await NetEaseAPI.shared.account() {
-            user = fresh
-            if let data = try? JSONEncoder().encode(fresh) {
-                defaults.set(data, forKey: userKey)
-            }
-            if fresh.uid != current.uid {
-                isLoggedIn = true
-            }
-        }
+        syncFromKugou()
     }
 
     @MainActor
     func loadLibrary(force: Bool = false) async {
-        guard let user else { return }
-        let accountID = "\(user.uid)"
-        if let cached = SyncedPlaylistCache.shared.cachedPlaylists(source: .netease, accountID: accountID) {
+        syncFromKugou()
+        guard isLoggedIn else { return }
+        let accountID = KugouMusicAuth.shared.userId
+        if let cached = SyncedPlaylistCache.shared.cachedPlaylists(source: .kugou, accountID: accountID) {
             playlists = cached.playlists.filter { $0.name != "我喜欢的音乐" }
             if !force, SyncedPlaylistCache.shared.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
                 return
             }
         }
-        if let cached = try? await NetEaseAPI.shared.userPlaylists(uid: user.uid) {
+        if let cached = try? await KugouMusicAPI.shared.userPlaylists() {
             let filtered = cached.filter { $0.name != "我喜欢的音乐" }
             if !filtered.isEmpty {
                 playlists = filtered
-                SyncedPlaylistCache.shared.savePlaylists(filtered, source: .netease, accountID: accountID)
+                SyncedPlaylistCache.shared.savePlaylists(filtered, source: .kugou, accountID: accountID)
             }
         }
     }
 
     func logout() {
-        NetEaseAPI.shared.clearCookies()
+        KugouMusicAuth.shared.logout()
         user = nil
         playlists = []
         isLoggedIn = false
         defaults.removeObject(forKey: userKey)
-        DiscoverCache.shared.invalidate(.netease)
+        DiscoverCache.shared.invalidate(.kugou)
     }
 }

@@ -140,40 +140,16 @@ struct ProfileView: View {
     @State private var showAccountHub = false
     /// 设置页（外观 + 歌词翻译等）
     @State private var showSettings = false
-    /// 只在开发者设备的“我的”页面底部显示。
-    @State private var showDeveloperTools = false
     @State private var themeRevealSnapshot: UIImage?
     @State private var themeRevealOrigin = CGPoint.zero
     @State private var themeRevealProgress: CGFloat = 0
     @State private var profileGlobalFrame = CGRect.zero
-    /// 手动检查更新
-    @State private var checkingUpdate = false
-    @State private var updateResult: UpdateChecker.CheckResult?
-    @State private var showUpdateResult = false
-    /// 自动下载新版 IPA
-    @ObservedObject private var ipaDownloader = IPADownloader.shared
-    @State private var showDownloadOverlay = false
-    @State private var downloadOutcome: DownloadOutcome?
-    @State private var showDownloadOutcome = false
-    @State private var pendingUpdateInfo: UpdateChecker.ReleaseInfo?
-    @State private var updateShareFile: ShareFileItem?
-    @State private var updateShareFileURL: URL?
     @State private var didRefreshProfileAccount = false
-    @State private var donationExpanded = false
-    @State private var remoteDonors: [Donor] = []
-    @State private var loadingRemoteDonors = false
-    @State private var showWeChatOpenError = false
-    @State private var showFeedback = false
     @State private var showAvatarPicker = false
     @State private var showProfileNameBackgroundPicker = false
-    @State private var easterEggStep = 0
-    @State private var easterEggPrompt = "点我有惊喜"
     @AppStorage("beans.profile.customNickname") private var customNickname = ""
-    @AppStorage("beans.profile.hideDonation") private var hideDonation = false
-    @ObservedObject private var feedbackHistory = FeedbackHistoryStore.shared
     @ObservedObject private var avatarStore = BeansAvatarStore.shared
     @ObservedObject private var profileNameBackgroundStore = BeansProfileNameBackgroundStore.shared
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
@@ -204,17 +180,7 @@ struct ProfileView: View {
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
 
     private var displayPlatformSummary: String {
-        let providers = platformPrefs.enabledSearchProviders.filter { $0 != .qishui }
-        if !isEnglish { return providers.map(\.rawValue).joined(separator: " / ") }
-        return providers.map { provider in
-            switch provider {
-            case .netease: return "NetEase Cloud Music"
-            case .qq: return "QQ Music"
-            case .kugou: return "Kugou Music"
-            case .qishui: return "Qishui Music"
-            case .bilibili: return "Bilibili"
-            }
-        }.joined(separator: " / ")
+        isEnglish ? "Kugou Music" : "酷狗音乐"
     }
 
     private var appVersionText: String {
@@ -222,32 +188,16 @@ struct ProfileView: View {
         return "Beans Music · \(ver)"
     }
 
-    /// 登录状态的合并提示（展示各平台真实昵称）
+    /// 登录状态提示（酷狗专版：只展示酷狗登录状态）
     private var accountStatusLine: String {
-        var parts: [String] = []
-        if platformPrefs.isEnabled(SearchProvider.netease), auth.isLoggedIn {
-            if let nick = auth.user?.nickname, !nick.isEmpty {
-                parts.append("网易云音乐 \(nick)")
-            } else {
-                parts.append("网易云音乐 UID \(auth.user?.uid ?? 0)")
-            }
+        if kugouAuth.isLoggedIn {
+            return kugouAuth.nickname.isEmpty ? (isEnglish ? "Kugou Music Logged In" : "酷狗已登录") : kugouAuth.nickname
         }
-        if platformPrefs.isEnabled(SearchProvider.qq), qqAuth.isLoggedIn {
-                parts.append(qqAuth.nickname.isEmpty ? (isEnglish ? "QQ Music Logged In" : "QQ 已登录") : qqAuth.nickname)
-        }
-        if platformPrefs.isEnabled(SearchProvider.kugou), kugouAuth.isLoggedIn {
-                parts.append(kugouAuth.nickname.isEmpty ? (isEnglish ? "Kugou Music Logged In" : "酷狗已登录") : kugouAuth.nickname)
-        }
-        if parts.isEmpty {
-            return isEnglish ? "Sign in to sync \(displayPlatformSummary) playlists" : "登录后可同步 \(displayPlatformSummary) 歌单"
-        }
-        return parts.joined(separator: " · ")
+        return isEnglish ? "Sign in to sync \(displayPlatformSummary) playlists" : "登录后可同步 \(displayPlatformSummary) 歌单"
     }
 
     private var hasVisibleAccountLogin: Bool {
-        (platformPrefs.isEnabled(SearchProvider.netease) && auth.isLoggedIn)
-            || (platformPrefs.isEnabled(SearchProvider.qq) && qqAuth.isLoggedIn)
-            || (platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn)
+        kugouAuth.isLoggedIn
     }
 
     private var resolvedThemeToggleTarget: BeansThemeMode {
@@ -342,11 +292,8 @@ struct ProfileView: View {
     private func openSettings() {
         guard !showSettings else { return }
         BeansHaptics.tap()
-        CrashReporter.shared.recordEvent("点击设置入口")
         homeRenderingPaused = true
         DispatchQueue.main.async {
-            CrashReporter.shared.beginContext("settings")
-            CrashReporter.shared.recordEvent("使用全屏设置容器")
             showSettings = true
         }
     }
@@ -356,9 +303,6 @@ struct ProfileView: View {
             .environmentObject(theme)
             .environmentObject(player)
             .environmentObject(auth)
-            .onDisappear {
-                CrashReporter.shared.endContext("settings")
-            }
     }
 
     private var profileSettingsButton: some View {
@@ -436,15 +380,7 @@ struct ProfileView: View {
                         header
                     }
                     customAvatarCard
-                    communityCard
-                    if !hideDonation {
-                        donationCard
-                    }
-                    easterEggCard
                     profileVersionFooter
-                    if BeansDeveloperAccess.isAuthorized {
-                        developerToolsCard
-                    }
                 }
                 .padding(.horizontal, isNativeClean ? 24 : 16)
                 .padding(.top, isNativeClean ? 14 : 8)
@@ -476,31 +412,14 @@ struct ProfileView: View {
             guard !didRefreshProfileAccount else { return }
             didRefreshProfileAccount = true
             await auth.refreshAccount()
-            if qqAuth.isLoggedIn {
-                await qqAuth.fetchVIPStatus()
-            }
-        }
-        .background {
-            HighRefreshConfigurator()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
         }
         // The avatar-presented profile is its own sheet, so its content must
         // receive the selected color scheme instead of only the backdrop.
         .preferredColorScheme(themeMode.colorScheme)
-        .alert("无法打开微信", isPresented: $showWeChatOpenError) {
-            Button("知道了", role: .cancel) {}
-        } message: {
-            Text("请使用微信扫描上方二维码完成赞助。")
-        }
         .sheet(isPresented: $showHistory) {
             HistoryView()
                 .environmentObject(player)
                 .environmentObject(auth)
-                .environmentObject(theme)
-        }
-        .sheet(isPresented: $showFeedback) {
-            FeedbackSheet()
                 .environmentObject(theme)
         }
         .sheet(isPresented: $showAvatarPicker) {
@@ -522,98 +441,6 @@ struct ProfileView: View {
                 .modifier(BeansSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
                 .modifier(SettingsLiquidSheetPresentation())
         }
-        .sheet(isPresented: $showDeveloperTools) {
-            DeveloperToolsView()
-                .environmentObject(theme)
-                .environmentObject(player)
-                .modifier(BeansSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
-        }
-        .sheet(item: $updateShareFile, onDismiss: cleanupUpdateShareFile) { item in
-            ShareSheet(items: [item.url])
-        }
-        .alert("检查更新", isPresented: $showUpdateResult, presenting: updateResult) { result in
-            switch result {
-            case .update(let info):
-                Button("立即更新") { UIApplication.shared.open(info.htmlURL) }
-                Button("取消", role: .cancel) {}
-            case .upToDate:
-                Button("好", role: .cancel) {}
-            case .failed:
-                Button("好", role: .cancel) {}
-            }
-        } message: { result in
-            switch result {
-            case .update(let info):
-                Text("发现新版本 \(info.version)，是否前往 GitHub 下载更新？")
-            case .upToDate:
-                Text("当前已是最新版本 \(UpdateChecker.currentVersion)")
-            case .failed:
-                Text("检查失败，请检查网络后重试")
-            }
-        }
-        .overlay {
-            if showDownloadOverlay { downloadProgressOverlay }
-        }
-        .alert("下载新版", isPresented: $showDownloadOutcome, presenting: downloadOutcome) { outcome in
-            switch outcome {
-            case .success:
-                Button("好", role: .cancel) {}
-            case .failure:
-                Button("好", role: .cancel) {}
-                Button("前往更新页") {
-                    if let info = pendingUpdateInfo {
-                        UIApplication.shared.open(info.htmlURL)
-                    }
-                }
-            }
-        } message: { outcome in
-            switch outcome {
-            case .success(let fileName):
-                Text("新版 IPA 已下载完成，但未能打开分享面板。\n文件名：\(fileName)")
-            case .failure(let message):
-                Text("下载失败：\(message)")
-            }
-        }
-    }
-
-    /// 下载进度浮层（居中卡片，兼容所有系统版本）
-    private var downloadProgressOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35).ignoresSafeArea()
-            VStack(spacing: 14) {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.beansHighlight)
-                    Text("正在下载新版 IPA")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                }
-                if ipaDownloader.progress >= 0 {
-                    ProgressView(value: ipaDownloader.progress)
-                        .progressViewStyle(.linear)
-                        .tint(Color.beansAmber)
-                    Text("\(Int(ipaDownloader.progress * 100))%")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                } else {
-                    ProgressView()
-                        .tint(Color.beansAmber)
-                    Text("正在连接下载服务器…")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-                EmptyView()
-            }
-            .padding(22)
-            .frame(maxWidth: 300)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-            .beansCardShadow(radius: 12, y: 6)
-            .padding(32)
-        }
-        .transition(.opacity)
     }
 
     private var customAvatarCard: some View {
@@ -775,50 +602,11 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var easterEggCard: some View {
-        Button {
-            BeansHaptics.tap()
-            switch easterEggStep {
-            case 0:
-                easterEggStep = 1
-                easterEggPrompt = ["再点一下", "求你了，再点一下", "哥哥我要来了"].randomElement() ?? "再点一下"
-            case 1:
-                easterEggStep = 2
-                easterEggPrompt = ["最后一下！！", "马上出来了！！", "啊啊我要来了"].randomElement() ?? "最后一下！！"
-            default:
-                NotificationCenter.default.post(name: .beansEasterEggRequested, object: nil)
-                easterEggStep = 0
-                easterEggPrompt = "点我有惊喜"
-            }
-        } label: {
-            HStack(spacing: 11) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
-                    .frame(width: 28)
-                Text(easterEggPrompt)
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.beansComment.opacity(0.65))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-    }
-
     private var userCard: some View {
         VStack(spacing: 16) {
             Button {
                 BeansHaptics.tap()
-                // 统一账号面板：网易云 + QQ 音乐登录整合在一起
+                // 统一账号面板：酷狗音乐登录
                 showAccountHub = true
             } label: {
                 HStack(spacing: 14) {
@@ -828,7 +616,7 @@ struct ProfileView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "NetEase Cloud Music Logged In" : "网易云音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
+                            Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "Kugou Music Logged In" : "酷狗音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
                                 .font(BeansFont.appFont(20, .bold))
                                 .foregroundStyle(Color.beansLabel)
                                 .lineLimit(1)
@@ -850,9 +638,7 @@ struct ProfileView: View {
             }
             .buttonStyle(.plain)
 
-            if (platformPrefs.isEnabled(SearchProvider.netease) && auth.isLoggedIn)
-                || (platformPrefs.isEnabled(SearchProvider.qq) && qqAuth.isLoggedIn)
-                || (platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn) {
+            if kugouAuth.isLoggedIn {
                 platformStatusRow
             }
         }
@@ -863,16 +649,10 @@ struct ProfileView: View {
         .beansCardShadow(radius: 10, y: 4)
     }
 
-    /// 每个登录平台单独展示登录成功状态（网易云 / QQ 音乐）
+    /// 酷狗登录状态展示
     private var platformStatusRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if platformPrefs.isEnabled(SearchProvider.netease), auth.isLoggedIn {
-                platformChip(imageName: "BrandNetease", name: "网易云音乐", status: auth.user?.nickname ?? "已登录", badge: auth.user?.vipBadge)
-            }
-            if platformPrefs.isEnabled(SearchProvider.qq), qqAuth.isLoggedIn {
-                platformChip(imageName: "BrandQQ", name: "QQ 音乐", status: qqAuth.nickname.isEmpty ? "已登录" : qqAuth.nickname, badge: qqAuth.vipBadge)
-            }
-            if platformPrefs.isEnabled(SearchProvider.kugou), kugouAuth.isLoggedIn {
+            if kugouAuth.isLoggedIn {
                 platformChip(imageName: "BrandKugou", name: "酷狗音乐", status: kugouAuth.nickname.isEmpty ? "已登录" : kugouAuth.nickname, badge: kugouAuth.vipBadge)
             }
         }
@@ -1005,115 +785,6 @@ struct ProfileView: View {
         .buttonStyle(GlassPressButtonStyle(scale: 0.97))
     }
 
-    private func startAutoDownload(info: UpdateChecker.ReleaseInfo, assetURL: URL) {
-        showDownloadOverlay = true
-        Task {
-            do {
-                let url = try await ipaDownloader.download(assetURL: assetURL, version: info.version)
-                await MainActor.run {
-                    showDownloadOverlay = false
-                    updateShareFileURL = url
-                    updateShareFile = ShareFileItem(url: url)
-                }
-            } catch {
-                await MainActor.run {
-                    showDownloadOverlay = false
-                    downloadOutcome = .failure(message: error.localizedDescription)
-                    showDownloadOutcome = true
-                }
-            }
-        }
-    }
-
-    private func cleanupUpdateShareFile() {
-        guard let url = updateShareFileURL else { return }
-        try? FileManager.default.removeItem(at: url)
-        updateShareFile = nil
-        updateShareFileURL = nil
-    }
-
-    /// 检查更新
-    private var updateLinkCard: some View {
-        VStack(spacing: 0) {
-            Button {
-                BeansHaptics.tap()
-                guard !checkingUpdate else { return }
-                checkingUpdate = true
-                Task {
-                    let result = await UpdateChecker.checkNow()
-                    await MainActor.run {
-                        checkingUpdate = false
-                        updateResult = result
-                        if case .update(let info) = result {
-                            pendingUpdateInfo = info
-                            if let assetURL = info.assetURL {
-                                startAutoDownload(info: info, assetURL: assetURL)
-                            } else {
-                                showUpdateResult = true
-                            }
-                        } else {
-                            showUpdateResult = true
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: checkingUpdate ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.beansHighlight)
-                        .frame(width: 26)
-                        .rotationEffect(.degrees(checkingUpdate ? 360 : 0))
-                        .animation(checkingUpdate ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: checkingUpdate)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(checkingUpdate ? "正在检查…" : "检查更新")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                    Spacer()
-                }
-                .padding(16)
-            }
-            .buttonStyle(.plain)
-            .disabled(checkingUpdate)
-        }
-        .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
-    /// 我的页底部交流群入口
-    private var communityCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if let url = URL(string: "https://t.me/+k8oYhsIU4sgzOTM1") {
-                UIApplication.shared.open(url)
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Color.beansHighlight)
-                    .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("交流群")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                Spacer()
-                Image(systemName: "arrow.up.forward.app")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
-            }
-            .padding(16)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            }
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
     private var profileVersionFooter: some View {
         Text(appVersionText)
             .font(BeansFont.appFont(11))
@@ -1123,296 +794,6 @@ struct ProfileView: View {
             .padding(.top, 2)
     }
 
-    private var developerToolsCard: some View {
-        Button {
-            BeansHaptics.tap()
-            showDeveloperTools = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "hammer.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("开发者工具")
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text("刷新率、公告、权限与诊断")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
-            }
-            .padding(16)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-        .accessibilityLabel("开发者工具")
-    }
-
-    private var feedbackCard: some View {
-        Button {
-            BeansHaptics.tap()
-            showFeedback = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble.left.and.exclamationmark.bubble.right.fill")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Color.beansHighlight)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(beansLocalized("问题反馈", "Feedback"))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    if feedbackHistory.unreadReplyCount > 0 {
-                        Text(beansLocalized(
-                            "有 \(feedbackHistory.unreadReplyCount) 条新回复",
-                            "\(feedbackHistory.unreadReplyCount) new repl\(feedbackHistory.unreadReplyCount == 1 ? "y" : "ies")"
-                        ))
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansAmber)
-                    }
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
-            }
-            .padding(16)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            }
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
-    /// 我的页底部赞助入口与赞助排行榜
-    private var donationCard: some View {
-        VStack(alignment: .leading, spacing: donationExpanded ? 14 : 0) {
-            Button {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                    donationExpanded.toggle()
-                }
-                if donationExpanded {
-                    Task { await refreshRemoteDonorsIfNeeded() }
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "heart.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.beansHighlight)
-                        .frame(width: 28)
-                    Text("自愿赞助")
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Spacer()
-                    Image(systemName: donationExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
-                }
-                .padding(16)
-            }
-            .buttonStyle(.plain)
-
-            if donationExpanded {
-                VStack(alignment: .leading, spacing: 14) {
-                Image(colorScheme == .dark ? "DonationQRDark" : "DonationQR")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 172)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.beansComment.opacity(0.14), lineWidth: 0.8)
-                }
-
-                Text("感谢你愿意为 Beans 的持续完善添一份力。无论金额多少，这份支持都会被认真记下。")
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansSecondary)
-                    .lineSpacing(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    openWeChatPayment()
-                } label: {
-                    Label("打开微信", systemImage: "arrow.up.forward.app")
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(Color.beansAmber.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-
-                VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("赞助人员")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Spacer()
-                    Text(loadingRemoteDonors ? "同步中" : "按金额排序")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-
-                ForEach(displayedDonors.indices, id: \.self) { index in
-                    let donor = displayedDonors[index]
-                    HStack(spacing: 10) {
-                        Text(index < 3 ? ["1", "2", "3"][index] : "\(index + 1)")
-                            .font(BeansFont.appFont(index < 3 ? 14 : 13, .bold))
-                            .foregroundStyle(sponsorRankColor(for: index))
-                            .frame(width: 28, height: 28)
-                            .background {
-                                Circle()
-                                    .fill(sponsorRankColor(for: index).opacity(index < 3 ? 0.18 : 0.08))
-                                if index == 0 {
-                                    Image(systemName: "crown.fill")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .foregroundStyle(Color.beansAmber.opacity(0.82))
-                                        .offset(y: -16)
-                                }
-                            }
-                        Text(donor.name)
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansLabel)
-                        Spacer()
-                        Text(String(format: "¥ %.2f", donor.amount))
-                            .font(BeansFont.appFont(13, .semibold))
-                            .foregroundStyle(index < 3 ? sponsorRankColor(for: index) : Color.beansLabel)
-                    }
-                    .padding(.horizontal, index < 3 ? 11 : 8)
-                    .padding(.vertical, index < 3 ? 9 : 6)
-                    .background {
-                        if index < 3 {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            sponsorRankColor(for: index).opacity(0.16),
-                                            sponsorRankColor(for: index).opacity(0.035)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(sponsorRankColor(for: index).opacity(0.28), lineWidth: 0.8)
-                                }
-                                .shadow(color: sponsorRankColor(for: index).opacity(0.22), radius: 12, y: 4)
-                        }
-                    }
-                    .overlay {
-                        if index < 3 {
-                            SponsorRankHighlight(color: sponsorRankColor(for: index), rank: index)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                    }
-                    if index < displayedDonors.count - 1 {
-                        Divider().overlay(Color.beansComment.opacity(0.12))
-                    }
-                }
-                }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-            }
-        }
-        .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-        .beansCardShadow(radius: 9, y: 3)
-    }
-
-    private func sponsorRankColor(for index: Int) -> Color {
-        switch index {
-        case 0: return Color(red: 1.0, green: 0.72, blue: 0.22)
-        case 1: return Color(red: 0.72, green: 0.82, blue: 0.94)
-        case 2: return Color(red: 0.84, green: 0.50, blue: 0.30)
-        default: return Color.beansComment
-        }
-    }
-
-    private func openWeChatPayment() {
-        guard let paymentURL = URL(string: "wxp://f2f03Cvy7dWnLLRbIhQJqY-MxVACiIS4JBNSui8VmUk3_Qg") else {
-            showWeChatOpenError = true
-            return
-        }
-
-        UIApplication.shared.open(paymentURL, options: [:]) { opened in
-            guard !opened, let weChatURL = URL(string: "weixin://") else { return }
-            UIApplication.shared.open(weChatURL, options: [:]) { openedWeChat in
-                if !openedWeChat {
-                    showWeChatOpenError = true
-                }
-            }
-        }
-    }
-
-    private var displayedDonors: [Donor] {
-        remoteDonors.isEmpty ? Self.donors : remoteDonors
-    }
-
-    @MainActor
-    private func refreshRemoteDonorsIfNeeded() async {
-        guard !loadingRemoteDonors else { return }
-        loadingRemoteDonors = true
-        defer { loadingRemoteDonors = false }
-        guard let url = URL(string: "http://189.24.78.193/beans/sponsors.json") else { return }
-        do {
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 8
-            request.setValue("Beans-Music/\(UpdateChecker.currentVersion)", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
-            let payload = try JSONDecoder().decode(RemoteSponsorPayload.self, from: data)
-            guard payload.enabled else {
-                remoteDonors = []
-                return
-            }
-            let donors = payload.items
-                .filter { $0.visible != false && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-                .sorted { lhs, rhs in
-                    if lhs.sort != rhs.sort { return lhs.sort < rhs.sort }
-                    return lhs.amount > rhs.amount
-                }
-                .map { Donor(name: $0.name, amount: $0.amount) }
-            if !donors.isEmpty {
-                remoteDonors = donors
-            }
-        } catch {
-            // 网络失败时继续显示内置赞助名单，不打断用户浏览。
-        }
-    }
-
-    private struct Donor {
-        let name: String
-        let amount: Double
-    }
-
-    private struct RemoteSponsorPayload: Decodable {
-        let enabled: Bool
-        let items: [RemoteSponsorItem]
-    }
-
-    private struct RemoteSponsorItem: Decodable {
-        let name: String
-        let amount: Double
-        let sort: Int
-        let visible: Bool?
-    }
-
-    private static let donors: [Donor] = [
-        Donor(name: "WeChat", amount: 26.66),
-        Donor(name: "Aert", amount: 8.88),
-        Donor(name: "wxx", amount: 5),
-        Donor(name: "！", amount: 3),
-    ]
 }
 
 private extension ProfileView {
@@ -1524,82 +905,22 @@ private extension ProfileView {
 
 // MARK: - 交流群二维码
 
-struct CommunityQRSheet: View {
-    @EnvironmentObject private var theme: ThemeStore
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        BeansNavigationStack {
-            ZStack {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-                VStack(spacing: 18) {
-                    Image("CommunityQR")
-                        .resizable()
-                        .interpolation(.none)
-                        .scaledToFit()
-                        .padding(12)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(Color.beansComment.opacity(0.16), lineWidth: 0.8)
-                        }
-                        .padding(.horizontal, 24)
-                    Text("扫码加入交流群")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text("如二维码过期，可在 GitHub 或更新说明中获取最新入口")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 30)
-                }
-                .padding(.vertical, 22)
-            }
-            .navigationTitle("交流群")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
-                }
-            }
-        }
-        .modifier(BeansSheetModifier(detents: [.medium, .large]))
-    }
-}
-
-// MARK: - 统一账号登录面板（网易云 + QQ 音乐整合）
+// MARK: - 统一账号登录面板（酷狗音乐）
 
 struct AccountHubSheet: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var auth: AuthStore
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
-    @ObservedObject private var bilibiliAuth = BilibiliAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showNeteaseLogin = false
-    @State private var showQQLogin = false
     @State private var showKugouLogin = false
-    @State private var showBilibiliLogin = false
-    @State private var confirmNeteaseLogout = false
-    @State private var confirmQQLogout = false
     @State private var confirmKugouLogout = false
-    @State private var confirmBilibiliLogout = false
 
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
     private var displayPlatformSummary: String {
-        if !isEnglish { return platformPrefs.summaryText }
-        return platformPrefs.enabledSearchProviders.map { provider in
-            switch provider {
-            case .netease: return "NetEase Cloud Music"
-            case .qq: return "QQ Music"
-            case .kugou: return "Kugou Music"
-            case .qishui: return "Qishui Music"
-            case .bilibili: return "Bilibili"
-            }
-        }.joined(separator: " / ")
+        isEnglish ? "Kugou Music" : "酷狗音乐"
     }
 
     var body: some View {
@@ -1609,12 +930,7 @@ struct AccountHubSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionHeader(title: "账号")
-                        if platformPrefs.isEnabled(SearchProvider.netease) { neteaseCard }
-                        if platformPrefs.isEnabled(SearchProvider.qq) { qqCard }
-                        if platformPrefs.isEnabled(SearchProvider.kugou) { kugouCard }
-                        if platformPrefs.isEnabled(SearchProvider.bilibili) {
-                            bilibiliCard
-                        }
+                        kugouCard
                     }
                     .padding(16)
                 }
@@ -1628,37 +944,9 @@ struct AccountHubSheet: View {
                 }
             }
         }
-        .sheet(isPresented: $showNeteaseLogin) {
-            LoginView()
-                .environmentObject(auth)
-                .environmentObject(theme)
-        }
-        .sheet(isPresented: $showQQLogin) {
-            QQLoginSheet()
-                .environmentObject(theme)
-        }
         .sheet(isPresented: $showKugouLogin) {
             KugouLoginSheet()
                 .environmentObject(theme)
-        }
-        .sheet(isPresented: $showBilibiliLogin) {
-            BilibiliLoginSheet().environmentObject(theme)
-        }
-        .confirmationDialog("退出网易云登录？", isPresented: $confirmNeteaseLogout, titleVisibility: .visible) {
-            Button("退出登录", role: .destructive) {
-                auth.logout()
-                WebLoginDataCleaner.clearNetEase()
-                ToastCenter.shared.show("已退出网易云账号")
-            }
-            Button("取消", role: .cancel) {}
-        }
-        .confirmationDialog("退出 QQ 音乐？", isPresented: $confirmQQLogout, titleVisibility: .visible) {
-            Button("退出登录", role: .destructive) {
-                qqAuth.logout()
-                WebLoginDataCleaner.clearQQMusic()
-                ToastCenter.shared.show("已退出 QQ 音乐")
-            }
-            Button("取消", role: .cancel) {}
         }
         .confirmationDialog("退出酷狗音乐？", isPresented: $confirmKugouLogout, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) {
@@ -1668,123 +956,6 @@ struct AccountHubSheet: View {
             }
             Button("取消", role: .cancel) {}
         }
-        .confirmationDialog("退出哔哩哔哩？", isPresented: $confirmBilibiliLogout, titleVisibility: .visible) {
-            Button("退出登录", role: .destructive) {
-                bilibiliAuth.logout()
-                ToastCenter.shared.show("已退出哔哩哔哩账号")
-            }
-            Button("取消", role: .cancel) {}
-        }
-    }
-
-    /// 网易云账号卡片
-    private var neteaseCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if auth.isLoggedIn { confirmNeteaseLogout = true } else { showNeteaseLogin = true }
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.white.opacity(0.06))
-                        .frame(width: 48, height: 48)
-                    Image("BrandNetease")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("网易云音乐")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    HStack(spacing: 6) {
-                        Group {
-                            if auth.isLoggedIn {
-                                Text(auth.user?.nickname ?? NSLocalizedString("已登录", comment: ""))
-                            } else {
-                                Text(LocalizedStringKey("未登录 · 扫码登录同步歌单"))
-                            }
-                        }
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        if auth.isLoggedIn, let badge = auth.user?.vipBadge {
-                            VIPBadgeView(text: badge)
-                        }
-                    }
-                }
-                Spacer()
-                Text(auth.isLoggedIn ? "退出" : "登录")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(auth.isLoggedIn ? Color.red : Color.beansAmber)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-            }
-            .padding(14)
-            .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
-    }
-
-    /// QQ 音乐账号卡片
-    private var qqCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if qqAuth.isLoggedIn { confirmQQLogout = true } else { showQQLogin = true }
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.white.opacity(0.06))
-                        .frame(width: 48, height: 48)
-                    Image("BrandQQ")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("QQ 音乐")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    HStack(spacing: 6) {
-                        Group {
-                            if qqAuth.isLoggedIn {
-                                Text(qqAuth.nickname.isEmpty ? NSLocalizedString("已登录", comment: "") : qqAuth.nickname)
-                            } else {
-                                Text(LocalizedStringKey("未登录 · 网页 / 扫码 / Cookie 登录"))
-                            }
-                        }
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        if qqAuth.isLoggedIn, let badge = qqAuth.vipBadge {
-                            VIPBadgeView(text: badge)
-                        }
-                    }
-                }
-                Spacer()
-                Text(qqAuth.isLoggedIn ? "退出" : "登录")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(qqAuth.isLoggedIn ? Color.red : Color.beansAmber)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-            }
-            .padding(14)
-            .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
     }
 
     private var kugouCard: some View {
@@ -1836,42 +1007,6 @@ struct AccountHubSheet: View {
         }
         .buttonStyle(GlassPressButtonStyle(scale: 0.97))
     }
-
-    private var bilibiliCard: some View {
-        Button {
-            BeansHaptics.tap()
-            if bilibiliAuth.isLoggedIn { confirmBilibiliLogout = true } else { showBilibiliLogin = true }
-        } label: {
-            HStack(spacing: 14) {
-                Image("BrandBilibili")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 48, height: 48)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("哔哩哔哩")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text(bilibiliAuth.isLoggedIn ? (bilibiliAuth.nickname.isEmpty ? "已登录" : bilibiliAuth.nickname) : "未登录 · 扫码同步收藏夹")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                }
-                Spacer()
-                Text(bilibiliAuth.isLoggedIn ? "退出" : "登录")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(bilibiliAuth.isLoggedIn ? Color.red : Color.beansAmber)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-            }
-            .padding(14)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous)) }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
-    }
 }
 
 // MARK: - 设置页（外观 + 歌词翻译，从「我的」右上角齿轮进入）
@@ -1909,7 +1044,6 @@ struct SettingsView: View {
     @AppStorage("beans.audio.mixothers.v1") private var mixesWithOthers = false
     @AppStorage("beans.nowPlaying.enabled.v1") private var nowPlayingEnabled = true
     @AppStorage("beans.audioQuality") private var playbackAudioQualityRaw = BeansAudioQuality.hires.rawValue
-    @AppStorage(PlayerManager.autoCrossPlatformFallbackKey) private var autoCrossPlatformFallback = true
     @AppStorage(PlayerManager.playbackSourcePreferenceKey) private var playbackSourcePreferenceRaw = PlaybackSourcePreference.automatic.rawValue
     @AppStorage(NetworkAudioQuality.connectionAwareKey) private var connectionAwareQuality = false
     @AppStorage(NetworkAudioQuality.wifiOfficialKey) private var wifiPlaybackAudioQualityRaw = BeansAudioQuality.hires.rawValue
@@ -1950,25 +1084,15 @@ struct SettingsView: View {
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
     @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
     @AppStorage("beans.home.dailySongsListStyle") private var dailySongsListStyle = false
-    @AppStorage("beans.profile.hideDonation") private var hideDonation = false
-    @ObservedObject private var sourceStore = UnblockSourceStore.shared
-    @ObservedObject private var dynamicWallpaper = DynamicWallpaperStore.shared
     @ObservedObject private var equalizer = BeansEqualizer.shared
-    @AppStorage(ThirdPartyAudioQuality.storageKey) private var thirdPartyAudioQualityRaw = ThirdPartyAudioQuality.kb320.rawValue
-    @AppStorage(NetworkAudioQuality.wifiThirdPartyKey) private var wifiThirdPartyAudioQualityRaw = ThirdPartyAudioQuality.flac.rawValue
-    @AppStorage(NetworkAudioQuality.cellularThirdPartyKey) private var cellularThirdPartyAudioQualityRaw = ThirdPartyAudioQuality.kb320.rawValue
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
 
     @State private var appearanceExpanded = false
     @State private var appearanceDetailsExpanded = false
-    @State private var platformExpanded = false
     @State private var playbackExpanded = false
     @State private var audioQualityExpanded = false
-    @State private var dynamicWallpaperExpanded = false
     @State private var showWallpaperPicker = false
-    @State private var showWaterWallpaperPicker = false
     @State private var wallpaperAppearanceTarget: BeansWallpaperAppearance = .light
     @State private var showFontImporter = false
     @State private var showGreetingFontImporter = false
@@ -1979,7 +1103,6 @@ struct SettingsView: View {
     @State private var showRestorePicker = false
     @State private var pendingRestore: [String: Any]?
     @State private var showRestoreConfirm = false
-    @State private var showSourceManager = false
     @State private var showEqualizer = false
     @State private var backupExpanded = false
     @State private var backupIncludeAccounts = false
@@ -1987,11 +1110,6 @@ struct SettingsView: View {
     @State private var backupMessage: String?
     @State private var clearingImageCache = false
     @State private var showAccountHub = false
-    @State private var showFeedback = false
-    @State private var showDiagnostics = false
-    @State private var checkingUpdate = false
-    @State private var updateResult: UpdateChecker.CheckResult?
-    @State private var showUpdateResult = false
     @State private var disclaimerExpanded = false
     @State private var showFloatingImagePicker = false
     @State private var showTabVisibilitySettings = false
@@ -2027,39 +1145,6 @@ struct SettingsView: View {
         return terms.joined(separator: " ").localizedCaseInsensitiveContains(query)
     }
 
-    private var customSourceCount: Int {
-        sourceStore.managementVisibleSources.count
-    }
-
-    private var thirdPartyAudioQualityOptions: [ThirdPartyAudioQuality] {
-        let options = sourceStore.availableThirdPartyQualities()
-        return options.isEmpty ? ThirdPartyAudioQuality.allCases : options
-    }
-
-    private var thirdPartyAudioQualitySelection: Binding<ThirdPartyAudioQuality> {
-        Binding(
-            get: {
-                let stored = ThirdPartyAudioQuality(sourceValue: thirdPartyAudioQualityRaw) ?? .kb320
-                return thirdPartyAudioQualityOptions.first(where: { $0 == stored }) ?? thirdPartyAudioQualityOptions.first ?? .kb320
-            },
-            set: { newValue in
-                thirdPartyAudioQualityRaw = newValue.rawValue
-            }
-        )
-    }
-
-    private var thirdPartyAudioQualityTitle: String {
-        beansLocalized("第三方音源音质", "Third-party source quality")
-    }
-
-    private var thirdPartyAudioQualityHint: String {
-        beansLocalized("会优先按所选音质解析第三方音源，不可用时会自动降级。", "Third-party sources will try the selected quality first and downgrade automatically when unavailable.")
-    }
-
-    private var thirdPartyAudioQualityOptionsSignature: String {
-        thirdPartyAudioQualityOptions.map(\.rawValue).joined(separator: ",")
-    }
-
     @ViewBuilder
     private func liquidQualityOptionBackground(selected: Bool) -> some View {
         ZStack {
@@ -2068,13 +1153,6 @@ struct SettingsView: View {
                 Capsule()
                     .fill(Color.beansAmber.opacity(0.16))
             }
-        }
-    }
-
-    private func normalizeThirdPartyAudioQualitySelection() {
-        let valid = thirdPartyAudioQualityOptions.first(where: { $0.rawValue == thirdPartyAudioQualityRaw }) ?? thirdPartyAudioQualityOptions.first ?? .kb320
-        if valid.rawValue != thirdPartyAudioQualityRaw {
-            thirdPartyAudioQualityRaw = valid.rawValue
         }
     }
 
@@ -2099,23 +1177,6 @@ struct SettingsView: View {
         )
     }
 
-    private var wifiThirdPartyAudioQualitySelection: Binding<ThirdPartyAudioQuality> {
-        thirdPartyAudioQualityBinding(rawValue: $wifiThirdPartyAudioQualityRaw)
-    }
-
-    private var cellularThirdPartyAudioQualitySelection: Binding<ThirdPartyAudioQuality> {
-        thirdPartyAudioQualityBinding(rawValue: $cellularThirdPartyAudioQualityRaw)
-    }
-
-    private func thirdPartyAudioQualityBinding(rawValue: Binding<String>) -> Binding<ThirdPartyAudioQuality> {
-        Binding(
-            get: {
-                let stored = ThirdPartyAudioQuality(sourceValue: rawValue.wrappedValue) ?? .kb320
-                return thirdPartyAudioQualityOptions.first(where: { $0 == stored }) ?? thirdPartyAudioQualityOptions.first ?? .kb320
-            },
-            set: { rawValue.wrappedValue = $0.rawValue }
-        )
-    }
 
     private var playbackQualitySection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2306,7 +1367,7 @@ struct SettingsView: View {
             GlassBackdrop(
                 customColor: theme.customBackground,
                 homeMode: true,
-                includeDynamicWallpaper: true
+                includeDynamicWallpaper: false
             )
             SettingsCompactGlassSurface()
             if settingsContentReady {
@@ -2332,22 +1393,11 @@ struct SettingsView: View {
             } else {
                 settingsContentReady = true
             }
-            if #unavailable(iOS 26) {
-                HighRefreshKeeper.shared.suspendTemporarily()
-            }
         }
         .sheet(isPresented: $showWallpaperPicker) {
             WallpaperPhotoPicker { data in
                 theme.addWallpaper(data, for: wallpaperAppearanceTarget.colorScheme)
                 BeansHaptics.success()
-            }
-            .ignoresSafeArea()
-        }
-        .sheet(isPresented: $showWaterWallpaperPicker) {
-            WallpaperPhotoPicker(allowsMultiple: false) { data in
-                dynamicWallpaper.setWaterImage(data)
-                BeansHaptics.success()
-                ToastCenter.shared.show("Water 壁纸已更新")
             }
             .ignoresSafeArea()
         }
@@ -2390,36 +1440,10 @@ struct SettingsView: View {
                 ToastCenter.shared.show("导出失败")
             }
         }
-        .sheet(isPresented: $showSourceManager) {
-            ThirdPartySourceManagerSheet()
-                .environmentObject(theme)
-        }
         .sheet(isPresented: $showAccountHub) {
             AccountHubSheet()
                 .environmentObject(auth)
                 .environmentObject(theme)
-        }
-        .sheet(isPresented: $showFeedback) {
-            FeedbackSheet()
-                .environmentObject(theme)
-        }
-        .alert("检查更新", isPresented: $showUpdateResult, presenting: updateResult) { result in
-            switch result {
-            case .update(let info):
-                Button("立即更新") { UIApplication.shared.open(info.htmlURL) }
-                Button("取消", role: .cancel) {}
-            case .upToDate, .failed:
-                Button("好", role: .cancel) {}
-            }
-        } message: { result in
-            switch result {
-            case .update(let info):
-                Text("发现新版本 (info.version)，是否前往更新页？")
-            case .upToDate:
-                Text("当前已是最新版本")
-            case .failed:
-                Text("检查失败，请检查网络后重试")
-            }
         }
         .sheet(isPresented: $showEqualizer) {
             EqualizerSettingsView()
@@ -2447,9 +1471,6 @@ struct SettingsView: View {
         .onDisappear {
             homeRenderingPaused = false
             onClose?()
-            if #unavailable(iOS 26) {
-                HighRefreshKeeper.shared.resumeAfterTemporaryPause()
-            }
         }
     }
 
@@ -2458,7 +1479,6 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 AnyView(settingsSearchField)
                 AnyView(coreSettingsGroup)
-                AnyView(dynamicWallpaperSettingsGroup)
                 AnyView(playbackSettingsGroup)
                 AnyView(utilitySettingsGroup)
                 if !hasSettingsSearchResults {
@@ -2483,7 +1503,7 @@ struct SettingsView: View {
     }
 
     private var showAccountSettings: Bool {
-        settingsMatches("账号 登录 网易云 QQ 酷狗")
+        settingsMatches("账号 登录 酷狗")
     }
 
     private var settingsSearchField: some View {
@@ -2519,19 +1539,16 @@ struct SettingsView: View {
     }
 
     private var showAppearanceSettings: Bool { settingsMatches("主题 外观 背景 壁纸 字体 底栏 颜色 赞助") }
-    private var showDynamicWallpaperSettings: Bool {
-        settingsMatches("动态壁纸 Fractal Clouds Ink Smoke Liquid Chrome Neuro Noise Simplex Noise Metaballs Water Star Nest Dot Orbit Dots Grain Gradient 分形云层 墨水扩散 液态金属 神经噪声 单纯形噪声 融合球 水面 星云 圆点 点阵 颗粒渐变")
-    }
-    private var showPlatformSettings: Bool { settingsMatches("平台 显示 网易云 QQ 酷狗") }
+    private var showPlatformSettings: Bool { false }
     private var showAudioSettings: Bool { settingsMatches("音源 音质 网络 Wi-Fi 蜂窝 导入") }
     private var showPlaybackSettings: Bool { settingsMatches("播放 触感 锁屏 灵动岛 收藏") }
     private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
     private var showBackupSettings: Bool { settingsMatches("备份 恢复 导出 导入 缓存") }
-    private var showChangelogSettings: Bool { settingsMatches("更新 日志 版本") }
-    private var showSupportSettings: Bool { settingsMatches("帮助 反馈 声明 检查更新 诊断 日志 崩溃 卡死") }
+    private var showChangelogSettings: Bool { settingsMatches("日志 版本") }
+    private var showSupportSettings: Bool { settingsMatches("帮助 声明") }
     private var hasSettingsSearchResults: Bool {
         showAccountSettings || showAppearanceSettings || showPlatformSettings
-            || showDynamicWallpaperSettings || showAudioSettings || showPlaybackSettings || showEqualizerSettings
+            || showAudioSettings || showPlaybackSettings || showEqualizerSettings
             || showBackupSettings || showChangelogSettings || showSupportSettings
     }
 
@@ -2543,7 +1560,6 @@ struct SettingsView: View {
                 if showAccountSettings && (showAppearanceSettings || showPlatformSettings) { catalogDivider }
                 if showAppearanceSettings { appearanceSection }
                 if showAppearanceSettings && showPlatformSettings { catalogDivider }
-                if showPlatformSettings { platformSection }
             }
         }
     }
@@ -2603,34 +1619,10 @@ struct SettingsView: View {
         }
     }
 
-    private func thirdPartyQualityPills(_ selection: Binding<ThirdPartyAudioQuality>) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(thirdPartyAudioQualityOptions) { quality in
-                    let selected = selection.wrappedValue == quality
-                    Button {
-                        selection.wrappedValue = quality
-                        BeansHaptics.select()
-                    } label: {
-                        Text(quality.displayName)
-                            .font(BeansFont.appFont(12, selected ? .semibold : .medium))
-                            .foregroundStyle(selected ? Color.beansAmber : Color.beansLabel)
-                            .padding(.horizontal, 12)
-                            .frame(height: 31)
-                            .background { liquidQualityOptionBackground(selected: selected) }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 1)
-        }
-    }
-
     private func networkQualityRow(
         title: String,
         icon: String,
-        officialSelection: Binding<BeansAudioQuality>,
-        thirdPartySelection: Binding<ThirdPartyAudioQuality>
+        officialSelection: Binding<BeansAudioQuality>
     ) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             Label(title, systemImage: icon)
@@ -2640,10 +1632,6 @@ struct SettingsView: View {
                 .font(BeansFont.appFont(11))
                 .foregroundStyle(Color.beansComment)
             officialQualityPills(officialSelection)
-            Text("第三方音源")
-                .font(BeansFont.appFont(11))
-                .foregroundStyle(Color.beansComment)
-            thirdPartyQualityPills(thirdPartySelection)
         }
         .padding(12)
         .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -2707,62 +1695,22 @@ struct SettingsView: View {
                         networkQualityRow(
                             title: "Wi-Fi",
                             icon: "wifi",
-                            officialSelection: wifiPlaybackAudioQualitySelection,
-                            thirdPartySelection: wifiThirdPartyAudioQualitySelection
+                            officialSelection: wifiPlaybackAudioQualitySelection
                         )
                         networkQualityRow(
                             title: "蜂窝数据",
                             icon: "antenna.radiowaves.left.and.right",
-                            officialSelection: cellularPlaybackAudioQualitySelection,
-                            thirdPartySelection: cellularThirdPartyAudioQualitySelection
+                            officialSelection: cellularPlaybackAudioQualitySelection
                         )
                     } else {
                         playbackQualitySection
-                        Divider().overlay(Color.beansComment.opacity(0.15))
-                        Text(thirdPartyAudioQualityTitle)
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                        thirdPartyQualityPills(thirdPartyAudioQualitySelection)
                     }
 
-                    Divider().overlay(Color.beansComment.opacity(0.15))
-                    Toggle(isOn: $autoCrossPlatformFallback) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("播放失败时切换平台")
-                                .font(BeansFont.appFont(14, .semibold))
-                            Text("当前平台及其音源失败后，会匹配其它平台的同一歌曲并交给已启用音源解析。")
-                                .font(BeansFont.appFont(11))
-                                .foregroundStyle(Color.beansComment)
-                        }
-                    }
-                    .tint(Color.beansAmber)
 
-                    Divider().overlay(Color.beansComment.opacity(0.15))
-                    Button {
-                        showSourceManager = true
-                        BeansHaptics.tap()
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "shippingbox.fill")
-                            Text("管理 / 导入音源")
-                            Spacer()
-                            Text("\(customSourceCount) 个")
-                                .foregroundStyle(Color.beansComment)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
-                        }
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                        .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 4)
                 .padding(.bottom, 14)
                 .transition(.opacity.combined(with: .move(edge: .top)))
-                .task(id: thirdPartyAudioQualityOptionsSignature) {
-                    normalizeThirdPartyAudioQualitySelection()
-                }
             }
         }
     }
@@ -2771,7 +1719,6 @@ struct SettingsView: View {
     private var themeSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             appearanceSection
-            platformSection
         }
     }
 
@@ -2832,374 +1779,6 @@ struct SettingsView: View {
         }
     }
 
-    private var platformSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                BeansHaptics.select()
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    platformExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("平台显示")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                    Spacer()
-                    Image(systemName: platformExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-
-            if platformExpanded {
-                PlatformPreferencePicker()
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 14)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var dynamicWallpaperSettingsGroup: some View {
-        if showDynamicWallpaperSettings {
-            SettingsCatalogGroup {
-                dynamicWallpaperSection
-            }
-        }
-    }
-
-    private var dynamicWallpaperSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    dynamicWallpaperExpanded.toggle()
-                }
-                BeansHaptics.tap()
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("动态壁纸")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                    }
-                    Spacer()
-                    Image(systemName: dynamicWallpaperExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
-                }
-                // Keep the collapsed row at the same touch height as the
-                // other settings groups. Without an explicit height, older
-                // SwiftUI versions compress this section into a thin strip.
-                .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if dynamicWallpaperExpanded {
-                if #available(iOS 17.0, *) {
-                    Picker("动态壁纸", selection: $dynamicWallpaper.kind) {
-                        ForEach(BeansDynamicWallpaperKind.selectableCases) { wallpaper in
-                            Label(wallpaper.title, systemImage: wallpaper.icon)
-                                .tag(wallpaper)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(Color.beansAmber)
-
-                    Text(dynamicWallpaper.kind.subtitle)
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-
-                    Toggle("同步到播放器界面", isOn: $dynamicWallpaper.syncToPlayer)
-                        .font(BeansFont.appFont(14))
-                        .tint(Color.beansAmber)
-
-                    if dynamicWallpaper.kind != .off {
-                        if dynamicWallpaper.kind == .water {
-                            waterWallpaperSourceSection
-                        }
-                        dynamicWallpaperParameterSection
-
-                        HStack(spacing: 12) {
-                            Button {
-                                dynamicWallpaper.resetCurrent()
-                                BeansHaptics.select()
-                            } label: {
-                                Text("恢复当前默认参数")
-                                    .font(BeansFont.appFont(13, .medium))
-                                    .foregroundStyle(Color.beansAmber)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background { BeansSurface(shape: Capsule()) }
-                            }
-                            .buttonStyle(.plain)
-                            Spacer()
-                        }
-                    }
-                } else {
-                    Label("动态壁纸需要 iOS 17 或更高版本，低系统继续使用原有背景。", systemImage: "info.circle")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-            }
-        }
-        .padding(.horizontal, 4)
-    }
-
-    private var waterWallpaperSourceSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: "photo.on.rectangle.angled")
-                    .foregroundStyle(Color.beansAmber)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Water 壁纸源图片")
-                        .font(BeansFont.appFont(13, .medium))
-                        .foregroundStyle(Color.beansLabel)
-                    Text(dynamicWallpaper.waterImageDataBase64.isEmpty ? "上传一张图片作为水面内容" : "已使用自定义图片")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-                Spacer(minLength: 8)
-            }
-
-            if let image = dynamicWallpaper.waterImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 120)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color.beansLabel.opacity(0.12), lineWidth: 1)
-                    }
-            }
-
-            HStack(spacing: 12) {
-                Button {
-                    showWaterWallpaperPicker = true
-                } label: {
-                    Label(
-                        dynamicWallpaper.waterImageDataBase64.isEmpty ? "上传图片" : "更换图片",
-                        systemImage: "photo.badge.plus"
-                    )
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansAmber)
-                }
-                .buttonStyle(.plain)
-
-                if !dynamicWallpaper.waterImageDataBase64.isEmpty {
-                    Button("清除图片") {
-                        dynamicWallpaper.setWaterImage(nil)
-                    }
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-                    .buttonStyle(.plain)
-                }
-                Spacer()
-            }
-        }
-        .padding(.top, 2)
-    }
-
-    @ViewBuilder
-    private var dynamicWallpaperParameterSection: some View {
-        switch dynamicWallpaper.kind {
-        case .off:
-            EmptyView()
-        case .fractalClouds:
-            VStack(alignment: .leading, spacing: 10) {
-                dynamicColorRow("天空色", hex: $dynamicWallpaper.fractalSkyHex, fallback: Color(red: 0.102, green: 0.149, blue: 0.349))
-                dynamicColorRow("云层色", hex: $dynamicWallpaper.fractalCloudHex, fallback: Color(red: 0.902, green: 0.902, blue: 1.0))
-                dynamicColorRow("暖色调", hex: $dynamicWallpaper.fractalWarmTintHex, fallback: Color(red: 0.102, green: 0.051, blue: 0.0))
-                layoutSettingSlider("温暖程度", value: $dynamicWallpaper.fractalWarmth, range: 0...2, step: 0.01, format: "%.2f")
-                layoutSettingSlider("速度", value: $dynamicWallpaper.fractalSpeed, range: 0...3, step: 0.01, format: "%.2f")
-                layoutSettingSlider("缩放", value: $dynamicWallpaper.fractalZoom, range: 0.5...10, step: 0.1, format: "%.1f")
-                layoutSettingSlider("水平漂移", value: $dynamicWallpaper.fractalDriftX, range: -0.5...0.5, step: 0.01, format: "%.2f")
-                layoutSettingSlider("垂直漂移", value: $dynamicWallpaper.fractalDriftY, range: -0.5...0.5, step: 0.01, format: "%.2f")
-                layoutSettingSlider("扭曲", value: $dynamicWallpaper.fractalWarp, range: 0...5, step: 0.05, format: "%.2f")
-                layoutSettingSlider("云层覆盖", value: $dynamicWallpaper.fractalCoverage, range: -1...1, step: 0.01, format: "%.2f")
-            }
-        case .inkSmoke:
-            VStack(alignment: .leading, spacing: 10) {
-                dynamicColorRow("墨水色 1", hex: $dynamicWallpaper.ink1Hex, fallback: Color(red: 0.051, green: 0.0, blue: 0.102))
-                dynamicColorRow("墨水色 2", hex: $dynamicWallpaper.ink2Hex, fallback: Color(red: 0.102, green: 0.2, blue: 0.502))
-                dynamicColorRow("墨水色 3", hex: $dynamicWallpaper.ink3Hex, fallback: Color(red: 0.4, green: 0.102, blue: 0.302))
-                dynamicColorRow("墨水色 4", hex: $dynamicWallpaper.ink4Hex, fallback: Color(red: 0.0, green: 0.302, blue: 0.4))
-                dynamicColorRow("光晕色", hex: $dynamicWallpaper.inkGlowHex, fallback: Color(red: 0.302, green: 0.2, blue: 0.4))
-                layoutSettingSlider("速度", value: $dynamicWallpaper.inkSpeed, range: 0...3, step: 0.01, format: "%.2f")
-                layoutSettingSlider("缩放", value: $dynamicWallpaper.inkScale, range: 0.2...5, step: 0.05, format: "%.2f")
-                layoutSettingSlider("扭曲", value: $dynamicWallpaper.inkWarp, range: 0...10, step: 0.05, format: "%.2f")
-                layoutSettingSlider("高光强度", value: $dynamicWallpaper.inkHighlight, range: 0...3, step: 0.01, format: "%.2f")
-            }
-        case .liquidChrome:
-            VStack(alignment: .leading, spacing: 10) {
-                dynamicColorRow("阴影色", hex: $dynamicWallpaper.chromeShadowHex, fallback: Color(red: 0.020, green: 0.012, blue: 0.051))
-                dynamicColorRow("银色色", hex: $dynamicWallpaper.chromeSilverHex, fallback: Color(red: 0.2, green: 0.2, blue: 0.251))
-                dynamicColorRow("高光色", hex: $dynamicWallpaper.chromeHighlightHex, fallback: Color(red: 0.502, green: 0.502, blue: 0.6))
-                dynamicColorRow("色调", hex: $dynamicWallpaper.chromeTintHex, fallback: Color(red: 0.149, green: 0.2, blue: 0.4))
-                layoutSettingSlider("速度", value: $dynamicWallpaper.chromeSpeed, range: 0...3, step: 0.01, format: "%.2f")
-                layoutSettingSlider("缩放", value: $dynamicWallpaper.chromeScale, range: 0.2...5, step: 0.05, format: "%.2f")
-                layoutSettingSlider("扭曲", value: $dynamicWallpaper.chromeWarp, range: 0...5, step: 0.05, format: "%.2f")
-                layoutSettingSlider("对比度", value: $dynamicWallpaper.chromeContrast, range: 0.1...3, step: 0.01, format: "%.2f")
-                layoutSettingSlider("高光锐度", value: $dynamicWallpaper.chromeSpecPower, range: 1...50, step: 0.5, format: "%.1f")
-                layoutSettingSlider("高光强度", value: $dynamicWallpaper.chromeSpecStrength, range: 0...2, step: 0.01, format: "%.2f")
-                layoutSettingSlider("色调强度", value: $dynamicWallpaper.chromeTintStrength, range: 0...2, step: 0.01, format: "%.2f")
-            }
-        case .neuroNoise:
-            VStack(alignment: .leading, spacing: 10) {
-                dynamicColorRow("前景高光色", hex: $dynamicWallpaper.neuroFrontHex, fallback: .white)
-                dynamicColorRow("主体线条色", hex: $dynamicWallpaper.neuroMidHex, fallback: Color(red: 0.337, green: 0.804, blue: 0.890))
-                dynamicColorRow("背景色", hex: $dynamicWallpaper.neuroBackHex, fallback: Color(red: 0.02, green: 0.02, blue: 0.10))
-                layoutSettingSlider("速度", value: $dynamicWallpaper.neuroSpeed, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("亮度", value: $dynamicWallpaper.neuroBrightness, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("对比度", value: $dynamicWallpaper.neuroContrast, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("图案缩放", value: $dynamicWallpaper.neuroScale, range: 0.05...1, step: 0.01, format: "%.2f")
-            }
-        case .simplexNoise:
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(dynamicWallpaper.simplexColorsHex.indices, id: \.self) { index in
-                    dynamicColorRow("渐变色 \(index + 1)", hex: Binding(
-                        get: { dynamicWallpaper.simplexColorsHex[index] },
-                        set: { dynamicWallpaper.simplexColorsHex[index] = $0 }
-                    ), fallback: .white)
-                }
-                layoutSettingSlider("图案缩放", value: $dynamicWallpaper.simplexScale, range: 0.05...4, step: 0.05, format: "%.2f")
-                layoutSettingSlider("每种颜色的层数", value: $dynamicWallpaper.simplexStepsPerColor, range: 1...10, step: 1, format: "%.0f")
-                layoutSettingSlider("过渡柔和度", value: $dynamicWallpaper.simplexSoftness, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("速度", value: $dynamicWallpaper.simplexSpeed, range: 0...3, step: 0.05, format: "%.2f")
-            }
-        case .metaballs:
-            VStack(alignment: .leading, spacing: 10) {
-                Picker("形态", selection: $dynamicWallpaper.metaballsStyleRaw) {
-                    Text("聚合").tag(SWMetaballsStyle.cluster.rawValue)
-                    Text("喷泉").tag(SWMetaballsStyle.fountain.rawValue)
-                }
-                .pickerStyle(.segmented)
-                ForEach(dynamicWallpaper.metaballsColorsHex.indices, id: \.self) { index in
-                    dynamicColorRow("球体色 \(index + 1)", hex: Binding(
-                        get: { dynamicWallpaper.metaballsColorsHex[index] },
-                        set: { dynamicWallpaper.metaballsColorsHex[index] = $0 }
-                    ), fallback: .white)
-                }
-                dynamicColorRow("背景色", hex: $dynamicWallpaper.metaballsBackgroundHex, fallback: .black)
-                layoutSettingSlider("速度", value: $dynamicWallpaper.metaballsSpeed, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("球体数量", value: $dynamicWallpaper.metaballsCount, range: 1...8, step: 1, format: "%.0f")
-                layoutSettingSlider("球体大小", value: $dynamicWallpaper.metaballsSize, range: 0...1, step: 0.01, format: "%.2f")
-                if dynamicWallpaper.metaballsStyleRaw == SWMetaballsStyle.fountain.rawValue {
-                    layoutSettingSlider("中心球大小", value: $dynamicWallpaper.metaballsBigSize, range: 0...1, step: 0.01, format: "%.2f")
-                }
-            }
-        case .water:
-            VStack(alignment: .leading, spacing: 10) {
-                dynamicColorRow("底色", hex: $dynamicWallpaper.waterBackHex, fallback: .black)
-                dynamicColorRow("高光色", hex: $dynamicWallpaper.waterHighlightHex, fallback: .white)
-                layoutSettingSlider("速度", value: $dynamicWallpaper.waterSpeed, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("纹理大小", value: $dynamicWallpaper.waterSize, range: 0.01...7, step: 0.01, format: "%.2f")
-                layoutSettingSlider("焦散强度", value: $dynamicWallpaper.waterCaustic, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("波浪强度", value: $dynamicWallpaper.waterWaves, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("纹理叠加", value: $dynamicWallpaper.waterLayering, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("边缘变形", value: $dynamicWallpaper.waterEdges, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("高光强度", value: $dynamicWallpaper.waterHighlights, range: 0...1, step: 0.01, format: "%.2f")
-            }
-        case .starNest:
-            VStack(alignment: .leading, spacing: 10) {
-                layoutSettingSlider("视野缩放", value: $dynamicWallpaper.starNestZoom, range: 0.2...2, step: 0.01, format: "%.2f")
-                layoutSettingSlider("速度", value: $dynamicWallpaper.starNestSpeed, range: 0...0.05, step: 0.001, format: "%.3f")
-                layoutSettingSlider("亮度", value: $dynamicWallpaper.starNestBrightness, range: 0.0002...0.006, step: 0.0001, format: "%.4f")
-                layoutSettingSlider("饱和度", value: $dynamicWallpaper.starNestSaturation, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("暗物质", value: $dynamicWallpaper.starNestDarkmatter, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("远景衰减", value: $dynamicWallpaper.starNestDistfading, range: 0.3...0.95, step: 0.01, format: "%.2f")
-                layoutSettingSlider("水平角度", value: $dynamicWallpaper.starNestAngleX, range: 0...6.283, step: 0.01, format: "%.2f")
-                layoutSettingSlider("垂直角度", value: $dynamicWallpaper.starNestAngleY, range: 0...6.283, step: 0.01, format: "%.2f")
-                layoutSettingSlider("体积步数", value: $dynamicWallpaper.starNestVolsteps, range: 4...24, step: 1, format: "%.0f")
-                layoutSettingSlider("细节迭代", value: $dynamicWallpaper.starNestIterations, range: 4...24, step: 1, format: "%.0f")
-            }
-        case .dotOrbit:
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(dynamicWallpaper.dotOrbitColorsHex.indices, id: \.self) { index in
-                    dynamicColorRow("圆点色 \(index + 1)", hex: Binding(
-                        get: { dynamicWallpaper.dotOrbitColorsHex[index] },
-                        set: { dynamicWallpaper.dotOrbitColorsHex[index] = $0 }
-                    ), fallback: .white)
-                }
-                dynamicColorRow("背景色", hex: $dynamicWallpaper.dotOrbitBackgroundHex, fallback: .white)
-                layoutSettingSlider("速度", value: $dynamicWallpaper.dotOrbitSpeed, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("网格密度", value: $dynamicWallpaper.dotOrbitScale, range: 0.5...20, step: 0.1, format: "%.1f")
-                layoutSettingSlider("圆点大小", value: $dynamicWallpaper.dotOrbitSize, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("大小变化", value: $dynamicWallpaper.dotOrbitSizeRange, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("轨道范围", value: $dynamicWallpaper.dotOrbitSpreading, range: 0...1, step: 0.01, format: "%.2f")
-                layoutSettingSlider("颜色层数", value: $dynamicWallpaper.dotOrbitStepsPerColor, range: 1...4, step: 1, format: "%.0f")
-            }
-        case .dots:
-            VStack(alignment: .leading, spacing: 10) {
-                Picker("样式", selection: $dynamicWallpaper.dotsStyleRaw) {
-                    ForEach(SWDotsStyle.allCases) { style in
-                        Text(style.displayName).tag(style.rawValue)
-                    }
-                }
-                .pickerStyle(.menu)
-                dynamicColorRow("点阵色", hex: $dynamicWallpaper.dotsTintHex, fallback: .white)
-                dynamicColorRow("背景色", hex: $dynamicWallpaper.dotsBackgroundHex, fallback: .black)
-                layoutSettingSlider("速度", value: $dynamicWallpaper.dotsSpeed, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("亮度", value: $dynamicWallpaper.dotsBrightness, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("点大小", value: $dynamicWallpaper.dotsDotSize, range: 0.2...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("网格密度", value: $dynamicWallpaper.dotsGridDensity, range: 0.3...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("图案缩放", value: $dynamicWallpaper.dotsPatternScale, range: 0.2...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("波浪幅度", value: $dynamicWallpaper.dotsAmplitude, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("深度衰减", value: $dynamicWallpaper.dotsDepthFade, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("暗角", value: $dynamicWallpaper.dotsVignette, range: 0...3, step: 0.05, format: "%.2f")
-                layoutSettingSlider("地平线", value: $dynamicWallpaper.dotsHorizon, range: -1...0.4, step: 0.01, format: "%.2f")
-            }
-        case .grainGradient:
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(dynamicWallpaper.grainGradientColorsHex.indices, id: \.self) { index in
-                    dynamicColorRow("渐变色 \(index + 1)", hex: Binding(
-                        get: { dynamicWallpaper.grainGradientColorsHex[index] },
-                        set: { dynamicWallpaper.grainGradientColorsHex[index] = $0 }
-                    ), fallback: .white)
-                }
-                layoutSettingSlider("渐变缩放", value: $dynamicWallpaper.grainGradientScale, range: 0.2...5, step: 0.05, format: "%.2f")
-                layoutSettingSlider("对比度", value: $dynamicWallpaper.grainGradientContrast, range: 0.1...4, step: 0.05, format: "%.2f")
-                Text("Grain Gradient 已按静态壁纸处理，不会持续消耗动画刷新。")
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
-            }
-        }
-    }
-
-    private func dynamicColorRow(_ title: String, hex: Binding<String>, fallback: Color) -> some View {
-        HStack {
-            Text(title)
-                .font(BeansFont.appFont(13))
-                .foregroundStyle(Color.beansLabel)
-            Spacer()
-            ColorPicker("", selection: Binding(
-                get: { Color(hex: hex.wrappedValue) ?? fallback },
-                set: { hex.wrappedValue = $0.hexString }
-            ), supportsOpacity: false)
-            .labelsHidden()
-        }
-    }
-
-    /// 外观设置（原「我的」页外观折叠内容）
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             // 外观设置行：点击展开 / 收起全部外观设置
@@ -4452,7 +3031,6 @@ struct SettingsView: View {
         defaults.removeObject(forKey: "beans.wallpapers.deleted")
         // 恢复壁纸：写回 beans.wallpapers.* 后重建文件（沙盒路径变化也能恢复）
         theme.reloadWallpapersFromBackup()
-        DynamicWallpaperStore.shared.reloadFromDefaults()
         // 恢复歌词背景图片：路径变化时按备份的 base64 重建文件
         LyricBackgroundStore.restoreFromBackup()
         // 恢复字体文件
@@ -4602,38 +3180,6 @@ struct SettingsView: View {
     private var settingsSupportSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(spacing: 0) {
-                settingsSupportButton(
-                    icon: checkingUpdate ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill",
-                    title: checkingUpdate ? "正在检查更新…" : "检查更新",
-                    tint: Color.beansAmber
-                ) {
-                    guard !checkingUpdate else { return }
-                    checkingUpdate = true
-                    Task {
-                        let result = await UpdateChecker.checkNow()
-                        await MainActor.run {
-                            checkingUpdate = false
-                            updateResult = result
-                            showUpdateResult = true
-                        }
-                    }
-                }
-                Divider().overlay(Color.beansComment.opacity(0.14))
-                settingsSupportButton(
-                    icon: "bubble.left.and.exclamationmark.bubble.right.fill",
-                    title: "问题反馈",
-                    tint: Color.beansAmber
-                ) {
-                    showFeedback = true
-                }
-                Divider().overlay(Color.beansComment.opacity(0.14))
-                settingsSupportButton(
-                    icon: "stethoscope",
-                    title: "诊断与日志",
-                    tint: Color.beansAmber
-                ) {
-                    showDiagnostics = true
-                }
             }
             catalogDivider
             VStack(alignment: .leading, spacing: 8) {
@@ -4668,10 +3214,6 @@ struct SettingsView: View {
             .padding(.vertical, 14)
             catalogDivider
             runtimeEnvironmentFooter
-        }
-        .sheet(isPresented: $showDiagnostics) {
-            BeansDiagnosticsSettingsView()
-                .environmentObject(theme)
         }
     }
 
@@ -4801,7 +3343,6 @@ struct SettingsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-        .disabled(checkingUpdate && title.hasPrefix("正在"))
     }
 
     private func normalizedFloatingImageBase64(from data: Data) -> String? {

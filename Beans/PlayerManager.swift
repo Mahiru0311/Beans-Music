@@ -2,7 +2,6 @@ import AVFoundation
 import MediaPlayer
 import SwiftUI
 import UIKit
-import CiliCiliKit
 
 enum PlayMode: String, CaseIterable, Identifiable {
     case sequential
@@ -81,8 +80,7 @@ final class PlayerManager: NSObject, ObservableObject {
     @Published var loadFailed = false
     /// 切歌代次：防止旧歌的 URL 解析任务覆盖新歌（快速切歌时）
     private var loadGeneration = 0
-    private var webDAVLoadTask: Task<Void, Never>?
-    private var webDAVAudioLease: WebDAVAudioLease?
+    private var playbackLoadTask: Task<Void, Never>?
     let clock = PlaybackClock()
     var progress: Double = 0 {
         didSet { clock.update(progress: progress) }
@@ -187,8 +185,6 @@ final class PlayerManager: NSObject, ObservableObject {
     /// 记录 QQ 官方 vkey 已经尝试过的 BR，官方地址实际打不开时继续换档位。
     private var attemptedQQOfficialBRsBySong: [String: Set<String>] = [:]
     private var activeQQOfficialBR: String?
-    private var bilibiliPlaybackAlternatives: [URL] = []
-    private var bilibiliRetryScheduled = false
     /// KVO 与 AVPlayerItemFailedToPlayToEndTime 可能同时报告同一次失败。
     private var playbackRecoveryInFlightSongKey: String?
     /// 同一首歌的多个 AVFoundation 失败回调只允许弹一次提示并自动切歌一次。
@@ -199,7 +195,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private var qqThirdPartyFallbackSongKey: String?
     private var playbackConfirmationWorkItem: DispatchWorkItem?
     private var playbackStallWorkItem: DispatchWorkItem?
-    /// 提前解析下一首第三方地址，切歌时直接命中 UnblockService 的短缓存。
     private var thirdPartyPrefetchTask: Task<Void, Never>?
     private static let nowPlayingArtworkCache = NSCache<NSURL, UIImage>()
 
@@ -271,10 +266,7 @@ final class PlayerManager: NSObject, ObservableObject {
         return "\(minutes) 分钟"
     }
 
-    /// 只要存在启用的自定义音源，就允许官方地址失败后进行兜底解析。
-    private var externalSourcesEnabled: Bool {
-        UnblockSourceStore.shared.sources.contains(where: \.enabled)
-    }
+    private var externalSourcesEnabled: Bool { false }
 
     private struct ThirdPartyVIPNotice {
         let songKey: String
@@ -367,7 +359,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     deinit {
-        webDAVLoadTask?.cancel()
+        playbackLoadTask?.cancel()
         flushListeningDuration()
         interruptionResumeWorkItem?.cancel()
         audioRecoveryWorkItem?.cancel()
@@ -408,28 +400,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     /// 由哔哩哔哩“听视频”模式复用 Beans 音频播放器，保留当前详情页的续播时间和播放意图。
-    func playBilibiliAudio(_ song: Song, context: [Song] = [], resumeAt: TimeInterval = 0, shouldResume: Bool = true) {
-        guard song.source == .bilibili, ensurePlaybackAllowed() else { return }
-        let videos = context.filter { $0.source == .bilibili }
-        queue = videos.contains(where: { $0.identityKey == song.identityKey }) ? videos : [song] + videos
-        currentIndex = queue.firstIndex { $0.identityKey == song.identityKey } ?? 0
-        buildPlayOrder()
-        orderPosition = playMode == .shuffle ? (playOrder.firstIndex(of: currentIndex) ?? 0) : currentIndex
-        loadCurrent(resumeAt: resumeAt, autoplay: shouldResume)
-    }
-
     // Apply a resolved list without replacing the AVPlayer or losing its playhead.
-    func updateBilibiliAudioContext(_ context: [Song], currentSongKey: String) {
-        guard currentSong?.identityKey == currentSongKey,
-              let index = context.firstIndex(where: { $0.identityKey == currentSongKey }),
-              context.allSatisfy({ $0.source == .bilibili }) else { return }
-        queue = context
-        currentIndex = index
-        buildPlayOrder()
-        orderPosition = playMode == .shuffle ? (playOrder.firstIndex(of: currentIndex) ?? 0) : currentIndex
-        savePersistedPlaybackState()
-    }
-
     /// 追加后台继续加载的私人漫游歌曲，不打断当前歌曲或重置播放位置。
     func append(songs newSongs: [Song]) {
         guard !newSongs.isEmpty else { return }
@@ -756,17 +727,6 @@ final class PlayerManager: NSObject, ObservableObject {
         return String(format: "%d:%02d", sleepTimerRemaining / 60, sleepTimerRemaining % 60)
     }
 
-    func pauseForBilibiliVideo() {
-        guard isPlaying || isBuffering else { return }
-        loadGeneration += 1
-        webDAVLoadTask?.cancel()
-        webDAVLoadTask = nil
-        isBuffering = false
-        bilibiliPlaybackAlternatives = []
-        bilibiliRetryScheduled = false
-        pausePlayback()
-    }
-
     private func pausePlayback() {
         clearAudioRecoveryIntent()
         isPlaying = false
@@ -847,16 +807,14 @@ final class PlayerManager: NSObject, ObservableObject {
     ) {
         guard ensurePlaybackAllowed() else { return }
         guard let song = currentSong else { return }
-        webDAVLoadTask?.cancel()
-        webDAVLoadTask = nil
+        playbackLoadTask?.cancel()
+        playbackLoadTask = nil
         audioRecoveryWorkItem?.cancel()
         audioRecoveryWorkItem = nil
         stopAudioSessionWatchdog()
         clearAudioRecoveryIntent()
         loadGeneration += 1
         let generation = loadGeneration
-        bilibiliPlaybackAlternatives = []
-        bilibiliRetryScheduled = false
         thirdPartyRetryExcludedHostsBySong.removeValue(forKey: song.identityKey)
         attemptedThirdPartyQualitiesBySong.removeValue(forKey: song.identityKey)
         attemptedQQOfficialBRsBySong.removeValue(forKey: song.identityKey)
@@ -879,7 +837,6 @@ final class PlayerManager: NSObject, ObservableObject {
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         player = nil
-        webDAVAudioLease = nil
         duration = song.duration
         progress = initialProgress
         lyricProgress = initialProgress
@@ -888,141 +845,30 @@ final class PlayerManager: NSObject, ObservableObject {
         loadFailed = false
         pushHistory(song)
         savePersistedPlaybackState()
-        if song.source == .webdav {
-            webDAVLoadTask = Task { @MainActor [weak self] in
-                guard let self else { return }
-                do {
-                    guard let track = song.webDAVTrack else { throw WebDAVError.missingConnection }
-                    let client = try WebDAVStore.shared.client(for: track)
-                    let lease = try await WebDAVAudioCache.shared.file(for: track, client: client)
-                    try Task.checkCancellation()
-                    guard generation == self.loadGeneration else { return }
-                    self.webDAVAudioLease = lease
-                    self.setupPlayer(url: lease.url, resumeAt: initialProgress, autoplay: autoplay)
-                } catch is CancellationError {
-                    return
-                } catch {
-                    guard !Task.isCancelled, generation == self.loadGeneration else { return }
-                    self.isBuffering = false
-                    self.loadFailed = true
-                    self.finishUnrecoverablePlaybackFailure(song: song, reason: error.localizedDescription)
-                }
-            }
+        guard song.source == .kugou else {
+            isBuffering = false
+            loadFailed = true
+            finishUnrecoverablePlaybackFailure(song: song, reason: "酷狗专版仅支持酷狗歌曲")
             return
         }
         Task {
             var urlString: String?
-            var bilibiliURLs: [URL] = []
-            var bilibiliErrorMessage: String?
-            var resolvedThirdParty: UnblockService.Resolved?
-            var qqOfficialBR: String?
-            var attemptedQQOfficialBRs: [String] = []
-            let sourcePreference = PlaybackSourcePreference.current
-            // 只用官方时不触发第三方解析；只用第三方时完全跳过官方地址请求。
-            let enableUnblock = externalSourcesEnabled && sourcePreference != .official
-            let strictUnlock = shouldLockOfficialOnly(song)
-            let quality = (forceKugouStandard && song.source == .kugou) ? .standard : NetworkAudioQuality.officialPreferred
-            let thirdPartyQuality = NetworkAudioQuality.thirdPartyPreferred
+            let quality = forceKugouStandard ? NetworkAudioQuality.standard : NetworkAudioQuality.officialPreferred
             for attempt in 0..<3 {
                 if attempt > 0 {
                     try? await Task.sleep(nanoseconds: 800_000_000)
                     if Task.isCancelled { return }
                 }
-                urlString = nil
-                resolvedThirdParty = nil
-                qqOfficialBR = nil
-                attemptedQQOfficialBRs = []
                 guard generation == self.loadGeneration else { return }
-                if song.source == .bilibili {
-                    do {
-                        bilibiliURLs = try await BilibiliAPI.shared.playbackURLs(for: song, quality: quality)
-                        urlString = bilibiliURLs.first?.absoluteString
-                    } catch is CancellationError { return }
-                    catch {
-                        bilibiliErrorMessage = error.localizedDescription
-                        BeansLogger.shared.log("B站播放解析失败：\(song.bilibiliID ?? "unknown")｜\(error.localizedDescription)", level: .warn)
-                    }
-                } else if sourcePreference == .thirdParty {
-                    resolvedThirdParty = await resolveThirdParty(
-                        song: song,
-                        quality: thirdPartyQuality,
-                        strict: strictUnlock
-                    )
-                } else if song.source == .kugou {
-                    urlString = try? await KugouMusicAPI.shared.songURL(song: song, quality: quality)
-                    if urlString == nil {
-                        resolvedThirdParty = await kugouFallback(
-                            song: song,
-                            thirdPartyQuality: thirdPartyQuality,
-                            enableUnblock: enableUnblock
-                        )
-                    }
-                } else if song.source == .qq, let mid = song.qqMid {
-                    let officialResult = try? await QQMusicAPI.shared.songURLResult(
-                        songmid: mid,
-                        mediaMid: song.qqMediaMid,
-                        quality: quality
-                    )
-                    urlString = officialResult?.url
-                    qqOfficialBR = officialResult?.br
-                    attemptedQQOfficialBRs = officialResult?.attemptedBRs ?? []
-                    if urlString == nil {
-                        (urlString, resolvedThirdParty) = await qqFallback(
-                            song: song,
-                            quality: quality,
-                            thirdPartyQuality: thirdPartyQuality,
-                            enableUnblock: enableUnblock,
-                            strict: strictUnlock
-                        )
-                    }
-                } else if song.source == .netease {
-                    (urlString, resolvedThirdParty) = await neteaseResolve(
-                        song: song,
-                        quality: quality,
-                        thirdPartyQuality: thirdPartyQuality,
-                        enableUnblock: enableUnblock,
-                        strict: strictUnlock
-                    )
-                } else if song.source == .qishui {
-                    urlString = (try? await QishuiAPI.shared.playbackURL(for: song))?.absoluteString
-                    if urlString == nil, enableUnblock {
-                        resolvedThirdParty = await resolveThirdParty(
-                            song: song,
-                            quality: thirdPartyQuality,
-                            strict: strictUnlock
-                        )
-                    }
-                } else {
-                    resolvedThirdParty = await resolveThirdParty(
-                        song: song,
-                        quality: thirdPartyQuality,
-                        strict: strictUnlock
-                    )
-                }
-                if urlString != nil || resolvedThirdParty != nil { break }
-            }
-            if let resolved = resolvedThirdParty {
-                let notice = self.thirdPartyVIPNotice(for: song, sourceTitle: resolved.sourceTitle)
-                await MainActor.run {
-                    guard generation == self.loadGeneration else { return }
-                    self.setupPlayer(
-                        url: resolved.url,
-                        thirdPartyVIPNotice: notice,
-                        resumeAt: initialProgress,
-                        autoplay: autoplay,
-                        isThirdParty: true,
-                        thirdPartyQuality: resolved.quality
-                    )
-                    self.prefetchNextThirdPartyIfNeeded(currentWasThirdParty: true)
-                }
-                return
+                urlString = try? await KugouMusicAPI.shared.songURL(song: song, quality: quality)
+                if urlString != nil { break }
             }
             guard let urlString, let url = URL(string: urlString) else {
                 await MainActor.run {
                     guard generation == self.loadGeneration else { return }
                     self.isBuffering = false
                     self.loadFailed = true
-                    let reason = bilibiliErrorMessage ?? "解析播放地址失败"
+                    let reason = "解析播放地址失败"
                     let failureMessage = beansLocalized(
                         "播放失败：\(self.playbackFailureMessage(for: song, reason: reason))",
                         "Playback failed: \(self.playbackFailureMessage(for: song, reason: reason, english: true))"
@@ -1037,32 +883,12 @@ final class PlayerManager: NSObject, ObservableObject {
             }
             await MainActor.run {
                 guard generation == self.loadGeneration else { return }
-                self.bilibiliPlaybackAlternatives = Array(bilibiliURLs.dropFirst())
                 self.setupPlayer(
                     url: url,
                     resumeAt: initialProgress,
-                    autoplay: autoplay,
-                    qqOfficialBR: qqOfficialBR,
-                    attemptedQQOfficialBRs: attemptedQQOfficialBRs
+                    autoplay: autoplay
                 )
-                self.prefetchNextThirdPartyIfNeeded(currentWasThirdParty: false, song: song)
             }
-        }
-    }
-
-    /// 当前歌曲已经通过第三方音源播放，或当前歌曲属于会员歌曲时，提前解析下一首。
-    /// 解析结果只进入 UnblockService 的短缓存，不会改动播放队列或播放器状态。
-    private func prefetchNextThirdPartyIfNeeded(currentWasThirdParty: Bool, song: Song? = nil) {
-        guard externalSourcesEnabled,
-              playMode != .repeatOne,
-              currentWasThirdParty || song?.isVIP == true,
-              let nextSong = nextSongForPrefetch else { return }
-
-        thirdPartyPrefetchTask?.cancel()
-        let quality = NetworkAudioQuality.thirdPartyPreferred
-        thirdPartyPrefetchTask = Task { [weak self] in
-            guard let self else { return }
-            _ = await self.resolveThirdParty(song: nextSong, quality: quality, strict: false)
         }
     }
 
@@ -1078,142 +904,11 @@ final class PlayerManager: NSObject, ObservableObject {
         return queue[nextIndex]
     }
 
-    /// 网易云播放地址解析：按设置音质取 URL，VIP/灰色歌曲交给第三方解锁。
-    private func neteaseResolve(
-        song: Song,
-        quality: BeansAudioQuality,
-        thirdPartyQuality: ThirdPartyAudioQuality = .current,
-        enableUnblock: Bool,
-        strict: Bool = false
-    ) async -> (String?, UnblockService.Resolved?) {
-        var urlString: String?
-        var resolved: UnblockService.Resolved?
-        let infos = try? await NetEaseAPI.shared.songURLInfo(ids: [song.id], level: quality.level)
-        var info = infos?[song.id]
-        if (info?.url == nil || info?.freeTrial == true), quality != .standard {
-            // 高音质拿不到时自动回落到标准音质
-            let fallback = try? await NetEaseAPI.shared.songURLInfo(ids: [song.id], level: "standard")
-            info = fallback?[song.id]
-        }
-        // 试听片段 / 无 URL 一律不直接播放，交给第三方解锁，避免"只能试听"
-        if let u = info?.url, info?.freeTrial != true {
-            urlString = u
-        }
-        if urlString == nil, enableUnblock {
-            resolved = await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: song.id,
-                songSource: .netease,
-                quality: thirdPartyQuality,
-                strict: strict
-            )
-        }
-        return (urlString, resolved)
-    }
-
-    /// QQ 歌曲兜底：官方失败后只走 QQ 第三方接口，不跨平台匹配同名歌曲。
-    private func qqFallback(
-        song: Song,
-        quality _: BeansAudioQuality,
-        thirdPartyQuality: ThirdPartyAudioQuality = .current,
-        enableUnblock: Bool,
-        strict: Bool = false,
-        excludedHosts: Set<String> = []
-    ) async -> (String?, UnblockService.Resolved?) {
-        guard enableUnblock else {
-            return (nil, nil)
-        }
-        let resolved = await UnblockService.resolve(
-            name: song.name,
-            artists: song.artists,
-            // QQ 专属音源要求传数字 songId；mid 仅作为兼容接口的后备参数。
-            neteaseID: song.id,
-            songSource: .qq,
-            qqMid: song.qqMid,
-            qqMediaMid: song.qqMediaMid,
-            quality: thirdPartyQuality,
-            strict: strict,
-            excludedHosts: excludedHosts
-        )
-        return (nil, resolved)
-    }
-
-    /// 酷狗兜底：官方播放失败后使用内置音源作为备选。
-    private func kugouFallback(
-        song: Song,
-        thirdPartyQuality: ThirdPartyAudioQuality = .current,
-        enableUnblock: Bool
-    ) async -> UnblockService.Resolved? {
-        guard enableUnblock else { return nil }
-        let kugouID = song.kugouHash ?? song.kugouAlbumAudioId ?? ""
-        if !kugouID.isEmpty {
-            let resolved = await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: 0,
-                songSource: .kugou,
-                kugouID: kugouID,
-                quality: thirdPartyQuality
-            )
-            if let resolved {
-                return resolved
-            }
-        }
-
-        let strict = shouldLockOfficialOnly(song)
-        if let matched = await matchNetEaseSong(
-            name: song.name,
-            artists: song.artists,
-            durationMS: Int(song.duration * 1000),
-            strict: strict
-        ) {
-            let resolved = await UnblockService.resolve(
-                name: matched.name,
-                artists: matched.artists,
-                neteaseID: matched.id,
-                songSource: .netease,
-                quality: thirdPartyQuality,
-                strict: strict
-            )
-            return resolved
-        }
-
-        return nil
-    }
-
-    /// 不再按歌手硬拦截跨平台兜底，避免 QQ 官方失败后把可播的网易云链路一并阻断。
     private func shouldLockOfficialOnly(_ song: Song) -> Bool {
         false
     }
 
     /// 在网易云按 歌名+歌手 匹配同名歌曲（QQ vkey 失败时的免费播放兜底）
-    private func matchNetEaseSong(name: String, artists: String, durationMS: Int, strict: Bool = false) async -> Song? {
-        let keyword = ([name, artists].filter { !$0.isEmpty }).joined(separator: " ")
-        guard !keyword.isEmpty,
-              let results = try? await NetEaseAPI.shared.search(keyword: keyword, limit: 8),
-              !results.isEmpty else { return nil }
-        let target = Double(durationMS) / 1000.0
-        let artistTokens = artists.lowercased().split(whereSeparator: { $0 == " " || $0 == "/" || $0 == "&" }).map(String.init)
-        // 优先：歌手匹配 + 时长接近（兼容 Jay Chou 别名）
-        if let hit = results.first(where: { song in
-            let durOK = abs(song.duration - target) < 12
-            let songArtists = song.artists.lowercased()
-            let artistOK = artistTokens.contains { !$0.isEmpty && songArtists.contains($0) }
-                || (songArtists.contains("周杰伦") && artists.lowercased().contains("jay chou"))
-            return durOK && artistOK
-        }) { return hit }
-        // 严格模式（周杰伦等版权歌手）：找不到原唱直接放弃，绝不返回翻唱
-        if strict { return nil }
-        // 其次：仅时长接近（必须足够接近才用，避免张冠李戴）
-        if let hit = results.min(by: { abs($0.duration - target) < abs($1.duration - target) }),
-           abs(hit.duration - target) < 20 {
-            return hit
-        }
-        // 找不到可靠匹配：宁可播放失败，也不播放错误歌曲
-        return nil
-    }
-
     /// 仅在高音质地址已经交给 AVPlayer 但实际无法打开时回退标准音质。
     /// 这样正常账号仍优先使用高音质，兼容部分旧系统或账号返回的不可解码资源。
     @discardableResult
@@ -1226,172 +921,6 @@ final class PlayerManager: NSObject, ObservableObject {
         kugouStandardFallbackSongKey = song.identityKey
         let resume = progress
         loadCurrent(resumeAt: resume, forceKugouStandard: true)
-        return true
-    }
-
-    @discardableResult
-    private func retryThirdPartyIfNeeded(excludingHost: String? = nil) -> Bool {
-        guard let song = currentSong,
-              externalSourcesEnabled else { return false }
-        if playbackRecoveryInFlightSongKey == song.identityKey {
-            return true
-        }
-
-        let generation = loadGeneration
-        let resume = progress
-        let strict = shouldLockOfficialOnly(song)
-        let currentQuality = activeThirdPartyQuality ?? NetworkAudioQuality.thirdPartyPreferred
-        let attempted = attemptedThirdPartyQualitiesBySong[song.identityKey] ?? []
-        guard let thirdPartyQuality = currentQuality.fallbackChain.first(where: {
-            !attempted.contains($0.rawValue)
-        }) else {
-            return false
-        }
-        attemptedThirdPartyQualitiesBySong[song.identityKey, default: []].insert(thirdPartyQuality.rawValue)
-        var excludedHosts = thirdPartyRetryExcludedHostsBySong[song.identityKey] ?? []
-        if let excludingHost, !excludingHost.isEmpty {
-            excludedHosts.insert(excludingHost.lowercased())
-        }
-        guard excludedHosts.count <= 6 else {
-            return false
-        }
-        thirdPartyRetryExcludedHostsBySong[song.identityKey] = excludedHosts
-        playbackRecoveryInFlightSongKey = song.identityKey
-        let excludedHostsForRetry = excludedHosts
-        Task {
-            let resolved = await self.resolveThirdParty(
-                song: song,
-                quality: thirdPartyQuality,
-                strict: strict,
-                excludedHosts: excludedHostsForRetry
-            )
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == song.identityKey else {
-                    if self.playbackRecoveryInFlightSongKey == song.identityKey {
-                        self.playbackRecoveryInFlightSongKey = nil
-                    }
-                    return
-                }
-                self.playbackRecoveryInFlightSongKey = nil
-                if let resolved {
-                    let notice = self.thirdPartyVIPNotice(for: song, sourceTitle: resolved.sourceTitle)
-                    self.setupPlayer(
-                        url: resolved.url,
-                        thirdPartyVIPNotice: notice,
-                        resumeAt: resume,
-                        isThirdParty: true,
-                        thirdPartyQuality: resolved.quality
-                    )
-                } else {
-                    if self.retryThirdPartyIfNeeded() { return }
-                    self.finishUnrecoverablePlaybackFailure(song: song, reason: "第三方播放地址重试失败")
-                }
-            }
-        }
-        return true
-    }
-
-    @discardableResult
-    private func retryQQOfficialIfNeeded() -> Bool {
-        guard let song = currentSong,
-              song.source == .qq,
-              PlaybackSourcePreference.current != .thirdParty,
-              let qqMid = song.qqMid,
-              !qqMid.isEmpty else { return false }
-        if playbackRecoveryInFlightSongKey == song.identityKey {
-            return true
-        }
-
-        let officialBRs = ["F000", "M800", "M500", "C400"]
-        let attempted = attemptedQQOfficialBRsBySong[song.identityKey] ?? []
-        guard let nextBR = officialBRs.first(where: { !attempted.contains($0) }) else {
-            return false
-        }
-        attemptedQQOfficialBRsBySong[song.identityKey, default: []].insert(nextBR)
-        playbackRecoveryInFlightSongKey = song.identityKey
-        let generation = loadGeneration
-        let resume = progress
-        Task {
-            let urlString = try? await QQMusicAPI.shared.songURL(
-                songmid: qqMid,
-                mediaMid: song.qqMediaMid,
-                br: nextBR
-            )
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == song.identityKey else {
-                    if self.playbackRecoveryInFlightSongKey == song.identityKey {
-                        self.playbackRecoveryInFlightSongKey = nil
-                    }
-                    return
-                }
-                self.playbackRecoveryInFlightSongKey = nil
-                if let urlString, let url = URL(string: urlString) {
-                    self.setupPlayer(
-                        url: url,
-                        resumeAt: resume,
-                        qqOfficialBR: nextBR
-                    )
-                    return
-                }
-                if self.retryQQOfficialIfNeeded() { return }
-                if self.fallbackQQToThirdPartyIfNeeded() { return }
-                self.finishUnrecoverablePlaybackFailure(song: song, reason: "QQ 官方音质均不可播放")
-            }
-        }
-        return true
-    }
-
-    @discardableResult
-    private func fallbackQQToThirdPartyIfNeeded() -> Bool {
-        guard let song = currentSong,
-              song.source == .qq,
-              let qqMid = song.qqMid,
-              !qqMid.isEmpty,
-              qqThirdPartyFallbackSongKey != song.identityKey,
-              externalSourcesEnabled else { return false }
-        if playbackRecoveryInFlightSongKey == song.identityKey {
-            return true
-        }
-
-        qqThirdPartyFallbackSongKey = song.identityKey
-        playbackRecoveryInFlightSongKey = song.identityKey
-        let generation = loadGeneration
-        let resume = progress
-        let strict = shouldLockOfficialOnly(song)
-        let thirdPartyQuality = NetworkAudioQuality.thirdPartyPreferred
-        Task {
-            let (_, resolved) = await self.qqFallback(
-                song: song,
-                quality: NetworkAudioQuality.officialPreferred,
-                thirdPartyQuality: thirdPartyQuality,
-                enableUnblock: true,
-                strict: strict
-            )
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == song.identityKey else {
-                    if self.playbackRecoveryInFlightSongKey == song.identityKey {
-                        self.playbackRecoveryInFlightSongKey = nil
-                    }
-                    return
-                }
-                self.playbackRecoveryInFlightSongKey = nil
-                if let resolved {
-                    let notice = self.thirdPartyVIPNotice(for: song, sourceTitle: resolved.sourceTitle)
-                    self.setupPlayer(
-                        url: resolved.url,
-                        thirdPartyVIPNotice: notice,
-                        resumeAt: resume,
-                        isThirdParty: true,
-                        thirdPartyQuality: resolved.quality
-                    )
-                } else {
-                    self.finishUnrecoverablePlaybackFailure(song: song, reason: "QQ 第三方解析失败")
-                }
-            }
-        }
         return true
     }
 
@@ -1431,32 +960,13 @@ final class PlayerManager: NSObject, ObservableObject {
         // playing，随后以 AVFoundation -11849 失败。
         let item: AVPlayerItem
         var playbackHeaders: [String: String] = [:]
-        if isQQAudioHost(url.host) {
-            playbackHeaders = [
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:80.0) Gecko/20100101 Firefox/80.0",
-                "Referer": "https://y.qq.com/",
-            ]
-            let cookie = QQMusicAuth.shared.cookieHeader
-            if !cookie.isEmpty {
-                playbackHeaders["Cookie"] = cookie
-            }
-            let asset = AVURLAsset(url: url, options: [
-                "AVURLAssetHTTPHeaderFieldsKey": playbackHeaders
-            ])
-            item = AVPlayerItem(asset: asset)
-        } else if url.host?.contains("kugou.com") == true || url.host?.contains("kgimg.com") == true {
+        if url.host?.contains("kugou.com") == true || url.host?.contains("kgimg.com") == true {
             playbackHeaders = [
                 "User-Agent": "Android15-1070-11440-46-0-DiscoveryDRADProtocol-wifi",
                 "Referer": "https://www.kugou.com/",
             ]
             let cookie = KugouMusicAuth.shared.cookieHeader
             if !cookie.isEmpty { playbackHeaders["Cookie"] = cookie }
-            let asset = AVURLAsset(url: url, options: [
-                "AVURLAssetHTTPHeaderFieldsKey": playbackHeaders
-            ])
-            item = AVPlayerItem(asset: asset)
-        } else if loadedSong.source == .bilibili || isBilibiliAudioHost(url.host) {
-            playbackHeaders = BilibiliAPI.headers
             let asset = AVURLAsset(url: url, options: [
                 "AVURLAssetHTTPHeaderFieldsKey": playbackHeaders
             ])
@@ -1481,14 +991,8 @@ final class PlayerManager: NSObject, ObservableObject {
                       self.currentSong?.identityKey == loadedSong.identityKey else { return }
                 if item.status == .readyToPlay { return }
                 guard item.status == .failed else { return }
-                if self.retryBilibiliIfNeeded(failedURL: url) { return }
-                if isThirdParty && self.retryThirdPartyIfNeeded(excludingHost: url.host) { return }
-                if !isThirdParty && self.retryQQOfficialIfNeeded() { return }
-                if !isThirdParty && self.fallbackQQToThirdPartyIfNeeded() { return }
                 if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
-                let reason = loadedSong.source == .bilibili
-                    ? "B站音频加载失败（\((item.error as NSError?)?.code ?? 0)），请检查网络或稍后重试"
-                    : "AVPlayerItem 加载失败"
+                let reason = "AVPlayerItem 加载失败"
                 self.finishUnrecoverablePlaybackFailure(song: loadedSong, reason: reason)
             }
         }
@@ -1539,11 +1043,7 @@ final class PlayerManager: NSObject, ObservableObject {
                               self.currentSong?.identityKey == loadedSong.identityKey,
                               player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
                               !self.playbackConfirmed else { return }
-                        if self.retryBilibiliIfNeeded(failedURL: url) { return }
-                        if isThirdParty && self.retryThirdPartyIfNeeded(excludingHost: url.host) { return }
-                        if !isThirdParty && self.retryQQOfficialIfNeeded() { return }
-                        if !isThirdParty && self.fallbackQQToThirdPartyIfNeeded() { return }
-                        if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
+                                                        if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
                         self.finishUnrecoverablePlaybackFailure(
                             song: loadedSong,
                             reason: "播放地址长时间未响应"
@@ -1652,38 +1152,10 @@ final class PlayerManager: NSObject, ObservableObject {
             guard let self,
                   self.player?.currentItem === item,
                   self.currentSong?.identityKey == loadedSong.identityKey else { return }
-            if self.retryBilibiliIfNeeded(failedURL: url) { return }
-            if !isThirdParty && self.retryQQOfficialIfNeeded() { return }
-            if !isThirdParty && self.fallbackQQToThirdPartyIfNeeded() { return }
-            if isThirdParty && self.retryThirdPartyIfNeeded(excludingHost: url.host) { return }
             if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
             self.finishUnrecoverablePlaybackFailure(song: loadedSong, reason: "播放中断失败")
         }
         updateNowPlaying()
-    }
-
-    private func retryBilibiliIfNeeded(failedURL: URL) -> Bool {
-        guard let song = currentSong, song.source == .bilibili else { return false }
-        if bilibiliRetryScheduled { return true }
-        guard !bilibiliPlaybackAlternatives.isEmpty else { return false }
-        let generation = loadGeneration
-        let failedPlayer = player
-        let resume = progress
-        bilibiliRetryScheduled = true
-        stopListeningSegment()
-        isBuffering = true
-        DispatchQueue.main.async { [weak self, weak failedPlayer] in
-            guard let self, self.loadGeneration == generation,
-                  self.player === failedPlayer,
-                  self.currentSong?.identityKey == song.identityKey else { return }
-            self.bilibiliRetryScheduled = false
-            guard !self.bilibiliPlaybackAlternatives.isEmpty else { return }
-            let next = self.bilibiliPlaybackAlternatives.removeFirst()
-            BeansLogger.shared.log("B站音频切换备用节点：\(failedURL.host ?? "") → \(next.host ?? "")", level: .info)
-            self.player?.pause()
-            self.setupPlayer(url: next, resumeAt: resume)
-        }
-        return true
     }
 
     /// AVFoundation KVO callbacks are not guaranteed to arrive on the main
@@ -1707,14 +1179,6 @@ final class PlayerManager: NSObject, ObservableObject {
               finalizedFailureSongKey != failedSong.identityKey else {
             loadFailed = true
             isBuffering = false
-            isPlaying = false
-            stopListeningSegment()
-            stopAudioSessionWatchdog()
-            return
-        }
-        if attemptCrossPlatformFallbackIfNeeded(for: failedSong, reason: reason) {
-            loadFailed = false
-            isBuffering = true
             isPlaying = false
             stopListeningSegment()
             stopAudioSessionWatchdog()
@@ -1762,95 +1226,6 @@ final class PlayerManager: NSObject, ObservableObject {
 
     /// 当前平台播放失败时，匹配其它目录平台的同一录音并重新走完整播放链。
     /// 这样会优先遵循用户的官方/第三方播放来源设置；只接受标题、歌手和时长均匹配的结果，避免播放到翻唱或不同版本。
-    @discardableResult
-    private func attemptCrossPlatformFallbackIfNeeded(for song: Song, reason: String) -> Bool {
-        // General Bilibili videos are not music catalog recordings; searching
-        // other platforms by a video's title/UP name can play unrelated content.
-        guard song.source != .bilibili, song.source != .webdav else { return false }
-        let enabled = defaults.object(forKey: Self.autoCrossPlatformFallbackKey) as? Bool ?? true
-        guard enabled,
-              crossPlatformFallbackInFlightSongKey != song.identityKey else { return false }
-
-        if crossPlatformFallbackOriginKey == nil {
-            crossPlatformFallbackOriginKey = song.identityKey
-            crossPlatformFallbackTriedSources = [song.source.rawValue]
-        } else {
-            crossPlatformFallbackTriedSources.insert(song.source.rawValue)
-        }
-
-        let sources = SongSource.allCases.filter {
-            $0 != song.source && $0 != .webdav
-                && !crossPlatformFallbackTriedSources.contains($0.rawValue)
-        }
-        guard !sources.isEmpty else { return false }
-
-        let generation = loadGeneration
-        let resume = progress
-        let songKey = song.identityKey
-        crossPlatformFallbackInFlightSongKey = songKey
-        Task { @MainActor in
-            ToastCenter.shared.show("当前平台无法播放，正在查找其它平台的同一歌曲", duration: 2)
-        }
-        Task { [weak self] in
-            guard let self else { return }
-            var replacement: Song?
-            for source in sources {
-                guard !Task.isCancelled else { return }
-                self.crossPlatformFallbackTriedSources.insert(source.rawValue)
-                if let candidate = await self.matchingSong(song, on: source) {
-                    replacement = candidate
-                    break
-                }
-            }
-
-            await MainActor.run {
-                guard generation == self.loadGeneration,
-                      self.currentSong?.identityKey == songKey else { return }
-                self.crossPlatformFallbackInFlightSongKey = nil
-                guard let replacement,
-                      self.queue.indices.contains(self.currentIndex) else {
-                    self.finishUnrecoverablePlaybackFailure(song: song, reason: reason)
-                    return
-                }
-                self.queue[self.currentIndex] = replacement
-                self.crossPlatformFallbackTriedSources.insert(replacement.source.rawValue)
-                ToastCenter.shared.show("当前平台无法播放，已切换到\(self.platformName(for: replacement.source))继续尝试", duration: 3)
-                // 不能只将候选曲目交给第三方解析：当用户选择官方播放，或其他平台
-                // 本身可正常返回地址时，也应能完成兜底播放。
-                self.loadCurrent(resumeAt: resume)
-            }
-        }
-        return true
-    }
-
-    private func matchingSong(_ sourceSong: Song, on source: SongSource) async -> Song? {
-        let keyword = [sourceSong.name, sourceSong.artists]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        guard !keyword.isEmpty else { return nil }
-
-        let candidates: [Song]
-        switch source {
-        case .netease:
-            candidates = (try? await NetEaseAPI.shared.search(keyword: keyword, limit: 12)) ?? []
-        case .qq:
-            candidates = (try? await QQMusicAPI.shared.searchSongs(keyword: keyword, limit: 12)) ?? []
-        case .kugou:
-            candidates = (try? await KugouMusicAPI.shared.searchSongs(keyword: keyword, limit: 12)) ?? []
-        case .kuwo:
-            candidates = (try? await AdditionalCatalogSearchAPI.searchKuwo(keyword: keyword, limit: 12)) ?? []
-        case .migu:
-            candidates = (try? await AdditionalCatalogSearchAPI.searchMigu(keyword: keyword, limit: 12)) ?? []
-        case .qishui:
-            candidates = (try? await QishuiAPI.shared.searchSongs(keyword: keyword, limit: 12)) ?? []
-        case .bilibili:
-            candidates = (try? await BilibiliAPI.shared.searchSongs(keyword: keyword, limit: 12)) ?? []
-        case .webdav: candidates = []
-        }
-        return bestMatchingSong(for: sourceSong, in: candidates)
-    }
-
     private func bestMatchingSong(for source: Song, in candidates: [Song]) -> Song? {
         let title = normalizedTrackText(source.name)
         guard !title.isEmpty else { return nil }
@@ -1888,19 +1263,6 @@ final class PlayerManager: NSObject, ObservableObject {
             .components(separatedBy: ["/", "&", "、", ",", "，", ";", "；", "\\"])
             .map(normalizedTrackText)
             .filter { !$0.isEmpty })
-    }
-
-    private func platformName(for source: SongSource) -> String {
-        switch source {
-        case .netease: return "网易云音乐"
-        case .qq: return "QQ音乐"
-        case .kugou: return "酷狗音乐"
-        case .kuwo: return "酷我音乐"
-        case .migu: return "咪咕音乐"
-        case .qishui: return "汽水音乐"
-        case .bilibili: return "哔哩哔哩"
-        case .webdav: return "WebDAV"
-        }
     }
 
     private func resetCrossPlatformFallbackState() {
@@ -1974,67 +1336,12 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     /// 统一按当前歌曲平台重新解析第三方地址，失败重试时不跨平台匹配同名歌曲。
-    private func resolveThirdParty(
-        song: Song,
-        quality: ThirdPartyAudioQuality,
-        strict: Bool,
-        excludedHosts: Set<String> = []
-    ) async -> UnblockService.Resolved? {
-        switch song.source {
-        case .netease:
-            return await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: song.id,
-                songSource: .netease,
-                quality: quality,
-                strict: strict,
-                excludedHosts: excludedHosts
-            )
-        case .qq:
-            return await qqFallback(
-                song: song,
-                quality: NetworkAudioQuality.officialPreferred,
-                thirdPartyQuality: quality,
-                enableUnblock: true,
-                strict: strict,
-                excludedHosts: excludedHosts
-            ).1
-        case .kugou:
-            let kugouID = song.kugouHash ?? song.kugouAlbumAudioId
-            guard let kugouID, !kugouID.isEmpty else { return nil }
-            return await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: 0,
-                songSource: .kugou,
-                kugouID: kugouID,
-                quality: quality,
-                excludedHosts: excludedHosts
-            )
-        case .kuwo, .migu:
-            return await UnblockService.resolve(
-                name: song.name,
-                artists: song.artists,
-                neteaseID: song.id,
-                songSource: song.source,
-                quality: quality,
-                strict: strict,
-                excludedHosts: excludedHosts
-            )
-        case .qishui:
-            return nil
-        case .bilibili, .webdav:
-            return nil
-        }
-    }
-
     private func stopPlaybackIfBackendBlocked(showToast: Bool = false) {
         guard defaults.bool(forKey: BeansBackendSettings.blockedKey) else { return }
         clearAudioRecoveryIntent()
         loadGeneration += 1
-        webDAVLoadTask?.cancel()
-        webDAVLoadTask = nil
+        playbackLoadTask?.cancel()
+        playbackLoadTask = nil
         playbackConfirmationWorkItem?.cancel()
         failureAutoSkipWorkItem?.cancel()
         failureAutoSkipWorkItem = nil
@@ -2042,7 +1349,6 @@ final class PlayerManager: NSObject, ObservableObject {
         player?.replaceCurrentItem(with: nil)
         removeCurrentObservers()
         player = nil
-        webDAVAudioLease = nil
         isPlaying = false
         isBuffering = false
         loadFailed = true
@@ -2052,13 +1358,6 @@ final class PlayerManager: NSObject, ObservableObject {
                 ToastCenter.shared.show("当前设备暂不可播放")
             }
         }
-    }
-
-    private func isQQAudioHost(_ host: String?) -> Bool {
-        guard let host = host?.lowercased() else { return false }
-        return host.contains("qq.com")
-            || host.contains("qqmusic")
-            || host.contains("ptqqmusic")
     }
 
     private func removeCurrentObservers() {
@@ -2094,12 +1393,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private func resetListeningProgress() {
         lastListeningProgress = nil
         lastListeningSongKey = nil
-    }
-
-    private func isBilibiliAudioHost(_ host: String?) -> Bool {
-        guard let host = host?.lowercased() else { return false }
-        return host == "bilivideo.com" || host.hasSuffix(".bilivideo.com")
-            || host == "bilivideo.cn" || host.hasSuffix(".bilivideo.cn")
     }
 
     private func startListeningSegment() {
@@ -2213,22 +1506,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func hasMembership(for source: SongSource) -> Bool {
-        switch source {
-        case .qq:
-            return QQMusicAuth.shared.vipBadge != nil
-        case .kugou:
-            return KugouMusicAuth.shared.vipBadge != nil
-        case .netease:
-            guard let data = defaults.data(forKey: "beans.user"),
-                  let user = try? JSONDecoder().decode(NetEaseUser.self, from: data) else {
-                return false
-            }
-            return user.vipBadge != nil
-        case .kuwo, .migu, .qishui:
-            return false
-        case .bilibili, .webdav:
-            return false
-        }
+        source == .kugou && KugouMusicAuth.shared.vipBadge != nil
     }
 
     private func configureAudioSession() {
@@ -2698,7 +1976,6 @@ final class PlayerManager: NSObject, ObservableObject {
     // MARK: - 系统正在播放
 
     private func updateNowPlaying() {
-        guard !CiliCiliRuntime.hasActivePlayback else { return }
         guard nowPlayingEnabled else {
             clearNowPlayingInfo()
             return
@@ -2775,7 +2052,6 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func publishNowPlayingInfo() {
-        guard !CiliCiliRuntime.hasActivePlayback else { return }
         guard nowPlayingEnabled, !nowPlayingInfo.isEmpty else { return }
         if isPlaying {
             let center = MPRemoteCommandCenter.shared()
@@ -2815,8 +2091,7 @@ final class PlayerManager: NSObject, ObservableObject {
             guard let self else { return .commandFailed }
             self.performOnMain { [weak self] in
                 guard let self else { return }
-                guard !CiliCiliRuntime.hasActivePlayback else { return }
-                guard self.ensurePlaybackAllowed() else { return }
+                        guard self.ensurePlaybackAllowed() else { return }
                 self.clearAudioRecoveryIntent()
                 self.player?.playImmediately(atRate: Float(self.rate))
                 self.isPlaying = true
@@ -2829,8 +2104,7 @@ final class PlayerManager: NSObject, ObservableObject {
             guard let self else { return .commandFailed }
             self.performOnMain { [weak self] in
                 guard let self else { return }
-                guard !CiliCiliRuntime.hasActivePlayback else { return }
-                self.clearAudioRecoveryIntent()
+                        self.clearAudioRecoveryIntent()
                 self.isPlaying = false
                 self.stopListeningSegment()
                 self.player?.pause()
@@ -2841,30 +2115,26 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         center.nextTrackCommand.addTarget { [weak self] _ in
             self?.performOnMain { [weak self] in
-                guard !CiliCiliRuntime.hasActivePlayback else { return }
-                self?.next()
+                        self?.next()
             }
             return .success
         }
         center.previousTrackCommand.addTarget { [weak self] _ in
             self?.performOnMain { [weak self] in
-                guard !CiliCiliRuntime.hasActivePlayback else { return }
-                self?.previous()
+                        self?.previous()
             }
             return .success
         }
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
             self?.performOnMain { [weak self] in
-                guard !CiliCiliRuntime.hasActivePlayback else { return }
-                self?.togglePlayPause()
+                        self?.togglePlayPause()
             }
             return .success
         }
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
             self?.performOnMain { [weak self] in
-                guard !CiliCiliRuntime.hasActivePlayback else { return }
-                self?.seek(to: event.positionTime)
+                        self?.seek(to: event.positionTime)
             }
             return .success
         }

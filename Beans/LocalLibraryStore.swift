@@ -85,18 +85,6 @@ final class LocalLibraryStore: ObservableObject {
         return playlist
     }
 
-    /// Imports a playlist from the same link / JSON formats used by Moumusic.
-    @discardableResult
-    func importPlaylist(from input: String) async throws -> LocalPlaylist {
-        let imported = try await BeansPlaylistImportService.importPlaylist(from: input)
-        return createPlaylist(
-            name: imported.name,
-            songs: imported.songs,
-            coverURL: imported.coverURL,
-            sourceName: imported.sourceName
-        )
-    }
-
     func deletePlaylist(id: UUID) {
         playlists.removeAll { $0.id == id }
     }

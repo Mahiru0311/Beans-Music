@@ -254,8 +254,6 @@ struct Song: Identifiable, Hashable, Codable {
     let qishuiID: String?
     /// Bilibili BV/av and page CID identity; separate from the app's numeric row ID.
     let bilibiliID: String?
-    /// Remote file identity. Credentials remain exclusively in Keychain.
-    let webDAVTrack: WebDAVTrack?
     /// 付费/VIP 标记（网易云：0 免费、1 VIP、4 付费单曲；QQ：0 免费、非 0 付费）
     let fee: Int
 
@@ -293,7 +291,7 @@ struct Song: Identifiable, Hashable, Codable {
     /// 跨平台唯一标识（避免网易云与 QQ 音乐歌曲 id 撞车）
     var identityKey: String {
         switch source {
-        case .webdav: return "webdav-\(webDAVTrack?.accountKey ?? "unknown")|\(webDAVTrack?.relativePath ?? String(id))"
+        case .webdav: return "webdav-\(id)"
         case .qq: return "qq-\(id)"
         case .kugou: return "kugou-\(id)"
         case .kuwo: return "kuwo-\(id)"
@@ -325,7 +323,7 @@ struct Song: Identifiable, Hashable, Codable {
         }
     }
 
-    init(id: Int, name: String, artists: String, album: String, coverURL: URL?, duration: TimeInterval, source: SongSource = .netease, qqMid: String? = nil, qqMediaMid: String? = nil, kugouHash: String? = nil, kugouAlbumAudioId: String? = nil, kugouAlbumId: String? = nil, kugouQualityHashes: [String: String]? = nil, miguCopyrightId: String? = nil, miguLyricURL: URL? = nil, qishuiID: String? = nil, bilibiliID: String? = nil, webDAVTrack: WebDAVTrack? = nil, fee: Int = 0) {
+    init(id: Int, name: String, artists: String, album: String, coverURL: URL?, duration: TimeInterval, source: SongSource = .kugou, qqMid: String? = nil, qqMediaMid: String? = nil, kugouHash: String? = nil, kugouAlbumAudioId: String? = nil, kugouAlbumId: String? = nil, kugouQualityHashes: [String: String]? = nil, miguCopyrightId: String? = nil, miguLyricURL: URL? = nil, qishuiID: String? = nil, bilibiliID: String? = nil, fee: Int = 0) {
         self.id = id
         self.name = name
         self.artists = artists
@@ -343,7 +341,6 @@ struct Song: Identifiable, Hashable, Codable {
         self.miguLyricURL = miguLyricURL
         self.qishuiID = qishuiID
         self.bilibiliID = bilibiliID
-        self.webDAVTrack = webDAVTrack
         self.fee = fee
     }
 
@@ -378,11 +375,10 @@ struct Song: Identifiable, Hashable, Codable {
         miguLyricURL = nil
         qishuiID = nil
         bilibiliID = nil
-        webDAVTrack = nil
         fee = json["fee"] as? Int ?? 0
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, artists, album, coverURL, duration, source, qqMid, qqMediaMid, kugouHash, kugouAlbumAudioId, kugouAlbumId, kugouQualityHashes, miguCopyrightId, miguLyricURL, qishuiID, bilibiliID, webDAVTrack, fee }
+    private enum CodingKeys: String, CodingKey { case id, name, artists, album, coverURL, duration, source, qqMid, qqMediaMid, kugouHash, kugouAlbumAudioId, kugouAlbumId, kugouQualityHashes, miguCopyrightId, miguLyricURL, qishuiID, bilibiliID, fee }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -392,7 +388,7 @@ struct Song: Identifiable, Hashable, Codable {
         album = try c.decodeIfPresent(String.self, forKey: .album) ?? ""
         coverURL = try c.decodeIfPresent(URL.self, forKey: .coverURL)
         duration = try c.decodeIfPresent(TimeInterval.self, forKey: .duration) ?? 0
-        source = try c.decodeIfPresent(SongSource.self, forKey: .source) ?? .netease
+        source = try c.decodeIfPresent(SongSource.self, forKey: .source) ?? .kugou
         qqMid = try c.decodeIfPresent(String.self, forKey: .qqMid)
         qqMediaMid = try c.decodeIfPresent(String.self, forKey: .qqMediaMid)
         kugouHash = try c.decodeIfPresent(String.self, forKey: .kugouHash)
@@ -403,7 +399,6 @@ struct Song: Identifiable, Hashable, Codable {
         miguLyricURL = try c.decodeIfPresent(URL.self, forKey: .miguLyricURL)
         qishuiID = try c.decodeIfPresent(String.self, forKey: .qishuiID)
         bilibiliID = try c.decodeIfPresent(String.self, forKey: .bilibiliID)
-        webDAVTrack = try c.decodeIfPresent(WebDAVTrack.self, forKey: .webDAVTrack)
         fee = try c.decodeIfPresent(Int.self, forKey: .fee) ?? 0
     }
 
@@ -426,7 +421,6 @@ struct Song: Identifiable, Hashable, Codable {
         try c.encodeIfPresent(miguLyricURL, forKey: .miguLyricURL)
         try c.encodeIfPresent(qishuiID, forKey: .qishuiID)
         try c.encodeIfPresent(bilibiliID, forKey: .bilibiliID)
-        try c.encodeIfPresent(webDAVTrack, forKey: .webDAVTrack)
         try c.encode(fee, forKey: .fee)
     }
 }
@@ -523,7 +517,7 @@ struct Playlist: Identifiable, Hashable, Codable {
     /// Bilibili video or favorite folder key.
     let bilibiliID: String?
 
-    init(id: Int, name: String, coverURL: URL?, trackCount: Int = 0, playCount: Int = 0, creatorName: String = "", creatorAvatarURL: URL? = nil, playlistDescription: String = "", source: SongSource = .netease, kugouGlobalCollectionID: String? = nil, qishuiID: String? = nil, bilibiliID: String? = nil) {
+    init(id: Int, name: String, coverURL: URL?, trackCount: Int = 0, playCount: Int = 0, creatorName: String = "", creatorAvatarURL: URL? = nil, playlistDescription: String = "", source: SongSource = .kugou, kugouGlobalCollectionID: String? = nil, qishuiID: String? = nil, bilibiliID: String? = nil) {
         self.id = id
         self.name = name
         self.coverURL = coverURL
@@ -577,10 +571,6 @@ struct Playlist: Identifiable, Hashable, Codable {
         source = .netease
         qishuiID = nil
         bilibiliID = nil
-    }
-
-    var isNetEaseLikedPlaylist: Bool {
-        source == .netease && (specialType == 5 || name == "我喜欢的音乐" || name.localizedCaseInsensitiveContains("liked songs"))
     }
 }
 
@@ -894,49 +884,6 @@ enum LyricTiming {
     }
 }
 
-struct NetEaseUser: Identifiable, Hashable, Codable {
-    let uid: Int
-    let nickname: String
-    let avatarURL: URL?
-    /// 网易云会员类型：0 无会员；非 0 有 VIP；>= 11 为黑胶 SVIP（接口字段 profile.vipType）
-    let vipType: Int
-
-    var id: Int { uid }
-
-    /// VIP 标识：nil 表示无会员
-    var vipBadge: String? {
-        if vipType >= 11 { return "SVIP" }
-        if vipType > 0 { return "VIP" }
-        return nil
-    }
-
-    init?(json: [String: Any]) {
-        guard let id = json["userId"] as? Int ?? (json["id"] as? Int) else { return nil }
-        uid = id
-        nickname = json["nickname"] as? String ?? ""
-        let pic = json["avatarUrl"] as? String ?? ""
-        avatarURL = pic.isEmpty ? nil : URL(string: pic)
-        vipType = json["vipType"] as? Int ?? 0
-    }
-
-    enum CodingKeys: String, CodingKey { case uid, nickname, avatarURL, vipType }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        uid = try c.decode(Int.self, forKey: .uid)
-        nickname = try c.decode(String.self, forKey: .nickname)
-        avatarURL = try c.decodeIfPresent(URL.self, forKey: .avatarURL)
-        vipType = try c.decodeIfPresent(Int.self, forKey: .vipType) ?? 0
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(uid, forKey: .uid)
-        try c.encode(nickname, forKey: .nickname)
-        try c.encodeIfPresent(avatarURL, forKey: .avatarURL)
-        try c.encode(vipType, forKey: .vipType)
-    }
-}
 /// 听歌排行条目（网易云听歌记录）
 struct PlayRecordItem: Identifiable, Hashable {
     let song: Song

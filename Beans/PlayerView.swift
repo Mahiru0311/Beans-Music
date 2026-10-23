@@ -10,7 +10,6 @@ struct PlayerView: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @ObservedObject private var localLibrary = LocalLibraryStore.shared
     @ObservedObject private var customCovers = CustomSongCoverStore.shared
-    @ObservedObject private var dynamicWallpaper = DynamicWallpaperStore.shared
     @Environment(\.colorScheme) private var colorScheme
     @Binding var isPresented: Bool
     @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
@@ -31,15 +30,10 @@ struct PlayerView: View {
     @State private var officialPlaylists: [Playlist] = []
     @State private var officialPlaylistLoading = false
     @State private var favoriteCandidate: Song?
-    @State private var showDownloadPicker = false
     @State private var showMoreActions = false
     @State private var showNativeMoreActions = false
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
-    /// 下载完成后直接弹原生分享（用户自行选择保存或转发）
-    @State private var shareFile: ShareFileItem?
-    @State private var sharedFileURL: URL?
     @State private var showAddToLocalPlaylist = false
     @State private var showPlayerSettings = false
     @AppStorage(FoliaPreferences.enabledKey) private var foliaStageEnabled = false
@@ -177,11 +171,6 @@ struct PlayerView: View {
         UIDevice.current.userInterfaceIdiom == .pad && size.width > size.height
     }
     private let rateOptions: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
-
-    private var downloadQualityOptions: [DownloadQuality] {
-        guard let song else { return DownloadQuality.allCases }
-        return DownloadQuality.supported(for: song.source)
-    }
 
     /// 封面主色联动调色板：背景渐变 / 进度条 / 播放暂停键 / 功能按钮 / 歌词高亮等全部跟随封面主色。
     /// 安全机制：只在切歌（.task(id: song?.identityKey)）时一次性提取并更新，绝不随封面加载过程高频重算 @State，
@@ -356,18 +345,9 @@ struct PlayerView: View {
     }
 
     private func officialPlaylists(for song: Song) async throws -> [Playlist] {
-        switch song.source {
-        case .netease:
-            guard auth.isLoggedIn, let user = auth.user else { throw NetEaseError.unknown("请先登录网易云音乐") }
-            return try await NetEaseAPI.shared.userPlaylists(uid: user.uid)
-        case .kugou:
-            guard KugouMusicAuth.shared.isLoggedIn else { throw NetEaseError.unknown("请先登录酷狗音乐") }
-            return try await KugouMusicAPI.shared.userPlaylists()
-        case .qq:
-            return []
-        case .kuwo, .migu, .qishui, .bilibili, .webdav:
-            return []
-        }
+        guard song.source == .kugou else { return [] }
+        guard KugouMusicAuth.shared.isLoggedIn else { throw CoError.unknown("请先登录酷狗音乐") }
+        return try await KugouMusicAPI.shared.userPlaylists()
     }
 
     private func saveFavoriteLocally(_ song: Song) {
@@ -381,90 +361,54 @@ struct PlayerView: View {
 
     @MainActor
     private func saveFavoriteOfficially(_ song: Song, playlist: Playlist) async {
-        switch song.source {
-        case .netease:
-            guard auth.isLoggedIn else {
-                ToastCenter.shared.show("请先登录网易云音乐")
-                return
+        guard song.source == .kugou else {
+            ToastCenter.shared.show("当前仅支持酷狗官方收藏")
+            return
+        }
+        guard KugouMusicAuth.shared.isLoggedIn else {
+            ToastCenter.shared.show("请先登录酷狗音乐")
+            return
+        }
+        do {
+            let success = try await KugouMusicAPI.shared.addToPlaylist(playlistID: playlist.id, songs: [song])
+            if success {
+                favorites.markKugouOfficial(song, liked: true)
             }
-            let success: Bool
-            if playlist.isNetEaseLikedPlaylist {
-                // 网易云“我喜欢的音乐”只能通过专用红心接口写入，普通歌单编辑接口会被服务端拒绝。
-                success = await favorites.setNeteaseOfficial(song, liked: true)
-            } else {
-                success = (try? await NetEaseAPI.shared.addToPlaylist(playlistID: playlist.id, songIDs: [song.id])) ?? false
-            }
-            if success { favorites.markNeteaseOfficial(song, liked: true) }
-            ToastCenter.shared.show(success ? "已收藏到「\(playlist.name)」" : "网易云音乐收藏失败")
-        case .kugou:
-            guard KugouMusicAuth.shared.isLoggedIn else {
-                ToastCenter.shared.show("请先登录酷狗音乐")
-                return
-            }
-            do {
-                let success = try await KugouMusicAPI.shared.addToPlaylist(playlistID: playlist.id, songs: [song])
-                if success {
-                    favorites.markKugouOfficial(song, liked: true)
-                }
-                ToastCenter.shared.show(success ? "已收藏到「\(playlist.name)」" : "酷狗音乐收藏失败")
-            } catch {
-                ToastCenter.shared.show("酷狗音乐收藏失败：\(error.localizedDescription)")
-            }
-        case .qq:
-            ToastCenter.shared.show("当前仅支持网易云音乐和酷狗音乐官方收藏")
-        case .kuwo, .migu, .qishui, .bilibili, .webdav:
-            ToastCenter.shared.show("当前平台仅支持本地收藏")
+            ToastCenter.shared.show(success ? "已收藏到「\(playlist.name)」" : "酷狗音乐收藏失败")
+        } catch {
+            ToastCenter.shared.show("酷狗音乐收藏失败：\(error.localizedDescription)")
         }
     }
 
     @MainActor
     private func removeOfficialFavorite(_ song: Song, playlist: Playlist?) async {
-        switch song.source {
-        case .netease:
-            guard let playlist else { return }
-            let success: Bool
-            if playlist.isNetEaseLikedPlaylist {
-                success = await favorites.setNeteaseOfficial(song, liked: false)
-            } else {
-                success = (try? await NetEaseAPI.shared.removeFromPlaylist(playlistID: playlist.id, songIDs: [song.id])) ?? false
-                if success { favorites.markNeteaseOfficial(song, liked: false) }
-            }
-            ToastCenter.shared.show(success ? "已从「\(playlist.name)」取消收藏" : "取消网易云收藏失败")
-        case .kugou:
-            guard let playlist else { return }
-            do {
-                let success = try await KugouMusicAPI.shared.removeFromPlaylist(playlistID: playlist.id, songs: [song])
-                if success { favorites.markKugouOfficial(song, liked: false) }
-                ToastCenter.shared.show(success ? "已从「\(playlist.name)」取消收藏" : "取消酷狗收藏失败")
-            } catch {
-                ToastCenter.shared.show("取消酷狗收藏失败：\(error.localizedDescription)")
-            }
-        case .qq:
-            ToastCenter.shared.show("当前不支持 QQ 官方歌单收藏")
-        case .kuwo, .migu, .qishui, .bilibili, .webdav:
-            ToastCenter.shared.show("当前平台仅支持本地收藏")
+        guard song.source == .kugou else {
+            ToastCenter.shared.show("当前仅支持酷狗官方收藏")
+            favoriteCandidate = nil
+            return
+        }
+        guard let playlist else { return }
+        do {
+            let success = try await KugouMusicAPI.shared.removeFromPlaylist(playlistID: playlist.id, songs: [song])
+            if success { favorites.markKugouOfficial(song, liked: false) }
+            ToastCenter.shared.show(success ? "已从「\(playlist.name)」取消收藏" : "取消酷狗收藏失败")
+        } catch {
+            ToastCenter.shared.show("取消酷狗收藏失败：\(error.localizedDescription)")
         }
         favoriteCandidate = nil
     }
 
     private func createOfficialPlaylist(_ name: String) {
         guard let song = favoriteCandidate else { return }
+        guard song.source == .kugou else {
+            ToastCenter.shared.show("当前仅支持酷狗官方歌单")
+            return
+        }
         Task { @MainActor in
             do {
-                switch song.source {
-                case .netease:
-                    _ = try await NetEaseAPI.shared.createPlaylist(name: name)
-                    officialPlaylists = try await officialPlaylists(for: song)
-                    ToastCenter.shared.show("已创建网易云歌单")
-                case .kugou:
-                    _ = try await KugouMusicAPI.shared.createPlaylist(name: name)
-                    officialPlaylists = try await officialPlaylists(for: song)
-                    ToastCenter.shared.show("已创建酷狗歌单")
-                case .qq:
-                    ToastCenter.shared.show("当前不支持 QQ 官方歌单")
-                case .kuwo, .migu, .qishui, .bilibili, .webdav:
-                    ToastCenter.shared.show("当前平台不支持官方歌单")
-                }
+                _ = try await KugouMusicAPI.shared.createPlaylist(name: name)
+                officialPlaylists = try await officialPlaylists(for: song)
+                ToastCenter.shared.show("已创建酷狗歌单")
             } catch {
                 ToastCenter.shared.show("创建官方歌单失败：\(error.localizedDescription)")
             }
@@ -473,19 +417,13 @@ struct PlayerView: View {
 
     private func deleteOfficialPlaylist(_ playlist: Playlist) {
         guard let song = favoriteCandidate else { return }
+        guard playlist.source == .kugou else {
+            ToastCenter.shared.show("当前仅支持酷狗官方歌单")
+            return
+        }
         Task { @MainActor in
             do {
-                let success: Bool
-                switch playlist.source {
-                case .netease:
-                    success = try await NetEaseAPI.shared.deletePlaylist(id: playlist.id)
-                case .kugou:
-                    success = try await KugouMusicAPI.shared.deletePlaylist(playlistID: playlist.id)
-                case .qq:
-                    success = false
-                case .kuwo, .migu, .qishui, .bilibili, .webdav:
-                    success = false
-                }
+                let success = try await KugouMusicAPI.shared.deletePlaylist(playlistID: playlist.id)
                 if success {
                     officialPlaylists = try await officialPlaylists(for: song)
                     ToastCenter.shared.show("已删除官方歌单")
@@ -611,10 +549,8 @@ struct PlayerView: View {
         playbackRenderingSuppressed = shouldSuppress
         if shouldSuppress {
             PlaybackRenderGate.shared.beginSuppression()
-            HighRefreshKeeper.shared.suspendTemporarily()
         } else {
             PlaybackRenderGate.shared.endSuppression()
-            HighRefreshKeeper.shared.resumeAfterTemporaryPause()
         }
     }
 
@@ -622,7 +558,6 @@ struct PlayerView: View {
         guard playbackRenderingSuppressed else { return }
         playbackRenderingSuppressed = false
         PlaybackRenderGate.shared.endSuppression()
-        HighRefreshKeeper.shared.resumeAfterTemporaryPause()
     }
 
     /// 当前行歌词颜色（可自定义；配色模式关闭时自动跟随封面取色）
@@ -729,9 +664,6 @@ struct PlayerView: View {
                         onAddToLocalPlaylist: {
                             showAddToLocalPlaylist = true
                         },
-                        onDownload: {
-                            showDownloadPicker = true
-                        },
                         onPlayerSettings: {
                             openPlayerSettings()
                         },
@@ -786,10 +718,6 @@ struct PlayerView: View {
                     onAddToLocalPlaylist: {
                         showAddToLocalPlaylist = true
                     },
-                    onDownload: {
-                        showDownloadPicker = true
-                    },
-                    downloadFeatureUnlocked: downloadFeatureUnlocked
                 )
             } else if coverPlayerStyle == .vinyl {
                 GeometryReader { geo in
@@ -870,11 +798,6 @@ struct PlayerView: View {
         .onChange(of: rootGeometry.size) { newSize in
             playerViewportSize = newSize
         }
-        }
-        .background {
-            HighRefreshConfigurator()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
         }
         .task(id: song?.identityKey) {
             let songKey = song?.identityKey ?? ""
@@ -1032,9 +955,6 @@ struct PlayerView: View {
             BeansSoftwareVolumeSheetHost()
                 .environmentObject(player)
         }
-        .sheet(item: $shareFile, onDismiss: cleanupSharedFile) { item in
-            ShareSheet(items: [item.url])
-        }
         .sheet(isPresented: $showAddToLocalPlaylist) {
             if let song {
                 AddToLocalPlaylistSheet(song: song)
@@ -1056,14 +976,6 @@ struct PlayerView: View {
             }
             Button("取消", role: .cancel) {}
         }
-        .confirmationDialog("下载《\(song?.name ?? "当前歌曲")》", isPresented: $showDownloadPicker, titleVisibility: .visible) {
-            ForEach(downloadQualityOptions) { quality in
-                Button(quality.label) {
-                    Task { await downloadCurrent(quality) }
-                }
-            }
-            Button("取消", role: .cancel) {}
-        }
         .confirmationDialog("更多操作", isPresented: $showNativeMoreActions, titleVisibility: .visible) {
             Button("定时关闭") {
                 showSleepTimer = true
@@ -1072,11 +984,6 @@ struct PlayerView: View {
                 showAddToLocalPlaylist = true
             }
             customCoverActions
-            if downloadFeatureUnlocked {
-                Button("下载歌曲") {
-                    showDownloadPicker = true
-                }
-            }
             Button("播放器设置") {
                 openPlayerSettings()
             }
@@ -1099,9 +1006,7 @@ struct PlayerView: View {
 
     private var background: some View {
         ZStack {
-            if dynamicWallpaper.syncsDynamicWallpaperToPlayer {
-                BeansDynamicWallpaperView(forPlayer: true)
-                    .ignoresSafeArea()
+            if false {
             } else {
                 // 静态渐变：随封面主色取色，不流动（用户要求封面外液态 UI 飘动效果暂停，保持静止）
                 LinearGradient(
@@ -1408,9 +1313,6 @@ struct PlayerView: View {
                     Divider()
                     Button("定时关闭") { showSleepTimer = true }
                     Button("添加到本地歌单") { showAddToLocalPlaylist = true }
-                    if downloadFeatureUnlocked {
-                        Button("下载歌曲") { showDownloadPicker = true }
-                    }
                     Button("播放器设置") { openPlayerSettings() }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -1508,9 +1410,6 @@ struct PlayerView: View {
                     Button("定时关闭") { showSleepTimer = true }
                     Button("添加到本地歌单") { showAddToLocalPlaylist = true }
                     customCoverActions
-                    if downloadFeatureUnlocked {
-                        Button("下载歌曲") { showDownloadPicker = true }
-                    }
                     Button("播放器设置") { openPlayerSettings() }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -1891,9 +1790,6 @@ struct PlayerView: View {
                 Menu {
                     Button("定时关闭") { showSleepTimer = true }
                     Button("添加到本地歌单") { showAddToLocalPlaylist = true }
-                    if downloadFeatureUnlocked {
-                        Button("下载歌曲") { showDownloadPicker = true }
-                    }
                     Button("播放器设置") { openPlayerSettings() }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -1962,12 +1858,6 @@ struct PlayerView: View {
                     customCovers.removeCover(for: song)
                     Task { await extractCoverPalette() }
                     ToastCenter.shared.show("已恢复默认封面")
-                }
-            }
-            if downloadFeatureUnlocked {
-                moreActionRow("下载歌曲", systemName: "arrow.down.circle") {
-                    showMoreActions = false
-                    showDownloadPicker = true
                 }
             }
             moreActionRow("播放器设置", systemName: "slider.horizontal.3") {
@@ -2178,9 +2068,6 @@ struct PlayerView: View {
                 Button("定时关闭") { showSleepTimer = true }
                 Button("添加到本地歌单") { showAddToLocalPlaylist = true }
                 customCoverActions
-                if downloadFeatureUnlocked {
-                    Button("下载歌曲") { showDownloadPicker = true }
-                }
                 Button("播放器设置") { openPlayerSettings() }
             } label: {
                 Image(systemName: "ellipsis")
@@ -2353,9 +2240,6 @@ struct PlayerView: View {
                 Button("定时关闭") { showSleepTimer = true }
                 Button("添加到本地歌单") { showAddToLocalPlaylist = true }
                 customCoverActions
-                if downloadFeatureUnlocked {
-                    Button("下载歌曲") { showDownloadPicker = true }
-                }
                 Button("播放器设置") { openPlayerSettings() }
             } label: {
                 Image(systemName: "ellipsis")
@@ -2836,11 +2720,6 @@ struct PlayerView: View {
                     }
                     controlPanelAction(icon: "text.bubble", title: "评论") {
                         showComments = true
-                    }
-                    if downloadFeatureUnlocked {
-                        controlPanelAction(icon: "arrow.down.circle", title: "下载") {
-                            showDownloadPicker = true
-                        }
                     }
                     controlPanelAction(icon: "ellipsis", title: "更多") {
                         showNativeMoreActions = true
@@ -4117,9 +3996,6 @@ struct PlayerView: View {
                         onAddToLocalPlaylist: {
                             showAddToLocalPlaylist = true
                         },
-                        onDownload: {
-                            showDownloadPicker = true
-                        },
                         onPlayerSettings: {
                             openPlayerSettings()
                         },
@@ -5105,40 +4981,7 @@ struct PlayerView: View {
 
     // MARK: - 下载
 
-    private func downloadCurrent(_ quality: DownloadQuality) async {
-        guard let song else { return }
-        UserDefaults.standard.set(quality.rawValue, forKey: ThirdPartyAudioQuality.downloadStorageKey)
-        BeansHaptics.medium()
-        ToastCenter.shared.show("开始下载：\(song.name)（\(quality.displayName)）")
-        let result = await DownloadManager.shared.download(song: song, quality: quality)
-        switch result {
-        case .success(let downloadResult):
-            if downloadResult.downgraded {
-                ToastCenter.shared.show("目标音质不可用，已降级为 \(downloadResult.actualQuality.displayName)", duration: 3)
-            } else {
-                ToastCenter.shared.show("下载完成：\(downloadResult.actualQuality.displayName)", duration: 2)
-            }
-            BeansLogger.shared.log(
-                "下载完成，弹出分享：\(song.name)（请求=\(downloadResult.requestedQuality.rawValue) 实际=\(downloadResult.actualQuality.rawValue)\(downloadResult.downgraded ? "，已自动降级" : "")）",
-                level: .info
-            )
-            sharedFileURL = downloadResult.url
-            shareFile = ShareFileItem(url: downloadResult.url)
-        case .failure(let error):
-            BeansLogger.shared.log("下载失败：\(song.name) - \(error.localizedDescription)", level: .error)
-            ToastCenter.shared.show("下载失败：\(error.localizedDescription)", duration: 3)
-        }
-    }
-
     /// 分享面板关闭后清理临时下载文件（不占用户存储）
-    private func cleanupSharedFile() {
-        if let url = sharedFileURL {
-            try? FileManager.default.removeItem(at: url)
-        }
-        sharedFileURL = nil
-        shareFile = nil
-    }
-
     // MARK: - 动作
 
     /// 全部歌手名（多歌手歌曲点击时弹出选择，避免只打开第一位）
@@ -5292,30 +5135,7 @@ struct PlayerView: View {
             self.lyrics = parsed
         }
 
-        if song.source == .webdav {
-            let key = "webdav:" + identity
-            if let cached = LyricsCache.shared.value(for: key) { apply(LyricParser.parse(cached.lyric)); return }
-            if let track = song.webDAVTrack, let raw = try? await WebDAVLyrics.load(for: track) {
-                apply(LyricParser.parse(raw))
-                LyricsCache.shared.save(lyric: raw, translation: nil, for: key)
-            }
-            return
-        }
-
-        let cacheKey: String
-        if song.source == .kugou {
-            cacheKey = "kugou:\(song.kugouHash ?? song.identityKey)"
-        } else if song.source == .qq {
-            cacheKey = "qq:\(song.qqMid ?? song.identityKey)"
-        } else if song.source == .kuwo || song.source == .migu {
-            cacheKey = "\(song.source.rawValue):\(song.id)"
-        } else if song.source == .qishui {
-            cacheKey = "qishui:\(song.qishuiID ?? song.identityKey)"
-        } else if song.source == .bilibili {
-            cacheKey = "bilibili:\(song.bilibiliID ?? song.identityKey)"
-        } else {
-            cacheKey = "netease:\(song.id)"
-        }
+        let cacheKey: String = "kugou:\(song.kugouHash ?? song.identityKey)"
         if let cached = LyricsCache.shared.value(for: cacheKey) {
             apply(LyricParser.parse(
                 cached.lyric,
@@ -5333,52 +5153,9 @@ struct PlayerView: View {
             )
             apply(LyricParser.parse(payload.lrc, wordRaw: payload.krc, wordFormat: .kugouKRC))
             LyricsCache.shared.save(lyric: payload.lrc, translation: nil, wordTiming: payload.krc, wordFormat: .kugouKRC, for: cacheKey)
-        } else if song.source == .qq, let mid = song.qqMid {
-            if let payload = try? await QQMusicAPI.shared.lyricPayload(songmid: mid) {
-                apply(LyricParser.parse(payload.lrc ?? "", wordRaw: payload.qrc, wordFormat: .qqQRC))
-                LyricsCache.shared.save(lyric: payload.lrc ?? "", translation: nil, wordTiming: payload.qrc, wordFormat: .qqQRC, for: cacheKey)
-            }
-        } else if song.source == .kuwo || song.source == .migu {
-            if let lrc = try? await AdditionalCatalogSearchAPI.lyric(for: song), !lrc.isEmpty {
-                apply(LyricParser.parse(lrc))
-                LyricsCache.shared.save(lyric: lrc, translation: nil, for: cacheKey)
-            }
-        } else if song.source == .qishui {
-            if let raw = try? await QishuiAPI.shared.lyric(for: song), !raw.isEmpty {
-                let isKRC = raw.range(of: #"(?m)^\[\d+,\d+\].*<\d+,\d+"#, options: .regularExpression) != nil
-                let parsed = isKRC
-                    ? LyricParser.parse(raw, wordRaw: raw, wordFormat: .kugouKRC)
-                    : LyricParser.parse(raw)
-                if !parsed.isEmpty {
-                    apply(parsed)
-                    LyricsCache.shared.save(
-                        lyric: raw,
-                        translation: nil,
-                        wordTiming: isKRC ? raw : nil,
-                        wordFormat: isKRC ? .kugouKRC : nil,
-                        for: cacheKey
-                    )
-                }
-            }
-        } else if song.source == .bilibili {
-            if let raw = try? await BilibiliAPI.shared.lyric(for: song), !raw.isEmpty {
-                let parsed = LyricParser.parse(raw)
-                if !parsed.isEmpty {
-                    apply(parsed)
-                    LyricsCache.shared.save(lyric: raw, translation: nil, for: cacheKey)
-                }
-            }
-        } else {
-            if let (lrc, tlyric, yrc) = try? await NetEaseAPI.shared.lyricWithTranslation(id: song.id) {
-                apply(LyricParser.parse(lrc ?? "", translationRaw: tlyric, wordRaw: yrc, wordFormat: .neteaseYRC))
-                if let lrc, !lrc.isEmpty {
-                    LyricsCache.shared.save(lyric: lrc, translation: tlyric, wordTiming: yrc, wordFormat: .neteaseYRC, for: cacheKey)
-                }
-            }
         }
     }
 
-    /// 一次性提取当前封面主色，带动整个播放器配色动态变化（失败时保持主题回退色，不影响任何功能）
     private func extractCoverPalette() async {
         guard let url = displayCoverURL else { return }
         do {
@@ -7102,8 +6879,8 @@ private struct OfficialPlaylistPickerSheet: View {
                             onSelect(playlist)
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: playlist.isNetEaseLikedPlaylist ? "heart.fill" : "music.note.list")
-                                    .foregroundStyle(playlist.isNetEaseLikedPlaylist ? Color.beansAmber : Color.beansLabel)
+                                Image(systemName: "music.note.list")
+                                    .foregroundStyle(Color.beansLabel)
                                     .frame(width: 28)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(playlist.name)
@@ -7121,7 +6898,7 @@ private struct OfficialPlaylistPickerSheet: View {
                             }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if mode == .save && !playlist.isNetEaseLikedPlaylist {
+                            if mode == .save {
                                 Button(role: .destructive) {
                                     onDelete(playlist)
                                 } label: {
@@ -7131,7 +6908,7 @@ private struct OfficialPlaylistPickerSheet: View {
                         }
                     }
                 } header: {
-                    Text(source == .netease ? "网易云音乐" : "酷狗音乐")
+                    Text("酷狗音乐")
                 } footer: {
                     if source == .kugou {
                         Text(

@@ -13,14 +13,13 @@ final class DiscoverCache {
         var topArtists: [Artist] = []
         var topLists: [TopList] = []
         var personalized: [Playlist] = []
-        var qqTopLists: [QQTopInfo] = []
         var kugouTopLists: [KugouTopInfo] = []
         var savedAt: Date = .distantPast
 
         var isEmpty: Bool {
             dailySongs.isEmpty && newAlbums.isEmpty && topArtists.isEmpty
                 && topLists.isEmpty && personalized.isEmpty
-                && qqTopLists.isEmpty && kugouTopLists.isEmpty
+                && kugouTopLists.isEmpty
         }
     }
 
@@ -28,8 +27,6 @@ final class DiscoverCache {
     let listTTL: TimeInterval = 3600
     /// 每日推荐缓存时长（秒，推荐内容按天更新）
     let dailyTTL: TimeInterval = 6 * 3600
-    /// QQ 个性化推荐会随账号听歌行为变化，使用较短缓存避免首页长期展示旧结果。
-    let qqRecommendationTTL: TimeInterval = 15 * 60
 
     private let storageKey = "beans.discover.cache.v2"
     private let qishuiSnapshotVersionKey = "beans.discover.cache.qishui.version"
@@ -78,7 +75,6 @@ final class DiscoverCache {
     /// 缓存是否仍然新鲜：每日推荐单独放宽到 6 小时，其余按 1 小时
     func isFresh(_ snapshot: Snapshot, source: SearchProvider? = nil) -> Bool {
         let age = Date().timeIntervalSince(snapshot.savedAt)
-        if source == .qq { return age < qqRecommendationTTL }
         let ttl = snapshot.dailySongs.isEmpty ? listTTL : dailyTTL
         return age < ttl
     }

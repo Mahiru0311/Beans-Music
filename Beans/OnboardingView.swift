@@ -187,7 +187,7 @@ struct OnboardingView: View {
                 .font(BeansFont.appFont(30, .bold))
                 .foregroundStyle(Color.beansLabel)
 
-            Text(isEnglish ? "Native Liquid Glass on iOS 26 · NetEase Cloud Music / QQ Music / Kugou\nPure SwiftUI · Fully open source" : "iOS 26 原生液态玻璃 · 聚合网易云 / QQ / 酷狗\n纯 SwiftUI · 完全开源")
+            Text(isEnglish ? "Native Liquid Glass on iOS 26 · Kugou Music\nPure SwiftUI · Fully open source" : "iOS 26 原生液态玻璃 · 酷狗音乐\n纯 SwiftUI · 完全开源")
                 .font(BeansFont.appFont(15))
                 .foregroundStyle(Color.beansSecondary)
                 .multilineTextAlignment(.center)
@@ -271,7 +271,7 @@ struct OnboardingView: View {
         .beansCardShadow(radius: 8, y: 3)
     }
 
-    // MARK: 第 3 页 · 三平台
+    // MARK: 第 3 页 · 酷狗音乐
 
     private var platformPage: some View {
         VStack(spacing: 20) {
@@ -280,23 +280,17 @@ struct OnboardingView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(LinearGradient.beansAccent)
 
-            Text(isEnglish ? "Three platforms, one app for all your music" : "三平台聚合，一个 App 全听遍")
+            Text(isEnglish ? "Kugou Music, all in one app" : "酷狗音乐，一个 App 全听遍")
                 .font(BeansFont.appFont(26, .bold))
                 .foregroundStyle(Color.beansLabel)
 
-            Text(isEnglish ? "Choose the platforms you want to show. You can change this later in Settings." : "选择要显示的平台，之后也可随时在设置中更改")
+            Text(isEnglish ? "Kugou Music only." : "仅酷狗音乐")
                 .font(BeansFont.appFont(14))
                 .foregroundStyle(Color.beansSecondary)
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 12) {
-                platformRow(provider: .netease, imageName: "BrandNetease", tint: Color(red: 0.87, green: 0.23, blue: 0.23),
-                            title: isEnglish ? "NetEase Cloud Music" : "网易云音乐",
-                            detail: isEnglish ? "Scan or sign in on the web to sync playlists, favorites, charts, and VIP status" : "扫码 / 网页登录，同步歌单、收藏、听歌排行、VIP")
-                platformRow(provider: .qq, imageName: "BrandQQ", tint: Color(red: 0.13, green: 0.51, blue: 0.95),
-                            title: isEnglish ? "QQ Music" : "QQ 音乐",
-                            detail: isEnglish ? "Scan, sign in on the web, or use a Cookie to sync playlists and VIP status" : "扫码 / 网页 / Cookie 登录，同步歌单与 VIP")
-                platformRow(provider: .kugou, imageName: "BrandKugou", tint: Color(red: 0.12, green: 0.55, blue: 1.0),
+                                                platformRow(provider: .kugou, imageName: "BrandKugou", tint: Color(red: 0.12, green: 0.55, blue: 1.0),
                             title: isEnglish ? "Kugou Music" : "酷狗音乐",
                             detail: isEnglish ? "Sign in to sync cloud playlists and search Kugou songs" : "登录同步云端歌单，并支持酷狗歌曲搜索")
             }

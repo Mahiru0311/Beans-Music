@@ -173,11 +173,6 @@ struct MiniPlayerView: View {
         var raw: String?
         if song.source == .kugou, let hash = song.kugouHash {
             raw = await KugouMusicAPI.shared.lyric(hash: hash, duration: song.duration)
-        } else if song.source == .qq, let mid = song.qqMid {
-            raw = try? await QQMusicAPI.shared.lyric(songmid: mid)
-        } else if song.source == .netease {
-            raw = try? await NetEaseAPI.shared.lyric(id: song.id)
-        }
         guard !Task.isCancelled, let raw else { return }
         guard player.currentSong?.identityKey == identity else { return }
         miniLyrics = LyricParser.parse(raw)

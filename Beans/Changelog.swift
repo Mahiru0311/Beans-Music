@@ -46,32 +46,10 @@ enum ChangelogStore {
 
     static var latest: VersionLog? { logs.first }
 
-    /// 更新日志从 GitHub Releases 读取；网络不可用时继续显示内置历史记录。
-    static func fetchRemoteLatest() async -> VersionLog? {
-        guard let remote = try? await UpdateChecker.fetchLatest() else { return nil }
-        return versionLog(from: remote)
-    }
+    /// 更新日志仅显示内置历史记录（酷狗专版不做更新检查）。
+    static func fetchRemoteLatest() async -> VersionLog? { nil }
 
-    static func fetchRemoteHistory() async -> [VersionLog] {
-        guard let remoteLogs = try? await UpdateChecker.fetchHistory() else { return [] }
-        return remoteLogs.map { versionLog(from: $0) }
-    }
-
-    private static func versionLog(from remote: UpdateChecker.ReleaseInfo) -> VersionLog {
-        let notes = remote.body
-            .split(whereSeparator: { $0 == "\n" || $0 == "\r" })
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        return VersionLog(
-            id: "server-\(remote.version)",
-            version: remote.version,
-            title: remote.name,
-            features: notes,
-            fixes: [],
-            imageURL: remote.notesImageURL,
-            textColorHex: remote.notesTextColorHex
-        )
-    }
+    static func fetchRemoteHistory() async -> [VersionLog] { [] }
 
     static let logs: [VersionLog] = [
         VersionLog(

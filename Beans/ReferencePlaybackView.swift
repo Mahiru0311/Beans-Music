@@ -23,7 +23,6 @@ struct ReferencePlaybackView: View {
     @ObservedObject private var localLibrary = LocalLibraryStore.shared
     @ObservedObject private var appleLayout = AppleMusicLayoutStore.shared
     @ObservedObject private var customCovers = CustomSongCoverStore.shared
-    @ObservedObject private var dynamicWallpaper = DynamicWallpaperStore.shared
 
     let song: Song?
     let lyrics: [LyricLine]
@@ -68,7 +67,7 @@ struct ReferencePlaybackView: View {
         onComments: @escaping () -> Void,
         onSleepTimer: @escaping () -> Void,
         onAddToLocalPlaylist: @escaping () -> Void,
-        onDownload: @escaping () -> Void,
+        onDownload: @escaping () -> Void = {},
         onPlayerSettings: @escaping () -> Void,
         onArtist: @escaping () -> Void = {}
     ) {
@@ -132,11 +131,6 @@ struct ReferencePlaybackView: View {
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .background {
-            HighRefreshConfigurator()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
-        }
         .onDisappear {
             resumeTask?.cancel()
             lyricTapTask?.cancel()
@@ -167,9 +161,7 @@ struct ReferencePlaybackView: View {
             Color(uiColor: .systemBackground)
                 .ignoresSafeArea()
 
-            if dynamicWallpaper.syncsDynamicWallpaperToPlayer {
-                BeansDynamicWallpaperView(forPlayer: true)
-                    .ignoresSafeArea()
+            if false {
             } else if syncWallpaper, let image = theme.customBackgroundImage(for: colorScheme) {
                 WallpaperImage(image: image)
                     .blur(radius: CGFloat(wallpaperBlur))
@@ -288,9 +280,6 @@ struct ReferencePlaybackView: View {
                 Button("定时关闭", action: onSleepTimer)
                 Button("添加到本地歌单", action: onAddToLocalPlaylist)
                 customCoverActions
-                if downloadFeatureUnlocked {
-                    Button("下载歌曲", action: onDownload)
-                }
                 Button("播放器设置", action: onPlayerSettings)
                 Button("软件音量") {
                     showSoftwareVolume = true
@@ -431,9 +420,6 @@ struct ReferencePlaybackView: View {
                     Button("定时关闭", action: onSleepTimer)
                     Button("添加到本地歌单", action: onAddToLocalPlaylist)
                     customCoverActions
-                    if downloadFeatureUnlocked {
-                        Button("下载歌曲", action: onDownload)
-                    }
                     Button("播放器设置", action: onPlayerSettings)
                     Button("软件音量") {
                         showSoftwareVolume = true
@@ -530,9 +516,6 @@ struct ReferencePlaybackView: View {
                 Button("定时关闭", action: onSleepTimer)
                 Button("添加到本地歌单", action: onAddToLocalPlaylist)
                 customCoverActions
-                if downloadFeatureUnlocked {
-                    Button("下载歌曲", action: onDownload)
-                }
                 Button("播放器设置", action: onPlayerSettings)
                 Button("软件音量") {
                     showSoftwareVolume = true

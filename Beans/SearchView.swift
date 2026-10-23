@@ -39,54 +39,19 @@ struct FlowLayout: Layout {
 }
 
 enum SearchProvider: String, CaseIterable, Identifiable, Hashable {
-    case netease = "网易云音乐"
-    case qq = "QQ音乐"
     case kugou = "酷狗音乐"
-    case qishui = "汽水音乐"
-    case bilibili = "哔哩哔哩"
 
     var id: String { rawValue }
 
-    /// 主题色渐变：网易云红 / QQ 绿
     var tint: LinearGradient {
-        switch self {
-        case .netease: return LinearGradient(
-            colors: [Color(red: 0.93, green: 0.22, blue: 0.16), Color(red: 0.80, green: 0.15, blue: 0.12)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .qq: return LinearGradient(
-            colors: [Color(red: 0.15, green: 0.78, blue: 0.55), Color(red: 0.05, green: 0.58, blue: 0.42)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .kugou: return LinearGradient(
+        LinearGradient(
             colors: [Color(red: 0.12, green: 0.58, blue: 0.95), Color(red: 0.02, green: 0.32, blue: 0.72)],
             startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .qishui: return LinearGradient(
-            colors: [Color(red: 0.27, green: 0.37, blue: 0.98), Color(red: 0.12, green: 0.18, blue: 0.72)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .bilibili: return LinearGradient(
-            colors: [Color(red: 1.0, green: 0.39, blue: 0.58), Color(red: 0.92, green: 0.22, blue: 0.42)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
     }
 
-    var icon: String {
-        switch self {
-        case .netease: return "cloud.fill"
-        case .qq: return "play.rectangle.fill"
-        case .kugou: return "music.note"
-        case .qishui: return "drop.fill"
-        case .bilibili: return "play.rectangle.fill"
-        }
-    }
+    var icon: String { "music.note" }
 
-    var brandImageName: String? {
-        switch self {
-        case .netease: return "BrandNetease"
-        case .qq: return "BrandQQ"
-        case .kugou: return "BrandKugou"
-        case .qishui: return "BrandQishui"
-        case .bilibili: return "BrandBilibili"
-        }
-    }
+    var brandImageName: String? { "BrandKugou" }
 }
 
 enum SearchResultType: String, CaseIterable, Identifiable, Hashable {
@@ -274,10 +239,10 @@ struct SearchView: View {
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
 
     @State private var keyword = ""
-    @State private var provider: SearchCatalogProvider = .aggregate
+    @State private var provider: SearchCatalogProvider = .kugou
     /// 搜索平台是页面内状态；保留进入搜索前的首页平台，避免搜索筛选意外影响首页。
-    @State private var homeSourceSnapshot = UserDefaults.standard.string(forKey: "beans.homeSource") ?? SearchProvider.netease.rawValue
-    private var searchProviders: [SearchCatalogProvider] { SearchCatalogProvider.allCases }
+    @State private var homeSourceSnapshot = UserDefaults.standard.string(forKey: "beans.homeSource") ?? SearchProvider.kugou.rawValue
+    private var searchProviders: [SearchCatalogProvider] { [.kugou] }
     /// 已加载热门搜索的 provider（避免切 tab 反复加载）
     @State private var hotLoadedProvider: SearchCatalogProvider?
     @State private var resultType: SearchResultType = .all
@@ -292,7 +257,6 @@ struct SearchView: View {
     @State private var errorMessage: String?
     @State private var showAddToPlaylist: Song?
     @State private var selectedArtist: Artist?
-    @State private var selectedBilibiliArtist: Artist?
     @State private var selectedAlbum: Album?
     @State private var selectedPlaylist: Playlist?
     @ObservedObject private var historyStore = SearchHistoryStore.shared
@@ -301,13 +265,10 @@ struct SearchView: View {
     @State private var searchRequestID = UUID()
     @State private var playlistSearchTask: Task<Void, Never>?
     @State private var playlistSearchRequestID = UUID()
-    @State private var showBatchDownload = false
-    @State private var selectedDownloadSong: Song?
     @State private var showProfile = false
     @State private var artistCoverCache: [String: URL] = [:]
     /// UIKit 输入框控制器（提交拼音、收起键盘等由它统一处理）
     @State private var searchController = SearchFieldController()
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
 
     private var isNativeClean: Bool {
         BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
@@ -318,11 +279,7 @@ struct SearchView: View {
     }
 
     var body: some View {
-        if provider == .bilibili {
-            BilibiliHomePage()
-        } else {
-            musicSearchBody
-        }
+        musicSearchBody
     }
 
     private var musicSearchBody: some View {
@@ -406,7 +363,7 @@ struct SearchView: View {
         }
         .onAppear {
             homeSourceSnapshot = UserDefaults.standard.string(forKey: "beans.homeSource")
-                ?? SearchProvider.netease.rawValue
+                ?? SearchProvider.kugou.rawValue
         }
         .sheet(item: $showAddToPlaylist) { song in
             AddToLocalPlaylistSheet(song: song)
@@ -414,12 +371,6 @@ struct SearchView: View {
         }
         .sheet(item: $selectedArtist) { artist in
             ArtistHomeSheet(artist: artist).environmentObject(player)
-        }
-        .fullScreenCover(item: $selectedBilibiliArtist) { artist in
-            BilibiliNativeStandaloneStack(initialRoute: .up(artist))
-                .environmentObject(theme)
-                .environmentObject(auth)
-                .environmentObject(player)
         }
         .sheet(item: $selectedAlbum) { album in
             AlbumDetailView(album: album)
@@ -433,14 +384,6 @@ struct SearchView: View {
                     .environmentObject(auth)
                     .environmentObject(theme)
             }
-        }
-        .sheet(isPresented: $showBatchDownload) {
-            BatchDownloadSheet(songs: songResults, title: "下载搜索结果")
-                .environmentObject(theme)
-        }
-        .sheet(item: $selectedDownloadSong) { song in
-            BatchDownloadSheet(songs: [song], title: "下载歌曲")
-                .environmentObject(theme)
         }
         .sheet(isPresented: $showProfile) {
             ProfileView(forceHomeBackdrop: true)
@@ -878,20 +821,6 @@ struct SearchView: View {
                                     .font(BeansFont.appFont(14, .medium))
                                     .foregroundStyle(Color.beansComment)
                                 Spacer(minLength: 8)
-                                if downloadFeatureUnlocked, songResults.count > 1 {
-                                    Button {
-                                        BeansHaptics.tap()
-                                        showBatchDownload = true
-                                    } label: {
-                                        Label("批量下载", systemImage: "arrow.down.circle")
-                                            .font(BeansFont.appFont(13, .semibold))
-                                            .foregroundStyle(Color.beansAmber)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 7)
-                                            .background { Capsule().fill(Color.beansAmber.opacity(0.14)) }
-                                    }
-                                    .buttonStyle(.plain)
-                                }
                             }
                             ForEach(Array(songResults.prefix(6).enumerated()), id: \.element.identityKey) { index, song in
                                 BeansSearchSongRow(
@@ -906,9 +835,6 @@ struct SearchView: View {
                                     onAddToPlaylist: {
                                         showAddToPlaylist = song
                                     },
-                                    onDownload: downloadFeatureUnlocked ? {
-                                        selectedDownloadSong = song
-                                    } : nil
                                 )
                             }
                         }
@@ -1117,21 +1043,6 @@ struct SearchView: View {
                             }
                             .buttonStyle(.plain)
                             .fixedSize(horizontal: true, vertical: false)
-                            if downloadFeatureUnlocked, songResults.count > 1 {
-                                Button {
-                                    BeansHaptics.tap()
-                                    showBatchDownload = true
-                                } label: {
-                                    Label("批量下载", systemImage: "arrow.down.circle")
-                                        .font(BeansFont.appFont(12, .semibold))
-                                        .foregroundStyle(Color.beansAmber)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background { BeansSurface(shape: Capsule()) }
-                                }
-                                .buttonStyle(.plain)
-                                .fixedSize(horizontal: true, vertical: false)
-                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
@@ -1148,9 +1059,6 @@ struct SearchView: View {
                                 onAddToPlaylist: {
                                     showAddToPlaylist = song
                                 },
-                                onDownload: downloadFeatureUnlocked ? {
-                                    selectedDownloadSong = song
-                                } : nil
                             )
                         }
                     }
@@ -1283,64 +1191,14 @@ struct SearchView: View {
 
     private func loadHotWords() async {
         let requestedProvider = provider
-        if provider == .aggregate {
-            let values = await withTaskGroup(of: [String].self, returning: [[String]].self) { group in
-                for candidate in searchProviders where candidate != .aggregate {
-                    group.addTask {
-                        switch candidate {
-                        case .netease:
-                            return (try? await NetEaseAPI.shared.hotSearch()) ?? []
-                        case .qq:
-                            return (try? await QQMusicAPI.shared.hotKeys()) ?? []
-                        case .kugou:
-                            return await KugouMusicAPI.shared.hotWords()
-                        case .kuwo, .migu:
-                            guard let source = candidate.songSource else { return [] }
-                            return (try? await AdditionalCatalogSearchAPI.hotKeywords(for: source)) ?? []
-                        case .qishui:
-                            return []
-                        case .bilibili:
-                            return []
-                        case .aggregate:
-                            return []
-                        }
-                    }
-                }
-                var collected: [[String]] = []
-                for await result in group { collected.append(result) }
-                return collected
-            }
-            var seen = Set<String>()
-            hotWords = Array(values.flatMap { $0 }.filter {
-                let normalized = $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                return !normalized.isEmpty && seen.insert(normalized.localizedLowercase).inserted
-            }.prefix(8))
-        } else if provider == .qq {
-            if let words = try? await QQMusicAPI.shared.hotKeys() {
-                hotWords = words
-            }
-        } else if provider == .kugou {
-            hotWords = await KugouMusicAPI.shared.hotWords()
-        } else if (provider == .kuwo || provider == .migu), let source = provider.songSource {
-            hotWords = (try? await AdditionalCatalogSearchAPI.hotKeywords(for: source)) ?? []
-        } else if let words = try? await NetEaseAPI.shared.hotSearch() {
-            hotWords = words
-        }
+        hotWords = await KugouMusicAPI.shared.hotWords()
         guard requestedProvider == provider else { return }
         hotWords = Array(hotWords.prefix(8))
         hotWordsCache[requestedProvider] = hotWords
     }
 
+
     private func startSearch(_ text: String) async {
-        if provider == .bilibili {
-            searchTask?.cancel()
-            playlistSearchTask?.cancel()
-            searchRequestID = UUID()
-            playlistSearchRequestID = UUID()
-            searching = false
-            errorMessage = nil
-            return
-        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         searchTask?.cancel()
@@ -1525,18 +1383,9 @@ struct SearchView: View {
         provider: SearchCatalogProvider,
         limit: Int
     ) async -> [Playlist] {
-        if provider == .qq {
-            for attempt in 0..<2 {
-                let playlists = (try? await QQMusicAPI.shared.searchPlaylists(keyword: keyword, limit: limit)) ?? []
-                if !playlists.isEmpty || Task.isCancelled { return playlists }
-                if attempt == 0 {
-                    try? await Task.sleep(nanoseconds: 220_000_000)
-                }
-            }
-            return []
-        }
         return await catalogPlaylists(keyword: keyword, provider: provider, limit: limit)
     }
+
 
     /// 歌单 tab 使用独立任务，不与“综合/单曲”等并发请求共享状态。
     /// 这条路径和精选页一样在用户切换到歌单后立即发起 QQ 歌单请求。
@@ -1638,11 +1487,7 @@ struct SearchView: View {
     }
 
     private func openArtist(_ artist: Artist) {
-        if artist.source == .bilibili {
-            selectedBilibiliArtist = artist
-        } else {
-            selectedArtist = artist
-        }
+        selectedArtist = artist
     }
 
     private func albumSearchResultCard(_ album: Album) -> some View {
@@ -1716,150 +1561,32 @@ struct SearchView: View {
         limit: Int,
         onPartialResults: (@MainActor ([Song]) -> Void)? = nil
     ) async -> [Song] {
-        switch provider {
-        case .aggregate:
-            let providers: [SearchCatalogProvider] = [.netease, .qq, .kugou, .kuwo, .migu, .qishui, .bilibili]
-            let completedResults = await withTaskGroup(of: [Song].self, returning: [[Song]].self) { group in
-                for candidate in providers {
-                    group.addTask {
-                        await self.catalogSongs(keyword: keyword, provider: candidate, limit: limit)
-                    }
-                }
-                var values: [[Song]] = []
-                for await value in group { values.append(value) }
-                return values
-            }
-            return deduplicatedSongs(completedResults.flatMap { $0 })
-        case .kuwo:
-            return (try? await AdditionalCatalogSearchAPI.searchKuwo(keyword: keyword, limit: limit)) ?? []
-        case .migu:
-            return (try? await AdditionalCatalogSearchAPI.searchMigu(keyword: keyword, limit: limit)) ?? []
-        case .qishui:
-            return (try? await QishuiAPI.shared.searchSongs(
-                keyword: keyword,
-                limit: limit,
-                onPartialResults: onPartialResults
-            )) ?? []
-        case .bilibili:
-            return (try? await BilibiliAPI.shared.searchSongs(keyword: keyword, limit: limit)) ?? []
-        case .netease:
-            return (try? await NetEaseAPI.shared.search(keyword: keyword, limit: limit)) ?? []
-        case .qq:
-            return (try? await QQMusicAPI.shared.searchSongs(keyword: keyword, limit: limit)) ?? []
-        case .kugou:
-            return (try? await KugouMusicAPI.shared.searchSongs(keyword: keyword, limit: limit)) ?? []
-        }
+        guard provider == .kugou else { return [] }
+        return (try? await KugouMusicAPI.shared.searchSongs(keyword: keyword, limit: limit)) ?? []
     }
+
 
     private func catalogArtists(keyword: String, provider: SearchCatalogProvider, limit: Int) async -> [Artist] {
-        switch provider {
-        case .aggregate:
-            let providers: [SearchCatalogProvider] = [.netease, .qq, .kugou, .kuwo, .migu, .qishui, .bilibili]
-            let groups = await withTaskGroup(of: [Artist].self, returning: [[Artist]].self) { group in
-                for candidate in providers {
-                    group.addTask { await self.catalogArtists(keyword: keyword, provider: candidate, limit: limit) }
-                }
-                var result: [[Artist]] = []
-                for await value in group { result.append(value) }
-                return result
-            }
-            var seen = Set<String>()
-            return groups.flatMap { $0 }.filter {
-                seen.insert("\($0.source.rawValue)|\($0.name.localizedLowercase)").inserted
-            }
-        case .netease:
-            return (try? await NetEaseAPI.shared.searchArtists(keyword: keyword, limit: limit)) ?? []
-        case .qq:
-            return (try? await QQMusicAPI.shared.searchArtists(keyword: keyword, limit: limit)) ?? []
-        case .kugou:
-            return (try? await KugouMusicAPI.shared.searchArtists(keyword: keyword, limit: limit)) ?? []
-        case .kuwo:
-            return (try? await AdditionalCatalogSearchAPI.searchKuwoArtists(keyword: keyword, limit: limit)) ?? []
-        case .migu:
-            return (try? await AdditionalCatalogSearchAPI.searchMiguArtists(keyword: keyword, limit: limit)) ?? []
-        case .qishui:
-            return (try? await QishuiAPI.shared.searchArtists(keyword: keyword, limit: limit)) ?? []
-        case .bilibili:
-            return (try? await BilibiliAPI.shared.searchArtists(keyword: keyword, limit: limit)) ?? []
-        }
+        guard provider == .kugou else { return [] }
+        return (try? await KugouMusicAPI.shared.searchArtists(keyword: keyword, limit: limit)) ?? []
     }
 
+
     private func catalogAlbums(keyword: String, provider: SearchCatalogProvider, limit: Int) async -> [Album] {
-        switch provider {
-        case .aggregate:
-            let providers: [SearchCatalogProvider] = [.netease, .qq, .kugou, .kuwo, .migu, .qishui, .bilibili]
-            let groups = await withTaskGroup(of: [Album].self, returning: [[Album]].self) { group in
-                for candidate in providers {
-                    group.addTask { await self.catalogAlbums(keyword: keyword, provider: candidate, limit: limit) }
-                }
-                var result: [[Album]] = []
-                for await value in group { result.append(value) }
-                return result
-            }
-            var seen = Set<String>()
-            return groups.flatMap { $0 }.filter {
-                seen.insert("\($0.source.rawValue)|\($0.name.localizedLowercase)|\($0.artistName.localizedLowercase)").inserted
-            }
-        case .netease:
-            return (try? await NetEaseAPI.shared.searchAlbums(keyword: keyword, limit: limit)) ?? []
-        case .qq:
-            return (try? await QQMusicAPI.shared.searchAlbums(keyword: keyword, limit: limit)) ?? []
-        case .kugou:
-            return (try? await KugouMusicAPI.shared.searchAlbums(keyword: keyword, limit: limit)) ?? []
-        case .kuwo:
-            return (try? await AdditionalCatalogSearchAPI.searchKuwoAlbums(keyword: keyword, limit: limit)) ?? []
-        case .migu:
-            return (try? await AdditionalCatalogSearchAPI.searchMiguAlbums(keyword: keyword, limit: limit)) ?? []
-        case .qishui:
-            return (try? await QishuiAPI.shared.searchAlbums(keyword: keyword, limit: limit)) ?? []
-        case .bilibili:
-            return (try? await BilibiliAPI.shared.searchAlbums(keyword: keyword, limit: limit)) ?? []
-        }
+        guard provider == .kugou else { return [] }
+        return (try? await KugouMusicAPI.shared.searchAlbums(keyword: keyword, limit: limit)) ?? []
     }
+
 
     private func catalogPlaylists(keyword: String, provider: SearchCatalogProvider, limit: Int) async -> [Playlist] {
         (try? await catalogPlaylistsThrowing(keyword: keyword, provider: provider, limit: limit)) ?? []
     }
 
     private func catalogPlaylistsThrowing(keyword: String, provider: SearchCatalogProvider, limit: Int) async throws -> [Playlist] {
-        switch provider {
-        case .aggregate:
-            async let netease = NetEaseAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-            async let qq = QQMusicAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-            async let kugou = AdditionalCatalogSearchAPI.searchKugouPlaylists(keyword: keyword, limit: limit)
-            async let kuwo = AdditionalCatalogSearchAPI.searchKuwoPlaylists(keyword: keyword, limit: limit)
-            async let migu = AdditionalCatalogSearchAPI.searchMiguPlaylists(keyword: keyword, limit: limit)
-            async let qishui = QishuiAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-            async let bilibili = BilibiliAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-            let neteaseItems = (try? await netease) ?? []
-            let qqItems = (try? await qq) ?? []
-            let kugouItems = (try? await kugou) ?? []
-            let kuwoItems = (try? await kuwo) ?? []
-            let miguItems = (try? await migu) ?? []
-            let qishuiItems = (try? await qishui) ?? []
-            let bilibiliItems = (try? await bilibili) ?? []
-            let all = neteaseItems + qqItems + kugouItems + kuwoItems + miguItems + qishuiItems + bilibiliItems
-            var seen = Set<String>()
-            return all.filter {
-                let key = "\($0.name.localizedLowercase)|\($0.creatorName.localizedLowercase)"
-                return seen.insert(key).inserted
-            }
-        case .netease:
-            return try await NetEaseAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-        case .qq:
-            return try await QQMusicAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-        case .kugou:
-            return try await AdditionalCatalogSearchAPI.searchKugouPlaylists(keyword: keyword, limit: limit)
-        case .kuwo:
-            return try await AdditionalCatalogSearchAPI.searchKuwoPlaylists(keyword: keyword, limit: limit)
-        case .migu:
-            return try await AdditionalCatalogSearchAPI.searchMiguPlaylists(keyword: keyword, limit: limit)
-        case .qishui:
-            return try await QishuiAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-        case .bilibili:
-            return try await BilibiliAPI.shared.searchPlaylists(keyword: keyword, limit: limit)
-        }
+        // 酷狗 API 层没有歌单搜索接口，歌单 tab 暂返回空（不编造第三方接口）。
+        return []
     }
+
 
     private func sourceDisplayName(_ source: SongSource) -> String {
         switch source {
@@ -1918,7 +1645,6 @@ private struct BeansSearchSongRow: View {
     let onTap: () -> Void
     let onPlayNext: () -> Void
     let onAddToPlaylist: () -> Void
-    let onDownload: (() -> Void)?
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
 
     private var sourceName: String {
@@ -1987,14 +1713,6 @@ private struct BeansSearchSongRow: View {
             } label: {
                 Label("添加到歌单", systemImage: "text.badge.plus")
             }
-            if let onDownload {
-                Button {
-                    BeansHaptics.medium()
-                    onDownload()
-                } label: {
-                    Label("下载歌曲", systemImage: "arrow.down.circle")
-                }
-            }
         }
     }
 }
@@ -2013,12 +1731,10 @@ struct AlbumDetailView: View {
     @State private var isLoading = true
     @State private var isLoadingOtherAlbums = true
     @State private var errorMessage: String?
-    @State private var showBatchDownload = false
     @State private var selectedOtherAlbum: Album?
     @State private var showArtistHome = false
     @State private var showAlbumDescription = false
     @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
 
     init(album: Album, embeddedInNavigation: Bool = false) {
         self.album = album
@@ -2046,10 +1762,6 @@ struct AlbumDetailView: View {
             }
         }
         .task { await load() }
-        .sheet(isPresented: $showBatchDownload) {
-            BatchDownloadSheet(songs: tracks, title: "下载专辑")
-                .environmentObject(theme)
-        }
         .sheet(item: $selectedOtherAlbum) { album in
             AlbumDetailView(album: album)
                 .environmentObject(player)
@@ -2174,12 +1886,6 @@ struct AlbumDetailView: View {
                     GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
                         player.play(songs: tracks, startAt: 0)
                     }
-                    if downloadFeatureUnlocked, tracks.count > 1 {
-                        GlassButton(title: "批量下载", systemName: "arrow.down.circle") {
-                            BeansHaptics.tap()
-                            showBatchDownload = true
-                        }
-                    }
                 }
             }
         }
@@ -2295,40 +2001,7 @@ struct AlbumDetailView: View {
         do {
             async let relatedAlbumsTask = loadOtherAlbums()
             let result: [Song]
-            switch album.source {
-            case .netease:
-                guard let id = Int(album.id.replacingOccurrences(of: "netease-", with: "")) else {
-                    throw NSError(domain: "BeansAlbum", code: 1, userInfo: [NSLocalizedDescriptionKey: "专辑 ID 无效"])
-                }
-                let details = try? await NetEaseAPI.shared.albumDetails(albumID: id)
-                let direct = details?.songs ?? []
-                if let description = details?.description {
-                    await MainActor.run { albumDescription = description }
-                }
-                if !direct.isEmpty {
-                    result = direct
-                } else {
-                    result = await searchFallbackSongs(
-                        queries: [albumSearchQuery, album.name],
-                        search: { query in
-                            (try? await NetEaseAPI.shared.search(keyword: query, limit: 100)) ?? []
-                        }
-                    )
-                }
-            case .qq:
-                let qqMID = album.id.trimmingCharacters(in: .whitespacesAndNewlines)
-                let direct = (try? await QQMusicAPI.shared.albumSongs(albumMID: qqMID)) ?? []
-                if !direct.isEmpty {
-                    result = direct
-                } else {
-                    result = await searchFallbackSongs(
-                        queries: [albumSearchQuery, album.name],
-                        search: { query in
-                            (try? await QQMusicAPI.shared.searchSongs(keyword: query, limit: 100)) ?? []
-                        }
-                    )
-                }
-            case .kugou:
+            if album.source == .kugou {
                 let albumID = album.id.trimmingCharacters(in: .whitespacesAndNewlines)
                 let direct = (try? await KugouMusicAPI.shared.albumSongs(albumID: albumID)) ?? []
                 result = direct.isEmpty
@@ -2339,30 +2012,8 @@ struct AlbumDetailView: View {
                         }
                     )
                     : direct
-            case .kuwo:
-                result = await searchFallbackSongs(
-                    queries: [albumSearchQuery, album.name],
-                    search: { query in
-                        (try? await AdditionalCatalogSearchAPI.searchKuwo(keyword: query, limit: 100)) ?? []
-                    }
-                )
-            case .migu:
-                result = await searchFallbackSongs(
-                    queries: [albumSearchQuery, album.name],
-                    search: { query in
-                        (try? await AdditionalCatalogSearchAPI.searchMigu(keyword: query, limit: 100)) ?? []
-                    }
-                )
-            case .qishui:
-                result = await searchFallbackSongs(
-                    queries: [albumSearchQuery, album.name],
-                    search: { query in
-                        (try? await QishuiAPI.shared.searchSongs(keyword: query, limit: 100)) ?? []
-                    }
-                )
-            case .bilibili:
-                result = (try? await BilibiliAPI.shared.collection(album.id).songs) ?? []
-            case .webdav: result = []
+            } else {
+                result = []
             }
             if !result.isEmpty {
                 cache.save(result, for: cacheKey)
@@ -2411,26 +2062,7 @@ struct AlbumDetailView: View {
     private func loadOtherAlbums() async -> [Album] {
         let name = album.artistName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return [] }
-
-        let candidates: [Album]
-        switch album.source {
-        case .netease:
-            candidates = await loadNetEaseRelatedAlbums(artistName: name)
-        case .qq:
-            candidates = (try? await QQMusicAPI.shared.searchAlbums(keyword: name, limit: 30)) ?? []
-        case .kugou:
-            candidates = (try? await KugouMusicAPI.shared.searchAlbums(keyword: name, limit: 30)) ?? []
-        case .kuwo:
-            candidates = (try? await AdditionalCatalogSearchAPI.searchKuwoAlbums(keyword: name, limit: 30)) ?? []
-        case .migu:
-            candidates = (try? await AdditionalCatalogSearchAPI.searchMiguAlbums(keyword: name, limit: 30)) ?? []
-        case .qishui:
-            candidates = (try? await QishuiAPI.shared.searchAlbums(keyword: name, limit: 30)) ?? []
-        case .bilibili:
-            candidates = (try? await BilibiliAPI.shared.searchAlbums(keyword: name, limit: 30)) ?? []
-        case .webdav: candidates = []
-        }
-
+        let candidates: [Album] = (try? await KugouMusicAPI.shared.searchAlbums(keyword: name, limit: 30)) ?? []
         let expected = normalizedArtist(name)
         let matching = candidates.filter { candidate in
             let actual = normalizedArtist(candidate.artistName)
@@ -2439,30 +2071,11 @@ struct AlbumDetailView: View {
         return Array((matching.isEmpty ? candidates : matching).filter { $0.id != album.id }.prefix(12))
     }
 
+
     private func loadNetEaseRelatedAlbums(artistName: String) async -> [Album] {
-        var candidates: [Album] = []
-        if let id = Int(album.id.replacingOccurrences(of: "netease-", with: "")) {
-            candidates = (try? await NetEaseAPI.shared.artistAlbumsForAlbum(albumID: id, limit: 50)) ?? []
-        }
-        if candidates.count > 1 {
-            return candidates
-        }
-
-        let expected = normalizedArtist(artistName)
-        let artists = (try? await NetEaseAPI.shared.searchArtists(keyword: artistName, limit: 10)) ?? []
-        if let matchedArtist = artists.first(where: {
-            let actual = normalizedArtist($0.name)
-            return !actual.isEmpty && (actual == expected || actual.contains(expected) || expected.contains(actual))
-        }), let artistID = Int(matchedArtist.id.replacingOccurrences(of: "netease-", with: "")) {
-            let albums = (try? await NetEaseAPI.shared.artistAlbums(artistID: artistID, limit: 50)) ?? []
-            if !albums.isEmpty {
-                return albums
-            }
-        }
-
-        let searchResults = (try? await NetEaseAPI.shared.searchAlbums(keyword: artistName, limit: 50)) ?? []
-        return candidates.isEmpty ? searchResults : candidates + searchResults
+        []
     }
+
 
     private func searchFallbackSongs(
         queries: [String],

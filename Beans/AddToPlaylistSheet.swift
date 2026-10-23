@@ -76,7 +76,7 @@ struct AddToPlaylistSheet: View {
     }
 
     private func add(to playlist: Playlist) async {
-        let ok = (try? await NetEaseAPI.shared.addToPlaylist(playlistID: playlist.id, songIDs: [song.id])) ?? false
+        let ok = (try? await KugouMusicAPI.shared.addToPlaylist(playlistID: playlist.id, songs: [song])) ?? false
         if ok {
             if !favorites.isLiked(song) {
                 _ = await favorites.toggle(song)
@@ -91,8 +91,8 @@ struct AddToPlaylistSheet: View {
         let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         do {
-            let playlistID = try await NetEaseAPI.shared.createPlaylist(name: name)
-            let ok = try await NetEaseAPI.shared.addToPlaylist(playlistID: playlistID, songIDs: [song.id])
+            let created = try await KugouMusicAPI.shared.createPlaylist(name: name)
+            let ok = try await KugouMusicAPI.shared.addToPlaylist(playlistID: created.id, songs: [song])
             if ok {
                 if !favorites.isLiked(song) {
                     _ = await favorites.toggle(song)

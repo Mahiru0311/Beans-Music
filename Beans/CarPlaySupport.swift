@@ -122,11 +122,11 @@ final class BeansCarPlayCoordinator: NSObject {
         contentTask = Task { [weak self] in
             guard let self else { return }
 
-            async let recommendations = NetEaseAPI.shared.recommendedHomePlaylists(loggedIn: false, limit: 12)
-            async let curated = (try? await NetEaseAPI.shared.highQualityPlaylists(limit: 18)) ?? []
-            async let daily = (try? await NetEaseAPI.shared.dailyRecommend()) ?? []
-            async let topLists = (try? await NetEaseAPI.shared.topLists()) ?? []
-            async let roaming = (try? await NetEaseAPI.shared.personalFM(limit: 30)) ?? []
+            async let recommendations = (try? await KugouMusicAPI.shared.recommendPlaylists(limit: 12)) ?? []
+            async let curated = (try? await KugouMusicAPI.shared.playlists(categoryID: 0, limit: 18)) ?? []
+            async let daily: [Song] = []
+            async let topLists = (try? await KugouMusicAPI.shared.topLists(limit: 10))?.map { TopList(id: $0.id, name: $0.name, coverURL: $0.coverURL, updateFrequency: "") } ?? []
+            async let roaming = (try? await KugouMusicAPI.shared.personalFM(limit: 30)) ?? []
 
             let loadedRecommendations = await recommendations
             let loadedCurated = await curated
@@ -356,7 +356,7 @@ final class BeansCarPlayCoordinator: NSObject {
 
         Task { [weak self, weak template] in
             do {
-                let songs = try await NetEaseAPI.shared.playlistTracks(id: playlist.id)
+                let songs = try await KugouMusicAPI.shared.playlistSongs(listID: playlist.id)
                 guard !songs.isEmpty else {
                     await MainActor.run {
                         template?.updateSections([
@@ -395,7 +395,7 @@ final class BeansCarPlayCoordinator: NSObject {
 
         Task { [weak self, weak template] in
             do {
-                let songs = try await NetEaseAPI.shared.playlistTracks(id: topList.id)
+                let songs = try await KugouMusicAPI.shared.playlistSongs(listID: topList.id)
                 await MainActor.run {
                     let items = songs.enumerated().map { index, song in
                         self?.makeTrackItem(song, tracks: songs, startIndex: index)

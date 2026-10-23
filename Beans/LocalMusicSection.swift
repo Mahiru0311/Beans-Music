@@ -5,8 +5,6 @@ import UIKit
 
 struct LocalMusicSection: View {
     fileprivate enum SyncTarget: String, CaseIterable, Identifiable {
-        case netease = "网易云音乐"
-        case qq = "QQ音乐"
         case kugou = "酷狗音乐"
 
         var id: String { rawValue }
@@ -20,7 +18,6 @@ struct LocalMusicSection: View {
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
 
     @State private var showCreate = false
-    @State private var showImportPlaylist = false
     @State private var showPlaylistOrder = false
     @State private var newName = ""
     @State private var selected: LocalPlaylist?
@@ -43,16 +40,6 @@ struct LocalMusicSection: View {
                     .font(BeansFont.appFont(21, .bold))
                     .foregroundStyle(Color.beansLabel)
                 Spacer(minLength: 8)
-                Button {
-                    showImportPlaylist = true
-                } label: {
-                    Image(systemName: "doc.on.clipboard")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.beansAmber)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("粘贴或导入歌单")
-                .help("粘贴或导入歌单")
                 Button {
                     newName = ""
                     showCreate = true
@@ -99,9 +86,6 @@ struct LocalMusicSection: View {
                         icon: "internaldrive",
                         text: emptyLocalPlaylistText
                     )
-                    GlassButton(title: "粘贴歌单", systemName: "doc.on.clipboard") {
-                        showImportPlaylist = true
-                    }
                 }
             } else {
                 VStack(spacing: 0) {
@@ -198,10 +182,6 @@ struct LocalMusicSection: View {
                 }
             )
         }
-        .sheet(isPresented: $showImportPlaylist) {
-            PlaylistImportSheet()
-                .environmentObject(theme)
-        }
         .sheet(isPresented: $showPlaylistOrder) {
             LocalPlaylistOrderSheet()
                 .environmentObject(theme)
@@ -223,49 +203,10 @@ struct LocalMusicSection: View {
         syncMessage = ""
         var songs: [Song] = []
         var details: [String] = []
-        if targets.contains(.netease), let user = auth.user, auth.isLoggedIn {
-            do {
-                let lists = try await NetEaseAPI.shared.userPlaylists(uid: user.uid)
-                let liked = lists.first { list in
-                    let name = list.name.replacingOccurrences(of: " ", with: "")
-                    return name.contains("喜欢") || name.contains("我喜欢")
-                }
-                if let liked {
-                    let neteaseSongs = try await NetEaseAPI.shared.playlistTracks(id: liked.id)
-                    songs.append(contentsOf: neteaseSongs)
-                    details.append(platformSongCount("网易云", neteaseSongs.count))
-                } else {
-                    details.append(NSLocalizedString("网易云未找到喜欢歌单", comment: ""))
-                }
-            } catch {
-                BeansLogger.shared.log("三平台同步：网易云失败 \(error.localizedDescription)", level: .error)
-                details.append(NSLocalizedString("网易云请求失败", comment: ""))
-            }
-        } else if targets.contains(.netease) {
-            details.append(NSLocalizedString("网易云未登录", comment: ""))
-        }
-        if targets.contains(.netease), !favorites.neteaseFavoriteSongs.isEmpty {
-            let cachedIDs = Set(songs.filter { $0.source == .netease }.map(\.id))
-            let cached = favorites.neteaseFavoriteSongs.filter { !cachedIDs.contains($0.id) }
-            songs.append(contentsOf: cached)
-            if !cached.isEmpty { details.append(String(format: NSLocalizedString("网易云缓存补充 %d 首", comment: ""), cached.count)) }
-        }
-        if targets.contains(.qq), QQMusicAuth.shared.isLoggedIn {
-            do {
-                let qqSongs = try await QQMusicAPI.shared.favoriteSongs(limit: 0)
-                songs.append(contentsOf: qqSongs)
-                details.append(platformSongCount("QQ音乐", qqSongs.count))
-            } catch {
-                BeansLogger.shared.log("三平台同步：QQ音乐失败 \(error.localizedDescription)", level: .error)
-                details.append(NSLocalizedString("QQ音乐请求失败", comment: ""))
-            }
-        } else if targets.contains(.qq) {
-            details.append(NSLocalizedString("QQ音乐未登录", comment: ""))
-        }
         if targets.contains(.kugou), KugouMusicAuth.shared.isLoggedIn {
             do {
                 let lists = try await KugouMusicAPI.shared.userPlaylists()
-                BeansLogger.shared.log("三平台同步：酷狗歌单 \(lists.map(\.name).joined(separator: "|"))", level: .info)
+                BeansLogger.shared.log("酷狗歌单 \(lists.map(\.name).joined(separator: "|"))", level: .info)
                 let liked = lists.first { list in
                     let name = list.name.replacingOccurrences(of: " ", with: "")
                     return name.contains("喜欢") || name.contains("收藏") || name.contains("红心")
@@ -278,7 +219,7 @@ struct LocalMusicSection: View {
                     details.append(NSLocalizedString("酷狗音乐未找到喜欢歌单", comment: ""))
                 }
             } catch {
-                BeansLogger.shared.log("三平台同步：酷狗音乐失败 \(error.localizedDescription)", level: .error)
+                BeansLogger.shared.log("酷狗同步失败 \(error.localizedDescription)", level: .error)
                 details.append(NSLocalizedString("酷狗音乐请求失败", comment: ""))
             }
         } else if targets.contains(.kugou) {
@@ -393,11 +334,7 @@ fileprivate struct SyncPlatformPicker: View {
     }
 
     private func icon(for target: LocalMusicSection.SyncTarget) -> String {
-        switch target {
-        case .netease: return "music.note"
-        case .qq: return "q.circle"
-        case .kugou: return "dog"
-        }
+        "dog"
     }
 }
 
@@ -420,11 +357,7 @@ struct LocalPlaylistDetailSheet: View {
     @State private var selectedSongKeys: Set<String> = []
     @State private var showAddSelectedDestination = false
     @State private var exportFile: ShareFileItem?
-    @State private var showBatchDownload = false
-    @State private var batchDownloadSongs: [Song] = []
     @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
-
     private var playlist: LocalPlaylist? {
         store.playlists.first { $0.id == playlistID }
     }
@@ -538,15 +471,6 @@ struct LocalPlaylistDetailSheet: View {
                             Label(multiSelectMode ? "退出多选" : "多选编辑", systemImage: multiSelectMode ? "xmark.circle" : "checklist")
                         }
                         if multiSelectMode {
-                            if downloadFeatureUnlocked {
-                                Button {
-                                    batchDownloadSongs = selectedSongs
-                                    showBatchDownload = true
-                                } label: {
-                                    Label("下载选中歌曲", systemImage: "arrow.down.to.line.compact")
-                                }
-                                .disabled(selectedSongKeys.isEmpty)
-                            }
                             Button {
                                 copyAllSongTitles()
                             } label: {
@@ -569,15 +493,6 @@ struct LocalPlaylistDetailSheet: View {
                                 Label("添加到其他本地歌单", systemImage: "folder.badge.plus")
                             }
                             .disabled(selectedSongKeys.isEmpty || !hasOtherPlaylist)
-                        }
-                        if !multiSelectMode, downloadFeatureUnlocked {
-                            Button {
-                                batchDownloadSongs = visibleSongs.map(\.element)
-                                showBatchDownload = true
-                            } label: {
-                                Label("批量下载歌单", systemImage: "arrow.down.to.line.compact")
-                            }
-                            .disabled(visibleSongs.isEmpty)
                         }
                         Button {
                             if let song = player.currentSong {
@@ -615,10 +530,6 @@ struct LocalPlaylistDetailSheet: View {
         }
         .sheet(item: $exportFile) { item in
             ShareSheet(items: [item.url])
-        }
-        .sheet(isPresented: $showBatchDownload) {
-            BatchDownloadSheet(songs: batchDownloadSongs, title: "下载本地歌单")
-                .environmentObject(theme)
         }
         .alert("重命名歌单", isPresented: $showRename) {
             TextField("歌单名称", text: $renameText)
@@ -738,11 +649,10 @@ struct LocalPlaylistDetailSheet: View {
     }
 }
 
-// MARK: - 本地歌单搜索添加（网易云 / QQ 音乐）
+// MARK: - 本地歌单搜索添加（酷狗）
 
 struct LocalSearchAddSheet: View {
     @ObservedObject private var store = LocalLibraryStore.shared
-    @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
     @Environment(\.dismiss) private var dismiss
@@ -751,8 +661,7 @@ struct LocalSearchAddSheet: View {
     @State private var keyword = ""
     @State private var results: [Song] = []
     @State private var searching = false
-    @State private var provider: SearchProvider = .netease
-    private var searchProviders: [SearchProvider] { platformPrefs.enabledSearchProviders }
+    private var provider: SearchProvider = .kugou
     @State private var task: Task<Void, Never>?
 
     var body: some View {
@@ -787,13 +696,6 @@ struct LocalSearchAddSheet: View {
                     }
                     .padding(12)
                 }
-                Picker("平台", selection: $provider) {
-                    ForEach(searchProviders) { p in
-                        Text(LocalizedStringKey(p.rawValue)).tag(p)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 12)
                 if searching {
                     Spacer()
                     ProgressView().tint(Color.beansAmber)
@@ -828,13 +730,6 @@ struct LocalSearchAddSheet: View {
             }
         }
         .modifier(BeansSheetModifier(detents: [.medium, .large], dragIndicator: true))
-        .onAppear {
-            provider = platformPrefs.ensureVisible(provider)
-        }
-        .onReceive(platformPrefs.changes) { _ in
-            let next = platformPrefs.ensureVisible(provider)
-            if next != provider { provider = next }
-        }
     }
 
     private func runSearch() {
@@ -846,18 +741,7 @@ struct LocalSearchAddSheet: View {
             defer { if !Task.isCancelled { searching = false } }
             do {
                 let songs: [Song]
-                switch provider {
-                case .netease:
-                    songs = try await NetEaseAPI.shared.search(keyword: trimmed, limit: 30)
-                case .qq:
-                    songs = try await QQMusicAPI.shared.searchSongs(keyword: trimmed)
-                case .kugou:
-                    songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed)
-                case .qishui:
-                    songs = try await QishuiAPI.shared.searchSongs(keyword: trimmed)
-                case .bilibili:
-                    songs = try await BilibiliAPI.shared.searchSongs(keyword: trimmed)
-                }
+                songs = try await KugouMusicAPI.shared.searchSongs(keyword: trimmed)
                 guard !Task.isCancelled else { return }
                 results = songs
             } catch {

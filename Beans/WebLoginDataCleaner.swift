@@ -2,14 +2,6 @@ import Foundation
 import WebKit
 
 enum WebLoginDataCleaner {
-    static func clearNetEase() {
-        clear(domains: ["music.163.com", "163.com"])
-    }
-
-    static func clearQQMusic() {
-        clear(domains: ["y.qq.com", "qq.com", "ptlogin2.qq.com"])
-    }
-
     static func clearKugou() {
         clear(domains: ["kugou.com", "login-user.kugou.com", "h5.kugou.com"])
     }

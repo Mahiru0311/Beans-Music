@@ -3,7 +3,6 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var theme: ThemeStore
-    @State private var selectedBilibiliVideo: Song?
 
     var body: some View {
         BeansNavigationStack {
@@ -37,25 +36,11 @@ struct HistoryView: View {
                     }
                 }
             }
-            .fullScreenCover(item: $selectedBilibiliVideo) { song in
-                BilibiliNativeStandaloneStack(initialRoute: .video(song))
-                    .environmentObject(player)
-                    .environmentObject(theme)
-            }
-        }
-        .background {
-            HighRefreshConfigurator()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
         }
     }
 
     private func open(_ song: Song, index: Int) {
-        if song.source == .bilibili {
-            selectedBilibiliVideo = song
-        } else {
-            player.play(songs: player.history, startAt: index)
-        }
+        player.play(songs: player.history, startAt: index)
     }
 }
 

@@ -26,7 +26,7 @@ final class RemoteControlStore: ObservableObject {
             var request = URLRequest(url: configURL)
             request.timeoutInterval = 8
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            request.setValue("Beans-Music/\(UpdateChecker.currentVersion)", forHTTPHeaderField: "User-Agent")
+            request.setValue("Beans-Music/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0.3")", forHTTPHeaderField: "User-Agent")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
             let payload = try JSONDecoder.beansSnakeCase.decode(RemoteConfig.self, from: data)

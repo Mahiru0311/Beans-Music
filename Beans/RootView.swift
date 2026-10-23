@@ -157,9 +157,7 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @ObservedObject private var localLibrary = LocalLibraryStore.shared
-    @ObservedObject private var qqAuth = QQMusicAuth.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
-    @ObservedObject private var bilibiliPresentation = BilibiliPresentationState.shared
     @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
 
     @State private var selection: RootTab = .discover
@@ -175,7 +173,6 @@ struct RootView: View {
     @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = BeansTabIconStyle.sfSymbols.rawValue
     @State private var tabVisibility = BeansTabVisibility.load()
     @AppStorage("beans.queueOverlayPresented") private var queueOverlayPresented = false
-    @AppStorage("beans.homeSource") private var homeSourceRaw = SearchProvider.bilibili.rawValue
     @AppStorage("beans.developer.homeFrameMeter") private var homeFrameMeterEnabled = true
     @AppStorage("beans.legacyTabCornerRadius") private var legacyTabCornerRadius = 32.0
     @AppStorage("beans.legacyTabWidth") private var legacyTabWidth = 356.0
@@ -184,25 +181,7 @@ struct RootView: View {
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
     @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
-    @AppStorage("beans.remoteAnnouncement.enabled") private var remoteAnnouncementEnabled = false
-    @AppStorage("beans.remoteAnnouncement.text") private var remoteAnnouncementText = ""
-    @AppStorage("beans.remoteAnnouncement.imageURL") private var remoteAnnouncementImageURL = ""
-    @AppStorage("beans.remoteAnnouncement.mediaURL") private var remoteAnnouncementMediaURL = ""
-    @AppStorage("beans.remoteAnnouncement.mediaType") private var remoteAnnouncementMediaType = ""
-    @AppStorage("beans.remoteAnnouncement.textColor") private var remoteAnnouncementTextColor = ""
-    @AppStorage("beans.remoteAnnouncement.updatedAt") private var remoteAnnouncementUpdatedAt = ""
-    @AppStorage("beans.remoteAnnouncement.seenKey") private var remoteAnnouncementSeenKey = ""
     @State private var showWhatsNew = false
-    @State private var updateInfo: UpdateChecker.ReleaseInfo?
-    @State private var showUpdateAlert = false
-    @ObservedObject private var ipaDownloader = IPADownloader.shared
-    @State private var showUpdateDownloadOverlay = false
-    @State private var updateShareFile: ShareFileItem?
-    @State private var updateShareFileURL: URL?
-    @State private var updateDownloadError = ""
-    @State private var showUpdateDownloadError = false
-    @State private var showRemoteAnnouncement = false
-    @State private var showHomePlatformMenu = false
     @State private var sidebarRemotePlaylists: [Playlist] = []
     @State private var sidebarLocalPlaylist: LocalPlaylist?
     @State private var themeRevealSnapshot: UIImage?
@@ -305,16 +284,12 @@ struct RootView: View {
                     nativeTabs(isPadLandscape: false)
                         .modifier(
                             MiniPlayerAccessoryModifier(
-                                isActive: player.currentSong != nil && !queueOverlayPresented && !bilibiliPresentation.shouldHideBeansChrome,
+                                isActive: player.currentSong != nil && !queueOverlayPresented,
                                 showPlayer: $showPlayer,
                                 clock: player.clock,
                                 colorScheme: colorScheme,
                                 transitionNamespace: nowPlayingTransition
                             )
-                        )
-                        .toolbar(
-                            bilibiliPresentation.shouldHideBeansChrome ? .hidden : .visible,
-                            for: .tabBar
                         )
                 } else {
                     legacyRootTabs
@@ -336,25 +311,11 @@ struct RootView: View {
             )
         }
         .background {
-            BeansWindowSizeProbe { size in
-                if unoccludedWindowSize != size { unoccludedWindowSize = size }
-            }
-        }
-        .background {
             TabBarAppearanceConfigurator(
-                hidesSystemTabBarOnLegacy: !usesSystemFloatingTabBar,
-                onHomeLongPress: { showHomePlatformMenu = true }
+                hidesSystemTabBarOnLegacy: !usesSystemFloatingTabBar
             )
         }
-        .background {
-            HighRefreshConfigurator()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
-        }
         .preferredColorScheme(themeMode.colorScheme)
-        .confirmationDialog("主页平台", isPresented: $showHomePlatformMenu, titleVisibility: .visible) {
-            platformSelectionMenu
-        }
         .fullScreenCover(isPresented: $showPlayer) {
             if #available(iOS 18.0, *) {
                 playerPresentation
@@ -382,13 +343,9 @@ struct RootView: View {
             ToastView(center: ToastCenter.shared)
         }
         .onAppear {
-            // 启动已完成：标记本次启动正常（供下次启动检测闪退）
-            CrashReporter.shared.markLaunchCompleted()
             if disclaimerAccepted, ChangelogStore.shouldShowWhatsNew {
                 showWhatsNew = true
             }
-            HighRefreshKeeper.shared.startIfNeeded()
-            DeveloperFPSOverlayWindow.shared.setVisible(homeFrameMeterEnabled)
             normalizeTabSelection()
             guard !rootLayoutSettled else { return }
             DispatchQueue.main.async {
@@ -398,9 +355,6 @@ struct RootView: View {
                     rootLayoutSettled = true
                 }
             }
-        }
-        .onChange(of: homeFrameMeterEnabled) { enabled in
-            DeveloperFPSOverlayWindow.shared.setVisible(enabled)
         }
         .onChange(of: disclaimerAccepted) { accepted in
             if accepted, ChangelogStore.shouldShowWhatsNew {
@@ -441,152 +395,8 @@ struct RootView: View {
                 .environmentObject(theme)
         }
         .task(id: disclaimerAccepted) {
-            // UI smoke runs must exercise the actual Beans/CiliCili surfaces,
-            // not an unrelated remote update prompt that can cover the
-            // navigation controls and make the test depend on server state.
             guard disclaimerAccepted, !isUITestSmoke else { return }
-            if let info = await UpdateChecker.checkIfNeeded() {
-                updateInfo = info
-                showUpdateAlert = true
-            }
             await RemoteControlStore.shared.refreshIfNeeded(force: true)
-            presentRemoteAnnouncementIfNeeded()
-        }
-        .overlay {
-            if showUpdateAlert, let info = updateInfo {
-                UpdatePromptOverlay(
-                    info: info,
-                    onOpen: {
-                        showUpdateAlert = false
-                        if let assetURL = info.assetURL {
-                            startUpdateDownload(info: info, assetURL: assetURL)
-                        } else {
-                            UIApplication.shared.open(info.htmlURL)
-                        }
-                    },
-                    onRemindLater: {
-                        UpdateChecker.suppress(version: info.version)
-                        showUpdateAlert = false
-                    },
-                    onDismiss: {
-                        showUpdateAlert = false
-                    }
-                )
-                .transition(.opacity)
-                .zIndex(20)
-            }
-        }
-        .overlay {
-            if showUpdateDownloadOverlay {
-                updateDownloadProgressOverlay
-                    .zIndex(21)
-            }
-        }
-        .sheet(item: $updateShareFile, onDismiss: cleanupUpdateShareFile) { item in
-            ShareSheet(items: [item.url])
-        }
-        .alert("更新下载失败", isPresented: $showUpdateDownloadError) {
-            Button("好", role: .cancel) {}
-            Button("打开 GitHub") {
-                UIApplication.shared.open(UpdateChecker.releasePageURL)
-            }
-        } message: {
-            Text(updateDownloadError)
-        }
-        .overlay {
-            if showRemoteAnnouncement {
-                RemoteAnnouncementOverlay(
-                    text: remoteAnnouncementText,
-                    mediaURL: remoteAnnouncementMediaURL.isEmpty ? remoteAnnouncementImageURL : remoteAnnouncementMediaURL,
-                    mediaType: remoteAnnouncementMediaType,
-                    textColor: remoteAnnouncementColor,
-                    onDismiss: {
-                        remoteAnnouncementSeenKey = remoteAnnouncementKey
-                        showRemoteAnnouncement = false
-                    }
-                )
-                .zIndex(22)
-            }
-        }
-    }
-
-    private var remoteAnnouncementColor: Color {
-        Color(hex: remoteAnnouncementTextColor) ?? Color.beansLabel
-    }
-
-    private var remoteAnnouncementKey: String {
-        "\(remoteAnnouncementUpdatedAt)|\(remoteAnnouncementText)|\(remoteAnnouncementMediaURL)|\(remoteAnnouncementMediaType)"
-    }
-
-    private func presentRemoteAnnouncementIfNeeded() {
-        guard remoteAnnouncementEnabled,
-              !remoteAnnouncementText.isEmpty || !remoteAnnouncementMediaURL.isEmpty || !remoteAnnouncementImageURL.isEmpty else { return }
-        guard remoteAnnouncementSeenKey != remoteAnnouncementKey else { return }
-        showRemoteAnnouncement = true
-    }
-
-    private func startUpdateDownload(info: UpdateChecker.ReleaseInfo, assetURL: URL) {
-        showUpdateDownloadOverlay = true
-        Task {
-            do {
-                let url = try await ipaDownloader.download(assetURL: assetURL, version: info.version)
-                await MainActor.run {
-                    showUpdateDownloadOverlay = false
-                    updateShareFileURL = url
-                    updateShareFile = ShareFileItem(url: url)
-                }
-            } catch {
-                await MainActor.run {
-                    showUpdateDownloadOverlay = false
-                    updateDownloadError = error.localizedDescription
-                    showUpdateDownloadError = true
-                }
-            }
-        }
-    }
-
-    private func cleanupUpdateShareFile() {
-        guard let url = updateShareFileURL else { return }
-        try? FileManager.default.removeItem(at: url)
-        updateShareFile = nil
-        updateShareFileURL = nil
-    }
-
-    private var updateDownloadProgressOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-            VStack(spacing: 14) {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color.beansHighlight)
-                    Text("正在下载最新版 IPA")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                }
-                if ipaDownloader.progress >= 0 {
-                    ProgressView(value: ipaDownloader.progress)
-                        .progressViewStyle(.linear)
-                        .tint(Color.beansAmber)
-                    Text("\(Int(ipaDownloader.progress * 100))%")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                } else {
-                    ProgressView()
-                        .tint(Color.beansAmber)
-                    Text("正在连接下载服务器…")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-            }
-            .padding(22)
-            .frame(maxWidth: 300)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-            .beansCardShadow(radius: 12, y: 6)
-            .padding(32)
         }
     }
 
@@ -616,7 +426,6 @@ struct RootView: View {
                     selection: $selection,
                     labelsVisible: tabLabelsVisible,
                     accentIsNativeClean: isNativeClean,
-                    onHomeLongPress: { showHomePlatformMenu = true },
                     iconSize: 25,
                     isRoundedStyle: tabIconStyle == .rounded
                 ) { tab in
@@ -632,22 +441,6 @@ struct RootView: View {
         }
         .padding(.bottom, 6)
         .offset(x: CGFloat(legacyTabOffsetX), y: CGFloat(legacyTabOffsetY))
-    }
-
-    @ViewBuilder
-    private var platformSelectionMenu: some View {
-        let providers = platformPrefs.enabledSearchProviders.filter { $0 != .qishui }
-        let saved = SearchProvider(rawValue: homeSourceRaw)
-        let current = saved.flatMap { providers.contains($0) ? $0 : nil } ?? providers.first ?? .netease
-        Text("主页平台")
-        ForEach(providers) { provider in
-            Button {
-                BeansHaptics.select()
-                homeSourceRaw = provider.rawValue
-            } label: {
-                Label(LocalizedStringKey(provider.rawValue), systemImage: provider == current ? "checkmark" : provider.icon)
-            }
-        }
     }
 
     @ViewBuilder
@@ -925,7 +718,7 @@ struct RootView: View {
                 max(24, safeAreaInsets.bottom + (reservesMiniPlayerSpace ? 72 : 10))
             )
         }
-        .task(id: "\(auth.user?.uid ?? 0)-\(qqAuth.isLoggedIn)-\(kugouAuth.userId)") {
+        .task(id: "\(auth.user?.uid ?? 0)-\(kugouAuth.userId)") {
             await loadSidebarPlaylists()
         }
         .background {
@@ -953,15 +746,7 @@ struct RootView: View {
 
     private var sidebarRemotePlaylistGroups: [SidebarPlaylistGroup] {
         var groups: [SidebarPlaylistGroup] = []
-        let netease = auth.playlists.filter { $0.source == .netease }
-        let qq = sidebarRemotePlaylists.filter { $0.source == .qq }
         let kugou = sidebarRemotePlaylists.filter { $0.source == .kugou }
-        if !netease.isEmpty {
-            groups.append(SidebarPlaylistGroup(id: "netease", title: "网易云音乐", playlists: netease))
-        }
-        if !qq.isEmpty {
-            groups.append(SidebarPlaylistGroup(id: "qq", title: "QQ音乐", playlists: qq))
-        }
         if !kugou.isEmpty {
             groups.append(SidebarPlaylistGroup(id: "kugou", title: "酷狗音乐", playlists: kugou))
         }
@@ -1091,22 +876,6 @@ struct RootView: View {
     private func loadSidebarPlaylists() async {
         var loaded: [Playlist] = []
 
-        if platformPrefs.isEnabled(SearchProvider.qq), qqAuth.isLoggedIn {
-            let accountID = qqAuth.rawUin.isEmpty ? qqAuth.playlistUin : qqAuth.rawUin
-            if let cached = SyncedPlaylistCache.shared.cachedPlaylists(source: .qq, accountID: accountID) {
-                loaded.append(contentsOf: cached.playlists)
-                if BeansNetworkStatus.shared.isReachable,
-                   let list = try? await QQMusicAPI.shared.userPlaylists(uin: qqAuth.uin), !list.isEmpty {
-                    loaded = loaded.filter { $0.source != .qq }
-                    loaded.append(contentsOf: list)
-                    SyncedPlaylistCache.shared.savePlaylists(list, source: .qq, accountID: accountID)
-                }
-            } else if let list = try? await QQMusicAPI.shared.userPlaylists(uin: qqAuth.uin), !list.isEmpty {
-                loaded.append(contentsOf: list)
-                SyncedPlaylistCache.shared.savePlaylists(list, source: .qq, accountID: accountID)
-            }
-        }
-
         if platformPrefs.isEnabled(SearchProvider.kugou), kugouAuth.isLoggedIn {
             let accountID = kugouAuth.userId
             if let cached = SyncedPlaylistCache.shared.cachedPlaylists(source: .kugou, accountID: accountID) {
@@ -1167,14 +936,6 @@ struct RootView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.45)
-                .onEnded { _ in
-                    guard tab == .discover else { return }
-                    BeansHaptics.select()
-                    showHomePlatformMenu = true
-                }
-        )
         .accessibilityLabel(LocalizedStringKey(tab.title))
     }
 
@@ -1255,10 +1016,8 @@ struct RootView: View {
         ZStack(alignment: .bottom) {
             activeTabPage()
 
-            if !bilibiliPresentation.shouldHideBeansChrome {
-                legacyFloatingTabBar
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+            legacyFloatingTabBar
+                .transition(.move(edge: .bottom).combined(with: .opacity))
         }
         .animation(
             rootLayoutSettled ? .easeInOut(duration: 0.25) : nil,
@@ -1771,106 +1530,6 @@ private struct VisualEffectBlur: UIViewRepresentable {
     }
 }
 
-private struct UpdatePromptOverlay: View {
-    let info: UpdateChecker.ReleaseInfo
-    let onOpen: () -> Void
-    let onRemindLater: () -> Void
-    let onDismiss: () -> Void
-
-    private var details: String {
-        let body = info.body.trimmingCharacters(in: .whitespacesAndNewlines)
-        return body.isEmpty ? "本次更新暂无详细说明。" : body
-    }
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onDismiss)
-
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("发现新版本")
-                            .font(BeansFont.appFont(20, .bold))
-                            .foregroundStyle(Color.beansLabel)
-                        Text("Beans Music \(info.version)")
-                            .font(BeansFont.appFont(13, .semibold))
-                            .foregroundStyle(Color.beansAmber)
-                    }
-                    Spacer(minLength: 8)
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(Color.beansComment)
-                            .frame(width: 30, height: 30)
-                            .background(Color.beansGlassFill, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("关闭")
-                }
-
-                Divider()
-                    .overlay(Color.beansComment.opacity(0.16))
-                    .padding(.vertical, 14)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("更新内容")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                        Text(details)
-                            .font(BeansFont.appFont(13))
-                            .foregroundStyle(Color.beansComment)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let imageURL = info.notesImageURL {
-                            AsyncImage(url: imageURL) { phase in
-                                if let image = phase.image {
-                                    image.resizable().scaledToFit()
-                                } else if phase.error == nil {
-                                    ProgressView().frame(maxWidth: .infinity, minHeight: 70)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 260)
-
-                VStack(spacing: 10) {
-                    Button(action: onOpen) {
-                        Text("立即更新")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Capsule().fill(Color.beansAmber))
-                    }
-                    .buttonStyle(.plain)
-
-                    Button("以后再说", action: onRemindLater)
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansComment)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        .buttonStyle(.plain)
-                }
-                .padding(.top, 18)
-            }
-            .padding(20)
-            .frame(maxWidth: 360)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-            .beansCardShadow(radius: 16, y: 8)
-            .padding(.horizontal, 24)
-        }
-    }
-}
-
 // MARK: - 系统 TabBar 清透风格（实例级配置）
 // 系统 TabView 创建之后，`UITabBar.appearance()` 全局代理对已存在的实例不再生效，
 // 所以每个 tab 页面内放一个 TabBarAppearanceConfigurator，通过 tabBarController
@@ -1982,79 +1641,6 @@ private struct LegacyTabBarPlatformShadow: ViewModifier {
             content.shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.10), radius: 12, y: 4)
         } else {
             content
-        }
-    }
-}
-
-private struct RemoteAnnouncementOverlay: View {
-    let text: String
-    let mediaURL: String
-    let mediaType: String
-    let textColor: Color
-    let onDismiss: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onDismiss)
-
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 10) {
-                    Image(systemName: "megaphone.fill")
-                        .foregroundStyle(Color.beansAmber)
-                    Text("Beans Music 公告")
-                        .font(BeansFont.appFont(19, .bold))
-                        .foregroundStyle(Color.beansLabel)
-                    Spacer()
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(Color.beansComment)
-                            .frame(width: 30, height: 30)
-                            .background(Color.beansGlassFill, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if let url = URL(string: mediaURL), !mediaURL.isEmpty {
-                    if mediaType.lowercased() == "video" {
-                        AnnouncementVideoView(url: url)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 190)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    } else {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().scaledToFit()
-                            } else if phase.error == nil {
-                                ProgressView().frame(maxWidth: .infinity, minHeight: 80)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: 220)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                }
-
-                Text(text)
-                    .font(BeansFont.appFont(14, .medium))
-                    .foregroundStyle(textColor)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Button("知道了", action: onDismiss)
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Capsule().fill(Color.beansAmber))
-                    .buttonStyle(.plain)
-            }
-            .padding(20)
-            .frame(maxWidth: 370)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous)) }
-            .beansCardShadow(radius: 16, y: 8)
-            .padding(.horizontal, 22)
         }
     }
 }

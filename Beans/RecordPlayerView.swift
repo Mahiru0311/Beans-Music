@@ -8,7 +8,6 @@ struct RecordPlayerView: View {
     @EnvironmentObject private var clock: PlaybackClock
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var customCovers = CustomSongCoverStore.shared
-    @ObservedObject private var dynamicWallpaper = DynamicWallpaperStore.shared
 
     let song: Song?
     let lyrics: [LyricLine]
@@ -129,9 +128,7 @@ struct RecordPlayerView: View {
 
     private var backdrop: some View {
         ZStack {
-            if dynamicWallpaper.syncsDynamicWallpaperToPlayer {
-                BeansDynamicWallpaperView(forPlayer: true)
-                    .ignoresSafeArea()
+            if false {
             } else {
                 CoverBlurBackground(url: displayCoverURL, scheme: colorScheme, animationsEnabled: visualsActive)
                 RadialGradient(
@@ -415,10 +412,6 @@ struct RecordPlayerView: View {
         }
     }
 
-    private var canDownload: Bool {
-        downloadFeatureUnlocked || storedDownloadFeatureUnlocked
-    }
-
     private var controls: some View {
         HStack(spacing: 0) {
             circleButton(icon: player.playMode.icon, size: 14, tint: player.playMode == .sequential ? nil : .red) {
@@ -598,9 +591,6 @@ struct RecordPlayerView: View {
                         customCovers.removeCover(for: song)
                         ToastCenter.shared.show("已恢复默认封面")
                     }
-                }
-                if canDownload {
-                    Button("下载歌曲", action: onDownload)
                 }
                 Button("播放器设置", action: onSettings)
                 Button("软件音量") {

@@ -54,10 +54,8 @@ struct ArtistHomeSheet: View {
     @State private var errorMessage: String?
     @State private var searchText = ""
     @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
-    @State private var showBatchDownload = false
     @State private var selectedAlbum: Album?
     @State private var loadTask: Task<Void, Never>?
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
 
     private var cacheKey: String {
@@ -81,10 +79,6 @@ struct ArtistHomeSheet: View {
         }
         .onDisappear {
             loadTask?.cancel()
-        }
-        .sheet(isPresented: $showBatchDownload) {
-            BatchDownloadSheet(songs: displayedHotSongs, title: "下载歌手歌曲")
-                .environmentObject(theme)
         }
         .sheet(item: $selectedAlbum) { album in
             AlbumDetailView(album: album)
@@ -207,14 +201,6 @@ struct ArtistHomeSheet: View {
                     GlassButton(title: "播放全部", systemName: "play.fill", prominent: true, expandsHorizontally: true) {
                         BeansHaptics.tap()
                         player.play(songs: displayedHotSongs, startAt: 0)
-                    }
-                    if downloadFeatureUnlocked, displayedHotSongs.count > 1 {
-                        GlassIconButton(systemName: "arrow.down.to.line.compact", size: 44, forceLiquid: true) {
-                            BeansHaptics.tap()
-                            showBatchDownload = true
-                        }
-                        .accessibilityLabel("批量下载")
-                        .help("批量下载")
                     }
                 }
                 .padding(.horizontal, 16)
@@ -374,15 +360,7 @@ struct ArtistHomeSheet: View {
             loading = true
         }
         errorMessage = nil
-        if artistSource == .qq {
-            await loadQQArtist()
-        } else if artistSource == .kugou {
-            await loadKugouArtist()
-        } else if artistSource == .kuwo || artistSource == .migu {
-            await loadAdditionalCatalogArtist()
-        } else {
-            await loadNetEaseArtist()
-        }
+        await loadKugouArtist()
         // A transient catalog response must never replace a visible cached page with
         // empty sections. Keep the last successful section independently while the
         // other section refreshes in the background.
@@ -404,87 +382,7 @@ struct ArtistHomeSheet: View {
         if !hotSongs.isEmpty || !albums.isEmpty { errorMessage = nil }
     }
 
-    private func loadNetEaseArtist() async {
-        do {
-            let id: Int
-            if let artistID, let parsed = Int(artistID.replacingOccurrences(of: "netease-", with: "")), parsed > 0 {
-                id = parsed
-            } else {
-                let artists = try await NetEaseAPI.shared.searchArtists(keyword: artistName, limit: 5)
-                guard let first = artists.first else {
-                    errorMessage = "未找到歌手「\(artistName)」"
-                    loading = false
-                    return
-                }
-                artist = first
-                id = Int(first.id.replacingOccurrences(of: "netease-", with: "")) ?? 0
-            }
-            async let songsTask = (try? NetEaseAPI.shared.artistHotSongs(artistID: id, limit: 300)) ?? []
-            async let albumsTask = (try? NetEaseAPI.shared.artistAlbums(artistID: id)) ?? []
-            let fetchedSongs = await songsTask
-            if !fetchedSongs.isEmpty {
-                hotSongs = fetchedSongs
-            }
-            // 接口异常时兜底：分页搜索补全歌手歌曲（避免再次退回 30 首）。
-            if fetchedSongs.isEmpty {
-                var fallback: [Song] = []
-                for offset in stride(from: 0, to: 300, by: 30) {
-                    let page = (try? await NetEaseAPI.shared.search(keyword: artistName, limit: 30, offset: offset)) ?? []
-                    if page.isEmpty { break }
-                    fallback.append(contentsOf: page)
-                    if page.count < 30 { break }
-                }
-                if !fallback.isEmpty {
-                    hotSongs = fallback
-                }
-            }
-            persistLoadedContent()
-            let fetchedAlbums = await albumsTask
-            if !fetchedAlbums.isEmpty {
-                self.albums = fetchedAlbums
-            } else {
-                self.albums = await searchedAlbumsForCurrentArtist()
-            }
-            loading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            loading = false
-        }
-    }
-
     /// QQ 歌手：优先用歌手 mid 拉热门歌曲，失败则按歌手名搜索 QQ 歌曲（保证不是网易云数据）
-    private func loadQQArtist() async {
-        async let albumsTask = searchedAlbumsForCurrentArtist()
-        var mid: String? = nil
-        if let artistID, !artistID.hasPrefix("qq-") {
-            mid = artistID
-        } else if let first = (try? await QQMusicAPI.shared.searchArtists(keyword: artistName, limit: 5))?.first {
-            artist = first
-            mid = first.id
-        }
-        var songs = (try? await QQMusicAPI.shared.artistHotSongs(mid: mid, name: artistName, limit: 300)) ?? []
-        if songs.isEmpty {
-            var fallback: [Song] = []
-            for offset in stride(from: 0, to: 300, by: 30) {
-                let page = (try? await QQMusicAPI.shared.searchSongs(keyword: artistName, limit: 30, offset: offset)) ?? []
-                if page.isEmpty { break }
-                fallback.append(contentsOf: page)
-                if page.count < 30 { break }
-            }
-            var seen = Set<String>()
-            songs = fallback.filter { seen.insert($0.identityKey).inserted }
-        }
-        if !songs.isEmpty {
-            hotSongs = songs
-        }
-        persistLoadedContent()
-        let fetchedAlbums = await albumsTask
-        if !fetchedAlbums.isEmpty {
-            albums = fetchedAlbums
-        }
-        loading = false
-    }
-
     /// 酷狗歌手主页优先走作者歌曲接口，再补 `singer/song` 和综合搜索结果，
     /// 避免部分歌手页只停在首批 19 首。
     private func loadKugouArtist() async {
@@ -579,78 +477,8 @@ struct ArtistHomeSheet: View {
 
     /// 补充目录没有独立的歌手详情接口时，使用同源歌曲搜索构建歌手页，
     /// 不回退到其它平台，避免来源和封面错位。
-    private func loadAdditionalCatalogArtist() async {
-        async let albumsTask = searchedAlbumsForCurrentArtist()
-        if artist?.coverURL == nil {
-            let candidates: [Artist]
-            switch artistSource {
-            case .kuwo:
-                candidates = (try? await AdditionalCatalogSearchAPI.searchKuwoArtists(keyword: artistName, limit: 20)) ?? []
-            case .migu:
-                candidates = (try? await AdditionalCatalogSearchAPI.searchMiguArtists(keyword: artistName, limit: 20)) ?? []
-            case .bilibili:
-                candidates = (try? await BilibiliAPI.shared.searchArtists(keyword: artistName, limit: 20)) ?? []
-            default:
-                candidates = []
-            }
-            let normalizedName = artistName.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let resolved = candidates.first(where: { $0.name == normalizedName }) ?? candidates.first {
-                artist = resolved
-            }
-        }
-        let songs: [Song]
-        switch artistSource {
-        case .kuwo:
-            songs = (try? await AdditionalCatalogSearchAPI.searchKuwo(keyword: artistName, limit: 100)) ?? []
-        case .migu:
-            songs = (try? await AdditionalCatalogSearchAPI.searchMigu(keyword: artistName, limit: 100)) ?? []
-        case .qishui:
-            songs = (try? await QishuiAPI.shared.artistSongs(name: artistName, limit: 100)) ?? []
-        case .bilibili:
-            songs = (try? await BilibiliAPI.shared.artistSongs(name: artistName, id: artistID, limit: 100)) ?? []
-        default:
-            songs = []
-        }
-        let fetchedSongs = songsCreditedToCurrentArtist(songs)
-        if !fetchedSongs.isEmpty {
-            hotSongs = fetchedSongs
-        }
-        persistLoadedContent()
-        let fetchedAlbums = await albumsTask
-        if !fetchedAlbums.isEmpty {
-            albums = fetchedAlbums
-        }
-        if artist == nil {
-            artist = Artist(
-                id: artistID ?? "\(artistSource.rawValue)-\(artistName)",
-                name: artistName,
-                coverURL: fetchedSongs.first?.coverURL,
-                source: artistSource
-            )
-        }
-        loading = false
-        if hotSongs.isEmpty { errorMessage = "未找到歌手「\(artistName)」" }
-    }
-
     private func searchedAlbumsForCurrentArtist() async -> [Album] {
-        let candidates: [Album]
-        switch artistSource {
-        case .qq:
-            candidates = (try? await QQMusicAPI.shared.searchAlbums(keyword: artistName, limit: 60)) ?? []
-        case .kugou:
-            candidates = (try? await KugouMusicAPI.shared.searchAlbums(keyword: artistName, limit: 60)) ?? []
-        case .kuwo:
-            candidates = (try? await AdditionalCatalogSearchAPI.searchKuwoAlbums(keyword: artistName, limit: 60)) ?? []
-        case .migu:
-            candidates = (try? await AdditionalCatalogSearchAPI.searchMiguAlbums(keyword: artistName, limit: 60)) ?? []
-        case .netease:
-            candidates = (try? await NetEaseAPI.shared.searchAlbums(keyword: artistName, limit: 60)) ?? []
-        case .qishui:
-            candidates = (try? await QishuiAPI.shared.artistAlbums(name: artistName, limit: 60)) ?? []
-        case .bilibili:
-            candidates = (try? await BilibiliAPI.shared.searchAlbums(keyword: artistName, limit: 60)) ?? []
-        case .webdav: candidates = []
-        }
+        let candidates: [Album] = (try? await KugouMusicAPI.shared.searchAlbums(keyword: artistName, limit: 60)) ?? []
         let expected = normalizedArtistName(artistName)
         guard !expected.isEmpty else { return Array(candidates.prefix(60)) }
         let matched = candidates.filter { album in

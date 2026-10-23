@@ -153,7 +153,6 @@ struct GlassBackdrop: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.beansSettingsPerformanceMode) private var settingsPerformanceMode
-    @ObservedObject private var dynamicWallpaper = DynamicWallpaperStore.shared
     /// 自定义背景色（nil 使用默认氛围渐变）
     var customColor: Color? = nil
     /// 主页模式：即使“同步到全部页面”关闭，也始终显示壁纸/背景色（仅发现页传 true）
@@ -182,18 +181,11 @@ struct GlassBackdrop: View {
         theme.uiStyle
     }
 
-    private var isDynamicWallpaperActive: Bool {
-        includeDynamicWallpaper && showCustomBackground && dynamicWallpaper.renderableKind != .off
-    }
+    private var isDynamicWallpaperActive: Bool { false }
 
     @ViewBuilder
     private var dynamicWallpaperLayer: some View {
-        if isDynamicWallpaperActive {
-            BeansDynamicWallpaperView()
-                .allowsHitTesting(false)
-        } else {
-            Color.clear
-        }
+        Color.clear
     }
 
     var body: some View {
@@ -1860,25 +1852,12 @@ final class ToastCenter: ObservableObject {
 
 struct ToastView: View {
     @ObservedObject var center: ToastCenter
-    @ObservedObject private var downloads = DownloadManager.shared
     @EnvironmentObject private var theme: ThemeStore
 
     var body: some View {
         let _ = theme.accent
         Group {
-            if let progress = downloads.visibleProgress {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .foregroundStyle(Color.beansAmber)
-                        Text("正在下载：\(progress.title)")
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 8)
-                        if let fraction = progress.fractionCompleted {
-                            Text("\(Int((fraction * 100).rounded()))%")
-                                .monospacedDigit()
-                        } else {
+
                             ProgressView()
                                 .controlSize(.small)
                         }
@@ -1919,15 +1898,13 @@ struct ToastView: View {
                             }
                     }
                     .clipShape(Capsule())
-            }
         }
             .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
             .padding(.horizontal, 30)
             .padding(.bottom, 92)
-            .opacity(center.message == nil && downloads.visibleProgress == nil ? 0 : 1)
-            .offset(y: center.message == nil && downloads.visibleProgress == nil ? 16 : 0)
+            .opacity(center.message == nil ? 0 : 1)
+            .offset(y: center.message == nil ? 16 : 0)
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: center.message)
-            .animation(.easeOut(duration: 0.16), value: downloads.visibleProgress != nil)
             .allowsHitTesting(false)
     }
 }

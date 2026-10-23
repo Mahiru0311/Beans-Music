@@ -25,8 +25,8 @@ final class CoverImagePrefetcher {
         urls.formUnion(Self.urls(in: auth.playlists))
         urls.formUnion(Self.urls(in: player.queue))
         urls.formUnion(Self.urls(in: player.history))
-        urls.formUnion(Self.urls(in: favorites.neteaseFavoriteSongs))
-        urls.formUnion(Self.urls(in: favorites.qqFavoriteSongs))
+        urls.formUnion(Self.urls(in: favorites.kugouFavoriteSongs))
+        urls.formUnion(Self.urls(in: favorites.kugouOfficialFavoriteSongs))
         urls.formUnion(Self.urls(in: favorites.kugouFavoriteSongs))
         urls.formUnion(Self.urls(in: LocalLibraryStore.shared.playlists.flatMap(\.songs)))
         urls.formUnion(Self.urls(in: SyncedPlaylistCache.shared.allCachedPlaylists()))
@@ -56,7 +56,6 @@ final class CoverImagePrefetcher {
         urls.formUnion(snapshot.topArtists.compactMap(\.coverURL))
         urls.formUnion(snapshot.topLists.compactMap(\.coverURL))
         urls.formUnion(Self.urls(in: snapshot.personalized))
-        urls.formUnion(snapshot.qqTopLists.compactMap(\.coverURL))
         urls.formUnion(snapshot.kugouTopLists.compactMap(\.coverURL))
         return urls
     }

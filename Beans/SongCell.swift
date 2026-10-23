@@ -5,11 +5,8 @@ struct SongCell: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
-    @State private var downloadProgress: SongDownloadProgress?
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage(ThirdPartyAudioQuality.downloadStorageKey) private var downloadQualityRaw = ThirdPartyAudioQuality.kb320.rawValue
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
 
     let song: Song
     var showCover = true
@@ -28,7 +25,6 @@ struct SongCell: View {
     var onTap: (() -> Void)?
 
     @State private var showAddToPlaylist = false
-    @State private var shareFile: ShareFileItem?
     @State private var appeared = false
 
     private var isCurrent: Bool {
@@ -76,25 +72,7 @@ struct SongCell: View {
             }
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 0)
-            if let download = downloadProgress {
-                VStack(spacing: 3) {
-                    if let fraction = download.fractionCompleted {
-                        ProgressView(value: fraction)
-                            .tint(Color.beansAmber)
-                        Text("\(Int((fraction * 100).rounded()))%")
-                            .font(BeansFont.appFont(10, .medium, .monospaced))
-                            .foregroundStyle(Color.beansComment)
-                            .monospacedDigit()
-                    } else {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(Color.beansAmber)
-                    }
-                }
-                .frame(width: 46, height: 32)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("正在下载 \(download.title)")
-            } else if isCurrent && player.isPlaying {
+            if isCurrent && player.isPlaying {
                 NowPlayingIndicator()
             } else {
                 Text(song.formattedDuration)
@@ -112,9 +90,6 @@ struct SongCell: View {
         .onTapGesture {
             onTap?()
         }
-        .onReceive(DownloadManager.shared.$songProgress
-            .map { $0[song.identityKey] }
-            .removeDuplicates()) { downloadProgress = $0 }
         .contextMenu {
             Button {
                 player.playNext(song)
@@ -125,14 +100,6 @@ struct SongCell: View {
                 showAddToPlaylist = true
             } label: {
                 Label("添加到歌单", systemImage: "text.badge.plus")
-            }
-            if downloadFeatureUnlocked {
-                Button {
-                    Task { await downloadSong() }
-                } label: {
-                    Label("下载歌曲", systemImage: "arrow.down.circle")
-                }
-                .disabled(downloadProgress != nil)
             }
             if !isCurrent {
                 Button {
@@ -151,31 +118,6 @@ struct SongCell: View {
         .sheet(isPresented: $showAddToPlaylist) {
             AddToLocalPlaylistSheet(song: song)
                 .environmentObject(theme)
-        }
-        .sheet(item: $shareFile) { item in
-            ShareSheet(items: [item.url])
-        }
-    }
-
-    @MainActor
-    private func downloadSong() async {
-        let quality: DownloadQuality
-        if UserDefaults.standard.object(forKey: ThirdPartyAudioQuality.downloadStorageKey) == nil {
-            quality = ThirdPartyAudioQuality.current
-        } else {
-            quality = DownloadQuality(sourceValue: downloadQualityRaw) ?? ThirdPartyAudioQuality.current
-        }
-        BeansHaptics.medium()
-        ToastCenter.shared.show("开始下载：\(song.name)（\(quality.displayName)）")
-        let result = await DownloadManager.shared.download(song: song, quality: quality)
-        switch result {
-        case .success(let downloaded):
-            if downloaded.downgraded {
-                ToastCenter.shared.show("目标音质不可用，已降级为 \(downloaded.actualQuality.displayName)", duration: 3)
-            }
-            shareFile = ShareFileItem(url: downloaded.url)
-        case .failure(let error):
-            ToastCenter.shared.show("下载失败：\(error.localizedDescription)", duration: 3)
         }
     }
 

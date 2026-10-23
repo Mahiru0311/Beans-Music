@@ -20,12 +20,10 @@ struct PlaylistView: View {
     @State private var errorMessage: String?
     @State private var searchText = ""
     @State private var sortMode: PlaylistSortMode = .original
-    @State private var showBatchDownload = false
     @State private var showPlaylistDescription = false
     @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
     @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
 
     init(playlist: Playlist) {
         self.playlist = playlist
@@ -35,27 +33,7 @@ struct PlaylistView: View {
     }
 
     private static func initialCachedSongs(for playlist: Playlist) -> SyncedPlaylistCache.SongEntry? {
-        let accountID: String
-        switch playlist.source {
-        case .netease:
-            if let data = UserDefaults.standard.data(forKey: "beans.user"),
-               let user = try? JSONDecoder().decode(NetEaseUser.self, from: data) {
-                accountID = "\(user.uid)"
-            } else {
-                accountID = ""
-            }
-        case .qq:
-            let qqAuth = QQMusicAuth.shared
-            accountID = qqAuth.rawUin.isEmpty ? qqAuth.playlistUin : qqAuth.rawUin
-        case .kugou:
-            accountID = KugouMusicAuth.shared.userId
-        case .kuwo, .migu, .webdav:
-            accountID = ""
-        case .qishui:
-            accountID = ""
-        case .bilibili:
-            accountID = BilibiliAuth.shared.accountID
-        }
+        let accountID: String = playlist.source == .kugou ? KugouMusicAuth.shared.userId : ""
         return SyncedPlaylistCache.shared.cachedSongs(playlist: playlist, accountID: accountID)
     }
 
@@ -64,21 +42,7 @@ struct PlaylistView: View {
     }
 
     private var cacheAccountID: String {
-        switch playlist.source {
-        case .netease:
-            return "\(auth.user?.uid ?? 0)"
-        case .qq:
-            let qqAuth = QQMusicAuth.shared
-            return qqAuth.rawUin.isEmpty ? qqAuth.playlistUin : qqAuth.rawUin
-        case .kugou:
-            return KugouMusicAuth.shared.userId
-        case .kuwo, .migu, .webdav:
-            return ""
-        case .qishui:
-            return ""
-        case .bilibili:
-            return BilibiliAuth.shared.accountID
-        }
+        playlist.source == .kugou ? KugouMusicAuth.shared.userId : ""
     }
 
     var body: some View {
@@ -122,10 +86,6 @@ struct PlaylistView: View {
             .navigationBarTitleDisplayMode(.inline)
             .beansDetailProfileToolbar()
         .task { await load() }
-        .sheet(isPresented: $showBatchDownload) {
-            BatchDownloadSheet(songs: displayedTracks, title: "下载歌单")
-                .environmentObject(theme)
-        }
     }
 
     private var header: some View {
@@ -198,18 +158,6 @@ struct PlaylistView: View {
                         .font(BeansFont.appFont(12))
                         .foregroundStyle(Color.beansComment)
                     Spacer()
-                    if downloadFeatureUnlocked {
-                        Button {
-                            BeansHaptics.tap()
-                            showBatchDownload = true
-                        } label: {
-                            Label("批量下载", systemImage: "arrow.down.circle")
-                                .font(BeansFont.appFont(12, .semibold))
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(Color.beansAmber)
-                        .disabled(displayedTracks.isEmpty)
-                    }
                 }
             }
             HStack(spacing: 10) {
@@ -327,31 +275,10 @@ struct PlaylistView: View {
         do {
             if playlist.source == .kugou {
                 tracks = try await KugouMusicAPI.shared.playlistSongs(playlist: playlist)
-            } else if playlist.source == .qq {
-                tracks = try await QQMusicAPI.shared.playlistSongs(listID: playlist.id)
-                // 云端收藏接口临时被风控或返回空时，至少展示已同步到本机的 QQ 收藏，
-                // 避免“我的喜欢”进入后变成空白页面。
-                if tracks.isEmpty, playlist.id == QQMusicAPI.qqLikedPlaylistID {
-                    tracks = favorites.qqFavoriteSongs
-                    BeansLogger.shared.log("QQ 我的喜欢页面网络结果为空，使用本地收藏回退 count=\(tracks.count)", level: tracks.isEmpty ? .warn : .info)
-                }
-            } else if playlist.source == .qishui {
-                let identifier = playlist.qishuiID ?? String(playlist.id)
-                let preserveVisibleTracks = !tracks.isEmpty
-                tracks = try await QishuiAPI.shared.playlistSongs(id: identifier, forceRefresh: force) { partialSongs in
-                    guard !partialSongs.isEmpty else { return }
-                    guard !preserveVisibleTracks else { return }
-                    tracks = partialSongs
-                    loading = false
-                }
-            } else if playlist.source == .bilibili {
-                let identifier = playlist.bilibiliID ?? String(playlist.id)
-                let result = try await BilibiliAPI.shared.collection(identifier, force: force)
-                tracks = result.songs
-            } else if playlist.source == .kuwo || playlist.source == .migu {
-                tracks = try await AdditionalCatalogSearchAPI.playlistSongs(source: playlist.source, id: playlist.id)
             } else {
-                tracks = try await NetEaseAPI.shared.playlistTracks(id: playlist.id)
+                errorMessage = "该歌单来源已在酷狗专版移除"
+                loading = false
+                return
             }
             if !tracks.isEmpty {
                 cache.saveSongs(tracks, playlist: playlist, accountID: cacheAccountID)
