@@ -428,6 +428,27 @@ struct ProfileView: View {
     @State private var pullGestureActive = false
     @State private var pullGestureStartedAtTop = false
 
+    /// 上滑量（我的 tab 专属）：固定壁纸层在滚动视图之外，下拉时顶边固定是对的，
+    /// 上滑时却粘在顶边不动——内容往上滑走了，它还留在 0–423pt，卡片一上移就把
+    /// 它露在卡片下面（上滑截图里卡片下面那条壁纸带），再往下又是页面底色。
+    /// 修法：固定层按上滑量整体往上移，移多少由下面两路读数取大值，相对位置和
+    /// 头部、卡片保持不变（就像壁纸本来就在内容里一样），上滑多少就移多少。
+    /// 下拉时两路都钳为 0，顶边仍固定、放大仍只走同时识别拖动手势、120pt 封顶不变。
+    /// 基线只在首帧定一次：视图创建时滚动一定在顶部，首帧就是静止值；之后再也
+    /// 不重定，避免从歌单页返回（滚动停在半途）时把半途误当成静止值。
+    @State private var headerRestMinY: CGFloat? = nil
+    @State private var scrollRestOffset: CGFloat? = nil
+    @State private var scrollContentOffset: CGFloat = 0
+    private var headerScrollUp: CGFloat {
+        guard let rest = headerRestMinY, !profileHeaderFrame.isEmpty else { return 0 }
+        return max(0, rest - profileHeaderFrame.minY)
+    }
+    private var contentScrollUp: CGFloat {
+        guard let rest = scrollRestOffset else { return 0 }
+        return max(0, scrollContentOffset - rest)
+    }
+    private var wallpaperScrollUp: CGFloat { max(headerScrollUp, contentScrollUp) }
+
     // 旧首帧零点（pullBaseline）本轮已删：放大不再走 PreferenceKey 回写链，见上面 headerDragPull 注释。
 
     /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
@@ -469,7 +490,11 @@ struct ProfileView: View {
     /// 深色主题下白字/半透明白字/深灰底。只用于我的页白卡区。
     private var coEffectiveLabel: Color { profileEffectiveScheme == .dark ? .white : .black }
     private var coEffectiveSecondary: Color { profileEffectiveScheme == .dark ? .white.opacity(0.65) : Color(red: 0.45, green: 0.45, blue: 0.47) }
-    private var coEffectiveRowBackground: Color { profileEffectiveScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.96, green: 0.96, blue: 0.97) }
+    /// 我的页卡片色（唯一来源）：浅色白、深色系统次级背景。页面底色、卡片、
+    /// 歌单行背景三处都复用它，不再各写各的——深色下底色纯黑与卡片深灰两截、
+    /// 浅色下行背景 0.96 灰与卡片白差一截，就是上滑截图里“颜色不一样”的来源。
+    private var coCardBackground: Color { profileEffectiveScheme == .dark ? Color(.secondarySystemBackground) : Color.white }
+    private var coEffectiveRowBackground: Color { coCardBackground }
 
     /// 状态栏样式与页面状态同步：浅色主题且黑头在顶时用浅色文字；
     /// 深色主题（文字本来就是浅色）、白卡滑到顶、白卡在顶时都不需要窗口改色。
@@ -613,7 +638,7 @@ struct ProfileView: View {
             // 返工：页面底色显式化（无自定义背景时才铺，避免自定义壁纸被盖住），
             // 防止深色状态栏方案把白卡下方的空白区也带翻成深色。
             if !forceHomeBackdrop && theme.customBackground == nil {
-                Color(profileEffectiveScheme == .dark ? .black : .white)
+                coCardBackground
                     .ignoresSafeArea()
             }
             // 重建：唯一的一层壁纸在滚动视图之外（见 coFixedHeaderWallpaper），
@@ -659,6 +684,13 @@ struct ProfileView: View {
                 .scrollBounceBehavior(.always, axes: .vertical)
                 .coordinateSpace(name: "coProfileScroll")
                 .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
+                // 上滑读数第二路：滚动几何的内容偏移，正常滚动时确实更新，
+                // 与头部 frame 上报互为备份，两路取大值（见 wallpaperScrollUp）。
+                // 首帧就是静止偏移，之后不再重定，理由同 headerRestMinY。
+                .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
+                    if scrollRestOffset == nil { scrollRestOffset = newValue }
+                    scrollContentOffset = newValue
+                }
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 8)
                         .onChanged { value in
@@ -746,6 +778,7 @@ struct ProfileView: View {
         }
         .onPreferenceChange(CoProfileHeaderFrameKey.self) { frame in
             profileHeaderFrame = frame
+            if headerRestMinY == nil && !frame.isEmpty { headerRestMinY = frame.minY }
         }
         .sheet(isPresented: $showHistory) {
             HistoryView()
@@ -993,6 +1026,10 @@ struct ProfileView: View {
         .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea(edges: .top)
+        // 上滑时整体往上移（移量 = 上滑量），下拉时移量为 0、顶边不动。
+        // 移量只改固定层的位置，不改框高、不改缩放，相对头部/卡片的位置不变，
+        // 所以卡片下面不会再露壁纸带；滑回顶部时移量回 0，一切复原。
+        .offset(y: -wallpaperScrollUp)
         .allowsHitTesting(false)
     }
 
@@ -1148,7 +1185,7 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 28, style: .continuous)
-                .fill(profileEffectiveScheme == .dark ? Color(.secondarySystemBackground) : Color.white)
+                .fill(coCardBackground)
         )
         .background {
             // 上报白卡顶部全局位置，供状态栏浅/深色切换用（见 BeansProfileCardTopKey）。
