@@ -591,11 +591,16 @@ struct ProfileView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                     coNeteaseHeader
-                    coNeteaseMainCard
-                        .padding(.top, -24)
+                    // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
+                    // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
+                    if !forceHomeBackdrop {
+                        coNeteaseMainCard
+                            .padding(.top, -24)
+                    }
                 }
-                // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；300pt 保证最后一行能完整滑出，不被迷你播放器和底栏盖住（上一轮插值修复的内边距，本轮保留不回退）。
-                .padding(.bottom, 300)
+                // 底部留白返工：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；
+                // 300pt → 240pt，仍比叠层高约 75pt 余量，最后一行能完整滑出；不收到 190pt 以下（上一轮 190pt 时底部行曾被盖过）。
+                .padding(.bottom, 240)
                 .beansAdaptiveContentWidth()
                 }
                 .beansScrollIndicatorsHidden()
@@ -917,7 +922,7 @@ struct ProfileView: View {
     // 下方主卡片用大圆角盖住头部下沿，卡片里是数据行 + 我的歌单（常用整区已删，见简便化）。
     // 沉浸：头部背景用 ignoresSafeArea 延伸进顶部安全区，黑头从屏幕顶边开始，
     // 不再是白色状态栏条 + 黑头拼接；状态栏文字颜色见 updateProfileStatusBarStyle。
-    // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距 300pt。
+    // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距本轮改为 240pt（见 body 处算余量）。
 
     /// 顶部固定条（状态栏区）：只做无图时的黑色兜底，永不贴壁纸图。
     /// 上一轮这里单独贴了一张 scaledToFill 壁纸，与头部壁纸裁剪不同，导致同一张脸
@@ -1003,9 +1008,10 @@ struct ProfileView: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 12)
-            // 数据行已不在黑头里：见下方白卡里的 coNeteaseStatsInCard。
-            // 头部底部留 36pt，卡片 -24pt 重叠后仍有 12pt 黑色可见，不贴住状态行。
-            .padding(.bottom, 36)
+            // 数据行已不在黑头里：见下方白卡里的 coNeteaseStatsInCard（只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现）。
+            // 我的页整体下调：头部底部 36pt → 48pt（只在我的 tab 里加，头像 sheet 仍 36pt），
+            // 卡片 -24pt 重叠后仍有 24pt 头部可见（原来 12pt），白卡往下移、壁纸可见区反而更大——壁纸没调小，是调大了。
+            .padding(.bottom, forceHomeBackdrop ? 36 : 48)
         }
         .frame(maxWidth: .infinity)
         .background {
@@ -1068,8 +1074,9 @@ struct ProfileView: View {
     }
 
     private var coNeteaseMainCard: some View {
-        // 定稿分拆：数据行两边都保留；歌单列表只在我的 tab 里放，头像界面里不放。
-        // （头像界面没有歌单区，所以数据行“歌单”点按在 sheet 里不滚动，见 coNeteaseStatsInCard。）
+        // 头像界面精简：本卡片（含数据行与歌单）只在我的 tab 里渲染，body 里已用 if !forceHomeBackdrop 挡住，
+        // 头像 sheet 里不会出现数据行、歌单、空白卡三者中的任何一个；数据行代码本身保留给我的页用。
+        // 数据行“歌单”点按在我的 tab 里滑到歌单区，未登录时进登录（见 coNeteaseStatsInCard）。
         VStack(alignment: .leading, spacing: 20) {
             coNeteaseStatsInCard
             if !forceHomeBackdrop {
