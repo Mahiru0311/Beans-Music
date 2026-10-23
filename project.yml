@@ -26,7 +26,7 @@ targets:
       - Beans/Resources/ikun-music-source.js
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco
         DEAD_CODE_STRIPPING: YES
         DEPLOYMENT_POSTPROCESSING: YES
         STRIP_INSTALLED_PRODUCT: YES
@@ -44,7 +44,8 @@ targets:
     info:
       path: Beans/Info.plist
       properties:
-        CFBundleDisplayName: Beans Music
+        CFBundleDisplayName: Co
+        CFBundleName: Co
         LSRequiresIPhoneOS: true
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -85,7 +86,7 @@ targets:
       - BeansLiveActivityShared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.liveactivity
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.liveactivity
         MARKETING_VERSION: "2.0.3"
         CURRENT_PROJECT_VERSION: "15"
         SKIP_INSTALL: YES
@@ -93,7 +94,7 @@ targets:
     info:
       path: BeansLiveActivity/Info.plist
       properties:
-        CFBundleDisplayName: Beans Now Playing
+        CFBundleDisplayName: Co Now Playing
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -109,7 +110,7 @@ targets:
       - Modules/CiliCili/Integration
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.cilicili
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.cilicili
         DEAD_CODE_STRIPPING: YES
         DEPLOYMENT_POSTPROCESSING: YES
         STRIP_INSTALLED_PRODUCT: YES
@@ -132,7 +133,7 @@ targets:
       - target: Beans
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.cilicili.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.cilicili.tests
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
   BeansTests:
     type: bundle.unit-test
@@ -145,7 +146,7 @@ targets:
       - target: CiliCiliKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.tests
   BeansUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -156,7 +157,7 @@ targets:
       - target: Beans
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.beans.app.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.uitests
 
 schemes:
   Beans:
