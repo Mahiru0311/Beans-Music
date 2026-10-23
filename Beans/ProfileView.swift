@@ -36,6 +36,19 @@ private struct CoProfileHeaderFrameKey: PreferenceKey {
     }
 }
 
+/// 我的页滚动视图顶部全局纵坐标：下拉量据此算。
+/// 用全局坐标，不用命名坐标空间——命名坐标空间跟着内容一起动，
+/// 回弹时读数恒为 0（zoom2 没效果的根因之一）；全局坐标下内容
+/// 往下走多少、读数就大多少，从头部、白卡、歌单区任何地方下拉
+/// 都会让读数变大。只在我的 tab 里贴这个读数，头像 sheet 不贴。
+private struct CoProfilePullKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// 我的页 ScrollView 顶部安全区处理（只在我的 tab 用，头像 sheet 不用）：
 /// ScrollView 忽略顶部安全区后，它的 frame 才到屏幕顶边，头部背景里的壁纸
 /// 才能画到状态栏区；同时加一个高度 = 顶部安全区的透明 safeAreaInset，
@@ -348,8 +361,14 @@ struct ProfileView: View {
     /// frame 为空（首帧未上报）时按静止状态处理。
     @State private var profileHeaderFrame = CGRect.zero
 
-    /// 头部拖动下拉量（我的 tab 专属，不依赖滚动回弹）：
-    /// 只由头部拖动手势驱动，硬上限 120pt，松手弹回 0。
+    /// 头部下拉量（我的 tab 专属）：
+    /// 由系统回弹驱动，不再由头部拖动手势驱动——zoom6 的教训：
+    /// 头部 .highPriorityGesture(DragGesture) 在垂直滚动视图里会被
+    /// 滚动视图的平移手势截获，拖动根本写不进这个状态，同时
+    /// .scrollBounceBehavior(.basedOnSize) 在内容不满屏时直接关了
+    /// 回弹，两环叠加导致全页都拉不动。现在拉动改回系统回弹，
+    /// 这个状态只由滚动视图顶部读数（CoProfilePullKey，全局坐标）
+    /// 写进来，硬上限 120pt，松手随系统回弹回 0。
     /// 120pt 的理由：头部高约 300pt，120pt 约为头部高的 40%，缩放 1 + 120/300 = 1.4 倍
     /// 肉眼明显、脸部不至于裁到无法辨认；上一轮拉到 217pt、缩放失控就是没有硬上限的后果。
     @State private var headerDragPull: CGFloat = 0
@@ -601,30 +620,21 @@ struct ProfileView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                    // 重建：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层），
-                    // 下拉只由头部拖动手势驱动：高优先级手势在头部区域胜过滚动视图的平移，
-                    // 所以头部下拉不会再叠加滚动回弹的位移；点按（位移 < 8pt）不触发拖动，头像按钮点按仍可用；
-                    // 向上拖动时拖动量归 0（不放大），向上滚动请从白卡/歌单区拖动。
-                    if forceHomeBackdrop {
-                        coNeteaseHeader
-                    } else {
-                        coNeteaseHeader
-                            .highPriorityGesture(
-                                DragGesture(minimumDistance: 8)
-                                    .onChanged { value in
-                                        if value.translation.height > 0 {
-                                            headerDragPull = min(value.translation.height, 120)
-                                        } else {
-                                            headerDragPull = 0
-                                        }
-                                    }
-                                    .onEnded { _ in
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                            headerDragPull = 0
-                                        }
-                                    }
-                            )
+                    // 拉动恢复：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层），
+                    // 也不再挂任何拖动手势——zoom6 的高优先级拖动手势在垂直
+                    // 滚动视图里被滚动平移截获，拖动写不进状态，是“拉不动”
+                    // 的第一环；第二环是下面回弹被改成按尺寸。两环都拆掉后，
+                    // 拉动只靠系统回弹：从头部、白卡、歌单区任何地方下拉，
+                    // 只要页面在顶部，系统回弹都会把内容往下带，顶部读数
+                    // （CoProfilePullKey）随之变大，固定壁纸层只放大、不跟着
+                    // 头部走，顶部就不再留黑边。头像按钮点按不受任何手势影响。
+                    if !forceHomeBackdrop {
+                        GeometryReader { geo in
+                            Color.clear.preference(key: CoProfilePullKey.self, value: geo.frame(in: .global).minY)
+                        }
+                        .frame(height: 0)
                     }
+                    coNeteaseHeader
                     // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
                     // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
                     if !forceHomeBackdrop {
@@ -636,16 +646,29 @@ struct ProfileView: View {
                 // 300pt → 240pt，仍比叠层高约 75pt 余量，最后一行能完整滑出；不收到 190pt 以下（上一轮 190pt 时底部行曾被盖过）。
                 .padding(.bottom, 240)
                 .beansAdaptiveContentWidth()
-                .offset(y: forceHomeBackdrop ? 0 : headerDragPull)
                 }
                 .beansScrollIndicatorsHidden()
-                // 重建：不再依赖滚动回弹拉头部（回弹位移无上限、就是上一轮拉到 217pt 的根源）。
-                // basedOnSize：内容不满屏时不回弹（我的页只有 1 条歌单时正好不满屏），
-                // 头部下拉只由上面的拖动手势驱动、硬上限 120pt；内容超过一屏时列表回弹仍在，
-                // 但它不驱动壁纸缩放、壁纸顶边仍固定在屏幕顶边。
-                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+                // 拉动恢复：回弹改回始终可回弹（.always），不是按尺寸。
+                // .basedOnSize 在我的页只有 1 条歌单、内容不满屏时直接关了
+                // 回弹，是 zoom6“拉不动”的第二环：从白卡/歌单区下拉、
+                // 从头部下拉（头部手势又被截获）全都拉不动。
+                // .always 让内容不满屏时也能拉动，拉动本身先恢复；
+                // 壁纸效果仍封顶在 120pt：超过 120pt 后固定壁纸层不再
+                // 继续放大、不再继续变高，顶部黑边不会再变大。
+                // 注意：这个上限封的是壁纸效果，不是系统回弹本身——
+                // 系统回弹位移本身用最简单逻辑截断不了，内容本身在
+                // 超过 120pt 后仍会随系统回弹往下走，但壁纸顶边固定、
+                // 缩放封顶，顶部不会再留更大的黑边。
+                .scrollBounceBehavior(.always, axes: .vertical)
                 .coordinateSpace(name: "coProfileScroll")
                 .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
+                .onPreferenceChange(CoProfilePullKey.self) { minY in
+                    guard !forceHomeBackdrop else { return }
+                    // 顶部读数初始 = 顶部安全区（透明 safeAreaInset 的高度）；
+                    // 下拉时读数变大，差值就是实际下拉量；上滑时读数变小，
+                    // 差值为负，钳为 0 不放大。硬上限 120pt，松手随系统回弹回 0。
+                    headerDragPull = min(max(0, minY - profileTopSafeArea), 120)
+                }
                 .onChange(of: playlistsScrollRequest) { _ in
                     withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
                 }
