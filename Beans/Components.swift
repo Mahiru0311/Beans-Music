@@ -41,6 +41,19 @@ extension View {
         self.onAppear { CoDarkPageAppearance.enable() }
             .onDisappear { CoDarkPageAppearance.restore() }
     }
+    /// 1.9.4：真正隐藏导航栏。navigationBarHidden 在 iOS 26/27 已废弃，
+    /// 导航栈目的地仍会预留导航栏区域——目的地 GeometryReader 的顶边本身
+    /// 就被顶到导航栏下方，再加覆盖层顶距就是双重叠加（12:24 截图返回键
+    /// 仍在约 150pt 处就是这么来的）。iOS 16+ 用 toolbarVisibility 隐藏，
+    /// iOS 15 回落 navigationBarHidden。
+    @ViewBuilder
+    func coHideNavigationBar() -> some View {
+        if #available(iOS 16.0, *) {
+            self.toolbarVisibility(.hidden, for: .navigationBar)
+        } else {
+            self.navigationBarHidden(true)
+        }
+    }
 }
 
 // MARK: - 1.9.3 返回键位置与顶部渐变模糊
@@ -65,20 +78,55 @@ enum CoTopInset {
     }
 }
 
-/// 悬空返回键（歌单/每日推荐两页共用，保证位置、样式、点击行为一致）。
+/// 悬空返回键（歌单/每日推荐/榜单页共用，保证位置、样式、点击行为一致）。
+/// dark=true 用于浅色页（榜单页）：黑箭头 + 黑色细描边，压在浅色底上可读；
+/// 默认白色箭头用于深色沉浸页。
 struct CoFloatingBackButton: View {
     let onTap: () -> Void
+    var dark: Bool = false
     var body: some View {
         Button(action: onTap) {
             Image(systemName: "chevron.left")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(dark ? Color.black : Color.white)
                 .frame(width: 44, height: 44)
                 .background { BeansGlass(shape: Circle()) }
-                .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
+                .overlay { Circle().stroke(dark ? Color.black.opacity(0.15) : Color.white.opacity(0.25), lineWidth: 0.5) }
         }
         .buttonStyle(.plain)
         .contentShape(Circle())
+    }
+}
+
+/// 1.9.4 真渐变模糊：不是 1.9.3 的深色渐变冒充模糊，也不是整张图糊掉。
+/// 官方做法（Apple 开发者文档 / WWDC 渐变模糊样例的通用模式）：
+/// 取同一张封面，复制一份做 .blur，再用 LinearGradient 做遮罩——
+/// 遮罩顶部不透明、向底部渐变到透明，于是模糊强度从上到下渐渐变弱、
+/// 顶部是模糊的封面、底部是清晰的原图。SwiftUI 没有“可变模糊半径”
+/// 这一个现成 API，渐变遮罩 + 模糊副本就是官方文档给出的做法，
+/// 不要编造不存在的 API 名字。
+struct CoCoverGradientBlur: View {
+    let image: Image
+    let height: CGFloat
+    var blurRadius: CGFloat = 26
+    var body: some View {
+        image
+            .resizable()
+            .scaledToFill()
+            .blur(radius: blurRadius)
+            .mask(
+                LinearGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.35),
+                        .init(color: .black.opacity(0.45), location: 0.7),
+                        .init(color: .clear, location: 1.0),
+                    ]),
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+            .frame(height: height)
+            .clipped()
     }
 }
 

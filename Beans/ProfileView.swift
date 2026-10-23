@@ -38,6 +38,10 @@ struct ProfileView: View {
     @State private var showStatusEditor = false
     @State private var showHideConfirm = false
     @State private var hideConfirmPlaylist: Playlist?
+    // 1.9.4：我的页歌单行不再用 NavigationLink——导航链接的点按手势
+    // 会吞掉长按，contextMenu 永远打不开（见下面行内注释）。改成行用
+    // Button 点按 + onLongPressGesture 长按，导航由下方隐藏链接驱动。
+    @State private var navPlaylist: Playlist?
     /// 1.9.1：统计行点按目的地（我喜欢/歌单/历史/常听），用 sheet 打开真实列表页。
     @State private var statDestination: CoProfileStatDestination?
     @State private var myStatusText = ""
@@ -457,7 +461,9 @@ struct ProfileView: View {
         .background {
             // 主目标部署版本为 iOS 15，UnevenRoundedRectangle（iOS 16+）不可用；
             // 用全圆角矩形：顶部大圆角压边效果不变，底部圆角在卡片收尾处同样自然。
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            // 1.9.4：外层白卡圆角 28→34，与更圆润的歌单行（30）同步加大，
+            // 区与行不再不协调。
+            RoundedRectangle(cornerRadius: 34, style: .continuous)
                 .fill(Color(UIColor.systemBackground))
         }
         .offset(y: -24)
@@ -519,6 +525,7 @@ struct ProfileView: View {
             .beansScrollIndicatorsHidden()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+        .background { hiddenPlaylistNavLink }
         .task {
             guard !didRefreshProfileAccount else { return }
             didRefreshProfileAccount = true
@@ -699,6 +706,32 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
+    // 1.9.4：隐藏的歌单导航链接（行本身不再是 NavigationLink 时用它驱动
+    // 详情页推送）。放在 body 的 ZStack 背景层里，仍在 BeansNavigationStack 内，
+    // isActive 由 navPlaylist 驱动：点按行设 navPlaylist 即推送，返回时
+    // 系统把 isActive 置 false，navPlaylist 清空，不会残留。
+    private var hiddenPlaylistNavLink: some View {
+        NavigationLink(
+            destination: Group {
+                if let target = navPlaylist {
+                    PlaylistView(playlist: target)
+                        .environmentObject(player)
+                        .environmentObject(auth)
+                        .environmentObject(theme)
+                } else {
+                    EmptyView()
+                }
+            },
+            isActive: Binding(
+                get: { navPlaylist != nil },
+                set: { if !$0 { navPlaylist = nil } }
+            )
+        ) {
+            EmptyView()
+        }
+        .hidden()
+    }
+
     private var myPlaylistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "我的歌单")
@@ -726,24 +759,33 @@ struct ProfileView: View {
                     .font(BeansFont.appFont(13))
                     .foregroundStyle(Color.beansComment)
             } else {
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
                     ForEach(Array(visiblePlaylists.prefix(8))) { playlist in
                         // 1.8.6：点歌单进详情页（2.0.3 歌单页结构：封面/歌名/歌曲数/歌曲列表/播放全部），不再直接播放首歌。
                         // 1.9.1：行上不再留任何可见按钮——“···”与“>”箭头两个都删；
                         // 隐藏改回长按：长按整行弹出系统确认弹窗（见 showHideConfirm），
                         // 只藏“我的”页显示，不删歌单、不影响酷狗账号内歌单。
-                        // 圆润化：行圆角 14→22、封面 44pt/圆角10→52pt/圆角16、内边距 12×8→16×12、
-                        // 加柔和描边与轻阴影，整行是圆润卡片而非方角条。
+                        // 1.9.4 长按失效根因：1.9.1 的行是 NavigationLink + contextMenu，
+                        // 导航链接内部就是一个 Button，它的点按/导航手势会吞掉长按，
+                        // contextMenu 的长按菜单根本打不开；而确认弹窗的唯一触发点
+                        // 就在 contextMenu 的按钮里（设 hideConfirmPlaylist + showHideConfirm），
+                        // 菜单打不开 → 弹窗永远不出现。不是弹窗挂载层级的问题，
+                        // 弹窗本来就挂在我的页根视图上（body 层 .confirmationDialog）。
+                        // 新实现：行彻底脱离 NavigationLink——普通 Button 点按设
+                        // navPlaylist（由下方隐藏链接驱动导航进详情页），
+                        // onLongPressGesture（0.5 秒）设 hideConfirmPlaylist + showHideConfirm
+                        // 出系统确认弹窗；长按手势先认出、点按不触发，点按与长按不冲突。
                         // 注意：歌单详情页头部“···”菜单（含隐藏）保留，本条只改我的页歌单行，
                         // 详情页仍可藏，不会因行上无按钮而藏不了。
-                        NavigationLink {
-                            PlaylistView(playlist: playlist)
-                                .environmentObject(player)
-                                .environmentObject(auth)
-                                .environmentObject(theme)
+                        // 圆润化（1.9.4）：行圆角 22→30、封面 52pt/圆角16→56pt/圆角20、
+                        // 行内边距 16×12→18×14、行间距 10→12，外层白卡圆角同步 28→34，
+                        // 整行看起来是更圆润的卡片。
+                        Button {
+                            BeansHaptics.tap()
+                            navPlaylist = playlist
                         } label: {
-                            HStack(spacing: 12) {
-                                CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 16)
+                            HStack(spacing: 14) {
+                                CoverImage(url: playlist.coverURL, size: 56, cornerRadius: 20)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(playlist.name)
                                         .font(BeansFont.appFont(14, .semibold))
@@ -757,18 +799,17 @@ struct ProfileView: View {
                                 }
                                 Spacer()
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-                            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.beansComment.opacity(0.08), lineWidth: 0.5) }
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 14)
+                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 30, style: .continuous)) }
+                            .overlay { RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Color.beansComment.opacity(0.08), lineWidth: 0.5) }
                             .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
                         }
                         .buttonStyle(.plain)
-                        .contextMenu {
-                            Button("隐藏此歌单", role: .destructive) {
-                                hideConfirmPlaylist = playlist
-                                showHideConfirm = true
-                            }
+                        .onLongPressGesture(minimumDuration: 0.5) {
+                            BeansHaptics.select()
+                            hideConfirmPlaylist = playlist
+                            showHideConfirm = true
                         }
                     }
                 }

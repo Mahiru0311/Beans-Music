@@ -224,7 +224,11 @@ struct DiscoverView: View {
     private func discoverDestination(_ route: DiscoverRoute) -> some View {
         switch route {
         case .topList(let topList):
-            TopListDetailView(topList: topList)
+            TopListDetailView(topList: topList, onBack: {
+                guard !navigationPath.isEmpty else { return false }
+                navigationPath.removeLast()
+                return true
+            })
                 .environmentObject(player)
                 .environmentObject(auth)
         case .playlist(let playlist):
@@ -238,11 +242,19 @@ struct DiscoverView: View {
                 .environmentObject(player)
                 .environmentObject(auth)
         case .qqTopList(let info):
-            QQTopListDetailView(topID: info.id, name: info.name)
+            QQTopListDetailView(topID: info.id, name: info.name, onBack: {
+                guard !navigationPath.isEmpty else { return false }
+                navigationPath.removeLast()
+                return true
+            })
                 .environmentObject(player)
                 .environmentObject(auth)
         case .kugouTopList(let info):
-            KugouTopListDetailView(topList: info)
+            KugouTopListDetailView(topList: info, onBack: {
+                guard !navigationPath.isEmpty else { return false }
+                navigationPath.removeLast()
+                return true
+            })
                 .environmentObject(player)
                 .environmentObject(auth)
         case .dailySongs(let songs):
@@ -1259,6 +1271,7 @@ struct QQTopListDetailView: View {
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
+    var onBack: (() -> Bool)? = nil
 
     init(topID: Int, name: String) {
         self.topID = topID
@@ -1267,51 +1280,32 @@ struct QQTopListDetailView: View {
 
     var body: some View {
         let _ = theme.accent
-        ZStack {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-                Group {
-                if loading {
-                    LoadingStateView()
-                } else if let errorMessage {
-                    ErrorStateView(message: errorMessage) {
-                        Task { await load() }
-                    }
-                } else {
-                    List {
-                        Section {
-                            HStack(spacing: 12) {
-                                GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
-                                    guard !filteredTracks.isEmpty else { return }
-                                    BeansHaptics.tap()
-                                    player.play(songs: filteredTracks, startAt: 0)
-                                }
-                                GlassButton(title: "随机播放", systemName: "shuffle") {
-                                    guard !filteredTracks.isEmpty else { return }
-                                    BeansHaptics.tap()
-                                    player.play(songs: filteredTracks, startAt: Int.random(in: 0..<filteredTracks.count))
-                                }
-                            }
-                            .listRowBackground(Color.clear)
-                            .padding(.vertical, 8)
-                        }
-                        Section {
-                            ForEach(Array(filteredTracks.enumerated()), id: \.element.identityKey) { index, song in
-                                SongCell(song: song, glassRow: true) {
-                                    player.play(songs: filteredTracks, startAt: index)
-                                }
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-                        }
-                    }
-                    .beansScrollContentBackgroundHidden()
-                    .listStyle(.plain)
-                }
-            }
-            }
-            .navigationTitle(beansChartName(name))
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: beansLocalized("搜索榜单歌曲", "Search chart songs"))
+        CoTopDetailContent(
+                    title: beansChartName(name),
+                    subtitle: "",
+                    countText: beansSongCountText(tracks.count),
+                    coverURL: nil,
+                    customBackground: theme.backgroundSyncAll ? theme.customBackground : nil,
+                    searchText: $searchText,
+                    tracks: filteredTracks,
+                    onPlayAll: {
+                        guard !filteredTracks.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredTracks, startAt: 0)
+                    },
+                    onShuffle: {
+                        guard !filteredTracks.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredTracks, startAt: Int.random(in: 0..<filteredTracks.count))
+                    },
+                    onSongTap: { index in
+                        player.play(songs: filteredTracks, startAt: index)
+                    },
+                    loading: loading,
+                    errorMessage: errorMessage,
+                    onRetry: { Task { await load() } },
+                    onBack: onBack
+                )
         .task { await load() }
     }
 
@@ -1492,6 +1486,10 @@ struct DailySongsDetailView: View {
             // 不随 ScrollView 滚动。
             // 1.9.3：位置与点按同歌单页修法——顶距改窗口真实顶安全区+6，
             // 紧贴状态栏下方；点按走 goBack()（路径栈由调用方弹栈）。
+            // 1.9.4：覆盖层锚点本身也要忽略顶安全区（与歌单页同款修法）——
+            // 否则 GeometryReader 顶边若被导航栈顶边距顶下来，覆盖层顶距
+            // 会在其上再叠加一次，这就是 12:24 截图返回键仍在约 150pt 处的原因。
+            .ignoresSafeArea(edges: .top)
             .overlay(alignment: .topLeading) {
                 CoFloatingBackButton(onTap: goBack)
                     .padding(.leading, 16)
@@ -1499,7 +1497,7 @@ struct DailySongsDetailView: View {
             }
             .zIndex(10)
         }
-        .navigationBarHidden(true)
+        .coHideNavigationBar()
         .preferredColorScheme(.dark)
         .coForceDarkPage()
     }
@@ -1510,7 +1508,20 @@ struct DailySongsDetailView: View {
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: songs.first?.coverURL) { phase in
                         if case .success(let image) = phase {
-                            image.resizable().scaledToFill()
+                            // 1.9.4 真渐变模糊（替换 1.9.3 的材质+压暗冒充）：
+                            // 底层清晰原图，上层同一张图模糊副本 + 渐变遮罩，
+                            // 顶部模糊最强、向底部渐渐变清晰；再加很淡的顶部压暗
+                            // 仅保证状态栏字可读，模糊本身不是压暗。
+                            ZStack(alignment: .top) {
+                                image.resizable().scaledToFill()
+                                CoCoverGradientBlur(image: image, height: CoTopInset.effective(geometryTop: topInset) + 180)
+                                    .frame(width: geo.size.width, alignment: .top)
+                                LinearGradient(
+                                    colors: [.black.opacity(0.28), .clear],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                                .frame(height: CoTopInset.effective(geometryTop: topInset) + 120)
+                            }
                         } else {
                             Color(red: 0.15, green: 0.15, blue: 0.16)
                         }
@@ -1522,10 +1533,6 @@ struct DailySongsDetailView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 440 + topInset)
-                    // 1.9.3：顶部渐变模糊（与歌单页同款，见 PlaylistView 注释）。
-                    CoTopBlurFade(height: CoTopInset.effective(geometryTop: topInset) + 120)
-                        .frame(width: geo.size.width, alignment: .top)
-                        .frame(maxHeight: .infinity, alignment: .top)
                     // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层），只留封面 + 渐变。
                 }
             }
@@ -1615,6 +1622,192 @@ struct DailySongsDetailView: View {
 }
 // MARK: - 排行榜详情
 
+/// 1.9.4：三个榜单详情页共用的浅色玻璃版内容（不改成深色沉浸页）。
+/// 为什么是浅色玻璃版而不是深色沉浸版：TOP 页的红封面、榜单白卡、
+/// 黑字歌曲行都是浅色设计，硬改成深色沉浸页会把红封面糊掉、
+/// 歌曲行黑字也得全改，与歌单/每日推荐的深色沉浸不是同一类页。
+/// 浅色版同样有：悬空固定返回键（紧贴状态栏下方、玻璃圆钮黑箭头、
+/// 点按走 onBack 路径弹栈）、顶部真渐变模糊（封面模糊副本 + 渐变遮罩，
+/// 无封面时用材质模糊带）、播放全部与随机播放液态玻璃胶囊、
+/// 椭圆形玻璃搜索框、更圆润的歌曲行、底部 170pt 留白不被迷你播放器遮。
+struct CoTopDetailContent: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let subtitle: String
+    let countText: String
+    let coverURL: URL?
+    var customBackground: Color? = nil
+    @Binding var searchText: String
+    let tracks: [Song]
+    let onPlayAll: () -> Void
+    let onShuffle: () -> Void
+    let onSongTap: (Int) -> Void
+    var loading: Bool = false
+    var errorMessage: String? = nil
+    var onRetry: (() -> Void)? = nil
+    var onBack: (() -> Bool)? = nil
+    private func goBack() {
+        if onBack?() == true { return }
+        dismiss()
+    }
+    var body: some View {
+        GeometryReader { outer in
+            ZStack(alignment: .top) {
+                GlassBackdrop(customColor: customBackground)
+                // 顶部真渐变模糊带（固定层，不随滚动走）：有封面时用封面
+                // 模糊副本 + 渐变遮罩（顶部模糊最强、向底部渐渐变清晰）；
+                // 无封面（QQ 榜）时用材质模糊带 + 渐变遮罩兜底。
+                VStack(spacing: 0) {
+                    if let coverURL {
+                        AsyncImage(url: coverURL) { phase in
+                            if case .success(let image) = phase {
+                                CoCoverGradientBlur(image: image, height: 200, blurRadius: 26)
+                                    .frame(width: outer.size.width, alignment: .top)
+                            } else {
+                                CoTopBlurFade(height: 200)
+                                    .frame(width: outer.size.width, alignment: .top)
+                            }
+                        }
+                        .frame(width: outer.size.width, height: 200)
+                        .clipped()
+                    } else {
+                        CoTopBlurFade(height: 200)
+                            .frame(width: outer.size.width, alignment: .top)
+                    }
+                    Spacer()
+                }
+                .ignoresSafeArea(edges: .top)
+                Group {
+                    if loading {
+                        LoadingStateView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    } else if let errorMessage {
+                        ErrorStateView(message: errorMessage) {
+                            onRetry?()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    } else {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                Text(title)
+                                    .font(BeansFont.appFont(20, .bold))
+                                    .foregroundStyle(Color.beansLabel)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .frame(height: 44, alignment: .center)
+                                    .padding(.top, CoTopInset.effective(geometryTop: outer.safeAreaInsets.top) + 6)
+                                // 椭圆形玻璃搜索框（替代导航栏 .searchable 白底搜索）。
+                                HStack(spacing: 8) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(Color.beansComment)
+                                    TextField("搜索榜单歌曲", text: $searchText)
+                                        .font(BeansFont.appFont(15))
+                                    if !searchText.isEmpty {
+                                        Button { searchText = "" } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 15))
+                                                .foregroundStyle(Color.beansComment)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background { BeansGlass(shape: Capsule()) }
+                                .overlay { Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5) }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 12)
+                                HStack(spacing: 14) {
+                                    if let coverURL {
+                                        CoverImage(url: coverURL, size: 96, cornerRadius: 20)
+                                    }
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        // 榜单名已在顶部居中标题处显示，头卡不再重复写一遍
+                                        // （原导航标题 + 头卡标题的重复在同一屏上会显得多余），
+                                        // 头卡只留副标题与歌曲数。
+                                        if !subtitle.isEmpty {
+                                            Text(subtitle)
+                                                .font(BeansFont.appFont(12))
+                                                .foregroundStyle(Color.beansComment)
+                                        }
+                                        Text(countText)
+                                            .font(BeansFont.appFont(12))
+                                            .foregroundStyle(Color.beansComment)
+                                    }
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(16)
+                                .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 28, style: .continuous)) }
+                                .beansCardShadow(radius: 8, y: 3)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                                HStack(spacing: 12) {
+                                    Button(action: onPlayAll) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "play.fill")
+                                            Text("播放全部")
+                                        }
+                                        .font(BeansFont.appFont(15, .semibold))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                        .background { BeansGlass(shape: Capsule()) }
+                                        .overlay { Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5) }
+                                    }
+                                    .buttonStyle(.plain)
+                                    Button(action: onShuffle) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "shuffle")
+                                            Text("随机播放")
+                                        }
+                                        .font(BeansFont.appFont(15, .semibold))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                        .background { BeansGlass(shape: Capsule()) }
+                                        .overlay { Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5) }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                                if tracks.isEmpty {
+                                    // 酷狗榜原 EmptyStateView 的空态保留：无歌曲时明写出来，
+                                    // 而不是只留一片空白。
+                                    Text("该排行榜暂无歌曲")
+                                        .font(BeansFont.appFont(14))
+                                        .foregroundStyle(Color.beansComment)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .padding(.top, 24)
+                                }
+                                LazyVStack(spacing: 12) {
+                                    ForEach(Array(tracks.enumerated()), id: \.element.identityKey) { index, song in
+                                        SongCell(song: song, glassRow: true) {
+                                            onSongTap(index)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                            }
+                            .padding(.bottom, 170)
+                        }
+                        .beansScrollIndicatorsHidden()
+                    }
+                }
+            }
+            .ignoresSafeArea(edges: .top)
+            .overlay(alignment: .topLeading) {
+                CoFloatingBackButton(onTap: goBack, dark: true)
+                    .padding(.leading, 16)
+                    .padding(.top, CoTopInset.effective(geometryTop: outer.safeAreaInsets.top) + 6)
+            }
+            .zIndex(10)
+        }
+        .coHideNavigationBar()
+    }
+}
+
 struct TopListDetailView: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var theme: ThemeStore
@@ -1625,6 +1818,7 @@ struct TopListDetailView: View {
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
+    var onBack: (() -> Bool)? = nil
 
     init(topList: TopList) {
         self.topList = topList
@@ -1632,79 +1826,33 @@ struct TopListDetailView: View {
 
     var body: some View {
         let _ = theme.accent
-        ZStack {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-                Group {
-                if loading {
-                    LoadingStateView()
-                } else if let errorMessage {
-                    ErrorStateView(message: errorMessage) {
-                        Task { await load() }
-                    }
-                } else {
-                    List {
-                        header
-                        Section {
-                            HStack(spacing: 12) {
-                                GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
-                                    guard !filteredTracks.isEmpty else { return }
-                                    BeansHaptics.tap()
-                                    player.play(songs: filteredTracks, startAt: 0)
-                                }
-                                GlassButton(title: "随机播放", systemName: "shuffle") {
-                                    guard !filteredTracks.isEmpty else { return }
-                                    BeansHaptics.tap()
-                                    player.play(songs: filteredTracks, startAt: Int.random(in: 0..<filteredTracks.count))
-                                }
-                            }
-                            .listRowBackground(Color.clear)
-                            .padding(.vertical, 8)
-                        }
-                        Section {
-                            ForEach(Array(filteredTracks.enumerated()), id: \.element.identityKey) { index, song in
-                                SongCell(song: song, glassRow: true) {
-                                    player.play(songs: filteredTracks, startAt: index)
-                                }
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-                        }
-                    }
-                    .beansScrollContentBackgroundHidden()
-                    .listStyle(.plain)
-                }
-            }
-            }
-            .navigationTitle(beansChartName(topList.name))
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: beansLocalized("搜索榜单歌曲", "Search chart songs"))
+        CoTopDetailContent(
+                    title: beansChartName(topList.name),
+                    subtitle: beansChartSubtitle(topList.updateFrequency),
+                    countText: beansSongCountText(tracks.count),
+                    coverURL: topList.coverURL,
+                    customBackground: theme.backgroundSyncAll ? theme.customBackground : nil,
+                    searchText: $searchText,
+                    tracks: filteredTracks,
+                    onPlayAll: {
+                        guard !filteredTracks.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredTracks, startAt: 0)
+                    },
+                    onShuffle: {
+                        guard !filteredTracks.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredTracks, startAt: Int.random(in: 0..<filteredTracks.count))
+                    },
+                    onSongTap: { index in
+                        player.play(songs: filteredTracks, startAt: index)
+                    },
+                    loading: loading,
+                    errorMessage: errorMessage,
+                    onRetry: { Task { await load() } },
+                    onBack: onBack
+                )
         .task { await load() }
-    }
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            CoverImage(url: topList.coverURL, size: 88, cornerRadius: 8)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(beansChartName(topList.name))
-                    .font(BeansFont.appFont(18, .bold))
-                    .foregroundStyle(Color.beansLabel)
-                Text(beansChartSubtitle(topList.updateFrequency))
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-                Text(beansSongCountText(tracks.count))
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-            }
-            Spacer()
-        }
-        .padding(14)
-        .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-        .beansCardShadow(radius: 8, y: 3)
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     private var filteredTracks: [Song] {
@@ -1765,6 +1913,7 @@ struct KugouTopListDetailView: View {
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
+    var onBack: (() -> Bool)? = nil
 
     init(topList: KugouTopInfo) {
         self.topList = topList
@@ -1772,84 +1921,33 @@ struct KugouTopListDetailView: View {
 
     var body: some View {
         let _ = theme.accent
-        ZStack {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-                Group {
-                if loading {
-                    LoadingStateView()
-                } else if let errorMessage {
-                    ErrorStateView(message: errorMessage) {
-                        Task { await load() }
-                    }
-                } else if tracks.isEmpty {
-                    EmptyStateView(icon: "music.note.list", text: beansLocalized("该排行榜暂无歌曲", "This chart has no songs yet"))
-                } else {
-                    List {
-                        header
-                        Section {
-                            HStack(spacing: 12) {
-                                GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
-                                    guard !filteredTracks.isEmpty else { return }
-                                    BeansHaptics.tap()
-                                    player.play(songs: filteredTracks, startAt: 0)
-                                }
-                                GlassButton(title: "随机播放", systemName: "shuffle") {
-                                    guard !filteredTracks.isEmpty else { return }
-                                    BeansHaptics.tap()
-                                    player.play(songs: filteredTracks, startAt: Int.random(in: 0..<filteredTracks.count))
-                                }
-                            }
-                            .listRowBackground(Color.clear)
-                            .padding(.vertical, 8)
-                        }
-                        Section {
-                            ForEach(Array(filteredTracks.enumerated()), id: \.element.identityKey) { index, song in
-                                SongCell(song: song, glassRow: true) {
-                                    player.play(songs: filteredTracks, startAt: index)
-                                }
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                            }
-                        }
-                    }
-                    .beansScrollContentBackgroundHidden()
-                    .listStyle(.plain)
-                }
-            }
-            }
-            .navigationTitle(beansChartName(topList.name))
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: beansLocalized("搜索榜单歌曲", "Search chart songs"))
+        CoTopDetailContent(
+                    title: beansChartName(topList.name),
+                    subtitle: topList.updateFrequency.isEmpty ? "" : beansChartSubtitle(topList.updateFrequency),
+                    countText: beansSongCountText(tracks.count),
+                    coverURL: topList.coverURL,
+                    customBackground: theme.backgroundSyncAll ? theme.customBackground : nil,
+                    searchText: $searchText,
+                    tracks: filteredTracks,
+                    onPlayAll: {
+                        guard !filteredTracks.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredTracks, startAt: 0)
+                    },
+                    onShuffle: {
+                        guard !filteredTracks.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredTracks, startAt: Int.random(in: 0..<filteredTracks.count))
+                    },
+                    onSongTap: { index in
+                        player.play(songs: filteredTracks, startAt: index)
+                    },
+                    loading: loading,
+                    errorMessage: errorMessage,
+                    onRetry: { Task { await load() } },
+                    onBack: onBack
+                )
         .task { await load() }
-    }
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            CoverImage(url: topList.coverURL, size: 88, cornerRadius: 8)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(beansChartName(topList.name))
-                    .font(BeansFont.appFont(18, .bold))
-                    .foregroundStyle(Color.beansLabel)
-                    .lineLimit(2)
-                if !topList.updateFrequency.isEmpty {
-                    Text(beansChartSubtitle(topList.updateFrequency))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-                Text(beansSongCountText(tracks.count))
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-        .beansCardShadow(radius: 8, y: 3)
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     private var filteredTracks: [Song] {

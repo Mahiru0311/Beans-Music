@@ -160,7 +160,8 @@ struct SongCell: View {
                 rowContent
                     .padding(.horizontal, 10)
                     .background {
-                                            BeansGlass(shape: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                            // 1.9.4：玻璃行更圆润（榜单页歌曲行同款，16→22）。
+                                            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
                     }
             } else {
                 rowContent

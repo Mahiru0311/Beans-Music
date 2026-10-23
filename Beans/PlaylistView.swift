@@ -77,12 +77,9 @@ struct PlaylistView: View {
                     }
                 }
             }
-            // 1.9.2：返回键悬空固定——从滚动内容里拿出来，盖在整页上方（ZStack 层，
-            // 不随 ScrollView 滚动，加载/报错态也一直在）。
-            // 1.9.3：位置改用窗口真实顶安全区（CoTopInset），不再用导航栈里
-            // 会双重计数的 GeometryReader safeAreaInsets.top；顶距 = 窗口顶安全区+6，
-            // 紧贴状态栏下方；点按走 goBack()（路径栈由调用方弹栈，普通栈回落 dismiss），
-            // 覆盖层在最上层（zIndex），不被滚动视图挡住。
+            // 1.9.4：覆盖层锚点本身也要忽略顶安全区——否则 GeometryReader 顶边
+            // 若被导航栈顶边距顶下来，覆盖层顶距会在其上再叠加一次。
+            .ignoresSafeArea(edges: .top)
             .overlay(alignment: .topLeading) {
                 CoFloatingBackButton(onTap: goBack)
                     .padding(.leading, 16)
@@ -90,7 +87,7 @@ struct PlaylistView: View {
             }
             .zIndex(10)
         }
-        .navigationBarHidden(true)
+        .coHideNavigationBar()
         .preferredColorScheme(.dark)
         .coForceDarkPage()
         .task { await load() }
@@ -107,7 +104,20 @@ struct PlaylistView: View {
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: playlist.coverURL) { phase in
                         if case .success(let image) = phase {
-                            image.resizable().scaledToFill()
+                            // 1.9.4 真渐变模糊（替换 1.9.3 的材质+压暗冒充）：
+                            // 底层是清晰原图，上层是同一张图的模糊副本 + 渐变遮罩，
+                            // 顶部模糊最强、向底部渐渐变清晰；再加一层很淡的顶部压暗
+                            // 仅保证状态栏字可读，模糊本身不是压暗。
+                            ZStack(alignment: .top) {
+                                image.resizable().scaledToFill()
+                                CoCoverGradientBlur(image: image, height: topInset + 180)
+                                    .frame(width: geo.size.width, alignment: .top)
+                                LinearGradient(
+                                    colors: [.black.opacity(0.28), .clear],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                                .frame(height: topInset + 120)
+                            }
                         } else {
                             Color(red: 0.15, green: 0.15, blue: 0.16)
                         }
@@ -119,15 +129,7 @@ struct PlaylistView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 440 + topInset)
-                    // 1.9.3：顶部渐变模糊——在封面最上层加一段模糊带（安全区+约 120pt，
-                    // 超薄材质采样背后封面 + 渐变遮罩向底部淡出到底部透明 + 顶部压暗），
-                    // 状态栏字与悬空返回键落在模糊区里可读；只盖顶部一段，
-                    // 不整张封面糊掉，封面高度与底部五段渐变不动。
-                    // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层，下滑也不滚走），
-                    // 这里只留封面 + 渐变，封面高度与渐变不动。
-                    CoTopBlurFade(height: CoTopInset.effective(geometryTop: topInset) + 120)
-                        .frame(width: geo.size.width, alignment: .top)
-                        .frame(maxHeight: .infinity, alignment: .top)
+                    // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层，下滑也不滚走）。
                 }
             }
             .frame(height: 440 + topInset)
