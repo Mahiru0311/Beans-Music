@@ -53,6 +53,45 @@ private enum CoProfileStatusBarStyle {
     }
 }
 
+
+/// 我的页头部壁纸（独立于整站主题壁纸）：只影响我的页头部那整块背景。
+/// 默认无图 = 现在黑色；选图后存沙盒文件，不打包进 IPA、不上传、不走主题壁纸库与备份。
+/// 静态图，不带连续动画引擎，不发热。
+final class CoProfileHeaderWallpaper: ObservableObject {
+    static let shared = CoProfileHeaderWallpaper()
+    @Published private(set) var image: UIImage?
+    private var fileURL: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("CoProfileHeaderWallpaper.jpg")
+    }
+    private init() { load() }
+    private func load() {
+        guard let url = fileURL, let data = try? Data(contentsOf: url), let img = UIImage(data: data) else { return }
+        image = img
+    }
+    func save(data: Data) {
+        guard let raw = UIImage(data: data) else { return }
+        let maxSide: CGFloat = 1600
+        let scale = min(1, maxSide / max(raw.size.width, raw.size.height))
+        let img: UIImage
+        if scale < 1 {
+            let size = CGSize(width: raw.size.width * scale, height: raw.size.height * scale)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            img = renderer.image { _ in raw.draw(in: CGRect(origin: .zero, size: size)) }
+        } else {
+            img = raw
+        }
+        guard let jpeg = img.jpegData(compressionQuality: 0.85), let url = fileURL else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? jpeg.write(to: url, options: .atomic)
+        DispatchQueue.main.async { self.image = img }
+    }
+    func clear() {
+        if let url = fileURL { try? FileManager.default.removeItem(at: url) }
+        DispatchQueue.main.async { self.image = nil }
+    }
+}
+
 private struct BeansProfileThemeRevealOverlay: View {
     let snapshot: UIImage
     let origin: CGPoint
@@ -198,6 +237,7 @@ struct ProfileView: View {
     @State private var showProfileNameBackgroundPicker = false
     @AppStorage("beans.profile.customNickname") private var customNickname = ""
     @ObservedObject private var avatarStore = BeansAvatarStore.shared
+    @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
     @ObservedObject private var profileNameBackgroundStore = BeansProfileNameBackgroundStore.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
@@ -474,7 +514,7 @@ struct ProfileView: View {
             // 自身边界裁剪，根本画不到状态栏区；本条在 ScrollView 外，高度 = 顶部安全区，
             // 与下方黑头拼接成从顶边开始的整片黑色，滚动时仍在顶部，状态栏区恒黑。
             if !forceHomeBackdrop {
-                Color.black
+                coProfileTopBar
                     .frame(height: profileTopSafeArea)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(edges: .top)
@@ -806,6 +846,30 @@ struct ProfileView: View {
     // 不再是白色状态栏条 + 黑头拼接；状态栏文字颜色见 updateProfileStatusBarStyle。
     // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距 300pt。
 
+    /// 顶部固定条（状态栏区）：无图时纯黑；有图时显示壁纸顶部，与下方头部壁纸顶对齐，
+    /// 避免下拉/静止时固定条与头部之间出现色块断层；统一罩 0.45 暗色，保证状态栏白字可读。
+    private var coProfileTopBar: some View {
+        ZStack {
+            if let image = profileHeaderWallpaper.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .clipped()
+                Color.black.opacity(0.45)
+            } else {
+                Color.black
+            }
+        }
+    }
+
+    /// 下拉量：头部在全局坐标里的顶边减去顶部安全区，下拉为正、上滑钳为 0；
+    /// 主页头像弹出的 profile 不参与（其顶边不在安全区，无下拉拉伸）。
+    private func coProfileHeaderPull(geo: GeometryProxy) -> CGFloat {
+        if forceHomeBackdrop { return 0 }
+        return max(0, geo.frame(in: .global).minY - profileTopSafeArea)
+    }
+
     private var coNeteaseHeader: some View {
         VStack(spacing: 0) {
             HStack {
@@ -854,9 +918,31 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .background {
-            // 背景延伸进顶部安全区：黑头从屏幕顶边开始，状态栏区域不再露白。
-            // 只扩背景、不动内容布局，ScrollView 的 scrollTo 锚点仍在安全区顶边，不受影响。
-            Color.black.ignoresSafeArea(edges: .top)
+            // 拉伸壁纸层：背景自身用 GeometryReader 量下拉量，下拉时背景框向上延伸、
+            // 高度随下拉增大、松手随 ScrollView 回弹复原，顶部不再露出白带。
+            // 框顶 = 头部顶边 - (安全区 + 下拉量)，框底 = 头部底边，框高随下拉增大，
+            // scaledToFill 顶对齐，图随框放大（标准 GeometryReader 拉伸头做法，静态图、无连续动画；
+            // 注：已查 2.0.3 歌单页代码，里面并无拉伸头实现，本做法不是从它抄的）。
+            // 无图时就是现在黑色；有图时罩 0.45 暗色，头像/昵称/VIP/状态行白字仍可读。
+            GeometryReader { geo in
+                let pull = coProfileHeaderPull(geo: geo)
+                let topExtension = forceHomeBackdrop ? 0 : profileTopSafeArea + pull
+                ZStack {
+                    if let image = profileHeaderWallpaper.image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Color.black
+                    }
+                    if profileHeaderWallpaper.image != nil {
+                        Color.black.opacity(0.45)
+                    }
+                }
+                .frame(width: geo.size.width, height: geo.size.height + topExtension, alignment: .top)
+                .offset(y: -topExtension)
+                .clipped()
+            }
         }
     }
 
@@ -1665,6 +1751,8 @@ struct SettingsView: View {
     @State private var playbackExpanded = false
     @State private var audioQualityExpanded = false
     @State private var showWallpaperPicker = false
+    @State private var showProfileHeaderWallpaperPicker = false
+    @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
     @State private var wallpaperAppearanceTarget: BeansWallpaperAppearance = .light
     @State private var showFontImporter = false
     @State private var showGreetingFontImporter = false
@@ -2441,6 +2529,51 @@ struct SettingsView: View {
 
             if appearanceExpanded {
             VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.beansAmber)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("我的页头部壁纸")
+                            .font(BeansFont.appFont(15))
+                            .foregroundStyle(Color.beansLabel)
+                        Text(profileHeaderWallpaper.image == nil ? "当前：默认黑色" : "当前：已应用壁纸")
+                            .font(BeansFont.appFont(12))
+                            .foregroundStyle(Color.beansComment)
+                    }
+                    Spacer()
+                    if profileHeaderWallpaper.image != nil {
+                        Button {
+                            profileHeaderWallpaper.clear()
+                            BeansHaptics.select()
+                        } label: {
+                            Text("恢复默认")
+                                .font(BeansFont.appFont(13, .medium))
+                                .foregroundStyle(.red)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background { BeansSurface(shape: Capsule()) }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Button {
+                        showProfileHeaderWallpaperPicker = true
+                    } label: {
+                        Text("更换")
+                            .font(BeansFont.appFont(13, .medium))
+                            .foregroundStyle(Color.beansAmber)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background { BeansSurface(shape: Capsule()) }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .sheet(isPresented: $showProfileHeaderWallpaperPicker) {
+                    WallpaperPhotoPicker(allowsMultiple: false) { data in
+                        CoProfileHeaderWallpaper.shared.save(data: data)
+                    }
+                }
                 Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
                     .tint(Color.beansAmber)
                     .accessibilityIdentifier("beans.settings.immersive-detail")
