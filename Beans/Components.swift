@@ -1857,33 +1857,8 @@ struct ToastView: View {
     var body: some View {
         let _ = theme.accent
         Group {
-
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                    }
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansLabel)
-
-                    if let fraction = progress.fractionCompleted {
-                        ProgressView(value: fraction)
-                            .tint(Color.beansAmber)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: 340)
-                .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(.white.opacity(0.18), lineWidth: 0.8)
-                        }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            } else {
-                Text(center.message ?? "")
+            if let message = center.message {
+                Text(message)
                     .font(BeansFont.appFont(14, .medium))
                     .foregroundStyle(Color.beansLabel)
                     .lineLimit(2)
@@ -1898,14 +1873,15 @@ struct ToastView: View {
                             }
                     }
                     .clipShape(Capsule())
+            }
         }
-            .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
-            .padding(.horizontal, 30)
-            .padding(.bottom, 92)
-            .opacity(center.message == nil ? 0 : 1)
-            .offset(y: center.message == nil ? 16 : 0)
-            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: center.message)
-            .allowsHitTesting(false)
+        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
+        .padding(.horizontal, 30)
+        .padding(.bottom, 92)
+        .opacity(center.message == nil ? 0 : 1)
+        .offset(y: center.message == nil ? 16 : 0)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: center.message)
+        .allowsHitTesting(false)
     }
 }
 
