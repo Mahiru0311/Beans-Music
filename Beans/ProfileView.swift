@@ -254,12 +254,35 @@ struct ProfileView: View {
         return UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
     }
 
+    /// 顶部安全区真实值（灵动岛机型约 59pt）：固定黑条的高度，取关键窗口真实值，兜底 59。
+    private var profileTopSafeArea: CGFloat {
+        let top = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 59
+        return top > 0 ? top : 59
+    }
+
+    /// 状态栏方案：我的页顶部恒有一条黑色固定条，浅色主题下也用深色方案，
+    /// 状态栏文字才为白色；白卡/歌单颜色用下方显式颜色，不随本方案翻转。
+    private var profileStatusBarScheme: ColorScheme {
+        if forceHomeBackdrop { return profileEffectiveScheme }
+        return profileEffectiveScheme == .light ? .dark : profileEffectiveScheme
+    }
+
+    /// 显式颜色（不随 environment 颜色方案翻转）：浅色主题下黑字/灰字/浅灰底，
+    /// 深色主题下白字/半透明白字/深灰底。只用于我的页白卡区。
+    private var coEffectiveLabel: Color { profileEffectiveScheme == .dark ? .white : .black }
+    private var coEffectiveSecondary: Color { profileEffectiveScheme == .dark ? .white.opacity(0.65) : Color(red: 0.45, green: 0.45, blue: 0.47) }
+    private var coEffectiveRowBackground: Color { profileEffectiveScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.96, green: 0.96, blue: 0.97) }
+
     /// 状态栏样式与页面状态同步：浅色主题且黑头在顶时用浅色文字；
     /// 深色主题（文字本来就是浅色）、白卡滑到顶、白卡在顶时都不需要窗口改色。
     /// 主页头像 sheet 打开的 profile（forceHomeBackdrop）不参与，避免与 tab 页互相抢。
     private func updateProfileStatusBarStyle() {
+        // 返工：固定黑条恒在顶部，浅色主题下状态栏恒为白色文字，不再按白卡位置切换。
         guard !forceHomeBackdrop else { return }
-        if profileEffectiveScheme == .light && !isCardAtTop {
+        if profileEffectiveScheme == .light {
             CoProfileStatusBarStyle.applyDark()
         } else {
             CoProfileStatusBarStyle.restore()
@@ -440,6 +463,22 @@ struct ProfileView: View {
             }
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
             TabBarAppearanceConfigurator()
+            // 返工：页面底色显式化（无自定义背景时才铺，避免自定义壁纸被盖住），
+            // 防止深色状态栏方案把白卡下方的空白区也带翻成深色。
+            if !forceHomeBackdrop && theme.customBackground == nil {
+                Color(profileEffectiveScheme == .dark ? .black : .white)
+                    .ignoresSafeArea()
+            }
+            // 返工：固定黑条（ScrollView 外的 ZStack 兄弟层，不被 ScrollView 裁剪）。
+            // 上一轮黑头背景的 ignoresSafeArea 只贴在 ScrollView 内部子视图上，被 ScrollView
+            // 自身边界裁剪，根本画不到状态栏区；本条在 ScrollView 外，高度 = 顶部安全区，
+            // 与下方黑头拼接成从顶边开始的整片黑色，滚动时仍在顶部，状态栏区恒黑。
+            if !forceHomeBackdrop {
+                Color.black
+                    .frame(height: profileTopSafeArea)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(edges: .top)
+            }
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
@@ -493,8 +532,9 @@ struct ProfileView: View {
         }
         // The avatar-presented profile is its own sheet, so its content must
         // receive the selected color scheme instead of only the backdrop.
-        // 显式生效深浅色（见 profileEffectiveScheme）：窗口为状态栏改深色时页面颜色不被带翻。
-        .preferredColorScheme(profileEffectiveScheme)
+        // 状态栏方案（见 profileStatusBarScheme）：浅色主题下也用深色方案，状态栏文字为白色；
+        // 白卡区颜色用显式颜色（coEffective*），不被本方案带翻。
+        .preferredColorScheme(profileStatusBarScheme)
         .onAppear { updateProfileStatusBarStyle() }
         .onDisappear {
             if !forceHomeBackdrop { CoProfileStatusBarStyle.restore() }
@@ -509,6 +549,7 @@ struct ProfileView: View {
                 .environmentObject(player)
                 .environmentObject(auth)
                 .environmentObject(theme)
+                .preferredColorScheme(profileEffectiveScheme)
         }
         .sheet(isPresented: $showAvatarPicker) {
             AvatarMediaPicker { selection in
@@ -533,11 +574,13 @@ struct ProfileView: View {
             AccountHubSheet()
                 .environmentObject(theme)
                 .environmentObject(auth)
+                .preferredColorScheme(profileEffectiveScheme)
         }
         .sheet(isPresented: $showFavorites) {
             CoSongListSheet(title: "我喜欢", songs: favorites.kugouFavoriteSongs)
                 .environmentObject(player)
                 .environmentObject(theme)
+                .preferredColorScheme(profileEffectiveScheme)
         }
         .sheet(isPresented: $showTopPlayed) {
             CoSongListSheet(
@@ -547,6 +590,7 @@ struct ProfileView: View {
             )
                 .environmentObject(player)
                 .environmentObject(theme)
+                .preferredColorScheme(profileEffectiveScheme)
         }
         .task(id: kugouAuth.isLoggedIn) {
             await coLoadMyPlaylists()
@@ -665,7 +709,7 @@ struct ProfileView: View {
             HStack {
                 Text("我的歌单")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.beansLabel)
+                    .foregroundStyle(coEffectiveLabel)
                 Spacer()
             }
             if !kugouAuth.isLoggedIn {
@@ -675,10 +719,10 @@ struct ProfileView: View {
                 } label: {
                     Text("登录酷狗音乐后可同步云端歌单")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansSecondary)
+                        .foregroundStyle(coEffectiveSecondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 20)
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
             } else if myPlaylistsLoading {
@@ -691,17 +735,17 @@ struct ProfileView: View {
             } else if myPlaylists.isEmpty {
                 Text("暂未同步到酷狗歌单，请稍后重试")
                     .font(.system(size: 14))
-                    .foregroundStyle(Color.beansSecondary)
+                    .foregroundStyle(coEffectiveSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else if visiblePlaylists.isEmpty {
                 Text("暂无歌单")
                     .font(.system(size: 14))
-                    .foregroundStyle(Color.beansSecondary)
+                    .foregroundStyle(coEffectiveSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else {
                 VStack(spacing: 0) {
                     ForEach(visiblePlaylists) { playlist in
@@ -720,16 +764,16 @@ struct ProfileView: View {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(playlist.name)
                                             .font(.system(size: 16))
-                                            .foregroundStyle(Color.beansLabel)
+                                            .foregroundStyle(coEffectiveLabel)
                                             .lineLimit(1)
                                         Text(beansSongCountText(playlist.trackCount))
                                             .font(.system(size: 13))
-                                            .foregroundStyle(Color.beansSecondary)
+                                            .foregroundStyle(coEffectiveSecondary)
                                     }
                                     Spacer(minLength: 8)
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(Color.beansSecondary)
+                                        .foregroundStyle(coEffectiveSecondary)
                                 }
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 10)
@@ -747,7 +791,7 @@ struct ProfileView: View {
                         }
                     }
                 }
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
@@ -824,12 +868,12 @@ struct ProfileView: View {
             VStack(spacing: 4) {
                 Text(value)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.beansLabel)
+                    .foregroundStyle(coEffectiveLabel)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text(title)
                     .font(.system(size: 12))
-                    .foregroundStyle(Color.beansSecondary)
+                    .foregroundStyle(coEffectiveSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
@@ -842,12 +886,12 @@ struct ProfileView: View {
     /// 颜色改回深色（数字 beansLabel、标签 beansSecondary），白卡上不再用白字。
     private var coNeteaseStatsInCard: some View {
         HStack(spacing: 0) {
-            coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
-            coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
+            coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)") { showFavorites = true }
+            coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)") {
                 if !kugouAuth.isLoggedIn { showAccountHub = true } else { playlistsScrollRequest += 1 }
             }
-            coNeteaseStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
-            coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
+            coNeteaseStatButton(title: "历史", value: "\(player.history.count)") { showHistory = true }
+            coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))") { showTopPlayed = true }
         }
     }
 
@@ -856,9 +900,6 @@ struct ProfileView: View {
         // 本轮起主卡片里是数据行 + 我的歌单，数据行不再在黑色背景上。
         VStack(alignment: .leading, spacing: 20) {
             coNeteaseStatsInCard
-            Rectangle()
-                .fill(Color.beansLabel.opacity(0.10))
-                .frame(height: 1)
             coPlaylistsSection
                 .id("coMyPlaylistsSection")
         }
@@ -868,7 +909,7 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 28, style: .continuous)
-                .fill(colorScheme == .dark ? Color(.secondarySystemBackground) : Color.white)
+                .fill(profileEffectiveScheme == .dark ? Color(.secondarySystemBackground) : Color.white)
         )
         .background {
             // 上报白卡顶部全局位置，供状态栏浅/深色切换用（见 BeansProfileCardTopKey）。
