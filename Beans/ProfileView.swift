@@ -43,6 +43,8 @@ struct ProfileView: View {
     @State private var statusDraft = ""
     @State private var vipIconImage: UIImage?
     @State private var vipIconLoadFailed = false
+    // 1.8.9 预览图：仅内存缓存（选款缓存仍是单文件 CoVIPIcon/current，预览绝不写盘、不占选款缓存）。
+    @State private var vipPreviewImages: [String: UIImage] = [:]
     /// 用户页背景（1.8.5）：默认 auto，不再是纯黑；见 profileHeaderBackground。
     @AppStorage("beans.profileBackground") private var profileBackgroundRaw = "auto"
     @AppStorage("beans.profileBackgroundCustomHex") private var profileBackgroundCustomHex = ""
@@ -268,8 +270,99 @@ struct ProfileView: View {
         vipIconLoadFailed = false
         vipIconItemId = item?.id ?? "auto"
         BeansHaptics.select()
-        // 下载是异步的，失败时系统弹窗的 message 会显示回落提示，不在此处同步弹 toast。
+        // 下载是异步的，失败时弹层底部会显示回落提示，不在此处同步弹 toast。
         loadVIPIcon(allowDownload: true)
+    }
+
+    // MARK: - 1.8.9 VIP 预览弹层（系统 sheet + List 行，每项带真实预览图）
+    private var vipIconPreviewSheet: some View {
+        NavigationView {
+            List {
+                Section {
+                    Button {
+                        selectVIPIcon(nil)
+                        showVIPIconPicker = false
+                    } label: {
+                        HStack(spacing: 12) {
+                            CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("自动").font(BeansFont.appFont(15, .semibold)).foregroundStyle(Color.beansLabel)
+                                Text("按 VIP 状态自动对应（静态）").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                            }
+                            Spacer()
+                            if vipIconItemId == "auto" {
+                                Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.beansAmber)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    ForEach(CoVIPIconCatalog.vipCore) { item in
+                        let disabled = item.isAnimated && !kugouAuth.hasMembership
+                        Button {
+                            selectVIPIcon(item)
+                            showVIPIconPicker = false
+                        } label: {
+                            HStack(spacing: 12) {
+                                vipPreviewImage(for: item)
+                                    .opacity(disabled ? 0.45 : 1)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.label).font(BeansFont.appFont(15, .semibold)).foregroundStyle(Color.beansLabel)
+                                    Text(item.isAnimated ? (disabled ? "动图 · 需 VIP（仅预览）" : "动图") : "静态")
+                                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                                }
+                                Spacer()
+                                if vipIconItemId == item.id {
+                                    Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.beansAmber)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(disabled)
+                    }
+                } footer: {
+                    Text(vipIconLoadFailed ? "当前款图标加载失败，已回落 Co 自绘徽标；可重选一款重试。" : "预览图仅放内存、不写选款缓存；点选后只下载当前一款并缓存，换一款时旧缓存立即删除。动效款仅 VIP 可用。")
+                }
+            }
+            .navigationTitle("VIP 图标")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { showVIPIconPicker = false }
+                }
+            }
+        }
+        .task { await loadVIPPreviews() }
+        .onDisappear { vipPreviewImages = [:] }
+    }
+
+    private func vipPreviewImage(for item: CoVIPIconItem) -> some View {
+        Group {
+            if let img = vipPreviewImages[item.id] {
+                CoVIPRemoteImage(image: img)
+            } else if let img = vipIconImage, vipIconItemId == item.id {
+                CoVIPRemoteImage(image: img)
+            } else {
+                // 预览未到 / 下载失败：回落自绘徽标并明示是占位，不留破图。
+                CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
+                    .opacity(0.6)
+            }
+        }
+    }
+
+    /// 预览图只放内存：逐项下载、同一解码器重建动图，绝不写 CoVIPIcon/current。
+    private func loadVIPPreviews() async {
+        for item in CoVIPIconCatalog.vipCore {
+            guard let url = item.url, vipPreviewImages[item.id] == nil else { continue }
+            do {
+                let (data, resp) = try await URLSession.shared.data(from: url)
+                guard let http = resp as? HTTPURLResponse, http.statusCode == 200, !data.isEmpty,
+                      CoVIPIconCatalog.isDecodable(data),
+                      let img = CoAnimatedImageDecoder.animatedImage(from: data) else { continue }
+                vipPreviewImages[item.id] = img
+            } catch { continue }
+        }
     }
 
     // MARK: - 1.8.5 用户页背景：默认 auto（浅灰适配，不黑、不与白卡同色）
@@ -414,20 +507,19 @@ struct ProfileView: View {
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         }
-        // 1.8.7：VIP 选择改成真正的系统弹窗（confirmationDialog，底部系统弹窗样式），
-        // 不再是自定义居中圆角大面板 / 全页 List 选择页。
-        .confirmationDialog("VIP 图标", isPresented: $showVIPIconPicker, titleVisibility: .visible) {
-            Button("自动（按 VIP 状态自动对应）\(vipIconItemId == "auto" ? " ✓" : "")") { selectVIPIcon(nil) }
-            ForEach(CoVIPIconCatalog.vipCore) { item in
-                let disabled = item.isAnimated && !kugouAuth.hasMembership
-                Button("\(item.label)\(item.isAnimated ? " · 动图" : " · 静态")\(vipIconItemId == item.id ? " ✓" : "")") {
-                    if !disabled { selectVIPIcon(item) }
+        // 1.8.9：VIP 选择改成系统风格底部弹层（sheet + 系统拖拽条 + 系统 List 行，不回 1.8.5 自定义居中大面板）：
+        // 每项带真实预览图——动效款预览本身能动（与我的页同一解码器），无 VIP 时动效款置灰不可点但预览仍可见；
+        // 预览图只放内存，绝不写选款缓存文件；点即生效、选中打勾。
+        .sheet(isPresented: $showVIPIconPicker) {
+            Group {
+                if #available(iOS 16.0, *) {
+                    vipIconPreviewSheet
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                } else {
+                    vipIconPreviewSheet
                 }
-                .disabled(disabled)
             }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text(vipIconLoadFailed ? "当前款图标加载失败，已回落 Co 自绘徽标；可重选一款重试。" : "选款后只下载当前一款并缓存，换一款时旧缓存立即删除。动效款仅 VIP 可用。")
         }
         // 1.8.7：状态编辑改成系统 alert 文本框弹窗（iOS 16+ 文本框；iOS 15 上 alert 只有按钮，入口仍可用）。
         .alert("我的状态", isPresented: $showStatusEditor) {

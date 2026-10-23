@@ -72,7 +72,8 @@ struct PlaylistView: View {
 
     private var immersiveHeader: some View {
         VStack(spacing: 0) {
-            // 全幅封面：铺满顶部约 400pt，顶部略暗保证返回钮可读、底部渐变融入深色底。
+            // 1.8.9 更沉浸：封面由 400pt 加高到 440pt、顶部压暗更足（状态栏区与封面连成一片深色）、
+            // 底部五段渐变（暗→淡→透明→底色）让标题区与封面的衔接不割裂；结构仍是 1.8.8 截图布局，不改回小封面头。
             GeometryReader { geo in
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: playlist.coverURL) { phase in
@@ -82,13 +83,13 @@ struct PlaylistView: View {
                             Color(red: 0.15, green: 0.15, blue: 0.16)
                         }
                     }
-                    .frame(width: geo.size.width, height: 400)
+                    .frame(width: geo.size.width, height: 440)
                     .clipped()
                     LinearGradient(
-                        colors: [.black.opacity(0.35), .clear, pageBackground.opacity(0.0), pageBackground],
+                        colors: [.black.opacity(0.5), .black.opacity(0.18), .clear, pageBackground.opacity(0.0), pageBackground],
                         startPoint: .top, endPoint: .bottom
                     )
-                    .frame(width: geo.size.width, height: 400)
+                    .frame(width: geo.size.width, height: 440)
                     // 1.8.9 液态玻璃：返回钮走全站 BeansGlass（iOS26+ 真 glassEffect，
                     // iOS15-25 回落超薄材质；紧凑/简洁样式下 BeansGlass 自带平面回落，不强制液态）。
                     Button { dismiss() } label: {
@@ -104,7 +105,7 @@ struct PlaylistView: View {
                     .padding(.top, geo.safeAreaInsets.top + 6)
                 }
             }
-            .frame(height: 400)
+            .frame(height: 440)
             // 居中标题区（多行可换行）：歌单名、创建者、歌曲数。
             VStack(spacing: 8) {
                 Text(playlist.name)
@@ -186,14 +187,19 @@ struct PlaylistView: View {
                 // 1.8.9 液态玻璃：搜索框容器走 BeansGlass，细描边保深色底可读；播放白 pill 不动。
                 .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
                 .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 0.5) }
+                // 1.8.9 液态玻璃：收藏星与 ··· 菜单钮也走 BeansGlass 圆钮（与返回/分享/随机同款），
+                // 不再是裸白图标；播放白 pill 与歌曲行仍不动。
                 Button {
                     isStarred.toggle()
                     CoStarredPlaylists.setStarred(id: playlist.id, starred: isStarred)
                     ToastCenter.shared.show(isStarred ? "已收藏" : "已取消收藏")
                 } label: {
                     Image(systemName: isStarred ? "star.fill" : "star")
-                        .font(.system(size: 22))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background { BeansGlass(shape: Circle()) }
+                        .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 0.5) }
                 }
                 .buttonStyle(.plain)
                 Menu {
@@ -207,9 +213,11 @@ struct PlaylistView: View {
                     Button("隐藏此歌单", role: .destructive) { hideThisPlaylist() }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 44, height: 44)
+                        .background { BeansGlass(shape: Circle()) }
+                        .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 0.5) }
                 }
                 .buttonStyle(.plain)
             }
