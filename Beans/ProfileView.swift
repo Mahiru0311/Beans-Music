@@ -123,6 +123,7 @@ struct ProfileView: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var player: PlayerManager
+    @EnvironmentObject private var favorites: FavoritesStore
     @Environment(\.beansUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -135,6 +136,11 @@ struct ProfileView: View {
     @AppStorage(BeansBackendSettings.publicIDRevisionKey) private var publicIDRevision = 0
 
     @State private var showHistory = false
+    @State private var showFavorites = false
+    @State private var showTopPlayed = false
+    @State private var selectedPlaylist: Playlist?
+    @State private var myPlaylists: [Playlist] = []
+    @State private var myPlaylistsLoading = false
 
     /// 统一账号登录面板（网易云 + QQ 音乐整合）
     @State private var showAccountHub = false
@@ -185,7 +191,7 @@ struct ProfileView: View {
 
     private var appVersionText: String {
         let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2"
-        return "Beans Music · \(ver)"
+        return "Co · \(ver)"
     }
 
     /// 登录状态提示（酷狗专版：只展示酷狗登录状态）
@@ -373,17 +379,16 @@ struct ProfileView: View {
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
             TabBarAppearanceConfigurator()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: isNativeClean ? 26 : 22) {
-                    if isNativeClean {
-                        appleHeader
-                    } else {
-                        header
-                    }
-                    customAvatarCard
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    coHeader
+                    coAccountCard
+                    coStatsCard
+                    coPlaylistsSection
+                    coQuickRows
                     profileVersionFooter
                 }
-                .padding(.horizontal, isNativeClean ? 24 : 16)
-                .padding(.top, isNativeClean ? 14 : 8)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
                 .padding(.bottom, 190)
                 .beansAdaptiveContentWidth()
             }
@@ -441,6 +446,298 @@ struct ProfileView: View {
                 .modifier(BeansSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
                 .modifier(SettingsLiquidSheetPresentation())
         }
+        .sheet(isPresented: $showAccountHub) {
+            AccountHubSheet()
+                .environmentObject(theme)
+                .environmentObject(auth)
+        }
+        .sheet(isPresented: $showFavorites) {
+            CoSongListSheet(title: "我喜欢", songs: favorites.kugouFavoriteSongs)
+                .environmentObject(player)
+                .environmentObject(theme)
+        }
+        .sheet(isPresented: $showTopPlayed) {
+            CoSongListSheet(
+                title: "常听",
+                songs: player.topPlayed.map(\.song),
+                subtitles: Dictionary(uniqueKeysWithValues: player.topPlayed.map { ($0.song.identityKey, "\($0.count)次") })
+            )
+                .environmentObject(player)
+                .environmentObject(theme)
+        }
+        .sheet(item: $selectedPlaylist) { playlist in
+            BeansNavigationStack {
+                PlaylistView(playlist: playlist)
+                    .environmentObject(player)
+                    .environmentObject(auth)
+                    .environmentObject(theme)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("完成") { selectedPlaylist = nil }
+                        }
+                    }
+            }
+        }
+        .task(id: kugouAuth.isLoggedIn) {
+            await coLoadMyPlaylists()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .beansKugouLoginDidUpdate)) { _ in
+            Task { await coLoadMyPlaylists(force: true) }
+        }
+    }
+
+    // MARK: - Co 简洁我的页（本页专属，不动其他 tab）
+
+    private var coHeader: some View {
+        HStack(alignment: .center) {
+            Text("我的")
+                .font(.system(size: 34, weight: .bold))
+                .foregroundStyle(Color.beansLabel)
+            Spacer()
+            profileThemeToggleButton
+            Button {
+                openSettings()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.beansLabel)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("设置")
+        }
+        .padding(.top, 8)
+    }
+
+    private var coDisplayName: String {
+        if kugouAuth.isLoggedIn {
+            return kugouAuth.nickname.isEmpty ? "酷狗音乐" : kugouAuth.nickname
+        }
+        if !customNickname.isEmpty { return customNickname }
+        return "未登录"
+    }
+
+    private var coAccountCard: some View {
+        Button {
+            BeansHaptics.tap()
+            showAccountHub = true
+        } label: {
+            HStack(spacing: 14) {
+                BeansAvatarView(remoteURL: kugouAuth.avatarURL, size: 64, useCustom: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(coDisplayName)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(Color.beansLabel)
+                            .lineLimit(1)
+                        if kugouAuth.isLoggedIn, let badge = kugouAuth.vipBadge {
+                            VIPBadgeView(text: badge)
+                        }
+                    }
+                    Text(accountStatusLine)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.beansSecondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.beansSecondary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func coStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
+        Button {
+            BeansHaptics.tap()
+            action()
+        } label: {
+            VStack(spacing: 4) {
+                Text(value)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.beansLabel)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(title)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.beansSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var coStatsCard: some View {
+        HStack(spacing: 0) {
+            coStatButton(title: "我喜欢", value: "\\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
+            coStatButton(title: "歌单", value: "\\(myPlaylists.count)个") {
+                if !kugouAuth.isLoggedIn { showAccountHub = true }
+            }
+            coStatButton(title: "历史", value: "\\(player.history.count)首") { showHistory = true }
+            coStatButton(title: "常听", value: "\\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
+        }
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var coPlaylistsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("我的歌单")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.beansLabel)
+                Spacer()
+                if kugouAuth.isLoggedIn {
+                    Text("\\(myPlaylists.count)个")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.beansSecondary)
+                }
+            }
+            if !kugouAuth.isLoggedIn {
+                Button {
+                    BeansHaptics.tap()
+                    showAccountHub = true
+                } label: {
+                    Text("登录酷狗音乐后可同步云端歌单")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.beansSecondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 20)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            } else if myPlaylistsLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .padding(.vertical, 20)
+            } else if myPlaylists.isEmpty {
+                Text("暂未同步到酷狗歌单，请稍后重试")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.beansSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(myPlaylists) { playlist in
+                        Button {
+                            BeansHaptics.tap()
+                            selectedPlaylist = playlist
+                        } label: {
+                            HStack(spacing: 12) {
+                                CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(playlist.name)
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .lineLimit(1)
+                                    Text(beansSongCountText(playlist.trackCount))
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Color.beansSecondary)
+                                }
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.beansSecondary)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if playlist.id != myPlaylists.last?.id {
+                            Divider().padding(.leading, 78)
+                        }
+                    }
+                }
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+    }
+
+    private func coQuickRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button {
+            BeansHaptics.tap()
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.beansLabel)
+                    .frame(width: 30, height: 30)
+                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.beansLabel)
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.beansSecondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.beansSecondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var coQuickRows: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("常用")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.beansLabel)
+            VStack(spacing: 0) {
+                coQuickRow(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: "最近播放 \\(player.history.count) 首") { showHistory = true }
+                Divider().padding(.leading, 56)
+                coQuickRow(icon: "person.crop.circle", title: "账号与登录", subtitle: kugouAuth.isLoggedIn ? accountStatusLine : "登录酷狗音乐") { showAccountHub = true }
+                Divider().padding(.leading, 56)
+                coQuickRow(icon: "gearshape", title: "设置", subtitle: "外观、播放与音效") { openSettings() }
+            }
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private func coLoadMyPlaylists(force: Bool = false) async {
+        guard kugouAuth.isLoggedIn else {
+            myPlaylists = []
+            myPlaylistsLoading = false
+            return
+        }
+        let cache = SyncedPlaylistCache.shared
+        if myPlaylists.isEmpty, let cached = cache.cachedPlaylists(source: .kugou, accountID: kugouAuth.userId) {
+            myPlaylists = cached.playlists
+        }
+        if !force, !myPlaylists.isEmpty { return }
+        myPlaylistsLoading = myPlaylists.isEmpty
+        do {
+            let list = try await KugouMusicAPI.shared.userPlaylists()
+            if !list.isEmpty {
+                myPlaylists = list
+                cache.savePlaylists(list, source: .kugou, accountID: kugouAuth.userId)
+            }
+        } catch {
+            BeansLogger.shared.log("酷狗歌单同步失败：\\(error.localizedDescription)", level: .error)
+            if myPlaylists.isEmpty { myPlaylists = [] }
+        }
+        myPlaylistsLoading = false
     }
 
     private var customAvatarCard: some View {
@@ -906,6 +1203,70 @@ private extension ProfileView {
 // MARK: - 交流群二维码
 
 // MARK: - 统一账号登录面板（酷狗音乐）
+
+/// 我的页“我喜欢 / 常听”共用歌曲列表：点行即播放，关 sheet 靠下滑或完成按钮。
+struct CoSongListSheet: View {
+    @EnvironmentObject private var player: PlayerManager
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let songs: [Song]
+    var subtitles: [String: String] = [:]
+
+    var body: some View {
+        BeansNavigationStack {
+            Group {
+                if songs.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color.beansSecondary)
+                        Text("这里还没有歌曲")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.beansSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(songs, id: \.identityKey) { song in
+                            Button {
+                                if let index = songs.firstIndex(where: { $0.identityKey == song.identityKey }) {
+                                    player.play(songs: songs, startAt: index)
+                                }
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    CoverImage(url: song.coverURL, size: 44, cornerRadius: 8)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(song.name)
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(Color.beansLabel)
+                                            .lineLimit(1)
+                                        Text([song.artists, subtitles[song.identityKey]].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(Color.beansSecondary)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer(minLength: 8)
+                                }
+                                .padding(.vertical, 4)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+    }
+}
 
 struct AccountHubSheet: View {
     @EnvironmentObject private var theme: ThemeStore
