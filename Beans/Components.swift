@@ -595,11 +595,10 @@ struct VIPBadgeView: View {
 // 已登录但无 VIP → 灰色静态（表示当前无 VIP，含过期情形；酷狗登录态无过期日期字段，
 // 故不写“已过期”字样、不编造等级 v0-v7）；未登录 → 不显示。动效只在“我的”页可见时跑，
 // 视图消失即停，遵循减弱动态效果，无常驻定时器。
+// 1.8.6 发烫优化：默认徽标改为静态黑金/灰色，不再 2.8 秒循环扫光；动效只在用户选了动效款且页面可见时由动图本身播。
 struct CoVIPAutoBadge: View {
     let isVIP: Bool
     let isLoggedIn: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shimmerOn = false
 
     var body: some View {
         Group {
@@ -611,23 +610,7 @@ struct CoVIPAutoBadge: View {
                     .padding(.vertical, 2.5)
                     .background(Capsule().fill(Color.black))
                     .overlay(Capsule().stroke(Color(red: 0.85, green: 0.62, blue: 0.18).opacity(0.6), lineWidth: 0.8))
-                    .overlay {
-                        if !reduceMotion {
-                            Capsule()
-                                .fill(LinearGradient(colors: [.clear, .white.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing))
-                                .frame(width: 14)
-                                .offset(x: shimmerOn ? 16 : -16)
-                                .clipShape(Capsule())
-                                .opacity(shimmerOn ? 1 : 0)
-                        }
-                    }
                     .clipShape(Capsule())
-                    .onAppear {
-                        guard !reduceMotion else { return }
-                        shimmerOn = false
-                        withAnimation(.linear(duration: 2.8).repeatForever(autoreverses: false)) { shimmerOn = true }
-                    }
-                    .onDisappear { shimmerOn = false }
             } else if isLoggedIn {
                 Text("VIP")
                     .font(BeansFont.appFont(10, .bold))
@@ -694,6 +677,13 @@ enum CoVIPIconCatalog {
         CoVIPIconItem(id: "vip-special-open", group: "特殊", label: "开通", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582122379/9fc8/330a/c33d/75e75cf340078f94b395aacb89f56c32.png"), isAnimated: false),
         CoVIPIconItem(id: "vip-special-free", group: "特殊", label: "限免", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582121501/716e/a8fc/18c0/91d296e4135822e84b1bfa3a3eb86cd5.png"), isAnimated: false),
         CoVIPIconItem(id: "vip-special-cancel", group: "特殊", label: "注销", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582121499/7199/edef/2bc2/270062e6ffd9299d160fdb5c1d1f9764.png"), isAnimated: false),
+    ]
+    /// 1.8.6 精简款：VIP 档各组只取代表款，不把 v0-v7 全部铺开（普通 v0 / 动效 v0 / 已过期 v0 / 特殊即将过期）。
+    static let vipCore: [CoVIPIconItem] = [
+        CoVIPIconItem(id: "vip-normal-v0", group: "普通", label: "普通 v0", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582124119/201b/4a2b/636c/1d1dbc6b0766e867f992f24974bd9e8d.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-animated-v0", group: "动效", label: "动效 v0", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141379825/38a5/43a5/79d3/b71cbffe50f3bd5d21fea4fee0f28433.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-expired-v0", group: "已过期", label: "已过期 v0", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582124120/b2ca/664a/8d3a/90703110665d55efcb57c11c16c9c86b.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-special-expiring", group: "特殊", label: "即将过期", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582124121/4a10/4688/42a4/75f2deca258ec6e9d4ee39d2bc977a43.png"), isAnimated: false),
     ]
     // SVIP 与长条形：CDN 链接未在页面文本中公开，不编造，Co 自绘（矢量，无位图缓存）。
     static let svipSelfDrawn: [CoVIPIconItem] = [
@@ -797,6 +787,13 @@ struct CoVIPSelfDrawnBadge: View {
             }
         }
     }
+}
+
+// MARK: - 主页状态（1.8.6，本地短文本，按酷狗账号区分存，不同步到酷狗账号）
+struct CoUserStatus {
+    static func key(userId: String) -> String { "beans.userStatus.\(userId.isEmpty ? "local" : userId)" }
+    static func load(userId: String) -> String { UserDefaults.standard.string(forKey: key(userId: userId)) ?? "" }
+    static func save(userId: String, text: String) { UserDefaults.standard.set(text, forKey: key(userId: userId)) }
 }
 
 // MARK: - 我的页隐藏歌单存储（1.8.5，只藏显示、不删歌单）

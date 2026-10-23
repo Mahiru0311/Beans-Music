@@ -18,7 +18,6 @@ struct ProfileView: View {
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
 
-    @State private var showHistory = false
 
     /// 统一账号登录面板（网易云 + QQ 音乐整合）
     @State private var showAccountHub = false
@@ -37,7 +36,10 @@ struct ProfileView: View {
     /// VIP 图标选择：点昵称旁徽标弹出（wy.dwkc.cn 面板结构）；"auto" 为自动（Co 自绘）。
     @AppStorage("beans.vipIconItemId") private var vipIconItemId = "auto"
     @State private var showVIPIconPicker = false
-    @State private var vipIconPickerMode = "VIP"
+    @State private var showStatusEditor = false
+    @State private var myStatusText = ""
+    @State private var statusDraft = ""
+    @State private var vipPickerExpanded = true
     @State private var vipIconImage: UIImage?
     @State private var vipIconLoadFailed = false
     /// 用户页背景（1.8.5）：默认 auto，不再是纯黑；见 profileHeaderBackground。
@@ -126,9 +128,10 @@ struct ProfileView: View {
         VStack(spacing: 12) {
             Button {
                 BeansHaptics.tap()
-                showAccountHub = true
+                statusDraft = myStatusText
+                showStatusEditor = true
             } label: {
-                Text("+ 添加状态")
+                Text(myStatusText.isEmpty ? "+ 添加状态" : "修改状态")
                     .font(BeansFont.appFont(12))
                     .foregroundStyle(profileHeaderSecondary)
             }
@@ -165,6 +168,24 @@ struct ProfileView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("切换 VIP 图标")
             }
+            Button {
+                BeansHaptics.tap()
+                statusDraft = myStatusText
+                showStatusEditor = true
+            } label: {
+                HStack(spacing: 4) {
+                    if !myStatusText.isEmpty {
+                        Text(myStatusText)
+                            .font(BeansFont.appFont(13))
+                            .foregroundStyle(profileHeaderForeground)
+                            .lineLimit(1)
+                    }
+                    Image(systemName: "pencil")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(profileHeaderSecondary)
+                }
+            }
+            .buttonStyle(.plain)
             Text(accountStatusLine)
                 .font(BeansFont.appFont(12))
                 .foregroundStyle(profileHeaderSecondary)
@@ -298,13 +319,15 @@ struct ProfileView: View {
     /// VIP 图标选择面板（wy.dwkc.cn 面板结构：VIP / SVIP / 长条形三档，VIP 内分普通/动效/已过期/特殊）。
     /// 网格里只放文字款式（不预下载全部款式图），当前选中的一款放大显示在顶部（已缓存的图或自绘）；
     /// 点选即生效、只保留当前一款，旧缓存已在 selectVIPIcon 里先删掉。
+    /// 1.8.6 VIP 精简：只用他网站 VIP 档的核心款（普通/动效/已过期/特殊各 1 款，共 4 款），
+    /// 不再铺 SVIP/长条形自绘款与 v0-v7 全量网格；展开用系统 DisclosureGroup（系统展开框），
+    /// 选款仍按需下载、选新删旧只留一款、CDN 失效回落 Co 自绘（逻辑见 selectVIPIcon/loadVIPIcon）。
     private var vipIconPickerSheet: some View {
-        // 主目标部署版本为 iOS 15，NavigationStack（iOS 16+）不可用，改用项目内 BeansNavigationStack（iOS 15 回退 NavigationView）。
         BeansNavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+            List {
+                Section {
                     HStack(spacing: 10) {
-                        Text("当前款").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                        Text("当前款")
                         Spacer()
                         if let item = selectedVIPIconItem, !item.isSelfDrawn, let img = vipIconImage {
                             CoAnimatedImage(image: img).frame(height: 30)
@@ -314,99 +337,88 @@ struct ProfileView: View {
                             CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: true)
                         }
                         Text(selectedVIPIconItem?.label ?? "自动")
-                            .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.beansComment)
                     }
-                    .padding(14)
-                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                    Button {
-                        selectVIPIcon(nil)
-                    } label: {
-                        HStack {
-                            Text("自动（Co 自绘，按 VIP 状态自动对应）").font(BeansFont.appFont(14, .semibold)).foregroundStyle(Color.beansLabel)
-                            Spacer()
-                            if vipIconItemId == "auto" { Image(systemName: "checkmark").foregroundStyle(Color.beansAmber) }
-                        }
-                        .padding(12)
-                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                    }
-                    .buttonStyle(.plain)
-                    Picker("图标类型", selection: $vipIconPickerMode) {
-                        Text("VIP").tag("VIP")
-                        Text("SVIP").tag("SVIP")
-                        Text("长条形").tag("长条形")
-                    }
-                    .pickerStyle(.segmented)
-                    if vipIconPickerMode == "VIP" {
-                        ForEach(["普通", "动效", "已过期", "特殊"], id: \.self) { group in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(group).font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
-                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                                    ForEach(CoVIPIconCatalog.vipRemote.filter { $0.group == group }) { item in
-                                        let disabled = item.isAnimated && !kugouAuth.hasMembership
-                                        Button { if !disabled { selectVIPIcon(item) } } label: {
-                                            VStack(spacing: 4) {
-                                                Text(item.label).font(BeansFont.appFont(12, .semibold)).foregroundStyle(disabled ? Color.beansComment.opacity(0.5) : Color.beansLabel)
-                                                Text(item.isAnimated ? "动图" : "静态").font(BeansFont.appFont(10)).foregroundStyle(Color.beansComment)
-                                            }
-                                            .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
-                                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(vipIconItemId == item.id ? Color.beansAmber : Color.clear, lineWidth: 1.5))
-                                        }
-                                        .buttonStyle(.plain)
-                                        .disabled(disabled)
+                    Button("自动（按 VIP 状态自动对应）") { selectVIPIcon(nil) }
+                }
+                Section("VIP 图标（来自 wy.dwkc.cn 面板，精简款）") {
+                    DisclosureGroup("选择图标", isExpanded: $vipPickerExpanded) {
+                        ForEach(CoVIPIconCatalog.vipCore) { item in
+                            let disabled = item.isAnimated && !kugouAuth.hasMembership
+                            Button {
+                                if !disabled { selectVIPIcon(item) }
+                            } label: {
+                                HStack {
+                                    Text(item.label)
+                                    Spacer()
+                                    Text(item.isAnimated ? "动图" : "静态")
+                                        .foregroundStyle(Color.beansComment)
+                                    if vipIconItemId == item.id {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(Color.beansAmber)
                                     }
                                 }
-                                if group == "动效" && !kugouAuth.hasMembership {
-                                    Text("动效款仅 VIP 可用；无 VIP 时选了也不生效，会回落灰色自绘徽标。")
-                                        .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
-                                }
                             }
+                            .disabled(disabled)
                         }
-                        Text("点选后只下载当前一款并缓存；换一款时旧缓存立即删除。图源为该站面板链接（多托管在 CDN 上），下载失败时自动回落 Co 自绘徽标，不出现破图。")
-                            .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
-                    } else if vipIconPickerMode == "SVIP" {
-                        Text("SVIP 金色款为 Co 自绘（该站 SVIP 图的 CDN 链接未在页面文本中公开，未编造链接）。")
-                            .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
-                        ForEach(CoVIPIconCatalog.svipSelfDrawn) { item in
-                            Button { selectVIPIcon(item) } label: {
-                                HStack {
-                                    CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
-                                    Text(item.group).font(BeansFont.appFont(13)).foregroundStyle(Color.beansLabel)
-                                    Spacer()
-                                    if vipIconItemId == item.id { Image(systemName: "checkmark").foregroundStyle(Color.beansAmber) }
-                                }
-                                .padding(12)
-                                .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    } else {
-                        Text("长条形款为 Co 自绘（浅色/深色/带文字两种底色）。")
-                            .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
-                        ForEach(CoVIPIconCatalog.longSelfDrawn) { item in
-                            Button { selectVIPIcon(item) } label: {
-                                HStack {
-                                    CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
-                                    Text(item.label).font(BeansFont.appFont(13)).foregroundStyle(Color.beansLabel)
-                                    Spacer()
-                                    if vipIconItemId == item.id { Image(systemName: "checkmark").foregroundStyle(Color.beansAmber) }
-                                }
-                                .padding(12)
-                                .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    if vipIconLoadFailed {
-                        Text("当前款图标加载失败（CDN 可能已撤图或网络不通），已回落 Co 自绘徽标；可重选一款重试。")
-                            .font(BeansFont.appFont(11)).foregroundStyle(Color.red)
+                        Text("动效款仅 VIP 可用；无 VIP 时选了也不生效，会回落灰色自绘徽标。选款后只下载当前一款并缓存，换一款时旧缓存立即删除；图源为该站面板链接（多托管在 CDN 上），下载失败时自动回落 Co 自绘徽标，不出现破图。")
+                            .font(BeansFont.appFont(11))
+                            .foregroundStyle(Color.beansComment)
                     }
                 }
-                .padding(16)
+                if vipIconLoadFailed {
+                    Section {
+                        Text("当前款图标加载失败（CDN 可能已撤图或网络不通），已回落 Co 自绘徽标；可重选一款重试。")
+                            .foregroundStyle(Color.red)
+                    }
+                }
             }
             .navigationTitle("VIP 图标")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showVIPIconPicker = false } } }
+        }
+    }
+
+    /// 主页状态编辑：本地短文本，像真实网易云一样可改/可清空；酷狗无此接口，不假装同步到账号。
+    private var statusEditorSheet: some View {
+        BeansNavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("在头像下方显示一句话状态，例如在听什么、心情如何。只存在本地，换号后按账号区分，不会同步到酷狗账号。")
+                    .font(BeansFont.appFont(12))
+                    .foregroundStyle(Color.beansComment)
+                TextField("写一句话状态", text: $statusDraft)
+                    .font(BeansFont.appFont(15))
+                    .foregroundStyle(Color.beansLabel)
+                    .padding(12)
+                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
+                HStack(spacing: 12) {
+                    Button("保存") {
+                        let text = String(statusDraft.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+                        myStatusText = text
+                        CoUserStatus.save(userId: kugouAuth.userId, text: text)
+                        BeansHaptics.select()
+                        showStatusEditor = false
+                    }
+                    .buttonStyle(.plain)
+                    .font(BeansFont.appFont(15, .semibold))
+                    .foregroundStyle(Color.beansAmber)
+                    Button("清空状态") {
+                        myStatusText = ""
+                        statusDraft = ""
+                        CoUserStatus.save(userId: kugouAuth.userId, text: "")
+                        showStatusEditor = false
+                    }
+                    .buttonStyle(.plain)
+                    .font(BeansFont.appFont(14))
+                    .foregroundStyle(Color.red)
+                    Spacer()
+                }
+                Spacer()
+            }
+            .padding(16)
+            .navigationTitle("我的状态")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showStatusEditor = false } } }
         }
     }
 
@@ -415,9 +427,7 @@ struct ProfileView: View {
     private var myWhiteCard: some View {
         VStack(alignment: .leading, spacing: 22) {
             myStatsRowPlain
-            featuresGrid
             myPlaylistsSection
-            topPlayedSection
             profileVersionFooter
         }
         .padding(.horizontal, 16)
@@ -450,6 +460,7 @@ struct ProfileView: View {
 
     var body: some View {
         let _ = theme.accent
+        BeansNavigationStack {
         ZStack(alignment: .top) {
             // 页面背景：同步开启时显示壁纸/背景色，否则默认氛围渐变
             GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
@@ -500,12 +511,8 @@ struct ProfileView: View {
                 .allowsHitTesting(false)
         }
         .sheet(isPresented: $showVIPIconPicker) { vipIconPickerSheet }
-        .sheet(isPresented: $showHistory) {
-            HistoryView()
-                .environmentObject(player)
-                .environmentObject(auth)
-                .environmentObject(theme)
-        }
+        .sheet(isPresented: $showStatusEditor) { statusEditorSheet }
+        .task(id: kugouAuth.userId) { myStatusText = CoUserStatus.load(userId: kugouAuth.userId) }
         .sheet(isPresented: $showAccountHub) {
             AccountHubSheet()
                 .environmentObject(auth)
@@ -528,6 +535,7 @@ struct ProfileView: View {
                 )
             )
                 .onDisappear { SectionOrderStore.save(SectionOrderStore.profileKey, profileOrder) }
+        }
         }
     }
 
@@ -596,64 +604,6 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var featuresGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "快捷入口")
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                featureGridCell(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: "\(player.history.count) 首") {
-                    showHistory = true
-                }
-                featureGridCell(icon: "heart.fill", title: "我喜欢", subtitle: "\(FavoritesStore.shared.kugouFavoriteSongs.count) 首") {
-                    let liked = FavoritesStore.shared.kugouFavoriteSongs
-                    if liked.isEmpty {
-                        ToastCenter.shared.show("还没有喜欢的歌曲，点歌曲旁的爱心收藏")
-                    } else {
-                        player.play(songs: liked, startAt: 0)
-                    }
-                }
-                featureGridCell(icon: "checkmark.seal.fill", title: "账号与登录", subtitle: hasVisibleAccountLogin ? "已登录" : "未登录") {
-                    BeansHaptics.tap()
-                    showAccountHub = true
-                }
-                featureGridCell(icon: "gearshape.fill", title: "设置", subtitle: "主题与播放") {
-                    BeansHaptics.tap()
-                    homeRenderingPaused = true
-                    showSettings = true
-                }
-            }
-        }
-    }
-
-    private func featureGridCell(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button {
-            BeansHaptics.tap()
-            action()
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 17))
-                    .foregroundStyle(Color.beansAmber)
-                    .frame(width: 36, height: 36)
-                    .background(Color.beansGlassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                Text(LocalizedStringKey(title))
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                    .lineLimit(1)
-                Text(subtitle)
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
-    }
-
     private var myPlaylistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "我的歌单")
@@ -686,15 +636,12 @@ struct ProfileView: View {
                 }
                 VStack(spacing: 8) {
                     ForEach(Array(visiblePlaylists.prefix(8))) { playlist in
-                        Button {
-                            BeansHaptics.tap()
-                            Task {
-                                if let songs = try? await KugouMusicAPI.shared.playlistSongs(listID: playlist.id), !songs.isEmpty {
-                                    player.play(songs: songs, startAt: 0)
-                                } else {
-                                    ToastCenter.shared.show("该歌单暂无可播歌曲")
-                                }
-                            }
+                        // 1.8.6：点歌单进详情页（2.0.3 歌单页结构：封面/歌名/歌曲数/歌曲列表/播放全部），不再直接播放首歌。
+                        NavigationLink {
+                            PlaylistView(playlist: playlist)
+                                .environmentObject(player)
+                                .environmentObject(auth)
+                                .environmentObject(theme)
                         } label: {
                             HStack(spacing: 10) {
                                 CoverImage(url: playlist.coverURL, size: 44, cornerRadius: 10)
@@ -744,56 +691,6 @@ struct ProfileView: View {
     }
 
     /// 常听排行：按本地播放次数排序（MD3 用户中心的听歌排行同款，数据已在本地，不调新接口）。
-    private var topPlayedSection: some View {
-        let ranked = player.topPlayed
-        return VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "常听排行")
-            if ranked.isEmpty {
-                Text("还没有播放记录，播几首歌后这里会出现你最常听的歌")
-                    .font(BeansFont.appFont(13))
-                    .foregroundStyle(Color.beansComment)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(Array(ranked.enumerated()), id: \.element.song.identityKey) { index, entry in
-                        Button {
-                            BeansHaptics.tap()
-                            player.play(songs: ranked.map(\.song), startAt: index)
-                        } label: {
-                            HStack(spacing: 10) {
-                                Text("\(index + 1)")
-                                    .font(BeansFont.appFont(14, .bold))
-                                    .foregroundStyle(index < 3 ? Color.red : Color.beansComment)
-                                    .frame(width: 20)
-                                CoverImage(url: entry.song.coverURL, size: 40, cornerRadius: 8)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(entry.song.name)
-                                        .font(BeansFont.appFont(14, .semibold))
-                                        .foregroundStyle(Color.beansLabel)
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    Text(entry.song.artists)
-                                        .font(BeansFont.appFont(12))
-                                        .foregroundStyle(Color.beansComment)
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                }
-                                Spacer()
-                                Text("播 \(entry.count) 次")
-                                    .font(BeansFont.appFont(12))
-                                    .foregroundStyle(Color.beansComment)
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
 
 }
 
@@ -982,6 +879,7 @@ struct SettingsView: View {
     }
 
     /// 外观与界面子项收起/展开（默认展开常用项，动态壁纸/高刷新率默认收起以省电提示）。
+    @State private var appearanceExpanded = true
     @State private var themeModeExpanded = true
     @State private var interfaceFontWallpaperExpanded = true
     @State private var navVisibilityExpanded = true
@@ -1310,9 +1208,22 @@ struct SettingsView: View {
                                 .padding(.top, 12)
                         }
                         if showAppearanceInterfaceSettings {
-                            VStack(alignment: .leading, spacing: 12) {
-                                settingsGroupTitle("外观与界面")
+                            // 1.8.6：外观与界面归一为一个系统 DisclosureGroup 直接可展开，内部分段列出全部项，不再是 12 张分开的玻璃子卡；开关一个不少。
+                            DisclosureGroup(isExpanded: $appearanceExpanded) {
                                 appearanceInterfaceSection
+                            } label: {
+                                HStack {
+                                    Text("外观与界面")
+                                        .font(BeansFont.appFont(15, .semibold))
+                                        .foregroundStyle(Color.beansLabel)
+                                    Spacer()
+                                    Text(appearanceSummaryText)
+                                        .font(BeansFont.appFont(12))
+                                        .foregroundStyle(Color.beansComment)
+                                    Image(systemName: appearanceExpanded ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                                }
                             }
                         }
                         if showPlaybackSettings || showEqualizerSettings {
@@ -1427,6 +1338,12 @@ struct SettingsView: View {
     /// 静态壁纸（上传、壁纸库、模糊度、同步、恢复默认；明确不做动态壁纸）、音质（酷狗官方 5 档简化版，按账号权益自动降级）。
     /// 1.8.4 恢复：1.8.3 合并时随旧区删掉的问候语逐行定制、隐藏开关、低系统底栏已恢复为本组内三个可收起子项（仍是唯一一个“外观与界面”组，不另立重复组）；
     /// 核心项（主题模式、语言、全局/问候语字体、壁纸、音质、底栏显示）全部保留在本组内，子项均可收起、收起时标题行显示当前值。
+    /// 1.8.6 外观与界面归一后的标题行当前值：主题模式 + 导航栏已显示页数。
+    private var appearanceSummaryText: String {
+        let mode = BeansThemeMode(rawValue: themeModeRaw)?.title ?? "跟随系统"
+        return "\(mode) · 导航 \(navVisibleCount)/4 页"
+    }
+
     private var appearanceInterfaceSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             // MARK: - 界面
@@ -1545,9 +1462,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 字体
             DisclosureGroup(isExpanded: $interfaceFontWallpaperExpanded) {
@@ -1637,9 +1552,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 静态壁纸（只做静态，不做 2.0.3 的动态壁纸）
             DisclosureGroup(isExpanded: $staticWallpaperExpanded) {
@@ -1747,9 +1660,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 用户页背景（1.8.5：默认自动适配浅灰，不黑、不与白卡同色，不做动态背景）
             DisclosureGroup(isExpanded: $profileBackgroundExpanded) {
@@ -1785,9 +1696,7 @@ struct SettingsView: View {
                     Image(systemName: profileBackgroundExpanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 导航栏显示（参照 2.0.3 BeansTabVisibility，Co 四页版，不含精选标签、不含聚合切换）
             DisclosureGroup(isExpanded: $navVisibilityExpanded) {
@@ -1830,9 +1739,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 隐藏的歌单（1.8.5：我的页长按隐藏的歌单在此逐条恢复，只藏显示、不删歌单）
             DisclosureGroup(isExpanded: $hiddenPlaylistsExpanded) {
@@ -1885,9 +1792,7 @@ struct SettingsView: View {
                     Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 音质（简化版：酷狗官方 5 档，不做 Wi-Fi/蜂窝分档，不做第三方音源音质）
             DisclosureGroup(isExpanded: $audioQualityExpanded) {
@@ -1952,9 +1857,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
 
             // MARK: - 动态壁纸（Co 不做动态壁纸：无动态壁纸引擎，默认关闭以省电，此处只作说明，不设假开关）
@@ -1978,9 +1881,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 高刷新率（Co 默认关闭以省电，选项保留）
             DisclosureGroup(isExpanded: $highRefreshExpanded) {
@@ -2010,9 +1911,7 @@ struct SettingsView: View {
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 问候语（1.8.4 恢复：原旧区的高级项，存储键与逐行绑定函数一直都在，只补回界面）
             DisclosureGroup(isExpanded: $greetingExpanded) {
@@ -2132,9 +2031,7 @@ struct SettingsView: View {
                         .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 隐藏开关（1.8.4 恢复：原旧区的隐藏项，只影响界面显示，不删数据）
             DisclosureGroup(isExpanded: $hideExpanded) {
@@ -2167,9 +2064,7 @@ struct SettingsView: View {
                         .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
+            .padding(.vertical, 2)
 
             // MARK: - 低系统底栏（1.8.4 恢复：原旧区的低系统悬浮底栏微调，仅 iOS 26 以下生效）
             DisclosureGroup(isExpanded: $legacyTabExpanded) {
@@ -2208,9 +2103,7 @@ struct SettingsView: View {
                         .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)        }
+            .padding(.vertical, 2)        }
     }
 
     /// 主题相关设置统一归组，避免平台和排行榜外观选项散落在设置页。
