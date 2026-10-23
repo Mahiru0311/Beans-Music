@@ -44,10 +44,6 @@ struct ProfileView: View {
         BeansThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
-    private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
-
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
 
     private var displayPlatformSummary: String {
@@ -94,65 +90,114 @@ struct ProfileView: View {
             || (platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn)
     }
 
-    /// 顶部标题 + 右上角设置齿轮
-    private var header: some View {
+    /// “我的”页顶部（wy.dwkc.cn 格式）：无大标题；左三横菜单、右设置齿轮；
+    /// 黑色标题区 + 白色主卡大圆角压边。左菜单仍开板块排序（Co 在“我的”页唯一的菜单入口）。
+    private var myTopBar: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("我的")
-                    .font(BeansFont.appFont(30, .bold))
-                    .foregroundStyle(Color.beansLabel)
-            Text(isEnglish ? "\(displayPlatformSummary) account and appearance settings" : "\(platformPrefs.summaryText) 账号与外观设置")
-                    .font(BeansFont.appFont(13))
-                    .foregroundStyle(Color.beansComment)
+            if !homeHeaderHideSort {
+                GlassIconButton(systemName: "line.3.horizontal", forceLiquid: true) {
+                    BeansHaptics.tap()
+                    showSectionSort = true
+                }
+            } else {
+                Color.clear.frame(width: 44, height: 44)
             }
             Spacer()
-            HStack(spacing: 10) {
-                if !homeHeaderHideSort {
-                    GlassIconButton(systemName: "arrow.up.arrow.down", forceLiquid: isNativeClean) {
-                        BeansHaptics.tap()
-                        showSectionSort = true
-                    }
-                }
-                GlassIconButton(systemName: "gearshape.fill", forceLiquid: true) {
-                    BeansHaptics.tap()
-                    homeRenderingPaused = true
-                    showSettings = true
-                }
+            GlassIconButton(systemName: "gearshape.fill", forceLiquid: true) {
+                BeansHaptics.tap()
+                homeRenderingPaused = true
+                showSettings = true
             }
         }
-        .padding(.top, 8)
     }
 
-    private var appleHeader: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .center) {
-                Text("我的")
-                    .font(BeansFont.appFont(38, .bold))
-                    .foregroundStyle(Color.beansLabel)
-                Spacer(minLength: 12)
-                if !homeHeaderHideSort {
-                    GlassIconButton(systemName: "arrow.up.arrow.down", forceLiquid: isNativeClean) {
-                        BeansHaptics.tap()
-                        showSectionSort = true
+    /// 居中头像区（wy 格式）：上方小字、居中圆形头像（点头像进账号/登录）、
+    /// 下方昵称 + 黑金 VIP 动态徽标并排。昵称/头像优先酷狗登录态，酷狗未登录时回落旧账号态。
+    private var myCenteredHeader: some View {
+        VStack(spacing: 12) {
+            Button {
+                BeansHaptics.tap()
+                showAccountHub = true
+            } label: {
+                Text("+ 添加状态")
+                    .font(BeansFont.appFont(12))
+                    .foregroundStyle(Color.white.opacity(0.65))
+            }
+            .buttonStyle(.plain)
+            Button {
+                BeansHaptics.tap()
+                showAccountHub = true
+            } label: {
+                AsyncImage(url: kugouAuth.avatarURL ?? auth.user?.avatarURL) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().scaledToFill()
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 34))
+                            .foregroundStyle(Color.white.opacity(0.7))
                     }
                 }
-                GlassIconButton(systemName: "gearshape", forceLiquid: true) {
-                    BeansHaptics.tap()
-                    homeRenderingPaused = true
-                    showSettings = true
-                }
+                .frame(width: 88, height: 88)
+                .clipShape(Circle())
+                .background(Color.white.opacity(0.12), in: Circle())
+                .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1.5))
             }
-            Text(LocalizedStringKey(accountStatusLine))
-                .font(BeansFont.appFont(12, .medium))
-                .foregroundStyle(Color.beansComment)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-                .truncationMode(.tail)
-            Rectangle()
-                .fill(Color.beansLabel.opacity(0.10))
-                .frame(height: 1)
+            .buttonStyle(.plain)
+            HStack(spacing: 6) {
+                Text(myDisplayNickname)
+                    .font(BeansFont.appFont(20, .bold))
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
+            }
+            Text(accountStatusLine)
+                .font(BeansFont.appFont(12))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .lineLimit(1)
         }
-        .padding(.top, 4)
+    }
+
+    private var myDisplayNickname: String {
+        if kugouAuth.isLoggedIn, !kugouAuth.nickname.isEmpty { return kugouAuth.nickname }
+        if let nick = auth.user?.nickname, !nick.isEmpty { return nick }
+        if kugouAuth.isLoggedIn { return "酷狗音乐已登录" }
+        return "免登录 · 点击登录"
+    }
+
+    /// 白色主卡（wy 格式）：顶部大圆角压住黑色标题区，内含统计行、快捷入口、歌单、常听排行。
+    /// 统计行只用 Co 真实数据，不编造关注/粉丝/等级/小时数。
+    private var myWhiteCard: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            myStatsRowPlain
+            featuresGrid
+            myPlaylistsSection
+            topPlayedSection
+            profileVersionFooter
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 20)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 860)
+        .frame(maxWidth: .infinity)
+        .background {
+            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
+                .fill(Color(UIColor.systemBackground))
+        }
+        .offset(y: -24)
+    }
+
+    /// 统计行（白卡内无底色版）：我喜欢 / 歌单 / 历史 / 常听，全部取本地真实数据。
+    private var myStatsRowPlain: some View {
+        HStack(spacing: 0) {
+            myStatCell(value: "\(FavoritesStore.shared.kugouFavoriteSongs.count)", label: "我喜欢")
+            Divider().frame(height: 28)
+            myStatCell(value: "\(myPlaylists.count)", label: "歌单")
+            Divider().frame(height: 28)
+            myStatCell(value: "\(player.history.count)", label: "历史")
+            Divider().frame(height: 28)
+            myStatCell(value: "\(player.topPlayed.count)", label: "常听")
+        }
+        .padding(.vertical, 4)
     }
 
     var body: some View {
@@ -163,38 +208,23 @@ struct ProfileView: View {
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
             TabBarAppearanceConfigurator()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: isNativeClean ? 26 : 22) {
-                    if isNativeClean {
-                        appleHeader
-                    } else {
-                        header
-                    }
-                    // 板块按用户自定义顺序渲染（可拖拽排序）
-                    ForEach(profileOrder, id: \.self) { key in
-                        switch key {
-                        case "账号":
-                            userCard
-                        case "关于":
-                            EmptyView()
-                        default:
-                            EmptyView()
+                VStack(spacing: 0) {
+                    // 黑色标题区：顶部栏 + 居中头像区（“账号”板块被排序关掉时头像区隐藏，菜单仍可再开）。
+                    VStack(spacing: 14) {
+                        myTopBar
+                            .padding(.horizontal, 16)
+                        if profileOrder.contains("账号") {
+                            myCenteredHeader
                         }
                     }
-                    // 统计行（wy.dwkc.cn 布局思路：头像+会员下方一条统计行；只用 Co 真实数据，
-                    // 不编造关注/粉丝/等级/小时数，酷狗账号没有这些字段）。
-                    myStatsRow
-                    // 我的功能（播放历史 / 账号与登录）：原先定义了却没放进页面，恢复它。
-                    featuresGrid
-                    // 我的歌单（网易云“我的”页同款分区思路，只用现有酷狗歌单接口，点歌单即播）。
-                    myPlaylistsSection
-                    // 常听排行：PlayerManager 已按播放次数算好 topPlayed，此前界面上没有入口。
-                    topPlayedSection
-                    profileVersionFooter
+                    .padding(.top, 8)
+                    .padding(.bottom, 40)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black)
+                    // 白色主卡：顶部大圆角压住黑色标题区，内含统计行、快捷入口、歌单、常听排行。
+                    myWhiteCard
                 }
-                .padding(.horizontal, isNativeClean ? 24 : 16)
-                .padding(.top, isNativeClean ? 14 : 8)
                 .padding(.bottom, 190)
-                .frame(maxWidth: 860)
                 .frame(maxWidth: .infinity)
             }
             .beansScrollIndicatorsHidden()
@@ -255,98 +285,6 @@ struct ProfileView: View {
         }
     }
 
-    private var userCard: some View {
-        VStack(spacing: 16) {
-            Button {
-                BeansHaptics.tap()
-                // 统一账号面板：网易云 + QQ 音乐登录整合在一起
-                showAccountHub = true
-            } label: {
-                HStack(spacing: 14) {
-                    // 头像：主题渐变描边环
-                    AsyncImage(url: auth.user?.avatarURL) { phase in
-                        if case .success(let image) = phase {
-                            image.resizable().scaledToFill()
-                        } else {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 26))
-                                .foregroundStyle(Color.beansComment)
-                        }
-                    }
-                    .frame(width: 64, height: 64)
-                    .clipShape(Circle())
-                    .background(Color.beansGlassFill, in: Circle())
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "Kugou Music Logged In" : "酷狗音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
-                                .font(BeansFont.appFont(20, .bold))
-                                .foregroundStyle(Color.beansLabel)
-                                .lineLimit(1)
-                            if auth.isLoggedIn, let badge = auth.user?.vipBadge {
-                                VIPBadgeView(text: badge, animated: true)
-                            }
-                        }
-                        Text(accountStatusLine)
-                            .font(BeansFont.appFont(12, .regular, .monospaced))
-                            .foregroundStyle(Color.beansComment)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.7))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn {
-                platformStatusRow
-            }
-        }
-        .padding(16)
-        .background {
-                        BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        }
-        .beansCardShadow(radius: 10, y: 4)
-    }
-
-    /// 每个登录平台单独展示登录成功状态（网易云 / QQ 音乐）
-    private var platformStatusRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if platformPrefs.isEnabled(SearchProvider.kugou), kugouAuth.isLoggedIn {
-                platformChip(imageName: "BrandKugou", name: "酷狗音乐", status: kugouAuth.nickname.isEmpty ? "已登录" : kugouAuth.nickname, badge: kugouAuth.vipBadge)
-            }
-        }
-        .padding(.top, 2)
-    }
-
-    private func platformChip(imageName: String, name: String, status: String, badge: String?) -> some View {
-        HStack(spacing: 6) {
-            Image(imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-            Text(name)
-                .font(BeansFont.appFont(12, .semibold))
-                .foregroundStyle(Color.beansLabel)
-            Text(status)
-                .font(BeansFont.appFont(11))
-                .foregroundStyle(Color.beansComment)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            if let badge {
-                VIPBadgeView(text: badge, animated: true)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background { BeansSurface(shape: Capsule()) }
-    }
-
-
-
     /// 壁纸格子：点击应用为当前背景；使用中的壁纸显示主题色边框+勾选；右上角删除
     private func wallpaperCell(path: String) -> some View {
         let isActive = path == theme.backgroundImagePath
@@ -397,23 +335,7 @@ struct ProfileView: View {
         }
     }
 
-    /// 功能宫格：常用功能统一整合排版
-    /// 统计行：我喜欢 / 歌单 / 历史 / 常听，全部取本地真实数据。
-    /// 未登录时歌单数为当前已加载数（0 即暂无），不写假数字；不含关注/粉丝/等级/小时数。
-    private var myStatsRow: some View {
-        HStack(spacing: 0) {
-            myStatCell(value: "\(FavoritesStore.shared.kugouFavoriteSongs.count)", label: "我喜欢")
-            Divider().frame(height: 28)
-            myStatCell(value: "\(myPlaylists.count)", label: "歌单")
-            Divider().frame(height: 28)
-            myStatCell(value: "\(player.history.count)", label: "历史")
-            Divider().frame(height: 28)
-            myStatCell(value: "\(player.topPlayed.count)", label: "常听")
-        }
-        .padding(.vertical, 12)
-        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
-    }
-
+    /// 功能宫格：常用功能统一整合排版（统计行已由白卡内 myStatsRowPlain 承载，见上）。
     private func myStatCell(value: String, label: String) -> some View {
         VStack(spacing: 2) {
             Text(value)

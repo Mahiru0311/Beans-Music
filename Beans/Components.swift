@@ -590,6 +590,57 @@ struct VIPBadgeView: View {
     }
 }
 
+// MARK: - Co VIP 自动徽标（wy.dwkc.cn 黑金徽标的 Co 自绘版，不抄其 webp/png 素材）
+// 自动切换只看酷狗登录态：已登录且 vipType>0 → 黑底金字 + 2.8 秒扫光自动播；
+// 已登录但无 VIP → 灰色静态（表示当前无 VIP，含过期情形；酷狗登录态无过期日期字段，
+// 故不写“已过期”字样、不编造等级 v0-v7）；未登录 → 不显示。动效只在“我的”页可见时跑，
+// 视图消失即停，遵循减弱动态效果，无常驻定时器。
+struct CoVIPAutoBadge: View {
+    let isVIP: Bool
+    let isLoggedIn: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shimmerOn = false
+
+    var body: some View {
+        Group {
+            if isLoggedIn && isVIP {
+                Text("VIP")
+                    .font(BeansFont.appFont(10, .bold))
+                    .foregroundStyle(Color(red: 0.95, green: 0.78, blue: 0.32))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color.black))
+                    .overlay(Capsule().stroke(Color(red: 0.85, green: 0.62, blue: 0.18).opacity(0.6), lineWidth: 0.8))
+                    .overlay {
+                        if !reduceMotion {
+                            Capsule()
+                                .fill(LinearGradient(colors: [.clear, .white.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing))
+                                .frame(width: 14)
+                                .offset(x: shimmerOn ? 16 : -16)
+                                .clipShape(Capsule())
+                                .opacity(shimmerOn ? 1 : 0)
+                        }
+                    }
+                    .clipShape(Capsule())
+                    .onAppear {
+                        guard !reduceMotion else { return }
+                        shimmerOn = false
+                        withAnimation(.linear(duration: 2.8).repeatForever(autoreverses: false)) { shimmerOn = true }
+                    }
+                    .onDisappear { shimmerOn = false }
+            } else if isLoggedIn {
+                Text("VIP")
+                    .font(BeansFont.appFont(10, .bold))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color.white.opacity(0.16)))
+                    .clipShape(Capsule())
+            }
+        }
+    }
+}
+
 // MARK: - 玻璃图标按钮（清透 + 按压动效）
 
 struct GlassIconButton: View {
