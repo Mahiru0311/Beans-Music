@@ -641,6 +641,190 @@ struct CoVIPAutoBadge: View {
     }
 }
 
+// MARK: - Co VIP 图标目录（wy.dwkc.cn 面板分组，站主本人授权可用）
+// 该站是用户自己的网站，前端面板分组为：VIP（普通/动效/已过期/特殊、v0-v7）、
+// SVIP（金色）、长条形。面板里 VIP 组的 29 条链接经页面文本逐条核对，见下；
+// SVIP 与长条形组的 CDN 链接未在页面文本中公开，故不编造链接，改用 Co 自绘金色/长条款。
+// 重要：这些图文件多托管在 music.126.net CDN 上，该站只是引用链接，CDN 随时可能撤图
+// 或拦请求；因此 Co 不把任何一款打包进 IPA，也不预下载全部款式——只在用户选定后按需
+// 下载当前一款、只缓存当前一款（单文件 caches/CoVIPIcon/current），选新款时先删旧文件。
+// 下载失败（网络/CDN/解码任一环节）时一律回落 Co 自绘徽标，绝不出现破图或空白。
+// 徽标外观不影响播放权益：播放仍以 KugouMusicAuth.hasMembership 为准，不绕 VIP。
+struct CoVIPIconItem: Identifiable {
+    let id: String
+    let group: String
+    let label: String
+    let url: URL?
+    let isAnimated: Bool
+    var isSelfDrawn: Bool { url == nil }
+}
+
+enum CoVIPIconCatalog {
+    static let vipRemote: [CoVIPIconItem] = [
+        // 普通 v0-v7
+        CoVIPIconItem(id: "vip-normal-v0", group: "普通", label: "v0", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582124119/201b/4a2b/636c/1d1dbc6b0766e867f992f24974bd9e8d.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v1", group: "普通", label: "v1", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582186486/9f31/5cfe/207c/2846c11ce0bd05aae1754aed7e63ca58.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v2", group: "普通", label: "v2", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582188103/1854/6c02/1504/df5815d7c9784ad27e150a951f70ec39.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v3", group: "普通", label: "v3", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582188099/3419/2b65/d241/bd664461c263a2dfdbf631bb9848ee3e.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v4", group: "普通", label: "v4", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582187192/1052/507f/a9f6/37b6f5c7730daf96a992accb35092511.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v5", group: "普通", label: "v5", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582188100/ca7f/f3f7/f591/a142a567c050a4a860ee77765270db57.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v6", group: "普通", label: "v6", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582187196/ecde/1b79/d752/ec1b8f20854d06bba52ed022d28871d6.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-normal-v7", group: "普通", label: "v7", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582185437/838c/3e35/26c7/1483dd70f2bbbf601f095dff56c603b8.png"), isAnimated: false),
+        // 动效 v0-v7（webp，加载后自动连续播放）
+        CoVIPIconItem(id: "vip-animated-v0", group: "动效", label: "v0", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141379825/38a5/43a5/79d3/b71cbffe50f3bd5d21fea4fee0f28433.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v1", group: "动效", label: "v1", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141387354/ccf7/52e6/a3c7/edcb0a1bddc423b8efd23a55e70ecff1.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v2", group: "动效", label: "v2", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141390014/d816/86b3/2db8/631f4468ca344af5caad8d1875d0453e.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v3", group: "动效", label: "v3", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141390012/8f22/7796/8597/3c4e43ad7036268bd80ec4a4d7623d61.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v4", group: "动效", label: "v4", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141385845/1920/a68a/ee92/8f89aff7cbc6122eeb7c2d78e0b7c5fc.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v5", group: "动效", label: "v5", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141386672/0d87/87cf/93f7/7ec3aad495032568774a84f964806303.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v6", group: "动效", label: "v6", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141388259/2ff9/0285/5c0d/67aabccc4753db74b7f3aee9e485bf7d.webp"), isAnimated: true),
+        CoVIPIconItem(id: "vip-animated-v7", group: "动效", label: "v7", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32141388261/a2e9/3284/e98d/937112ec4f5a78553946211a9794eb21.webp"), isAnimated: true),
+        // 已过期 v0-v7
+        CoVIPIconItem(id: "vip-expired-v0", group: "已过期", label: "v0", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582124120/b2ca/664a/8d3a/90703110665d55efcb57c11c16c9c86b.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v1", group: "已过期", label: "v1", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582187194/7a26/f253/f690/47da2b91bced041709bbcdb68cd0867f.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v2", group: "已过期", label: "v2", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582185439/97ed/0a50/4c47/6ee6d3bba90d6e558fd947e717b02a88.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v3", group: "已过期", label: "v3", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582188101/3e49/6a48/39f3/c4124c59baca58313e16a62c5577808b.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v4", group: "已过期", label: "v4", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582187195/0a19/d6c8/b3bb/9777d57b1f0de3b66da0dc88abdee9f4.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v5", group: "已过期", label: "v5", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582184693/655f/84e0/a623/2e928f20e362646d3792777f9fd1175d.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v6", group: "已过期", label: "v6", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582186487/aa2a/18d4/0ed0/831633c5a44e742024caee7cd25ac2f2.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-expired-v7", group: "已过期", label: "v7", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582187193/4554/a47b/6007/128beedac6aba996237d0fbff16ec44a.png"), isAnimated: false),
+        // 特殊 5 张
+        CoVIPIconItem(id: "vip-special-expiring", group: "特殊", label: "即将过期", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582124121/4a10/4688/42a4/75f2deca258ec6e9d4ee39d2bc977a43.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-special-renew", group: "特殊", label: "续费", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582120545/0427/dad3/8730/40ec47262e2e68719217b5e357220228.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-special-open", group: "特殊", label: "开通", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582122379/9fc8/330a/c33d/75e75cf340078f94b395aacb89f56c32.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-special-free", group: "特殊", label: "限免", url: URL(string: "https://p6.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582121501/716e/a8fc/18c0/91d296e4135822e84b1bfa3a3eb86cd5.png"), isAnimated: false),
+        CoVIPIconItem(id: "vip-special-cancel", group: "特殊", label: "注销", url: URL(string: "https://p5.music.126.net/obj/wonDlsKUwrLClGjCm8Kx/32582121499/7199/edef/2bc2/270062e6ffd9299d160fdb5c1d1f9764.png"), isAnimated: false),
+    ]
+    // SVIP 与长条形：CDN 链接未在页面文本中公开，不编造，Co 自绘（矢量，无位图缓存）。
+    static let svipSelfDrawn: [CoVIPIconItem] = [
+        CoVIPIconItem(id: "svip-normal", group: "SVIP普通", label: "SVIP", url: nil, isAnimated: false),
+        CoVIPIconItem(id: "svip-animated", group: "SVIP动效", label: "SVIP", url: nil, isAnimated: true),
+        CoVIPIconItem(id: "svip-expired", group: "SVIP已过期", label: "SVIP", url: nil, isAnimated: false),
+        CoVIPIconItem(id: "svip-special", group: "SVIP特殊", label: "SVIP", url: nil, isAnimated: false),
+    ]
+    static let longSelfDrawn: [CoVIPIconItem] = [
+        CoVIPIconItem(id: "long-light", group: "长条形", label: "浅色", url: nil, isAnimated: false),
+        CoVIPIconItem(id: "long-dark", group: "长条形", label: "深色", url: nil, isAnimated: false),
+        CoVIPIconItem(id: "long-text-light", group: "长条形", label: "带文字浅色", url: nil, isAnimated: false),
+        CoVIPIconItem(id: "long-text-dark", group: "长条形", label: "带文字深色", url: nil, isAnimated: false),
+    ]
+    static var all: [CoVIPIconItem] { vipRemote + svipSelfDrawn + longSelfDrawn }
+    static func item(id: String) -> CoVIPIconItem? { all.first { $0.id == id } }
+
+    // 单款缓存：整个 App 只有一个 VIP 图标缓存文件，选新款先删旧文件再下载。
+    static let cachedItemIdKey = "beans.vipIconCachedId"
+    static func cacheFileURL() -> URL {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("CoVIPIcon", isDirectory: true)
+        return dir.appendingPathComponent("current")
+    }
+    static func deleteCachedIcon() {
+        try? FileManager.default.removeItem(at: cacheFileURL())
+        UserDefaults.standard.removeObject(forKey: cachedItemIdKey)
+    }
+    static func cachedImage() -> UIImage? {
+        guard let data = try? Data(contentsOf: cacheFileURL()), !data.isEmpty else { return nil }
+        return UIImage(data: data)
+    }
+    static func isDecodable(_ data: Data) -> Bool {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return false }
+        return CGImageSourceGetCount(src) > 0
+    }
+}
+
+// 下载后仍能动起来的图片视图（webp 动图经 UIImage 解码后多帧时用 UIImageView 播，静态图同理）。
+struct CoAnimatedImage: UIViewRepresentable {
+    let image: UIImage
+    func makeUIView(context: Context) -> UIImageView {
+        let v = UIImageView()
+        v.contentMode = .scaleAspectFit
+        v.clipsToBounds = false
+        return v
+    }
+    func updateUIView(_ uiView: UIImageView, context: Context) {
+        uiView.image = image
+        if image.images != nil { uiView.startAnimating() } else { uiView.stopAnimating() }
+    }
+}
+
+// Co 自绘 SVIP / 长条款（矢量，无位图、无缓存；动效款仅 VIP 时扫光）。
+struct CoVIPSelfDrawnBadge: View {
+    let itemId: String
+    let isVIP: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shimmerOn = false
+    var body: some View {
+        Group {
+            switch itemId {
+            case "svip-animated":
+                if isVIP && !reduceMotion {
+                    Text("SVIP").font(BeansFont.appFont(10, .bold)).foregroundStyle(.black)
+                        .padding(.horizontal, 8).padding(.vertical, 2.5)
+                        .background(Capsule().fill(Color(red: 0.85, green: 0.62, blue: 0.18)))
+                        .overlay(Capsule().fill(LinearGradient(colors: [.clear, .white.opacity(0.4), .clear], startPoint: .leading, endPoint: .trailing)).frame(width: 14).offset(x: shimmerOn ? 18 : -18).clipShape(Capsule()).opacity(shimmerOn ? 1 : 0))
+                        .clipShape(Capsule())
+                        .onAppear { shimmerOn = false; withAnimation(.linear(duration: 2.8).repeatForever(autoreverses: false)) { shimmerOn = true } }
+                        .onDisappear { shimmerOn = false }
+                } else {
+                    Text("SVIP").font(BeansFont.appFont(10, .bold)).foregroundStyle(.black)
+                        .padding(.horizontal, 8).padding(.vertical, 2.5)
+                        .background(Capsule().fill(Color(red: 0.85, green: 0.62, blue: 0.18))).clipShape(Capsule())
+                }
+            case "svip-expired":
+                Text("SVIP").font(BeansFont.appFont(10, .bold)).foregroundStyle(.white.opacity(0.7))
+                    .padding(.horizontal, 8).padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color.gray.opacity(0.3))).clipShape(Capsule())
+            case "long-light":
+                Label("VIP", systemImage: "crown.fill").font(BeansFont.appFont(10, .bold)).foregroundStyle(Color(red: 0.93, green: 0.25, blue: 0.22))
+                    .padding(.horizontal, 12).padding(.vertical, 3)
+                    .background(Capsule().fill(Color.white)).overlay(Capsule().stroke(Color(red: 0.93, green: 0.25, blue: 0.22).opacity(0.5), lineWidth: 0.8)).clipShape(Capsule())
+            case "long-dark":
+                Label("VIP", systemImage: "crown.fill").font(BeansFont.appFont(10, .bold)).foregroundStyle(Color(red: 0.95, green: 0.78, blue: 0.32))
+                    .padding(.horizontal, 12).padding(.vertical, 3)
+                    .background(Capsule().fill(Color.black)).overlay(Capsule().stroke(Color(red: 0.85, green: 0.62, blue: 0.18).opacity(0.6), lineWidth: 0.8)).clipShape(Capsule())
+            case "long-text-light":
+                Label("VIP 会员", systemImage: "crown.fill").font(BeansFont.appFont(10, .bold)).foregroundStyle(Color(red: 0.93, green: 0.25, blue: 0.22))
+                    .padding(.horizontal, 12).padding(.vertical, 3)
+                    .background(Capsule().fill(Color.white)).overlay(Capsule().stroke(Color(red: 0.93, green: 0.25, blue: 0.22).opacity(0.5), lineWidth: 0.8)).clipShape(Capsule())
+            case "long-text-dark":
+                Label("VIP 会员", systemImage: "crown.fill").font(BeansFont.appFont(10, .bold)).foregroundStyle(Color(red: 0.95, green: 0.78, blue: 0.32))
+                    .padding(.horizontal, 12).padding(.vertical, 3)
+                    .background(Capsule().fill(Color.black)).overlay(Capsule().stroke(Color(red: 0.85, green: 0.62, blue: 0.18).opacity(0.6), lineWidth: 0.8)).clipShape(Capsule())
+            default: // svip-normal 及其余自绘款：金色静态
+                Text("SVIP").font(BeansFont.appFont(10, .bold)).foregroundStyle(.black)
+                    .padding(.horizontal, 8).padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color(red: 0.85, green: 0.62, blue: 0.18))).clipShape(Capsule())
+            }
+        }
+    }
+}
+
+// MARK: - 我的页隐藏歌单存储（1.8.5，只藏显示、不删歌单）
+// 按酷狗账号 userId 区分键：beans.hiddenPlaylists.<userId>，未登录时为 "local"。
+// 每条存 "id|name"（恢复入口靠名字展示，靠 id 恢复），换号后各号的隐藏互不串。
+struct CoHiddenPlaylists {
+    static func key(userId: String) -> String {
+        "beans.hiddenPlaylists.\(userId.isEmpty ? "local" : userId)"
+    }
+    static func load(userId: String) -> [(id: Int, name: String)] {
+        let raw = UserDefaults.standard.stringArray(forKey: key(userId: userId)) ?? []
+        return raw.compactMap { s in
+            guard let sep = s.firstIndex(of: "|"), let id = Int(s[..<sep]) else { return nil }
+            return (id: id, name: String(s[s.index(after: sep)...]))
+        }
+    }
+    static func save(userId: String, entries: [(id: Int, name: String)]) {
+        UserDefaults.standard.set(entries.map { "\($0.id)|\($0.name)" }, forKey: key(userId: userId))
+    }
+    static func allAccounts() -> [(userId: String, entries: [(id: Int, name: String)])] {
+        UserDefaults.standard.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix("beans.hiddenPlaylists.") }
+            .sorted()
+            .map { (userId: String($0.dropFirst("beans.hiddenPlaylists.".count)), entries: load(userId: String($0.dropFirst("beans.hiddenPlaylists.".count)))) }
+            .filter { !$0.entries.isEmpty }
+    }
+}
+
 // MARK: - 玻璃图标按钮（清透 + 按压动效）
 
 struct GlassIconButton: View {

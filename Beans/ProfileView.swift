@@ -34,8 +34,17 @@ struct ProfileView: View {
     @State private var checkingUpdate = false
     /// 自动下载新版 IPA
     @State private var didRefreshProfileAccount = false
-    @State private var donationExpanded = false
-    @State private var showWeChatOpenError = false
+    /// VIP 图标选择：点昵称旁徽标弹出（wy.dwkc.cn 面板结构）；"auto" 为自动（Co 自绘）。
+    @AppStorage("beans.vipIconItemId") private var vipIconItemId = "auto"
+    @State private var showVIPIconPicker = false
+    @State private var vipIconPickerMode = "VIP"
+    @State private var vipIconImage: UIImage?
+    @State private var vipIconLoadFailed = false
+    /// 用户页背景（1.8.5）：默认 auto，不再是纯黑；见 profileHeaderBackground。
+    @AppStorage("beans.profileBackground") private var profileBackgroundRaw = "auto"
+    @AppStorage("beans.profileBackgroundCustomHex") private var profileBackgroundCustomHex = ""
+    /// 我的页隐藏歌单（1.8.5）：按酷狗账号区分存，见 CoHiddenPlaylists。
+    @State private var hiddenPlaylistEntries: [(id: Int, name: String)] = []
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
@@ -121,7 +130,7 @@ struct ProfileView: View {
             } label: {
                 Text("+ 添加状态")
                     .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.white.opacity(0.65))
+                    .foregroundStyle(profileHeaderSecondary)
             }
             .buttonStyle(.plain)
             Button {
@@ -134,25 +143,31 @@ struct ProfileView: View {
                     } else {
                         Image(systemName: "person.fill")
                             .font(.system(size: 34))
-                            .foregroundStyle(Color.white.opacity(0.7))
+                            .foregroundStyle(profileHeaderSecondary)
                     }
                 }
                 .frame(width: 88, height: 88)
                 .clipShape(Circle())
-                .background(Color.white.opacity(0.12), in: Circle())
-                .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1.5))
+                .background(profileHeaderForeground.opacity(0.12), in: Circle())
+                .overlay(Circle().stroke(profileHeaderForeground.opacity(0.35), lineWidth: 1.5))
             }
             .buttonStyle(.plain)
             HStack(spacing: 6) {
                 Text(myDisplayNickname)
                     .font(BeansFont.appFont(20, .bold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(profileHeaderForeground)
                     .lineLimit(1)
-                CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
+                // 点徽标弹出图标切换；未登录时点徽标先进账号/登录。
+                Button {
+                    BeansHaptics.tap()
+                    if kugouAuth.isLoggedIn { showVIPIconPicker = true } else { showAccountHub = true }
+                } label: { myVIPBadge }
+                .buttonStyle(.plain)
+                .accessibilityLabel("切换 VIP 图标")
             }
             Text(accountStatusLine)
                 .font(BeansFont.appFont(12))
-                .foregroundStyle(Color.white.opacity(0.6))
+                .foregroundStyle(profileHeaderSecondary)
                 .lineLimit(1)
         }
     }
@@ -162,6 +177,236 @@ struct ProfileView: View {
         if let nick = auth.user?.nickname, !nick.isEmpty { return nick }
         if kugouAuth.isLoggedIn { return "酷狗音乐已登录" }
         return "免登录 · 点击登录"
+    }
+
+    // MARK: - 1.8.5 VIP 图标：点徽标弹出切换，按需下载当前一款、只缓存一款
+    private var selectedVIPIconItem: CoVIPIconItem? {
+        vipIconItemId == "auto" ? nil : CoVIPIconCatalog.item(id: vipIconItemId)
+    }
+    /// 徽标本体：远程款有缓存图时显示该图（含动图播放），否则回落 Co 自绘；动效款无 VIP 时绝不显示动图。
+    private var myVIPBadge: some View {
+        Group {
+            if let item = selectedVIPIconItem, !item.isSelfDrawn {
+                if let img = vipIconImage, !(item.isAnimated && !kugouAuth.hasMembership) {
+                    CoAnimatedImage(image: img).frame(height: 26)
+                } else {
+                    CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
+                }
+            } else if let item = selectedVIPIconItem {
+                CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
+            } else {
+                CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
+            }
+        }
+    }
+    private func loadVIPIcon(allowDownload: Bool) {
+        guard let item = selectedVIPIconItem, let url = item.url else {
+            // 自动或自绘款：不下载、不留缓存，旧缓存立即清掉（选新删旧）。
+            CoVIPIconCatalog.deleteCachedIcon()
+            vipIconImage = nil
+            vipIconLoadFailed = false
+            return
+        }
+        if item.isAnimated && !kugouAuth.hasMembership {
+            // 无 VIP 时动效款不生效：不下载、不显示动图，回落灰静态。
+            vipIconImage = nil
+            vipIconLoadFailed = false
+            return
+        }
+        let cachedId = UserDefaults.standard.string(forKey: CoVIPIconCatalog.cachedItemIdKey) ?? ""
+        if cachedId == item.id, let img = CoVIPIconCatalog.cachedImage() {
+            vipIconImage = img
+            vipIconLoadFailed = false
+            return
+        }
+        guard allowDownload else { vipIconImage = nil; return }
+        Task {
+            do {
+                let (data, resp) = try await URLSession.shared.data(from: url)
+                guard let http = resp as? HTTPURLResponse, http.statusCode == 200, !data.isEmpty,
+                      CoVIPIconCatalog.isDecodable(data), let img = UIImage(data: data) else {
+                    throw URLError(.cannotDecodeContentData)
+                }
+                let dir = CoVIPIconCatalog.cacheFileURL().deletingLastPathComponent()
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try data.write(to: CoVIPIconCatalog.cacheFileURL(), options: .atomic)
+                UserDefaults.standard.set(item.id, forKey: CoVIPIconCatalog.cachedItemIdKey)
+                await MainActor.run { vipIconImage = img; vipIconLoadFailed = false }
+            } catch {
+                await MainActor.run { vipIconImage = nil; vipIconLoadFailed = true }
+            }
+        }
+    }
+    private func selectVIPIcon(_ item: CoVIPIconItem?) {
+        // 选新删旧：先删旧缓存文件，再记新选择、再下载新款；失败时回落自绘（见 loadVIPIcon）。
+        CoVIPIconCatalog.deleteCachedIcon()
+        vipIconImage = nil
+        vipIconLoadFailed = false
+        vipIconItemId = item?.id ?? "auto"
+        BeansHaptics.select()
+        // 下载是异步的，失败时面板内会显示红色回落提示（见 vipIconPickerSheet），不在此处同步弹 toast。
+        loadVIPIcon(allowDownload: true)
+    }
+
+    // MARK: - 1.8.5 用户页背景：默认 auto（浅灰适配，不黑、不与白卡同色）
+    private var profileHeaderBackground: Color {
+        switch profileBackgroundRaw {
+        case "accentTint":
+            // 主题色 14% + 浅灰 86% 的不透明混合色（不透底、不与白卡同色）。
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            UIColor.beansAmber.getRed(&r, green: &g, blue: &b, alpha: &a)
+            var gr: CGFloat = 0, gg: CGFloat = 0, gb: CGFloat = 0, ga: CGFloat = 0
+            UIColor.systemGray6.getRed(&gr, green: &gg, blue: &gb, alpha: &ga)
+            return Color(red: r * 0.14 + gr * 0.86, green: g * 0.14 + gg * 0.86, blue: b * 0.14 + gb * 0.86)
+        case "lightGray":
+            return Color(UIColor.systemGray5)
+        case "custom":
+            if let c = Color(hex: profileBackgroundCustomHex) { return c }
+            return Color(UIColor.systemGray6)
+        default: // auto：浅色取浅灰、深色取深灰（均非纯黑、均与 systemBackground 白卡有区分）
+            return Color(UIColor.systemGray6)
+        }
+    }
+    private var profileHeaderForeground: Color {
+        // 自定义深色背景时用白字，其余（auto/主题浅 tint/浅灰）用系统标签色（浅色黑字、深色白字）。
+        if profileBackgroundRaw == "custom", let ui = UIColor(hex: profileBackgroundCustomHex) {
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+            if 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.45 { return .white }
+        }
+        return Color.beansLabel
+    }
+    private var profileHeaderSecondary: Color { profileHeaderForeground.opacity(0.65) }
+
+    // MARK: - 1.8.5 我的页隐藏歌单（只藏显示，不删歌单；按酷狗账号区分存）
+    private var hiddenPlaylistIds: Set<Int> { Set(hiddenPlaylistEntries.map(\.id)) }
+    private var visiblePlaylists: [Playlist] { myPlaylists.filter { !hiddenPlaylistIds.contains($0.id) } }
+    private func loadHiddenPlaylists() {
+        hiddenPlaylistEntries = CoHiddenPlaylists.load(userId: kugouAuth.userId)
+    }
+    private func hidePlaylist(_ playlist: Playlist) {
+        var entries = hiddenPlaylistEntries
+        if !entries.contains(where: { $0.id == playlist.id }) {
+            entries.append((id: playlist.id, name: playlist.name))
+        }
+        hiddenPlaylistEntries = entries
+        CoHiddenPlaylists.save(userId: kugouAuth.userId, entries: entries)
+        BeansHaptics.select()
+        ToastCenter.shared.show("已隐藏，可在设置里恢复")
+    }
+
+    /// VIP 图标选择面板（wy.dwkc.cn 面板结构：VIP / SVIP / 长条形三档，VIP 内分普通/动效/已过期/特殊）。
+    /// 网格里只放文字款式（不预下载全部款式图），当前选中的一款放大显示在顶部（已缓存的图或自绘）；
+    /// 点选即生效、只保留当前一款，旧缓存已在 selectVIPIcon 里先删掉。
+    private var vipIconPickerSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 10) {
+                        Text("当前款").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                        Spacer()
+                        if let item = selectedVIPIconItem, !item.isSelfDrawn, let img = vipIconImage {
+                            CoAnimatedImage(image: img).frame(height: 30)
+                        } else if let item = selectedVIPIconItem {
+                            CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
+                        } else {
+                            CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: true)
+                        }
+                        Text(selectedVIPIconItem?.label ?? "自动")
+                            .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    }
+                    .padding(14)
+                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                    Button {
+                        selectVIPIcon(nil)
+                    } label: {
+                        HStack {
+                            Text("自动（Co 自绘，按 VIP 状态自动对应）").font(BeansFont.appFont(14, .semibold)).foregroundStyle(Color.beansLabel)
+                            Spacer()
+                            if vipIconItemId == "auto" { Image(systemName: "checkmark").foregroundStyle(Color.beansAmber) }
+                        }
+                        .padding(12)
+                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                    }
+                    .buttonStyle(.plain)
+                    Picker("图标类型", selection: $vipIconPickerMode) {
+                        Text("VIP").tag("VIP")
+                        Text("SVIP").tag("SVIP")
+                        Text("长条形").tag("长条形")
+                    }
+                    .pickerStyle(.segmented)
+                    if vipIconPickerMode == "VIP" {
+                        ForEach(["普通", "动效", "已过期", "特殊"], id: \.self) { group in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(group).font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                                    ForEach(CoVIPIconCatalog.vipRemote.filter { $0.group == group }) { item in
+                                        let disabled = item.isAnimated && !kugouAuth.hasMembership
+                                        Button { if !disabled { selectVIPIcon(item) } } label: {
+                                            VStack(spacing: 4) {
+                                                Text(item.label).font(BeansFont.appFont(12, .semibold)).foregroundStyle(disabled ? Color.beansComment.opacity(0.5) : Color.beansLabel)
+                                                Text(item.isAnimated ? "动图" : "静态").font(BeansFont.appFont(10)).foregroundStyle(Color.beansComment)
+                                            }
+                                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
+                                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(vipIconItemId == item.id ? Color.beansAmber : Color.clear, lineWidth: 1.5))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(disabled)
+                                    }
+                                }
+                                if group == "动效" && !kugouAuth.hasMembership {
+                                    Text("动效款仅 VIP 可用；无 VIP 时选了也不生效，会回落灰色自绘徽标。")
+                                        .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                }
+                            }
+                        }
+                        Text("点选后只下载当前一款并缓存；换一款时旧缓存立即删除。图源为该站面板链接（多托管在 CDN 上），下载失败时自动回落 Co 自绘徽标，不出现破图。")
+                            .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                    } else if vipIconPickerMode == "SVIP" {
+                        Text("SVIP 金色款为 Co 自绘（该站 SVIP 图的 CDN 链接未在页面文本中公开，未编造链接）。")
+                            .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                        ForEach(CoVIPIconCatalog.svipSelfDrawn) { item in
+                            Button { selectVIPIcon(item) } label: {
+                                HStack {
+                                    CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
+                                    Text(item.group).font(BeansFont.appFont(13)).foregroundStyle(Color.beansLabel)
+                                    Spacer()
+                                    if vipIconItemId == item.id { Image(systemName: "checkmark").foregroundStyle(Color.beansAmber) }
+                                }
+                                .padding(12)
+                                .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } else {
+                        Text("长条形款为 Co 自绘（浅色/深色/带文字两种底色）。")
+                            .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                        ForEach(CoVIPIconCatalog.longSelfDrawn) { item in
+                            Button { selectVIPIcon(item) } label: {
+                                HStack {
+                                    CoVIPSelfDrawnBadge(itemId: item.id, isVIP: kugouAuth.hasMembership)
+                                    Text(item.label).font(BeansFont.appFont(13)).foregroundStyle(Color.beansLabel)
+                                    Spacer()
+                                    if vipIconItemId == item.id { Image(systemName: "checkmark").foregroundStyle(Color.beansAmber) }
+                                }
+                                .padding(12)
+                                .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if vipIconLoadFailed {
+                        Text("当前款图标加载失败（CDN 可能已撤图或网络不通），已回落 Co 自绘徽标；可重选一款重试。")
+                            .font(BeansFont.appFont(11)).foregroundStyle(Color.red)
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("VIP 图标")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { showVIPIconPicker = false } } }
+        }
     }
 
     /// 白色主卡（wy 格式）：顶部大圆角压住黑色标题区，内含统计行、快捷入口、歌单、常听排行。
@@ -193,7 +438,7 @@ struct ProfileView: View {
         HStack(spacing: 0) {
             myStatCell(value: "\(FavoritesStore.shared.kugouFavoriteSongs.count)", label: "我喜欢")
             Divider().frame(height: 28)
-            myStatCell(value: "\(myPlaylists.count)", label: "歌单")
+            myStatCell(value: "\(visiblePlaylists.count)", label: "歌单")
             Divider().frame(height: 28)
             myStatCell(value: "\(player.history.count)", label: "历史")
             Divider().frame(height: 28)
@@ -211,7 +456,7 @@ struct ProfileView: View {
             TabBarAppearanceConfigurator()
             ScrollView {
                 VStack(spacing: 0) {
-                    // 黑色标题区：顶部栏 + 居中头像区（“账号”板块被排序关掉时头像区隐藏，菜单仍可再开）。
+                    // 用户页标题区（1.8.5 默认不再是纯黑，见 profileHeaderBackground）：顶部栏 + 居中头像区。
                     VStack(spacing: 14) {
                         myTopBar
                             .padding(.horizontal, 16)
@@ -222,7 +467,7 @@ struct ProfileView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 40)
                     .frame(maxWidth: .infinity)
-                    .background(Color.black)
+                    .background(profileHeaderBackground)
                     // 白色主卡：顶部大圆角压住黑色标题区，内含统计行、快捷入口、歌单、常听排行。
                     myWhiteCard
                 }
@@ -246,16 +491,14 @@ struct ProfileView: View {
             myPlaylistsLoaded = true
             myPlaylistsLoading = false
         }
+        .task(id: kugouAuth.userId) { loadHiddenPlaylists() }
+        .task(id: vipIconItemId) { loadVIPIcon(allowDownload: true) }
         .background {
             HighRefreshConfigurator()
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         }
-        .alert("无法打开微信", isPresented: $showWeChatOpenError) {
-            Button("知道了", role: .cancel) {}
-        } message: {
-            Text("请使用微信扫描上方二维码完成赞助。")
-        }
+        .sheet(isPresented: $showVIPIconPicker) { vipIconPickerSheet }
         .sheet(isPresented: $showHistory) {
             HistoryView()
                 .environmentObject(player)
@@ -430,13 +673,18 @@ struct ProfileView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
-            } else if myPlaylists.isEmpty {
-                Text("暂无歌单")
+            } else if visiblePlaylists.isEmpty {
+                Text(hiddenPlaylistEntries.isEmpty ? "暂无歌单" : "歌单都已隐藏，可在设置 → 外观与界面 → 隐藏的歌单里恢复")
                     .font(BeansFont.appFont(13))
                     .foregroundStyle(Color.beansComment)
             } else {
+                if !hiddenPlaylistEntries.isEmpty {
+                    Text("已隐藏 \(hiddenPlaylistEntries.count) 条歌单（设置 → 外观与界面 → 隐藏的歌单可恢复）")
+                        .font(BeansFont.appFont(11))
+                        .foregroundStyle(Color.beansComment)
+                }
                 VStack(spacing: 8) {
-                    ForEach(Array(myPlaylists.prefix(8))) { playlist in
+                    ForEach(Array(visiblePlaylists.prefix(8))) { playlist in
                         Button {
                             BeansHaptics.tap()
                             Task {
@@ -470,6 +718,10 @@ struct ProfileView: View {
                             .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
                         }
                         .buttonStyle(.plain)
+                        // 长按隐藏：只藏“我的”页显示，不删歌单、不影响酷狗账号内歌单。
+                        .contextMenu {
+                            Button("隐藏此歌单", role: .destructive) { hidePlaylist(playlist) }
+                        }
                     }
                 }
             }
