@@ -27,7 +27,7 @@ struct DiscoverView: View {
     @State private var navigationPath: [DiscoverRoute] = []
     @State private var legacyRoute: DiscoverRoute?
     @State private var recommendationActionLoading: String?
-    @State private var showProfile = false
+    @State private var showSettings = false
     @State private var showSectionSort = false
     /// 主页板块顺序（每日推荐 / 排行榜，可自定义）
     @State private var homeOrder = SectionOrderStore.load(SectionOrderStore.homeKey, defaults: SectionOrderStore.homeDefaults)
@@ -225,12 +225,15 @@ struct DiscoverView: View {
                 )
                     .onDisappear { SectionOrderStore.save(SectionOrderStore.homeKey, homeOrder) }
             }
-            .sheet(isPresented: $showProfile) {
-                ProfileView(forceHomeBackdrop: true)
+            // 主页右上角头像直进设置（2026-10-23 用户定）：不再经过头像界面 sheet，
+            // 点头像就是设置页面，头像圆图本身与点按手感不动。
+            .sheet(isPresented: $showSettings) {
+                SettingsView(onClose: { showSettings = false })
                     .environmentObject(theme)
                     .environmentObject(auth)
                     .environmentObject(player)
-                    .modifier(BeansProfileSheetBackground())
+                    .modifier(BeansSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
+                    .modifier(SettingsLiquidSheetPresentation())
             }
         }
             .beansNavigationDestination(for: DiscoverRoute.self) { route in
@@ -356,10 +359,10 @@ struct DiscoverView: View {
         .frame(minHeight: homeGreetingHeight > 0 ? homeGreetingHeight : nil, alignment: .top)
     }
 
-    /// 主页右上角的“我的”入口，复用我的页面头像并保持液态玻璃边框。
+    /// 主页右上角头像：直进设置（2026-10-23 用户定），复用我的页面头像并保持液态玻璃边框。
     private var homeProfileButton: some View {
         BeansProfileShortcutButton {
-            showProfile = true
+            showSettings = true
         }
     }
 

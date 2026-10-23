@@ -1983,6 +1983,16 @@ struct SettingsView: View {
         BeansThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
+    /// 深色模式开关（2026-10-23 用户定：设置页外观区直达入口）：复用已有存储键
+    /// beans.themeMode，不新发明键。开 = 深色，关 = 浅色；跟随系统仍走下方主题模式
+    /// 三段选择（跟随系统/浅色/深色），开关只反映“当前是否显式深色”。
+    private var darkModeToggle: Binding<Bool> {
+        Binding(
+            get: { themeMode == .dark },
+            set: { themeModeRaw = $0 ? BeansThemeMode.dark.rawValue : BeansThemeMode.light.rawValue }
+        )
+    }
+
     private var isNativeClean: Bool {
         BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
@@ -2401,7 +2411,7 @@ struct SettingsView: View {
         }
     }
 
-    private var showAppearanceSettings: Bool { settingsMatches("主题 外观 背景 壁纸 字体 底栏 颜色 赞助") }
+    private var showAppearanceSettings: Bool { settingsMatches("主题 外观 背景 壁纸 字体 底栏 颜色 赞助 深色 深浅") }
     private var showPlatformSettings: Bool { false }
     private var showAudioSettings: Bool { settingsMatches("音源 音质 网络 Wi-Fi 蜂窝 导入") }
     private var showPlaybackSettings: Bool { settingsMatches("播放 触感 锁屏 灵动岛 收藏") }
@@ -2701,6 +2711,26 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // 深色模式直达开关（2026-10-23 用户定）：不折叠，打开设置页就能看到；
+            // 下方折叠区里的主题模式三段选择仍保留（跟随系统/浅色/深色）。
+            Toggle(isOn: darkModeToggle) {
+                HStack(spacing: 12) {
+                    Image(systemName: "moon.stars.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.beansAmber)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("深色模式")
+                            .font(BeansFont.appFont(15))
+                            .foregroundStyle(Color.beansLabel)
+                        Text("开启后全应用使用深色外观；关闭为浅色，跟随系统请用下方主题模式")
+                            .font(BeansFont.appFont(12))
+                            .foregroundStyle(Color.beansComment)
+                    }
+                }
+            }
+            .tint(Color.beansAmber)
+            .accessibilityIdentifier("beans.settings.dark-mode")
             // 外观设置行：点击展开 / 收起全部外观设置
             Button {
                 BeansHaptics.select()
