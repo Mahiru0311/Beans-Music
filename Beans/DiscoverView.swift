@@ -1273,9 +1273,10 @@ struct QQTopListDetailView: View {
     @State private var searchText = ""
     var onBack: (() -> Bool)? = nil
 
-    init(topID: Int, name: String) {
+    init(topID: Int, name: String, onBack: (() -> Bool)? = nil) {
         self.topID = topID
         self.name = name
+        self.onBack = onBack
     }
 
     var body: some View {
@@ -1820,8 +1821,9 @@ struct TopListDetailView: View {
     @State private var searchText = ""
     var onBack: (() -> Bool)? = nil
 
-    init(topList: TopList) {
+    init(topList: TopList, onBack: (() -> Bool)? = nil) {
         self.topList = topList
+        self.onBack = onBack
     }
 
     var body: some View {
@@ -1915,8 +1917,9 @@ struct KugouTopListDetailView: View {
     @State private var searchText = ""
     var onBack: (() -> Bool)? = nil
 
-    init(topList: KugouTopInfo) {
+    init(topList: KugouTopInfo, onBack: (() -> Bool)? = nil) {
         self.topList = topList
+        self.onBack = onBack
     }
 
     var body: some View {

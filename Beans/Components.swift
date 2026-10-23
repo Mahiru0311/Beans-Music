@@ -44,11 +44,12 @@ extension View {
     /// 1.9.4：真正隐藏导航栏。navigationBarHidden 在 iOS 26/27 已废弃，
     /// 导航栈目的地仍会预留导航栏区域——目的地 GeometryReader 的顶边本身
     /// 就被顶到导航栏下方，再加覆盖层顶距就是双重叠加（12:24 截图返回键
-    /// 仍在约 150pt 处就是这么来的）。iOS 16+ 用 toolbarVisibility 隐藏，
-    /// iOS 15 回落 navigationBarHidden。
+    /// 仍在约 150pt 处就是这么来的）。toolbarVisibility 是 iOS 18+ 才有的
+    /// API（不是 iOS 16），所以 iOS 18+ 用它隐藏，iOS 18 以下回落
+    /// navigationBarHidden；用户设备是 iOS 27，走 toolbarVisibility 这条。
     @ViewBuilder
     func coHideNavigationBar() -> some View {
-        if #available(iOS 16.0, *) {
+        if #available(iOS 18.0, *) {
             self.toolbarVisibility(.hidden, for: .navigationBar)
         } else {
             self.navigationBarHidden(true)
