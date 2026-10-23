@@ -241,7 +241,7 @@ struct DiscoverView: View {
                 .environmentObject(player)
                 .environmentObject(auth)
         case .dailySongs(let songs):
-            DailySongsSheet(songs: songs)
+            DailySongsDetailView(songs: songs)
                 .environmentObject(player)
                 .environmentObject(auth)
         }
@@ -1441,58 +1441,169 @@ struct QQPlaylistSongsSheet: View {
 
 // MARK: - 每日推荐全部歌曲
 
-struct DailySongsSheet: View {
+// 1.9.0：每日推荐旧页 DailySongsSheet 已删除——它是一个纯歌曲列表弹层
+// （List + 导航栏标题 + searchable），根本不是歌单详情页，1.8.9 把它当成
+// “不是歌单详情、已用玻璃”放过去是漏网原因。下面这页按 PlaylistView 同一套
+// 沉浸 + 液态玻璃重做：全幅封面沉浸头、居中大标题、副标题歌曲数与更新时间、
+// 白色播放 pill + 玻璃随机圆钮、玻璃搜索框、深色歌曲行、底部 118pt 留白。
+// 每日推荐的全部入口（大卡、横滑卡的查看全部）都走 DiscoverRoute.dailySongs，
+// 路由已改到本页，旧弹层无任何残留引用。
+struct DailySongsDetailView: View {
     @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var auth: AuthStore
-    @EnvironmentObject private var theme: ThemeStore
+    @Environment(\.dismiss) private var dismiss
 
     let songs: [Song]
     @State private var searchText = ""
 
+    private var pageBackground: Color { Color(red: 0.08, green: 0.08, blue: 0.09) }
+
     var body: some View {
-        let _ = theme.accent
         ZStack {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-                Group {
-                if songs.isEmpty {
-                    EmptyStateView(icon: "sparkles", text: "今日推荐加载中，下拉刷新试试")
-                } else {
-                    List {
-                    Section {
-                        HStack(spacing: 12) {
-                            GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
-                                guard !filteredSongs.isEmpty else { return }
-                                BeansHaptics.tap()
-                                player.play(songs: filteredSongs, startAt: 0)
-                            }
-                            GlassButton(title: "随机播放", systemName: "shuffle") {
-                                guard !filteredSongs.isEmpty else { return }
-                                BeansHaptics.tap()
-                                player.play(songs: filteredSongs, startAt: Int.random(in: 0..<filteredSongs.count))
-                            }
-                        }
-                        .listRowBackground(Color.clear)
-                        .padding(.vertical, 8)
-                    }
-                    Section {
-                        ForEach(Array(filteredSongs.enumerated()), id: \.element.identityKey) { index, song in
-                            SongCell(song: song, glassRow: true) {
-                                BeansHaptics.tap()
-                                player.play(songs: filteredSongs, startAt: index)
-                            }
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+            pageBackground.ignoresSafeArea()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    immersiveHeader
+                    songList
+                }
+                .padding(.bottom, 118)
+            }
+            .beansScrollIndicatorsHidden()
+        }
+        .navigationBarHidden(true)
+        .preferredColorScheme(.dark)
+    }
+
+    private var immersiveHeader: some View {
+        VStack(spacing: 0) {
+            GeometryReader { geo in
+                ZStack(alignment: .topLeading) {
+                    AsyncImage(url: songs.first?.coverURL) { phase in
+                        if case .success(let image) = phase {
+                            image.resizable().scaledToFill()
+                        } else {
+                            Color(red: 0.15, green: 0.15, blue: 0.16)
                         }
                     }
-                }
-                .beansScrollContentBackgroundHidden()
-                .listStyle(.plain)
+                    .frame(width: geo.size.width, height: 440)
+                    .clipped()
+                    LinearGradient(
+                        colors: [.black.opacity(0.5), .black.opacity(0.18), .clear, pageBackground.opacity(0.0), pageBackground],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(width: geo.size.width, height: 440)
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background { BeansGlass(shape: Circle()) }
+                            .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 16)
+                    .padding(.top, geo.safeAreaInsets.top + 6)
                 }
             }
+            .frame(height: 440)
+            VStack(spacing: 8) {
+                Text("每日推荐")
+                    .font(BeansFont.appFont(28, .bold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                Text(songs.isEmpty ? "每天 6:00 更新" : "\(songs.count) 首 · 每天 6:00 更新")
+                    .font(BeansFont.appFont(14))
+                    .foregroundStyle(.white.opacity(0.6))
+                HStack(spacing: 32) {
+                    Button {
+                        guard !filteredSongs.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredSongs, startAt: 0)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
+                            Text("播放全部").font(BeansFont.appFont(17, .bold))
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 36)
+                        .padding(.vertical, 14)
+                        .background(Capsule().fill(.white))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        guard !filteredSongs.isEmpty else { return }
+                        BeansHaptics.tap()
+                        player.play(songs: filteredSongs, startAt: Int.random(in: 0..<filteredSongs.count))
+                    } label: {
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 48, height: 48)
+                            .background { BeansGlass(shape: Circle()) }
+                            .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 0.5) }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 14)
             }
-            .navigationTitle("今日推荐")
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: beansLocalized("搜索每日推荐", "Search daily recommendations"))
+            .padding(.top, 4)
+            Divider().overlay(Color.white.opacity(0.15)).padding(.vertical, 20)
+            HStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.6))
+                    TextField("搜索每日推荐", text: $searchText)
+                        .font(BeansFont.appFont(15))
+                        .foregroundStyle(.white)
+                        .autocorrectionDisabled()
+                    if !searchText.isEmpty {
+                        Button { searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
+                .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 0.5) }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+        }
+    }
+
+    private var songList: some View {
+        LazyVStack(spacing: 0) {
+            if filteredSongs.isEmpty {
+                Text(songs.isEmpty ? "今日推荐加载中，下拉刷新试试" : "没有匹配的歌曲")
+                    .font(BeansFont.appFont(14))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 24)
+            }
+            ForEach(Array(filteredSongs.enumerated()), id: \.element.identityKey) { index, song in
+                SongCell(
+                    song: song,
+                    showCover: true,
+                    coverSize: 50,
+                    fixedRowHeight: 72,
+                    suppressNativeCleanRowGlass: true,
+                    playbackContext: filteredSongs,
+                    playbackIndex: index
+                ) {
+                    BeansHaptics.tap()
+                    player.play(songs: filteredSongs, startAt: index)
+                }
+                .padding(.horizontal, 16)
+                if index < filteredSongs.count - 1 {
+                    Divider().overlay(Color.white.opacity(0.12)).padding(.leading, 82)
+                }
+            }
+        }
     }
 
     private var filteredSongs: [Song] {

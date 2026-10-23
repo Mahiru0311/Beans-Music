@@ -680,23 +680,31 @@ enum CoVIPIconCatalog {
 // 1.8.8：远程 VIP 图按原图比例显示：只定高度 26pt，宽度 = 高度 × 原图宽高比
 // （上限 180pt），scaledToFit、不裁剪、不压扁。旧 84×20 硬框 + clipped()
 // 会把唱片圆上下左右裁掉、只剩红点 + VIP 字（1.8.7 截图实锤）。
+// 1.9.0：只改数字不够——SwiftUI 的 .frame() 本身不裁剪，CoAnimatedImage 的
+// UIImageView 又是 clipsToBounds=false，UIImageView 按图片内在尺寸（1.8.9 截图量出
+// 约 97×53pt）居中画在 26pt 的帧外，左沿向左溢出约 25pt，正好盖住昵称的“见”字。
+// 因此这里必须双重堵死：帧外加 .clipped()、UIImageView 内改 clipsToBounds=true、
+// sizeThatFits 返回帧尺寸、长条款宽上限由 180 收紧到 120（昵称约 60 + 间距 8 +
+// 图标 120 = 188 < 320 行宽，正常昵称绝不被挤、被盖）。
 struct CoVIPRemoteImage: View {
     let image: UIImage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var width: CGFloat {
         let h = image.size.height
         guard h > 0 else { return 78 }
-        return min(26 * image.size.width / h, 180)
+        return min(26 * image.size.width / h, 120)
     }
     var body: some View {
         if image.images != nil {
             CoAnimatedImage(image: image, animated: !reduceMotion)
                 .frame(width: width, height: 26)
+                .clipped()
         } else {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
                 .frame(width: width, height: 26)
+                .clipped()
         }
     }
 }
@@ -713,7 +721,10 @@ enum CoAnimatedImageDecoder {
         var durations: [TimeInterval] = []
         for i in 0..<min(count, 150) {
             guard let cg = CGImageSourceCreateImageAtIndex(src, i, nil) else { continue }
-            frames.append(UIImage(cgImage: cg))
+            // 1.9.0：UIImage(cgImage:) 默认 scale=1 会把像素尺寸当成点尺寸
+            // （如 194×106px 报成 194×106pt），宽高比计算与内在尺寸全错；
+            // 按屏幕 scale 换算回点尺寸，image.size 才与 26pt 帧口径一致。
+            frames.append(UIImage(cgImage: cg, scale: UIScreen.main.scale, orientation: .up))
             durations.append(frameDuration(src: src, index: i))
         }
         guard frames.count > 1 else { return UIImage(data: data) }
@@ -752,8 +763,15 @@ struct CoAnimatedImage: UIViewRepresentable {
     func makeUIView(context: Context) -> UIImageView {
         let v = UIImageView()
         v.contentMode = .scaleAspectFit
-        v.clipsToBounds = false
+        // 1.9.0：false 是 1.8.9 截图“见”字被盖的直接帮凶——内在尺寸的图
+        // 会画到帧外；改 true 后图只能画在帧内，帧外再由 SwiftUI .clipped() 兜底。
+        v.clipsToBounds = true
         return v
+    }
+    // 1.9.0：UIViewRepresentable 默认按 UIImageView 内在尺寸布局，会无视
+    // 外层 .frame(width:height:)；这里明确返回提议尺寸，布局尺寸即帧尺寸。
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIImageView, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? image.size.width, height: proposal.height ?? image.size.height)
     }
     func updateUIView(_ uiView: UIImageView, context: Context) {
         if animated, image.images != nil {

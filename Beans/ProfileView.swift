@@ -151,7 +151,10 @@ struct ProfileView: View {
             .buttonStyle(.plain)
             // 1.8.7：昵称+VIP 行居中、限宽（长条 VIP 图不再把昵称挤出屏幕）；
             // 昵称优先截断，VIP 图固定小尺寸。
-            HStack(spacing: 6) {
+            // 1.9.0：行级兜底——徽标按钮本身再限高 26 并裁剪到帧内，即使徽标视图
+            // 内部再溢出，也绝不能画到昵称上方；昵称 layoutPriority(1) 不变，
+            // 正常长度的“明天见”不截断、不被盖，超长昵称先截断昵称。
+            HStack(spacing: 8) {
                 Text(myDisplayNickname)
                     .font(BeansFont.appFont(20, .bold))
                     .foregroundStyle(profileHeaderForeground)
@@ -165,6 +168,9 @@ struct ProfileView: View {
                 } label: { myVIPBadge }
                 .buttonStyle(.plain)
                 .accessibilityLabel("切换 VIP 图标")
+                .layoutPriority(0)
+                .frame(maxWidth: 120, maxHeight: 26)
+                .clipped()
             }
             .frame(maxWidth: 320)
             // 1.8.7：只有真的写了状态才显示状态行，空状态不再留一个孤立的铅笔斜杠；
