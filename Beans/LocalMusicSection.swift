@@ -668,7 +668,7 @@ struct LocalSearchAddSheet: View {
     @State private var keyword = ""
     @State private var results: [Song] = []
     @State private var searching = false
-    private var provider: SearchProvider = .kugou
+    @State private var provider: SearchProvider = .kugou
     @State private var task: Task<Void, Never>?
 
     var body: some View {
