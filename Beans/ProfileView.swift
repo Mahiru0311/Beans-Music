@@ -588,25 +588,35 @@ struct ProfileView: View {
             }
             // 单层壁纸返工：固定条只在无图 + 头部仍盖住状态栏区时起黑色兜底作用。
             // 有图时绝不再单独贴一张裁剪不同的图（上一轮两层错位的根因）；
-            // 顶部壁纸由头部本身 background 里的内拉伸头承担（第三次返工，体外层已删）。
+            // 顶部壁纸由头部 ZStack 的直接子视图承担（位置与双层返工，background 已删），
+            // 框顶边固定在屏幕顶边、只做中心缩放、有效下拉量封顶 150pt。
             if !forceHomeBackdrop && profileHeaderWallpaper.image == nil && !profileHeaderScrolledAway {
                 coProfileTopBar
                     .frame(height: profileTopSafeArea)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(edges: .top)
             }
-            // 第三次返工：体外单层壁纸已删，不再靠 ZStack 下层去跟随头部。
-            // 壁纸现在做进头部本身的 background 里（见 coNeteaseHeader），是
-            // ScrollView 内容的一部分，下拉时内容往下走、头部框直接变高、
-            // 里面的图直接放大，这才是标准拉伸头。前两轮体外层两次没动作：
-            // zoom 靠头部 frame 的 PreferenceKey 上报算下拉量、zoom2 靠 ScrollView
-            // 顶部 GeometryReader + 命名坐标空间读偏移，两轮都经过 @State 回写，
-            // 回弹过程中上报不跟手、缩放恒为 1；本轮下拉量由头部 background 里的
-            // GeometryReader 直接读全局顶边、inline 算，不经过任何 @State 回写。
+            // 位置与双层返工：体外单层壁纸已删，头部 background 里的壁纸也已删——
+            // background 的溢出会被头部边界裁掉，框顶偏移到不了屏幕顶边，
+            // 真机上壁纸顶边跟着头部往下走、顶部留黑带。壁纸改到头部 ZStack 的
+            // 直接子视图（见 coMyTabHeaderWallpaperLayer），框顶边用全局顶边抵消
+            // 到屏幕顶边、只做中心缩放、有效下拉量封顶 150pt，下拉量 inline 算、
+            // 不写回 @State、不走 PreferenceKey 回写链。
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                    coNeteaseHeader
+                    // 返工（位置与双层 + 下拉上限）：我的 tab 的壁纸是头部 ZStack 的直接子视图
+                    // （coMyTabHeaderWallpaperLayer），不是头部 background——background 的溢出会被裁掉，
+                    // 壁纸顶边跟着头部往下走、顶部留黑带。ZStack 里壁纸容器高为 0、不影响布局，
+                    // 壁纸框顶边用全局顶边抵消到屏幕顶边、只做中心缩放、有效下拉量封顶 150pt。
+                    if forceHomeBackdrop {
+                        coNeteaseHeader
+                    } else {
+                        ZStack(alignment: .top) {
+                            coMyTabHeaderWallpaperLayer
+                            coNeteaseHeader
+                        }
+                    }
                     // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
                     // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
                     if !forceHomeBackdrop {
@@ -1012,24 +1022,11 @@ struct ProfileView: View {
         .padding(.top, forceHomeBackdrop ? 0 : 44)
         .frame(maxWidth: .infinity)
         .background {
-            // 最简单逻辑（按用户反馈再简化）：壁纸仍在头部本身的 background 里，
-            // 是 ScrollView 内容的一部分，不搬回体外层。下拉量由这里的
-            // GeometryReader 直接读头部全局顶边、inline 算，不写回 @State、
-            // 不走 PreferenceKey 回写链、不加首帧基准：
-            // 静止时头部顶边 = 顶部安全区（ScrollView 加了透明 safeAreaInset），
-            // 下拉时头部顶边变大，pull = 顶边 - 安全区，正值才放大；上滑钳为 0。
-            // 框在全局位置上真正固定不动：框高固定为头部高 + 安全区（不加 pull），
-            // 框顶偏移取 -(安全区 + pull)，正好抵消头部往下走的 pull——
-            // 所以框的全局顶边恒在屏幕顶边、全局底边恒在静止时的头部底边，
-            // 框的中心也恒定；上一版偏移只取 -安全区，框会跟着头部往下走 pull，
-            // 顶边就空出一片 pull 高的空白，正是用户说的“下来时上面有一片空白”。
-            // 上滑时 pull 为 0，偏移回到 -安全区，框随头部正常滑走，不会粘在顶边。
-            // 框里的图只做中心缩放：缩放 = min(1.6, 1 + pull / 300)，
-            // 下拉 100pt 约 1.33 倍，肉眼明显；图只原地放大、位置不动，
-            // 超出框的部分裁掉。松手时 ScrollView 回弹、顶边回落，倍率随之回到 1，
-            // 无连续动画引擎、无高刷常驻。
-            // 无图时整张填黑，下拉时框同样固定填满、不出白条。
-            // 头像 sheet（forceHomeBackdrop）不参与：仍保留它原有的静态头部背景。
+            // 返工（位置与双层）：壁纸不再放头部 background 里——background 的溢出部分
+            // 会被头部边界裁掉，框顶偏移写得再对也到不了屏幕顶边，真机上壁纸顶边
+            // 就跟着头部往下走、顶部留黑带。我的 tab 的壁纸改到头部 ZStack 的直接子视图
+            // （见 coMyTabHeaderWallpaperLayer），这里只留头像 sheet 的静态壁纸和
+            // 状态栏用的 frame 上报（只上报、不画图）。
             ZStack {
                 if forceHomeBackdrop {
                     if let image = profileHeaderWallpaper.image {
@@ -1040,34 +1037,47 @@ struct ProfileView: View {
                     } else {
                         Color.black
                     }
-                } else {
-                    GeometryReader { geo in
-                        let headerTop = geo.frame(in: .global).minY
-                        let pull = max(0, headerTop - profileTopSafeArea)
-                        let headerHeight = geo.size.height
-                        let zoom = min(1.6, 1 + pull / 300)
-                        ZStack {
-                            if let image = profileHeaderWallpaper.image {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .scaleEffect(zoom, anchor: .center)
-                                Color.black.opacity(0.45)
-                            } else {
-                                Color.black
-                            }
-                        }
-                        .frame(width: geo.size.width, height: headerHeight + profileTopSafeArea)
-                        .offset(y: -(profileTopSafeArea + pull))
-                        .clipped()
-                    }
                 }
                 GeometryReader { geo in
                     Color.clear.preference(key: CoProfileHeaderFrameKey.self, value: geo.frame(in: .global))
                 }
             }
         }
+    }
+
+    /// 我的 tab 的壁纸层：头部 ZStack 的直接子视图，不是 background，所以不会被头部边界裁掉。
+    /// 最简单逻辑 + 下拉上限：下拉量由这里的 GeometryReader 直接读全局顶边、inline 算，
+    /// 不写回 @State、不走 PreferenceKey 回写链；有效下拉量封顶 150pt，超过不再放大、框不再变。
+    /// 框全局固定：容器高为 0（不影响 ZStack 布局），框顶偏移取 -头部全局顶边，
+    /// 所以框的全局顶边恒在屏幕顶边（下拉时顶边不动、不是跟着头部往下走），
+    /// 框高取屏幕宽 + 有效下拉量（宽约等于静止时头部高 + 安全区，多余部分被下方白卡盖住），
+    /// 框里的图只做中心缩放：缩放 = 1 + 有效下拉量 / 300，下拉 150pt 时约 1.5 倍封顶，
+    /// 图只原地放大、位置不动，超出框的部分裁掉；松手回弹、顶边回落，倍率回到 1。
+    /// 无图时整张填黑，同样固定填满、不出黑带以外的空白。头像 sheet 不参与。
+    private var coMyTabHeaderWallpaperLayer: some View {
+        GeometryReader { geo in
+            let headerTop = geo.frame(in: .global).minY
+            let pullRaw = max(0, headerTop - profileTopSafeArea)
+            let pull = min(pullRaw, 150)
+            let zoom = min(1.5, 1 + pull / 300)
+            ZStack {
+                if let image = profileHeaderWallpaper.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .scaleEffect(zoom, anchor: .center)
+                    Color.black.opacity(0.45)
+                } else {
+                    Color.black
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.width + pull)
+            .offset(y: -headerTop)
+            .clipped()
+        }
+        .frame(height: 0, alignment: .top)
+        .allowsHitTesting(false)
     }
 
     private func coNeteaseStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
