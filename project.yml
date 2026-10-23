@@ -21,7 +21,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.music.coco
-        MARKETING_VERSION: "1.8.9"
+        MARKETING_VERSION: "1.9.0"
         CURRENT_PROJECT_VERSION: "39"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_OBJC_BRIDGING_HEADER: Beans/Beans-Bridging-Header.h
@@ -55,7 +55,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.liveactivity
-        MARKETING_VERSION: "1.8.9"
+        MARKETING_VERSION: "1.9.0"
         CURRENT_PROJECT_VERSION: "39"
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
