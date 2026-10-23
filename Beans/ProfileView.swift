@@ -17,6 +17,42 @@ private struct BeansProfileGlobalFrameKey: PreferenceKey {
     }
 }
 
+/// 白卡顶部在全局坐标里的位置：用来判断白卡是否已滑到状态栏区域，
+/// 以便在黑头在顶时用浅色状态栏文字、白卡滑到顶时切回深色文字。
+private struct BeansProfileCardTopKey: PreferenceKey {
+    static let defaultValue = CGFloat.greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+/// 只改窗口级状态栏样式，不改页面颜色：窗口改深色只影响状态栏文字，
+/// 页面颜色由 body 上的 preferredColorScheme（见 profileEffectiveScheme）单独定，
+/// 白卡在浅色主题下仍是白卡、深色文字，不会被窗口样式带翻。
+private enum CoProfileStatusBarStyle {
+    private static var applied = false
+
+    private static func keyWindow() -> UIWindow? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: { $0.isKeyWindow })
+    }
+
+    static func applyDark() {
+        guard !applied, let window = keyWindow() else { return }
+        applied = true
+        window.overrideUserInterfaceStyle = .dark
+    }
+
+    static func restore() {
+        guard applied else { return }
+        applied = false
+        keyWindow()?.overrideUserInterfaceStyle = .unspecified
+    }
+}
+
 private struct BeansProfileThemeRevealOverlay: View {
     let snapshot: UIImage
     let origin: CGPoint
@@ -206,6 +242,28 @@ struct ProfileView: View {
 
     private var hasVisibleAccountLogin: Bool {
         kugouAuth.isLoggedIn
+    }
+
+    /// 白卡是否已滑到状态栏区域（卡顶全局 y <= 28pt，约状态栏文字中心高度）。
+    @State private var isCardAtTop = false
+
+    /// 页面实际生效的深浅色：显式浅色/深色与原来一致；跟随系统时取屏幕级深浅色，
+    /// 而不是窗口级——这样窗口为状态栏改深色时，页面颜色不会被带翻。
+    private var profileEffectiveScheme: ColorScheme {
+        if let scheme = themeMode.colorScheme { return scheme }
+        return UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+    }
+
+    /// 状态栏样式与页面状态同步：浅色主题且黑头在顶时用浅色文字；
+    /// 深色主题（文字本来就是浅色）、白卡滑到顶、白卡在顶时都不需要窗口改色。
+    /// 主页头像 sheet 打开的 profile（forceHomeBackdrop）不参与，避免与 tab 页互相抢。
+    private func updateProfileStatusBarStyle() {
+        guard !forceHomeBackdrop else { return }
+        if profileEffectiveScheme == .light && !isCardAtTop {
+            CoProfileStatusBarStyle.applyDark()
+        } else {
+            CoProfileStatusBarStyle.restore()
+        }
     }
 
     private var resolvedThemeToggleTarget: BeansThemeMode {
@@ -435,7 +493,17 @@ struct ProfileView: View {
         }
         // The avatar-presented profile is its own sheet, so its content must
         // receive the selected color scheme instead of only the backdrop.
-        .preferredColorScheme(themeMode.colorScheme)
+        // 显式生效深浅色（见 profileEffectiveScheme）：窗口为状态栏改深色时页面颜色不被带翻。
+        .preferredColorScheme(profileEffectiveScheme)
+        .onAppear { updateProfileStatusBarStyle() }
+        .onDisappear {
+            if !forceHomeBackdrop { CoProfileStatusBarStyle.restore() }
+        }
+        .onChange(of: themeModeRaw) { _ in updateProfileStatusBarStyle() }
+        .onChange(of: isCardAtTop) { _ in updateProfileStatusBarStyle() }
+        .onPreferenceChange(BeansProfileCardTopKey.self) { minY in
+            isCardAtTop = minY <= 28
+        }
         .sheet(isPresented: $showHistory) {
             HistoryView()
                 .environmentObject(player)
@@ -687,8 +755,11 @@ struct ProfileView: View {
 
     // MARK: - Co 网易云风格我的页（本页专属，不动其他 tab）
     // 参考结构：wy.dwkc.cn 已记录的网易云风格我的页（只借鉴版式与信息层级，不抄素材/图标/商标/文案）
-    // 顶部无“我的”大标题；头部区居中圆形头像、昵称旁小 VIP 徽标、状态行、居中数据行；
-    // 下方主卡片用大圆角盖住头部下沿，卡片里只剩我的歌单（常用整区已删，见简便化）。
+    // 顶部无“我的”大标题；头部区只留居中圆形头像、昵称旁小 VIP 徽标、状态行；
+    // 数据行已移到下方白卡里（在“我的歌单”上方，不在黑色背景上）；
+    // 下方主卡片用大圆角盖住头部下沿，卡片里是数据行 + 我的歌单（常用整区已删，见简便化）。
+    // 沉浸：头部背景用 ignoresSafeArea 延伸进顶部安全区，黑头从屏幕顶边开始，
+    // 不再是白色状态栏条 + 黑头拼接；状态栏文字颜色见 updateProfileStatusBarStyle。
     // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距 300pt。
 
     private var coNeteaseHeader: some View {
@@ -733,20 +804,16 @@ struct ProfileView: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 12)
-            HStack(spacing: 0) {
-                coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
-                coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
-                    if !kugouAuth.isLoggedIn { showAccountHub = true } else { playlistsScrollRequest += 1 }
-                }
-                coNeteaseStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
-                coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
+            // 数据行已不在黑头里：见下方白卡里的 coNeteaseStatsInCard。
+            // 头部底部留 36pt，卡片 -24pt 重叠后仍有 12pt 黑色可见，不贴住状态行。
             .padding(.bottom, 36)
         }
         .frame(maxWidth: .infinity)
-        .background(Color.black)
+        .background {
+            // 背景延伸进顶部安全区：黑头从屏幕顶边开始，状态栏区域不再露白。
+            // 只扩背景、不动内容布局，ScrollView 的 scrollTo 锚点仍在安全区顶边，不受影响。
+            Color.black.ignoresSafeArea(edges: .top)
+        }
     }
 
     private func coNeteaseStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
@@ -757,12 +824,12 @@ struct ProfileView: View {
             VStack(spacing: 4) {
                 Text(value)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.beansLabel)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text(title)
                     .font(.system(size: 12))
-                    .foregroundStyle(Color.white.opacity(0.7))
+                    .foregroundStyle(Color.beansSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
@@ -771,9 +838,27 @@ struct ProfileView: View {
         .buttonStyle(.plain)
     }
 
+    /// 数据行（白卡版）：从黑头移到白卡里、“我的歌单”标题上方，跳转功能与黑头版一致。
+    /// 颜色改回深色（数字 beansLabel、标签 beansSecondary），白卡上不再用白字。
+    private var coNeteaseStatsInCard: some View {
+        HStack(spacing: 0) {
+            coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
+            coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
+                if !kugouAuth.isLoggedIn { showAccountHub = true } else { playlistsScrollRequest += 1 }
+            }
+            coNeteaseStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
+            coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
+        }
+    }
+
     private var coNeteaseMainCard: some View {
-        // 简便化：常用整区已删（历史只留数据行、登录只留账号卡、设置只留右上角齿轮），主卡片只剩我的歌单。
+        // 简便化：常用整区已删（历史只留数据行、登录只留账号卡、设置只留右上角齿轮）；
+        // 本轮起主卡片里是数据行 + 我的歌单，数据行不再在黑色背景上。
         VStack(alignment: .leading, spacing: 20) {
+            coNeteaseStatsInCard
+            Rectangle()
+                .fill(Color.beansLabel.opacity(0.10))
+                .frame(height: 1)
             coPlaylistsSection
                 .id("coMyPlaylistsSection")
         }
@@ -785,6 +870,12 @@ struct ProfileView: View {
             UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 28, style: .continuous)
                 .fill(colorScheme == .dark ? Color(.secondarySystemBackground) : Color.white)
         )
+        .background {
+            // 上报白卡顶部全局位置，供状态栏浅/深色切换用（见 BeansProfileCardTopKey）。
+            GeometryReader { proxy in
+                Color.clear.preference(key: BeansProfileCardTopKey.self, value: proxy.frame(in: .global).minY)
+            }
+        }
     }
 
     // MARK: - 我的页隐藏歌单（旧线 1.8.5 移植，只藏显示、不删歌单）
