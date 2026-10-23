@@ -138,7 +138,7 @@ struct ProfileView: View {
     @State private var showHistory = false
     @State private var showFavorites = false
     @State private var showTopPlayed = false
-    @State private var selectedPlaylist: Playlist?
+    @State private var playlistsScrollRequest = 0
     @State private var myPlaylists: [Playlist] = []
     @State private var myPlaylistsLoading = false
 
@@ -368,7 +368,9 @@ struct ProfileView: View {
 
     var body: some View {
         let _ = theme.accent
-        ZStack {
+        // 我的页自带导航栈：歌单行用 NavigationLink 直接推入原有歌单页，返回键是唯一关闭路径，不再经过 sheet +“完成”按钮。
+        BeansNavigationStack {
+            ZStack {
             if forceHomeBackdrop || !usesSharedRootBackdrop {
                 // 头像入口作为主页延伸时始终沿用主页壁纸；常规“我的”页继续遵循同步开关。
                 GlassBackdrop(
@@ -378,8 +380,9 @@ struct ProfileView: View {
             }
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
             TabBarAppearanceConfigurator()
-            ScrollView {
-                VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
                     coNeteaseHeader
                     coNeteaseMainCard
                         .padding(.top, -24)
@@ -390,8 +393,12 @@ struct ProfileView: View {
                 // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；300pt 保证最后一行能完整滑出，不被迷你播放器和底栏盖住（上一轮插值修复的内边距，本轮保留不回退）。
                 .padding(.bottom, 300)
                 .beansAdaptiveContentWidth()
+                }
+                .beansScrollIndicatorsHidden()
+                .onChange(of: playlistsScrollRequest) { _ in
+                    withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
+                }
             }
-            .beansScrollIndicatorsHidden()
 
             if let themeRevealSnapshot {
                 BeansProfileThemeRevealOverlay(
@@ -464,24 +471,14 @@ struct ProfileView: View {
                 .environmentObject(player)
                 .environmentObject(theme)
         }
-        .sheet(item: $selectedPlaylist) { playlist in
-            BeansNavigationStack {
-                PlaylistView(playlist: playlist)
-                    .environmentObject(player)
-                    .environmentObject(auth)
-                    .environmentObject(theme)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("完成") { selectedPlaylist = nil }
-                        }
-                    }
-            }
-        }
         .task(id: kugouAuth.isLoggedIn) {
             await coLoadMyPlaylists()
         }
         .onReceive(NotificationCenter.default.publisher(for: .beansKugouLoginDidUpdate)) { _ in
             Task { await coLoadMyPlaylists(force: true) }
+        }
+        // 我的页本身不占导航栏：顶部黑色头部直接贴顶；推入的歌单页自带标题与返回键，不受本条影响。
+        .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -629,10 +626,7 @@ struct ProfileView: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(myPlaylists) { playlist in
-                        Button {
-                            BeansHaptics.tap()
-                            selectedPlaylist = playlist
-                        } label: {
+                        NavigationLink(destination: PlaylistView(playlist: playlist)) {
                             HStack(spacing: 12) {
                                 CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
                                 VStack(alignment: .leading, spacing: 3) {
@@ -665,59 +659,10 @@ struct ProfileView: View {
         }
     }
 
-    private func coQuickRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button {
-            BeansHaptics.tap()
-            action()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                    .frame(width: 30, height: 30)
-                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.beansLabel)
-                    Text(subtitle)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.beansSecondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.beansSecondary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var coQuickRows: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("常用")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color.beansLabel)
-            VStack(spacing: 0) {
-                coQuickRow(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: "最近播放 \(player.history.count) 首") { showHistory = true }
-                Divider().padding(.leading, 56)
-                coQuickRow(icon: "person.crop.circle", title: "账号与登录", subtitle: kugouAuth.isLoggedIn ? accountStatusLine : "登录酷狗音乐") { showAccountHub = true }
-                Divider().padding(.leading, 56)
-                coQuickRow(icon: "gearshape", title: "设置", subtitle: "外观、播放与音效") { openSettings() }
-            }
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-    }
-
     // MARK: - Co 网易云风格我的页（本页专属，不动其他 tab）
     // 参考结构：wy.dwkc.cn 已记录的网易云风格我的页（只借鉴版式与信息层级，不抄素材/图标/商标/文案）
     // 顶部无“我的”大标题；头部区居中圆形头像、昵称旁小 VIP 徽标、状态行、居中数据行；
-    // 下方主卡片用大圆角盖住头部下沿，卡片里是歌单与常用列表行。
+    // 下方主卡片用大圆角盖住头部下沿，卡片里只剩我的歌单（常用整区已删，见简便化）。
     // 上一轮修复保留：插值一律单反斜杠、账号已登录第二行恒为“酷狗已登录”、底部内边距 300pt。
 
     private var coNeteaseHeader: some View {
@@ -765,7 +710,7 @@ struct ProfileView: View {
             HStack(spacing: 0) {
                 coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
                 coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
-                    if !kugouAuth.isLoggedIn { showAccountHub = true }
+                    if !kugouAuth.isLoggedIn { showAccountHub = true } else { playlistsScrollRequest += 1 }
                 }
                 coNeteaseStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
                 coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
@@ -801,9 +746,10 @@ struct ProfileView: View {
     }
 
     private var coNeteaseMainCard: some View {
+        // 简便化：常用整区已删（历史只留数据行、登录只留账号卡、设置只留右上角齿轮），主卡片只剩我的歌单。
         VStack(alignment: .leading, spacing: 20) {
             coPlaylistsSection
-            coQuickRows
+                .id("coMyPlaylistsSection")
         }
         .padding(.horizontal, 16)
         .padding(.top, 20)
@@ -1304,7 +1250,7 @@ private extension ProfileView {
 
 // MARK: - 统一账号登录面板（酷狗音乐）
 
-/// 我的页“我喜欢 / 常听”共用歌曲列表：点行即播放，关 sheet 靠下滑或完成按钮。
+/// 我的页“我喜欢 / 常听”共用歌曲列表：点行即播放并自动关闭，关 sheet 只靠下滑，不再另设“完成”按钮。
 struct CoSongListSheet: View {
     @EnvironmentObject private var player: PlayerManager
     @Environment(\.dismiss) private var dismiss
@@ -1359,11 +1305,7 @@ struct CoSongListSheet: View {
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
-                }
-            }
+            // 关闭路径只剩下滑关闭：点行即播后自动关闭，不再另设“完成”按钮。
         }
     }
 }
