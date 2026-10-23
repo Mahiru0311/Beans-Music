@@ -383,8 +383,10 @@ struct LocalPlaylistDetailSheet: View {
                     List {
                         Section {
                             if immersiveDetail {
-                                BeansImmersiveDetailHeader(coverURL: playlist.coverURL ?? playlist.songs.first?.coverURL,
-                                                          title: playlist.name, metadata: beansSongCountText(playlist.songs.count))
+                                let headerCover: URL? = playlist.coverURL ?? playlist.songs.first?.coverURL
+                                let headerMetadata: String = beansSongCountText(playlist.songs.count)
+                                BeansImmersiveDetailHeader(coverURL: headerCover,
+                                                          title: playlist.name, metadata: headerMetadata)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                             }
