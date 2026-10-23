@@ -430,6 +430,7 @@ extension View {
     func beansScrollContentBackgroundHidden() -> some View {
         if #available(iOS 16, *) { self.scrollContentBackground(.hidden) } else { self }
     }
+}
 
 // MARK: - 封面图
 
