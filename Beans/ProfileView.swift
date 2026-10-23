@@ -131,6 +131,11 @@ final class CoProfileHeaderWallpaper: ObservableObject {
     }
     func save(data: Data) {
         guard let raw = UIImage(data: data) else { return }
+        save(image: raw)
+    }
+    /// 直接存一张已裁好的图：与 save(data:) 同规格（最长边 1600、JPEG 0.85），
+    /// 供裁切完成后调用；取消时不调它，旧壁纸原样保留。
+    func save(image raw: UIImage) {
         let maxSide: CGFloat = 1600
         let scale = min(1, maxSide / max(raw.size.width, raw.size.height))
         let img: UIImage
@@ -146,6 +151,35 @@ final class CoProfileHeaderWallpaper: ObservableObject {
         try? jpeg.write(to: url, options: .atomic)
         let light = Self.computeTopIsLight(img)
         DispatchQueue.main.async { self.image = img; self.topIsLight = light }
+    }
+    /// 把一张图转成方向朝上的图（像素尺寸 = 原图的方向后尺寸），裁切时按它算 rect，
+    /// 否则手机拍的竖图/横图用 cgImage 直接裁会转错方向。scale 保持原图 scale，
+    /// 这样裁切 rect 从显示尺寸换算到像素尺寸时比例一致。
+    static func normalizedImage(_ image: UIImage) -> UIImage {
+        guard image.imageOrientation != .up else { return image }
+        var format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: image.size, format: format)
+        return renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: image.size)) }
+    }
+    /// 按显示坐标裁一刀：cropRectInImagePoints 是裁切框在原图显示尺寸（points，
+    /// 已按方向归一化）里的 rect，返回裁好的 UIImage（方向朝上）；rect 越界时钳到图内。
+    static func croppedImage(_ image: UIImage, rectInPoints: CGRect) -> UIImage? {
+        let normalized = normalizedImage(image)
+        guard let cg = normalized.cgImage else { return nil }
+        let scaleX = CGFloat(cg.width) / max(1, normalized.size.width)
+        let scaleY = CGFloat(cg.height) / max(1, normalized.size.height)
+        var pixelRect = CGRect(
+            x: rectInPoints.origin.x * scaleX,
+            y: rectInPoints.origin.y * scaleY,
+            width: rectInPoints.width * scaleX,
+            height: rectInPoints.height * scaleY
+        )
+        pixelRect = pixelRect.intersection(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+        guard pixelRect.width >= 1, pixelRect.height >= 1,
+              let cropped = cg.cropping(to: pixelRect.integral) else { return nil }
+        return UIImage(cgImage: cropped, scale: normalized.scale, orientation: .up)
     }
     func clear() {
         if let url = fileURL { try? FileManager.default.removeItem(at: url) }
@@ -1062,8 +1096,10 @@ struct ProfileView: View {
     private var coNeteaseStatsInCard: some View {
         HStack(spacing: 0) {
             coNeteaseStatButton(title: "我喜欢", value: "\(favorites.allLikedSongs.count)") { showFavorites = true }
-            // 歌单数按可见歌单算：已隐藏的歌单不计，否则隐藏后数字还虚增。
-            coNeteaseStatButton(title: "歌单", value: "\(visiblePlaylists.count)") {
+            // 歌单数按总数算（含已隐藏，2026-10-23 用户拍板）：歌单是几个就是几个，
+            // 没必要隐藏了就不显示实体数量；列表本身仍按隐藏逻辑显示，隐藏的歌单
+            // 仍不在列表里、仍可在设置里恢复，只改数据格这个数，不改列表。
+            coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)") {
                 // 头像界面里没有歌单区，已登录时点按不再滚动（无目标）；未登录时仍进登录；
                 // 我的 tab 里点按仍滑到下方歌单区，原样保留。
                 if !kugouAuth.isLoggedIn { showAccountHub = true } else if !forceHomeBackdrop { playlistsScrollRequest += 1 }
@@ -1752,6 +1788,8 @@ struct SettingsView: View {
     @State private var audioQualityExpanded = false
     @State private var showWallpaperPicker = false
     @State private var showProfileHeaderWallpaperPicker = false
+    // 选图后先裁切、不直接存：有值时弹裁切页，点“完成”才存、点“取消”不存旧图不动。
+    @State private var pendingHeaderWallpaperCropImage: UIImage?
     @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
     @State private var wallpaperAppearanceTarget: BeansWallpaperAppearance = .light
     @State private var showFontImporter = false
@@ -2601,7 +2639,33 @@ struct SettingsView: View {
                 }
                 .sheet(isPresented: $showProfileHeaderWallpaperPicker) {
                     WallpaperPhotoPicker(allowsMultiple: false) { data in
-                        CoProfileHeaderWallpaper.shared.save(data: data)
+                        // 选图后先进裁切，不直接存、直接显示；解不出来就不弹裁切、旧图不动。
+                        if let picked = UIImage(data: data) {
+                            pendingHeaderWallpaperCropImage = picked
+                        }
+                    }
+                }
+                .fullScreenCover(
+                    isPresented: Binding(
+                        get: { pendingHeaderWallpaperCropImage != nil },
+                        set: { if !$0 { pendingHeaderWallpaperCropImage = nil } }
+                    )
+                ) {
+                    if let picked = pendingHeaderWallpaperCropImage {
+                        CoHeaderWallpaperCropView(
+                            image: picked,
+                            onDone: { cropped in
+                                CoProfileHeaderWallpaper.shared.save(image: cropped)
+                                BeansHaptics.success()
+                                pendingHeaderWallpaperCropImage = nil
+                            },
+                            onCancel: {
+                                pendingHeaderWallpaperCropImage = nil
+                            }
+                        )
+                        .ignoresSafeArea()
+                    } else {
+                        Color.black.ignoresSafeArea()
                     }
                 }
                 Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
@@ -4801,6 +4865,120 @@ struct WallpaperPhotoPicker: UIViewControllerRepresentable {
                 }
             }
         }
+    }
+}
+
+/// 我的页头部壁纸裁切：选图后先裁、裁完点“完成”才存，不直接显示原图。
+/// 裁切框宽高比 = 头部壁纸框宽高比（框宽 = 屏幕宽，框高 = max(屏幕宽 + 30, 410)，
+/// 用户机型约 393/423），按当前机型实时算，不写死一个比；裁好的图宽高比与头部框
+/// 一致，头部再用 scaledToFill 显示时就不会再切掉主体（只剩像素取整的 1pt 级误差）。
+/// 手势只用系统手势，不引第三方裁切库：单指拖动平移、双指缩放；框外部分是暗的，
+/// 框内看到什么、头部就显示什么。取消不存图，旧壁纸原样保留。
+struct CoHeaderWallpaperCropView: View {
+    let image: UIImage
+    let onDone: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    @State private var userScale: CGFloat = 1
+    @State private var baseScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var baseOffset: CGSize = .zero
+
+    private var cropWidth: CGFloat { UIScreen.main.bounds.width }
+    private var cropHeight: CGFloat { max(cropWidth + 30, 410) }
+
+    private var coverScale: CGFloat {
+        max(cropWidth / max(1, image.size.width), cropHeight / max(1, image.size.height))
+    }
+    private var displayedSize: CGSize {
+        CGSize(width: image.size.width * coverScale * userScale,
+               height: image.size.height * coverScale * userScale)
+    }
+    private func clampedOffset(_ value: CGSize, scale: CGFloat) -> CGSize {
+        let w = image.size.width * coverScale * scale
+        let h = image.size.height * coverScale * scale
+        let maxX = max(0, (w - cropWidth) / 2)
+        let maxY = max(0, (h - cropHeight) / 2)
+        return CGSize(width: min(max(value.width, -maxX), maxX),
+                      height: min(max(value.height, -maxY), maxY))
+    }
+    /// 裁切框在原图显示尺寸里的 rect：图中心 = 裁切框中心 + offset，图左上角 =
+    /// 中心 - 显示尺寸/2，框原点 (0,0) 减左上角再除以总缩放即是框在图里的位置。
+    private func cropRectInImagePoints() -> CGRect {
+        let totalScale = coverScale * userScale
+        let displayed = displayedSize
+        let topLeft = CGPoint(x: cropWidth / 2 + offset.width - displayed.width / 2,
+                              y: cropHeight / 2 + offset.height - displayed.height / 2)
+        return CGRect(x: (0 - topLeft.x) / totalScale,
+                      y: (0 - topLeft.y) / totalScale,
+                      width: cropWidth / totalScale,
+                      height: cropHeight / totalScale)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button("取消") { onCancel() }
+                    .buttonStyle(.plain)
+                Spacer()
+                Text("裁切头部壁纸")
+                    .font(.system(size: 17, weight: .semibold))
+                Spacer()
+                Button("完成") {
+                    if let cropped = CoProfileHeaderWallpaper.croppedImage(image, rectInPoints: cropRectInImagePoints()) {
+                        onDone(cropped)
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 17, weight: .semibold))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            Spacer()
+            ZStack {
+                Color.black
+                Image(uiImage: image)
+                    .resizable()
+                    .frame(width: image.size.width, height: image.size.height)
+                    .scaleEffect(coverScale * userScale, anchor: .center)
+                    .offset(offset)
+            }
+            .frame(width: cropWidth, height: cropHeight)
+            .clipped()
+            .overlay {
+                // 白框线画在裁切框边上：框内看到什么、头部就显示什么。
+                Rectangle()
+                    .stroke(Color.white.opacity(0.9), lineWidth: 1)
+            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        offset = clampedOffset(CGSize(width: baseOffset.width + value.translation.width,
+                                                      height: baseOffset.height + value.translation.height),
+                                               scale: userScale)
+                    }
+                    .onEnded { _ in baseOffset = offset }
+            )
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .onChanged { value in
+                        let newScale = min(max(baseScale * value, 1), 4)
+                        userScale = newScale
+                        offset = clampedOffset(offset, scale: newScale)
+                    }
+                    .onEnded { _ in
+                        baseScale = userScale
+                        baseOffset = offset
+                    }
+            )
+            Spacer()
+            Text("拖动平移，双指缩放，框内即头部显示范围")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.secondary)
+                .padding(.bottom, 24)
+        }
+        .background(Color.black.ignoresSafeArea())
+        .foregroundStyle(Color.white)
     }
 }
 

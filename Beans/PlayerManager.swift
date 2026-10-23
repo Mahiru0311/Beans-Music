@@ -145,7 +145,17 @@ final class PlayerManager: NSObject, ObservableObject {
     private var playOrder: [Int] = []
     private var orderPosition = 0
     private var sleepTimer: Timer?
-    private var lastCountedSongID: String?
+    // 常听计数口径（2026-10-23 用户定“要实时、不要假动态数”后改）：
+    // 原先是 lastCountedSongID：同一首歌一旦计过、在换歌前再怎么重播都不再计，
+    // 单曲循环重播、点同一首歌重播都卡在 1 次，看起来就是数不动的假数。
+    // 现在按每次真实播放的 load 计一次：setupPlayer 成功开播时，若当前 load 还没
+    // 计过就 +1；失败重载会换 loadGeneration，失败那次本来就没计过，不会重复计；
+    // 单曲循环自然结束重播走 restartCurrent，那里单独计一次（不走 setupPlayer）。
+    private var countedLoadGeneration: Int?
+    /// 计过数的歌本身（按 identityKey 存）：常听榜单以前只从 history 里找歌，
+    /// history 上限 50 首，计过很多次的老歌滚出 50 首后榜单就掉了、但总数还在，
+    /// 数和列表对不上；现在榜单从这里找歌，不再被 history 上限挤掉。
+    private var countedSongs: [String: Song] = [:]
     private var wasPlayingBeforeInterruption = false
     private var interruptionInProgress = false
     private var interruptionResumeWorkItem: DispatchWorkItem?
@@ -200,6 +210,7 @@ final class PlayerManager: NSObject, ObservableObject {
 
     private let historyKey = "beans.history"
     private let countsKey = "beans.playcounts"
+    private let countedSongsKey = "beans.playcounts.songs.v1"
     private let playbackStateKey = "beans.player.playbackState.v1"
     private let audioMixKey = "beans.audio.mixothers.v1"
     private let nowPlayingEnabledKey = "beans.nowPlaying.enabled.v1"
@@ -798,6 +809,12 @@ final class PlayerManager: NSObject, ObservableObject {
         isPlaying = true
         startListeningSegment()
         updateNowPlaying()
+        // 单曲循环自然结束重播：不走 setupPlayer，这里单独计一次，否则循环听
+        // 一整天常听也只涨 1 次，看起来就是数不动的假数。
+        if let song = currentSong {
+            bumpPlayCount(song)
+            countedLoadGeneration = loadGeneration
+        }
     }
 
     private func loadCurrent(
@@ -1090,11 +1107,13 @@ final class PlayerManager: NSObject, ObservableObject {
         isBuffering = false
         loadFailed = false
         startAudioSessionWatchdogIfNeeded()
-        // 修复：播放次数原先在 loadCurrent 里预计数，URL 加载失败/手动重试也会 +1，
-        // 导致统计异常；改为真正开始播放时计数，且同一首歌同一会话只计一次。
-        if let song = currentSong, lastCountedSongID != song.identityKey {
+        // 播放次数：原先在 loadCurrent 里预计数，URL 加载失败/手动重试也会 +1，
+        // 导致统计异常；改为真正开始播放时计数。同一 load 只计一次（失败重载会换
+        // loadGeneration，失败那次本来就没计过，不会重复计）；点同一首歌重播、
+        // 切歌再回来都会走新的 load，都会重新计——不再是“同一首歌计过一次就卡住”。
+        if let song = currentSong, countedLoadGeneration != loadGeneration {
             bumpPlayCount(song)
-            lastCountedSongID = song.identityKey
+            countedLoadGeneration = loadGeneration
         }
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.2, preferredTimescale: 600), queue: .main) { [weak self] time in
             guard let self, let player = self.player else { return }
@@ -1917,15 +1936,31 @@ final class PlayerManager: NSObject, ObservableObject {
 
     private func bumpPlayCount(_ song: Song) {
         playCounts[song.identityKey, default: 0] += 1
+        countedSongs[song.identityKey] = song
         if let data = try? JSONEncoder().encode(playCounts) {
             defaults.set(data, forKey: countsKey)
+        }
+        if let data = try? JSONEncoder().encode(countedSongs) {
+            defaults.set(data, forKey: countedSongsKey)
         }
     }
 
     private func loadPlayCounts() {
-        guard let data = defaults.data(forKey: countsKey),
-              let saved = try? JSONDecoder().decode([String: Int].self, from: data) else { return }
-        playCounts = saved
+        if let data = defaults.data(forKey: countsKey),
+           let saved = try? JSONDecoder().decode([String: Int].self, from: data) {
+            playCounts = saved
+        }
+        // 先读已存的计过数的歌，再用 history 里还找得到的歌补齐缺口（老用户升级时
+        // countedSongs 还是空的，history 里能找到的就先认下来，不丢旧计数对应的歌）。
+        if let data = defaults.data(forKey: countedSongsKey),
+           let saved = try? JSONDecoder().decode([String: Song].self, from: data) {
+            countedSongs = saved
+        }
+        for key in playCounts.keys where countedSongs[key] == nil {
+            if let song = history.first(where: { $0.identityKey == key }) {
+                countedSongs[key] = song
+            }
+        }
     }
 
     private func savePersistedPlaybackState() {
@@ -1962,11 +1997,12 @@ final class PlayerManager: NSObject, ObservableObject {
         buildPlayOrder()
     }
 
-    /// 听歌排行：按播放次数排序的前几首
+    /// 听歌排行：按真实播放次数排序的前 8 首，歌从 countedSongs 里找，
+    /// 不再从 history 里找——history 上限 50 首，老歌滚出去后榜单会掉歌、但总数还在。
     var topPlayed: [(song: Song, count: Int)] {
         var result: [(song: Song, count: Int)] = []
         for (key, count) in playCounts {
-            if let song = history.first(where: { $0.identityKey == key }) {
+            if let song = countedSongs[key] {
                 result.append((song, count))
             }
         }
