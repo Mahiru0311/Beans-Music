@@ -1012,15 +1012,16 @@ struct ProfileView: View {
         .padding(.top, forceHomeBackdrop ? 0 : 44)
         .frame(maxWidth: .infinity)
         .background {
-            // 第三次返工：壁纸做进头部本身的 background 里，是 ScrollView 内容的一部分。
-            // 下拉量由这里的 GeometryReader 直接读头部全局顶边、inline 算：
+            // 最简单逻辑（按用户要求简化）：壁纸仍在头部本身的 background 里，
+            // 是 ScrollView 内容的一部分，不搬回体外层。下拉量由这里的
+            // GeometryReader 直接读头部全局顶边、inline 算，不写回 @State、
+            // 不走 PreferenceKey 回写链、不加首帧基准：
             // 静止时头部顶边 = 顶部安全区（ScrollView 加了透明 safeAreaInset），
             // 下拉时头部顶边变大，pull = 顶边 - 安全区，正值才放大；上滑钳为 0。
-            // 壁纸框高 = 头部高 + 安全区 + pull，框顶偏移 = -(安全区 + pull)，
-            // 所以壁纸顶边恒在屏幕顶边、底边恒在头部底边；图片倍率 = 1 + pull / 头部高 * 1.5，
-            // 封顶 1.6（下拉 100pt 约 1.5 倍，肉眼明显），顶对齐缩放、超出框的部分裁掉。
+            // 图片只做中心缩放，框不动：缩放 = min(1.6, 1 + pull / 300)，
+            // 下拉 100pt 约 1.33 倍，肉眼明显；超出框的部分裁掉，顶边、底边都不动。
             // 松手时 ScrollView 回弹、顶边回落，倍率随之回到 1，无连续动画引擎、无高刷常驻。
-            // 无图时整张填黑，下拉同样跟手拉伸复原，不出白条。
+            // 无图时整张填黑，下拉时框不动、同样不出白条。
             // 头像 sheet（forceHomeBackdrop）不参与：仍保留它原有的静态头部背景。
             ZStack {
                 if forceHomeBackdrop {
@@ -1037,21 +1038,21 @@ struct ProfileView: View {
                         let headerTop = geo.frame(in: .global).minY
                         let pull = max(0, headerTop - profileTopSafeArea)
                         let headerHeight = geo.size.height
-                        let zoom = min(1.6, 1 + pull / max(1, headerHeight) * 1.5)
-                        ZStack(alignment: .top) {
+                        let zoom = min(1.6, 1 + pull / 300)
+                        ZStack {
                             if let image = profileHeaderWallpaper.image {
                                 Image(uiImage: image)
                                     .resizable()
                                     .scaledToFill()
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .scaleEffect(zoom, anchor: .top)
+                                    .scaleEffect(zoom, anchor: .center)
                                 Color.black.opacity(0.45)
                             } else {
                                 Color.black
                             }
                         }
-                        .frame(width: geo.size.width, height: headerHeight + profileTopSafeArea + pull)
-                        .offset(y: -(profileTopSafeArea + pull))
+                        .frame(width: geo.size.width, height: headerHeight + profileTopSafeArea)
+                        .offset(y: -profileTopSafeArea)
                         .clipped()
                     }
                 }
