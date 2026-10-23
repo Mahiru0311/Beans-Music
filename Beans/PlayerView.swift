@@ -34,6 +34,9 @@ struct PlayerView: View {
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @State private var showAddToLocalPlaylist = false
+    /// 选本地歌单弹窗是否由爱心触发：是才同步到红心库；菜单“添加到本地歌单”
+    /// 走同一个弹窗，不能把“加入某歌单”误当成点爱心。
+    @State private var localPlaylistSheetMarksFavorite = false
     @State private var showPlayerSettings = false
     @AppStorage(FoliaPreferences.enabledKey) private var foliaStageEnabled = false
     @AppStorage(FoliaPreferences.modeKey) private var foliaModeRaw = FoliaVisualizerMode.still.rawValue
@@ -307,6 +310,8 @@ struct PlayerView: View {
 
     private func removeLocalFavorite(_ song: Song) {
         let removed = localLibrary.removeSongFromAllPlaylists(song)
+        // 同步到我的页“我喜欢”：只写本地歌单库的话，读口（红心库）永远看不到。
+        if removed > 0 { favorites.setKugouLiked(song, liked: false) }
         ToastCenter.shared.show(removed > 0 ? "已取消本地收藏" : "歌曲不在本地歌单中")
         BeansHaptics.success()
         favoriteCandidate = nil
@@ -351,9 +356,12 @@ struct PlayerView: View {
 
     private func saveFavoriteLocally(_ song: Song) {
         if localLibrary.playlists.count > 1 {
+            // 走选歌单弹窗：选完才算收藏上，弹窗回调里再同步到红心库。
+            localPlaylistSheetMarksFavorite = true
             showAddToLocalPlaylist = true
         } else {
             ToastCenter.shared.show(localLibrary.addToDefaultFavorites(song))
+            favorites.setKugouLiked(song, liked: true)
             BeansHaptics.success()
         }
     }
@@ -946,9 +954,13 @@ struct PlayerView: View {
             BeansSoftwareVolumeSheetHost()
                 .environmentObject(player)
         }
-        .sheet(isPresented: $showAddToLocalPlaylist) {
+        .sheet(isPresented: $showAddToLocalPlaylist, onDismiss: { localPlaylistSheetMarksFavorite = false }) {
             if let song {
-                AddToLocalPlaylistSheet(song: song)
+                AddToLocalPlaylistSheet(song: song) {
+                    if localPlaylistSheetMarksFavorite {
+                        favorites.setKugouLiked(song, liked: true)
+                    }
+                }
             }
         }
         .sheet(isPresented: $showArtistHome) {

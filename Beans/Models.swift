@@ -637,37 +637,6 @@ struct TopList: Identifiable, Hashable, Codable {
     }
 }
 
-/// QQ 峰尖榜总览项
-struct QQTopInfo: Identifiable, Hashable, Codable {
-    let id: Int
-    let name: String
-    let subTitle: String
-    let topSongNames: [String]
-    let coverURL: URL?
-    let trackCount: Int?
-    let playCount: Int?
-    let chartDescription: String?
-
-    init(
-        id: Int,
-        name: String,
-        subTitle: String,
-        topSongNames: [String],
-        coverURL: URL?,
-        trackCount: Int? = nil,
-        playCount: Int? = nil,
-        chartDescription: String? = nil
-    ) {
-        self.id = id
-        self.name = name
-        self.subTitle = subTitle
-        self.topSongNames = topSongNames
-        self.coverURL = coverURL
-        self.trackCount = trackCount
-        self.playCount = playCount
-        self.chartDescription = chartDescription
-    }
-}
 
 /// 酷狗官方排行榜总览项
 struct KugouTopInfo: Identifiable, Hashable, Codable {

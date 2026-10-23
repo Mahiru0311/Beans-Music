@@ -769,6 +769,9 @@ struct AddToLocalPlaylistSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let song: Song
+    /// 由爱心触发时才传：选完歌单后同步到红心库。菜单“加入本地歌单”不传，
+    /// 避免把“加入某歌单”误当成点爱心。
+    var onAdded: (() -> Void)? = nil
     @State private var showCreateField = false
     @State private var newName = ""
     @State private var message: String?
@@ -787,6 +790,7 @@ struct AddToLocalPlaylistSheet: View {
                                 store.addSong(song, to: playlist.id)
                                 BeansHaptics.success()
                                 ToastCenter.shared.show("已加入「\(playlist.name)」")
+                                onAdded?()
                                 dismiss()
                             } label: {
                                 HStack(spacing: 12) {
@@ -860,6 +864,7 @@ struct AddToLocalPlaylistSheet: View {
             if store.playlists.isEmpty {
                 ToastCenter.shared.show(store.addToDefaultFavorites(song))
                 BeansHaptics.success()
+                onAdded?()
                 dismiss()
             }
         }
@@ -872,6 +877,7 @@ struct AddToLocalPlaylistSheet: View {
         store.addSong(song, to: playlist.id)
         BeansHaptics.success()
         ToastCenter.shared.show("已创建「\(name)」并加入")
+        onAdded?()
         dismiss()
     }
 }

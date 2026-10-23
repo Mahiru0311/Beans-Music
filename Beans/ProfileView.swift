@@ -542,60 +542,8 @@ struct ProfileView: View {
             .environmentObject(auth)
     }
 
-    private var profileSettingsButton: some View {
-        Button {
-            openSettings()
-        } label: {
-            Image(systemName: isNativeClean ? "gearshape" : "gearshape.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color.beansLabel)
-                .frame(width: 44, height: 44)
-                .background {
-                    BeansGlass(shape: Circle(), forceLiquid: true)
-                }
-                .clipShape(Circle())
-                .contentShape(Circle())
-        }
-        .buttonStyle(GlassPressButtonStyle())
-        .frame(width: 44, height: 44)
-        .contentShape(Rectangle())
-        .zIndex(10)
-        .accessibilityLabel("设置")
-    }
 
-    /// 顶部标题 + 右上角设置齿轮
-    private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("我的")
-                    .font(BeansFont.appFont(30, .bold))
-                    .foregroundStyle(Color.beansLabel)
-            }
-            Spacer()
-            HStack(spacing: 10) {
-                profileThemeToggleButton
-                profileSettingsButton
-            }
-        }
-        .padding(.top, 8)
-    }
 
-    private var appleHeader: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .center) {
-                Text("我的")
-                    .font(BeansFont.appFont(38, .bold))
-                    .foregroundStyle(Color.beansLabel)
-                Spacer(minLength: 12)
-                profileThemeToggleButton
-                profileSettingsButton
-            }
-            Rectangle()
-                .fill(Color.beansLabel.opacity(0.10))
-                .frame(height: 1)
-        }
-        .padding(.top, 4)
-    }
 
     var body: some View {
         let _ = theme.accent
@@ -781,7 +729,7 @@ struct ProfileView: View {
                 .preferredColorScheme(profileEffectiveScheme)
         }
         .sheet(isPresented: $showFavorites) {
-            CoSongListSheet(title: "我喜欢", songs: favorites.kugouFavoriteSongs)
+            CoSongListSheet(title: "我喜欢", songs: favorites.allLikedSongs)
                 .environmentObject(player)
                 .environmentObject(theme)
                 .preferredColorScheme(profileEffectiveScheme)
@@ -809,27 +757,6 @@ struct ProfileView: View {
 
     // MARK: - Co 简洁我的页（本页专属，不动其他 tab）
 
-    private var coHeader: some View {
-        HStack(alignment: .center) {
-            Text("我的")
-                .font(.system(size: 34, weight: .bold))
-                .foregroundStyle(Color.beansLabel)
-            Spacer()
-            profileThemeToggleButton
-            Button {
-                openSettings()
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("设置")
-        }
-        .padding(.top, 8)
-    }
 
     private var coDisplayName: String {
         if kugouAuth.isLoggedIn {
@@ -873,40 +800,7 @@ struct ProfileView: View {
         .buttonStyle(.plain)
     }
 
-    private func coStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
-        Button {
-            BeansHaptics.tap()
-            action()
-        } label: {
-            VStack(spacing: 4) {
-                Text(value)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.beansSecondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 
-    private var coStatsCard: some View {
-        HStack(spacing: 0) {
-            coStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
-            coStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
-                if !kugouAuth.isLoggedIn { showAccountHub = true }
-            }
-            coStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
-            coStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
-        }
-        .padding(12)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
 
     private var coPlaylistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1167,8 +1061,9 @@ struct ProfileView: View {
     /// 颜色改回深色（数字 beansLabel、标签 beansSecondary），白卡上不再用白字。
     private var coNeteaseStatsInCard: some View {
         HStack(spacing: 0) {
-            coNeteaseStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)") { showFavorites = true }
-            coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)") {
+            coNeteaseStatButton(title: "我喜欢", value: "\(favorites.allLikedSongs.count)") { showFavorites = true }
+            // 歌单数按可见歌单算：已隐藏的歌单不计，否则隐藏后数字还虚增。
+            coNeteaseStatButton(title: "歌单", value: "\(visiblePlaylists.count)") {
                 // 头像界面里没有歌单区，已登录时点按不再滚动（无目标）；未登录时仍进登录；
                 // 我的 tab 里点按仍滑到下方歌单区，原样保留。
                 if !kugouAuth.isLoggedIn { showAccountHub = true } else if !forceHomeBackdrop { playlistsScrollRequest += 1 }
@@ -1247,101 +1142,6 @@ struct ProfileView: View {
         myPlaylistsLoading = false
     }
 
-    private var customAvatarCard: some View {
-        VStack(spacing: 15) {
-            HStack(spacing: 13) {
-                Button {
-                    BeansHaptics.tap()
-                    showAvatarPicker = true
-                } label: {
-                    BeansAvatarView(remoteURL: nil, size: 58, useCustom: true)
-                        .overlay(alignment: .bottomTrailing) {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(Color.white)
-                                .frame(width: 20, height: 20)
-                                .background(Color.beansAmber, in: Circle())
-                                .overlay(Circle().stroke(Color.beansBackground, lineWidth: 2))
-                        }
-                }
-                .buttonStyle(GlassPressButtonStyle(scale: 0.94))
-
-                VStack(alignment: .leading, spacing: 5) {
-                    TextField(isEnglish ? "Nickname" : "自定义昵称", text: $customNickname)
-                        .font(BeansFont.appFont(17, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                        .textFieldStyle(.plain)
-                        .lineLimit(1)
-                    compactIdentityButton
-                }
-                Spacer(minLength: 8)
-                Button {
-                    BeansHaptics.tap()
-                    showProfileNameBackgroundPicker = true
-                } label: {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(GlassPressButtonStyle(scale: 0.9))
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.55)
-                        .onEnded { _ in
-                            guard profileNameBackgroundStore.url != nil else {
-                                ToastCenter.shared.show("当前没有名片背景")
-                                return
-                            }
-                            BeansHaptics.medium()
-                            profileNameBackgroundStore.clear()
-                            ToastCenter.shared.show("已清除名片背景")
-                        }
-                )
-                .accessibilityLabel("更换昵称区域背景")
-                .accessibilityHint("长按可清除当前名片背景")
-            }
-
-            Rectangle()
-                .fill(Color.beansLabel.opacity(0.10))
-                .frame(height: 1)
-
-            HStack(spacing: 0) {
-                profileStat(
-                    title: isEnglish ? "Listening time" : "听歌时长",
-                    value: player.formattedListeningDuration,
-                    icon: "clock"
-                )
-            }
-        }
-        .padding(16)
-        .background {
-            Group {
-                if let backgroundURL = profileNameBackgroundStore.url {
-                    ZStack {
-                        BeansProfileNameBackgroundView(url: backgroundURL)
-                            .opacity(0.72)
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(colorScheme == .dark ? 0.28 : 0.08),
-                                Color.black.opacity(colorScheme == .dark ? 0.12 : 0.02)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    }
-                } else {
-                    BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-            }
-            // Animated media hosts can otherwise retain a UIKit hit-test view
-            // above the profile header after a name-background upload.
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .beansCardShadow(radius: 8, y: 3)
-    }
 
     private var compactIdentityButton: some View {
         let _ = publicIDRevision
