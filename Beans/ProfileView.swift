@@ -36,6 +36,19 @@ private struct CoProfileHeaderFrameKey: PreferenceKey {
     }
 }
 
+/// 我的页 ScrollView 顶部偏移：经典拉伸头做法，内容顶部放一个高度为 0 的
+/// GeometryReader，用命名坐标空间直接读 ScrollView 顶部偏移（静止时 0，
+/// 下拉回弹时为正、上滑时为负）。上一轮只依赖头部全局 frame 的 PreferenceKey
+/// 上报来算下拉量，真机上拉动时该值没跟手变化，壁纸缩放恒为 1，看起来就是
+/// “下拉没有任何动作”；本轮下拉量改由这个顶部偏移直接算，不再依赖头部 frame。
+private struct CoProfileScrollTopKey: PreferenceKey {
+    static let defaultValue = CGFloat.zero
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// 只改窗口级状态栏样式，不改页面颜色：窗口改深色只影响状态栏文字，
 /// 页面颜色由 body 上的 preferredColorScheme（见 profileEffectiveScheme）单独定，
 /// 白卡在浅色主题下仍是白卡、深色文字，不会被窗口样式带翻。
@@ -325,6 +338,12 @@ struct ProfileView: View {
     /// 我的页头部在全局坐标里的 frame：单层壁纸层据此定位。
     /// frame 为空（首帧未上报）时按静止状态处理。
     @State private var profileHeaderFrame = CGRect.zero
+    /// ScrollView 顶部偏移换算的下拉量（命名坐标空间读数，静止 0、下拉为正）。
+    /// 下拉放大倍率只由它算，不再由头部全局 frame 算。
+    @State private var profileScrollPull: CGFloat = 0
+    /// 顶部偏移读数的静止基准：首帧读数即静止值（坐标空间原点在不同形态下
+    /// 未必恰好是 0），先记下它，下拉量 = 读数 - 基准，正值才放大。
+    @State private var profileScrollBaseMinY: CGFloat? = nil
 
     /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
     /// 状态栏文字应切回深色；否则头部（黑/壁纸）仍盖住状态栏区，文字应为白色。
@@ -590,6 +609,16 @@ struct ProfileView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
+                    // 经典拉伸头读数：内容顶部一个高度为 0 的 GeometryReader，
+                    // 用命名坐标空间直接读 ScrollView 顶部偏移（静止 0、下拉为正）。
+                    // 它随滚动/回弹每帧变化，不经过头部全局 frame 的上报链。
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: CoProfileScrollTopKey.self,
+                            value: geo.frame(in: .named("coProfileScroll")).minY
+                        )
+                    }
+                    .frame(height: 0)
                     coNeteaseHeader
                     // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
                     // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
@@ -608,6 +637,11 @@ struct ProfileView: View {
                 // 我的页只有 1 条歌单时内容可能不满一屏，下拉根本拉不动。
                 // always 让竖直方向始终可回弹，下拉放大与松手复原不依赖内容长度。
                 .scrollBounceBehavior(.always, axes: .vertical)
+                .coordinateSpace(name: "coProfileScroll")
+                .onPreferenceChange(CoProfileScrollTopKey.self) { minY in
+                    if profileScrollBaseMinY == nil { profileScrollBaseMinY = minY }
+                    profileScrollPull = max(0, minY - (profileScrollBaseMinY ?? minY))
+                }
                 .onChange(of: playlistsScrollRequest) { _ in
                     withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
                 }
@@ -946,27 +980,27 @@ struct ProfileView: View {
     private var coProfileSingleWallpaper: some View {
         let frame = profileHeaderFrame
         let top: CGFloat = frame.isEmpty ? 0 : min(0, frame.minY - profileTopSafeArea)
-        let height: CGFloat = frame.isEmpty
-            ? profileTopSafeArea + 320
-            : max(0, (frame.minY + frame.height) - top)
-        // 下拉背景放大：此前只把框拉高，图片本身并不放大——竖图下 scaledToFill 的
-        // 缩放由宽度比主导，常规下拉量（< 约 185pt）内倍率根本不变，只是少裁了一点图，
-        // 看起来是“露图”不是“放大”。本轮显式按下拉量算倍率，图片跟手放大：
-        //   pull = 下拉量 = 头部全局顶边 - 顶部安全区（正值才放大，上滑钳为 0）
-        //   base = 静止时壁纸框高 = 顶部安全区 + 头部高度
-        //   zoom = 1 + pull / base（上限 1.6），锚点取顶部，框本身也同步变高，
-        //   放大后超出框的部分由下方 .clipped() 裁掉，顶边不动、无接缝、无重复人脸。
-        // 无图时是纯黑，没有可放大的内容，框拉高即是拉伸，松手复原逻辑相同。
-        let pull: CGFloat = frame.isEmpty ? 0 : max(0, frame.minY - profileTopSafeArea)
+        // 下拉放大返工：下拉量不再由头部全局 frame 算（上一轮就是它没跟手，
+        // zoom 恒为 1，真机上“下拉没有任何动作”），改由 ScrollView 顶部偏移
+        // 直接算（profileScrollPull，命名坐标空间读数减静止基准，正值才放大）。
+        // 框高 = 静止框高 + 下拉量，图片倍率 = 1 + 下拉量 / 静止框高 * 1.25，
+        // 封顶 1.6：下拉 100pt 约 1.36 倍，肉眼明显；头像在头部 VStack 里随
+        // ScrollView 回弹自然往下走，壁纸在它后面跟着放大，不用单独给头像加位移。
+        // 上滑时 top 为负值、框仍贴住头部底边，壁纸随头部滑走，不改变上滑逻辑。
+        let pull: CGFloat = profileScrollPull
         let baseHeight: CGFloat = frame.isEmpty ? profileTopSafeArea + 320 : profileTopSafeArea + frame.height
-        let zoom: CGFloat = min(1.6, 1 + pull / max(1, baseHeight))
+        let zoom: CGFloat = min(1.6, 1 + pull / max(1, baseHeight) * 1.25)
+        let height: CGFloat = max(0, baseHeight + (top < 0 ? 0 : pull))
         return ZStack(alignment: .top) {
             if let image = profileHeaderWallpaper.image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
+                    // 明确铺满壁纸框再缩放：不给 frame 时 ZStack 里图片按自身尺寸排布，
+                    // 缩放可能作用在错误尺寸上、放大后仍被裁回原样看不出来。
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     // 只跟手放大、不加任何连续动画引擎（省电硬要求）：倍率完全由下拉量算出，
-                    // 松手时 ScrollView 回弹、frame.minY 回落，zoom 随之回到 1，不常驻动画。
+                    // 松手时 ScrollView 回弹、顶部偏移回落，zoom 随之回到 1，不常驻动画。
                     .scaleEffect(zoom, anchor: .top)
                 Color.black.opacity(0.45)
             } else {
