@@ -1012,16 +1012,23 @@ struct ProfileView: View {
         .padding(.top, forceHomeBackdrop ? 0 : 44)
         .frame(maxWidth: .infinity)
         .background {
-            // 最简单逻辑（按用户要求简化）：壁纸仍在头部本身的 background 里，
+            // 最简单逻辑（按用户反馈再简化）：壁纸仍在头部本身的 background 里，
             // 是 ScrollView 内容的一部分，不搬回体外层。下拉量由这里的
             // GeometryReader 直接读头部全局顶边、inline 算，不写回 @State、
             // 不走 PreferenceKey 回写链、不加首帧基准：
             // 静止时头部顶边 = 顶部安全区（ScrollView 加了透明 safeAreaInset），
             // 下拉时头部顶边变大，pull = 顶边 - 安全区，正值才放大；上滑钳为 0。
-            // 图片只做中心缩放，框不动：缩放 = min(1.6, 1 + pull / 300)，
-            // 下拉 100pt 约 1.33 倍，肉眼明显；超出框的部分裁掉，顶边、底边都不动。
-            // 松手时 ScrollView 回弹、顶边回落，倍率随之回到 1，无连续动画引擎、无高刷常驻。
-            // 无图时整张填黑，下拉时框不动、同样不出白条。
+            // 框在全局位置上真正固定不动：框高固定为头部高 + 安全区（不加 pull），
+            // 框顶偏移取 -(安全区 + pull)，正好抵消头部往下走的 pull——
+            // 所以框的全局顶边恒在屏幕顶边、全局底边恒在静止时的头部底边，
+            // 框的中心也恒定；上一版偏移只取 -安全区，框会跟着头部往下走 pull，
+            // 顶边就空出一片 pull 高的空白，正是用户说的“下来时上面有一片空白”。
+            // 上滑时 pull 为 0，偏移回到 -安全区，框随头部正常滑走，不会粘在顶边。
+            // 框里的图只做中心缩放：缩放 = min(1.6, 1 + pull / 300)，
+            // 下拉 100pt 约 1.33 倍，肉眼明显；图只原地放大、位置不动，
+            // 超出框的部分裁掉。松手时 ScrollView 回弹、顶边回落，倍率随之回到 1，
+            // 无连续动画引擎、无高刷常驻。
+            // 无图时整张填黑，下拉时框同样固定填满、不出白条。
             // 头像 sheet（forceHomeBackdrop）不参与：仍保留它原有的静态头部背景。
             ZStack {
                 if forceHomeBackdrop {
@@ -1052,7 +1059,7 @@ struct ProfileView: View {
                             }
                         }
                         .frame(width: geo.size.width, height: headerHeight + profileTopSafeArea)
-                        .offset(y: -profileTopSafeArea)
+                        .offset(y: -(profileTopSafeArea + pull))
                         .clipped()
                     }
                 }
