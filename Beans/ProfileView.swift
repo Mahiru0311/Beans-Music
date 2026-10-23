@@ -373,6 +373,20 @@ struct ProfileView: View {
     /// 肉眼明显、脸部不至于裁到无法辨认；上一轮拉到 217pt、缩放失控就是没有硬上限的后果。
     @State private var headerDragPull: CGFloat = 0
 
+    /// 下拉零点（首帧实测，不再假设等于安全区）：
+    /// pullfix 的教训：它用“读数减安全区 59pt”算下拉量，但 ScrollView 忽略
+    /// 顶部安全区后，顶部读数静止时根本不是 59pt（内容原点靠近屏幕顶边，
+    /// 静止读数只有十几到二十几 pt），读数减 59 后一直被钳在 0，直到拉过
+    /// 59pt 才开始有一点放大，到 120pt 封顶时有效下拉量也只有约 60pt、
+    /// 缩放约 1.2 倍，肉眼几乎看不出来——这就是“下拉变大又没了”的根因。
+    /// 所以零点改成首帧实测：第一次上报的读数就是静止零点，之后下拉量
+    /// = 读数减零点，0 到 120pt 全程都算，120pt 时缩放 1 + 120/300 = 1.4 倍。
+    /// 零点只在首帧定一次，不在每次出现时重定：从歌单页返回时内容可能
+    /// 停在上滑位置，那时重定会把上滑位置误当成零点，回到顶部反而放大
+    /// 卡住；首帧是应用启动、页面在顶部时定的，才是真零点。上滑时读数
+    /// 小于零点，差值为负，钳为 0 不放大，回到顶部仍是 0，不会卡住。
+    @State private var pullBaseline: CGFloat? = nil
+
     /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
     /// 状态栏文字应切回深色；否则头部（黑/壁纸）仍盖住状态栏区，文字应为白色。
     private var profileHeaderScrolledAway: Bool {
@@ -664,10 +678,17 @@ struct ProfileView: View {
                 .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
                 .onPreferenceChange(CoProfilePullKey.self) { minY in
                     guard !forceHomeBackdrop else { return }
-                    // 顶部读数初始 = 顶部安全区（透明 safeAreaInset 的高度）；
-                    // 下拉时读数变大，差值就是实际下拉量；上滑时读数变小，
+                    // 零点 = 首帧实测读数（见 pullBaseline），不再假设等于安全区：
+                    // pullfix 用读数减 59pt，静止读数只有十几到二十几 pt，差值
+                    // 一直被钳在 0，放大就“又没了”。首帧定零点后，下拉量
+                    // = 读数减零点，0 到 120pt 全程都算；上滑时读数小于零点，
                     // 差值为负，钳为 0 不放大。硬上限 120pt，松手随系统回弹回 0。
-                    headerDragPull = min(max(0, minY - profileTopSafeArea), 120)
+                    if pullBaseline == nil {
+                        pullBaseline = minY
+                        headerDragPull = 0
+                        return
+                    }
+                    headerDragPull = min(max(0, minY - (pullBaseline ?? minY)), 120)
                 }
                 .onChange(of: playlistsScrollRequest) { _ in
                     withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
@@ -992,13 +1013,20 @@ struct ProfileView: View {
     /// 我的 tab 固定壁纸层（重建后唯一的一层壁纸，滚动视图之外）：
     /// 放在 body 的 ZStack 里、滚动视图之前，框顶边用 ignoresSafeArea 固定在屏幕顶边，
     /// 下拉时框顶边一动不动，只有框里的图以中心锚点放大、向左右两边扩。
-    /// 框高 = 屏幕宽 + 30pt 安全余量 + 拖动量：屏幕宽约等于静止时头部高 + 安全区，
-    /// +30pt 保证在任何机型宽度下壁纸底边都压在白卡下面、不在白卡与壁纸之间留缝，
+    /// 框高 = max(屏幕宽 + 30pt, 410pt) + 拖动量：屏幕宽约等于静止时头部高 + 安全区，
+    /// 410pt 下限是头部下移到 159pt 顶垫后的新头部高约 365pt 再加约 45pt 余量，
+    /// 保证在任何机型宽度下壁纸底边都压在白卡下面、不在白卡与壁纸之间留缝，
     /// 多余部分被不透明白卡盖住；框高随拖动量变大，正好抵消内容整体下移量，
     /// 白卡与壁纸的重叠（-24pt）始终不变。图用 scaleEffect(中心) 后 .clipped() 裁到框里，
     /// 所以放大后图不会跑到白卡下面再露一段。无图时整张填黑，同样固定顶边、同样封顶。
     private var coFixedHeaderWallpaper: some View {
-        let base = UIScreen.main.bounds.width + 30
+        // 框高跟着新头部高度走：头部顶部内边距加到 159pt 后，新头部高约
+        // 365pt（159 顶垫 + 其余约 206pt），框高下限 410pt 保证在窄屏机型上
+        // 底边仍压在不透明白卡之下至少约 45pt、白卡与壁纸之间无缝；宽屏机型
+        // 上仍是屏幕宽 + 30pt（用户机型约 423pt，已高于下限），框高、图本身
+        // 的缩放与位置都不动，图顶边仍固定在屏幕顶边，头像下移露出的只是
+        // 原来被白卡盖住的那段壁纸下部，不是图被挪动或放大了。
+        let base = max(UIScreen.main.bounds.width + 30, 410)
         let zoom = 1 + headerDragPull / 300
         return ZStack {
             if let image = profileHeaderWallpaper.image {
@@ -1071,11 +1099,15 @@ struct ProfileView: View {
             // 卡片 -24pt 重叠后仍有 24pt 头部可见（原来 12pt），白卡往下移、壁纸可见区反而更大——壁纸没调小，是调大了。
             .padding(.bottom, forceHomeBackdrop ? 36 : 48)
         }
-        // 我的页头像下移：分拆时顶行整行删掉后，我的页头部直接从头像开始，头像区上移了约一行高度，
-        // 真机上头像快挨到灵动岛/状态栏。只在我的 tab 里在头部顶部补 44pt 空白（不加回任何按钮）：
-        // 原顶行约占 52pt（44pt 按钮 + 8pt 顶部），现头像已有 12pt 顶部内边距，补 44pt 后合计 56pt，
-        // 恢复到原来高度附近再多留一点余量；头像界面仍有顶行，顶部间距不动。
-        .padding(.top, forceHomeBackdrop ? 0 : 44)
+        // 我的页头像下移（2026-10-23 第二张截图定稿）：第一张截图里头像中心
+        // 约 131/1000、白卡顶部约 303/1000，头像快挨着灵动岛/状态栏；第二张
+        // 目标里头像中心约 267/1000、白卡顶部约 434/1000，差值约 136/1000
+        // 与 131/1000，换算到 852pt 高的屏幕约 115pt。做法只改这一处：我的页
+        // 头部顶部内边距从 44pt 加到 159pt（44 + 115），头像、昵称、VIP、
+        // 状态行、白卡全部跟着整体往下 115pt，头像尺寸、头像与昵称间距、
+        // 壁纸图本身都不动；头像界面（forceHomeBackdrop）仍有顶行，顶部
+        // 间距不动，不跟着下移。
+        .padding(.top, forceHomeBackdrop ? 0 : 159)
         .frame(maxWidth: .infinity)
         .background {
             // 重建：我的 tab 的壁纸不在 background 里（background 溢出会被裁掉，上一轮黑带的根源），
