@@ -36,18 +36,9 @@ private struct CoProfileHeaderFrameKey: PreferenceKey {
     }
 }
 
-/// 我的页滚动视图顶部全局纵坐标：下拉量据此算。
-/// 用全局坐标，不用命名坐标空间——命名坐标空间跟着内容一起动，
-/// 回弹时读数恒为 0（zoom2 没效果的根因之一）；全局坐标下内容
-/// 往下走多少、读数就大多少，从头部、白卡、歌单区任何地方下拉
-/// 都会让读数变大。只在我的 tab 里贴这个读数，头像 sheet 不贴。
-private struct CoProfilePullKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+/// 注意：我的页下拉放大不再用 PreferenceKey 读数链驱动（见 headerDragPull 处注释）。
+/// 旧的 CoProfilePullKey 已删：zoom、zoom2、pullfix、baseline 四轮都是同一条
+/// PreferenceKey + @State 回写链，真机上放大都出不来或只出一点点。
 
 /// 我的页 ScrollView 顶部安全区处理（只在我的 tab 用，头像 sheet 不用）：
 /// ScrollView 忽略顶部安全区后，它的 frame 才到屏幕顶边，头部背景里的壁纸
@@ -361,31 +352,32 @@ struct ProfileView: View {
     /// frame 为空（首帧未上报）时按静止状态处理。
     @State private var profileHeaderFrame = CGRect.zero
 
-    /// 头部下拉量（我的 tab 专属）：
-    /// 由系统回弹驱动，不再由头部拖动手势驱动——zoom6 的教训：
-    /// 头部 .highPriorityGesture(DragGesture) 在垂直滚动视图里会被
-    /// 滚动视图的平移手势截获，拖动根本写不进这个状态，同时
-    /// .scrollBounceBehavior(.basedOnSize) 在内容不满屏时直接关了
-    /// 回弹，两环叠加导致全页都拉不动。现在拉动改回系统回弹，
-    /// 这个状态只由滚动视图顶部读数（CoProfilePullKey，全局坐标）
-    /// 写进来，硬上限 120pt，松手随系统回弹回 0。
+    /// 头部下拉量（我的 tab 专属），本轮改由与滚动视图同时识别的拖动手势直接驱动：
+    /// 限制与放大到底怎么回事——baseline 包查完的结论是 PreferenceKey + @State 回写链
+    /// 本身在回弹过程中不跟手，不是基线数值问题：zoom（头部全局 frame 经偏好回写）、
+    /// zoom2（滚动视图顶部读数经偏好回写）、pullfix（读数减安全区）、baseline（首帧零点）
+    /// 四轮都是同一条链，真机上放大要么完全没出来、要么只出到约 1.2 倍；回弹是 UIKit
+    /// 层面的位移，SwiftUI 布局/偏好上报在回弹过程中不实时重算，读数只在松手后才跳变，
+    /// 所以跟手放大出不来。反过来，zoom3/zoom4 那种不经过偏好上报的内联读取曾在
+    /// 真机上确实有效果，说明“不依赖布局重算的直接驱动”才是对的路。本轮就用这条路：
+    /// 拖动手势的手指位移是事件直接给的，不依赖布局重算，所以跟手就一定能动——
+    /// 手指往下走多少，缩放就跟多少，封顶 120pt / 1.4 倍。
+    /// 挂法教训：zoom6 把高优先级手势只挂在头部上，被滚动视图平移截获而失效；
+    /// 本轮手势挂在整个滚动视图上、用 .simultaneousGesture 同时识别，只驱动
+    /// headerDragPull 这一个状态，不再和任何 PreferenceKey 双重驱动。
+    /// 门控（不是驱动）：手势开始时只看头部是不是在顶部——用已有的状态栏用
+    /// profileHeaderFrame（静止时头部在顶部，minY 约 0；已下滑时 minY 为负），
+    /// 只在顶部开始的手势才放大，避免从下面往上滑回顶部时一路放大；一旦在顶部
+    /// 开始，就用手指位移全程驱动，不再看门控值。
+    /// 内容位移仍靠系统回弹：120pt 封的是壁纸效果（缩放、框高增长），不是
+    /// 系统回弹本身；拉到 120pt 后图不再放大、框高不再增长，松手弹回 0。
     /// 120pt 的理由：头部高约 300pt，120pt 约为头部高的 40%，缩放 1 + 120/300 = 1.4 倍
     /// 肉眼明显、脸部不至于裁到无法辨认；上一轮拉到 217pt、缩放失控就是没有硬上限的后果。
     @State private var headerDragPull: CGFloat = 0
+    @State private var pullGestureActive = false
+    @State private var pullGestureStartedAtTop = false
 
-    /// 下拉零点（首帧实测，不再假设等于安全区）：
-    /// pullfix 的教训：它用“读数减安全区 59pt”算下拉量，但 ScrollView 忽略
-    /// 顶部安全区后，顶部读数静止时根本不是 59pt（内容原点靠近屏幕顶边，
-    /// 静止读数只有十几到二十几 pt），读数减 59 后一直被钳在 0，直到拉过
-    /// 59pt 才开始有一点放大，到 120pt 封顶时有效下拉量也只有约 60pt、
-    /// 缩放约 1.2 倍，肉眼几乎看不出来——这就是“下拉变大又没了”的根因。
-    /// 所以零点改成首帧实测：第一次上报的读数就是静止零点，之后下拉量
-    /// = 读数减零点，0 到 120pt 全程都算，120pt 时缩放 1 + 120/300 = 1.4 倍。
-    /// 零点只在首帧定一次，不在每次出现时重定：从歌单页返回时内容可能
-    /// 停在上滑位置，那时重定会把上滑位置误当成零点，回到顶部反而放大
-    /// 卡住；首帧是应用启动、页面在顶部时定的，才是真零点。上滑时读数
-    /// 小于零点，差值为负，钳为 0 不放大，回到顶部仍是 0，不会卡住。
-    @State private var pullBaseline: CGFloat? = nil
+    // 旧首帧零点（pullBaseline）本轮已删：放大不再走 PreferenceKey 回写链，见上面 headerDragPull 注释。
 
     /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
     /// 状态栏文字应切回深色；否则头部（黑/壁纸）仍盖住状态栏区，文字应为白色。
@@ -634,20 +626,12 @@ struct ProfileView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                    // 拉动恢复：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层），
-                    // 也不再挂任何拖动手势——zoom6 的高优先级拖动手势在垂直
-                    // 滚动视图里被滚动平移截获，拖动写不进状态，是“拉不动”
-                    // 的第一环；第二环是下面回弹被改成按尺寸。两环都拆掉后，
-                    // 拉动只靠系统回弹：从头部、白卡、歌单区任何地方下拉，
-                    // 只要页面在顶部，系统回弹都会把内容往下带，顶部读数
-                    // （CoProfilePullKey）随之变大，固定壁纸层只放大、不跟着
-                    // 头部走，顶部就不再留黑边。头像按钮点按不受任何手势影响。
-                    if !forceHomeBackdrop {
-                        GeometryReader { geo in
-                            Color.clear.preference(key: CoProfilePullKey.self, value: geo.frame(in: .global).minY)
-                        }
-                        .frame(height: 0)
-                    }
+                    // 拉动恢复：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层）。
+                    // 顶部读数器已删：放大不再走 PreferenceKey 回写链，改由下面挂在
+                    // 整个滚动视图上的同时识别拖动手势直接驱动；内容位移仍靠系统回弹，
+                    // 从头部、白卡、歌单区任何地方下拉，只要页面在顶部，系统回弹都会
+                    // 把内容往下带，固定壁纸层只放大、不跟着头部走，顶部就不再留黑边。
+                    // 头像按钮点按不受手势影响（拖动最小距离 8pt，点按不到 8pt 不触发拖动）。
                     coNeteaseHeader
                     // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
                     // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
@@ -676,20 +660,36 @@ struct ProfileView: View {
                 .scrollBounceBehavior(.always, axes: .vertical)
                 .coordinateSpace(name: "coProfileScroll")
                 .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
-                .onPreferenceChange(CoProfilePullKey.self) { minY in
-                    guard !forceHomeBackdrop else { return }
-                    // 零点 = 首帧实测读数（见 pullBaseline），不再假设等于安全区：
-                    // pullfix 用读数减 59pt，静止读数只有十几到二十几 pt，差值
-                    // 一直被钳在 0，放大就“又没了”。首帧定零点后，下拉量
-                    // = 读数减零点，0 到 120pt 全程都算；上滑时读数小于零点，
-                    // 差值为负，钳为 0 不放大。硬上限 120pt，松手随系统回弹回 0。
-                    if pullBaseline == nil {
-                        pullBaseline = minY
-                        headerDragPull = 0
-                        return
-                    }
-                    headerDragPull = min(max(0, minY - (pullBaseline ?? minY)), 120)
-                }
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 8)
+                        .onChanged { value in
+                            guard !forceHomeBackdrop else { return }
+                            // 门控只在手势开始时定一次：头部在顶部才放大。
+                            // profileHeaderFrame 是状态栏已在用的头部全局 frame，
+                            // 静止在顶部时 minY 约 0，已下滑时 minY 为负；首帧
+                            // frame 为空时 minY 为 0，同样算在顶部，不会把第一次
+                            // 下拉挡住。门控定了以后，全程只看手指位移。
+                            if !pullGestureActive {
+                                pullGestureActive = true
+                                pullGestureStartedAtTop = profileHeaderFrame.minY >= -20
+                            }
+                            guard pullGestureStartedAtTop else {
+                                headerDragPull = 0
+                                return
+                            }
+                            // 手指位移直接驱动：往下走多少就放大多少，封顶 120pt；
+                            // 上滑、横向拖动时高度差为负，钳为 0 不放大。
+                            headerDragPull = min(max(0, value.translation.height), 120)
+                        }
+                        .onEnded { _ in
+                            pullGestureActive = false
+                            pullGestureStartedAtTop = false
+                            // 松手一次弹回静态大小，不用连续动画引擎。
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                headerDragPull = 0
+                            }
+                        }
+                )
                 .onChange(of: playlistsScrollRequest) { _ in
                     withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
                 }
@@ -1084,10 +1084,19 @@ struct ProfileView: View {
                             VIPBadgeView(text: badge)
                         }
                     }
-                    Text(accountStatusLine)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.white.opacity(0.75))
-                        .lineLimit(1)
+                    // “酷狗已登录”删除（2026-10-23 用户定）：我的 tab 里不再显示这行，
+                    // 只在头像界面（forceHomeBackdrop）条件保留——头部组件两边共用，
+                    // 这里用条件保留，不是两边一起删。
+                    // 位置补偿：删掉这行后头部会矮约 25pt（13pt 字约 17pt 行高 + 8pt
+                    // 间距），我的 tab 底部内边距从 48pt 加到 73pt 补回来，头部总高
+                    // 不变，头像中心仍在第二张截图约 267/1000、白卡顶部仍在约 434/1000；
+                    // 头像尺寸、头像与昵称间距都不动。头像界面底部内边距仍是 36pt 不动。
+                    if forceHomeBackdrop {
+                        Text(accountStatusLine)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.white.opacity(0.75))
+                            .lineLimit(1)
+                    }
                 }
             }
             .buttonStyle(.plain)
@@ -1096,8 +1105,9 @@ struct ProfileView: View {
             // 重建：我的 tab 的壁纸不在这里、也不在任何 background 里，唯一的一层在 body 的滚动视图之外
             // （见 coFixedHeaderWallpaper，框顶边固定在屏幕顶边）；这里只留头像 sheet 的静态壁纸和状态栏用的 frame 上报。
             // 我的页整体下调：头部底部 36pt → 48pt（只在我的 tab 里加，头像 sheet 仍 36pt），
+            // 删“酷狗已登录”后补到 73pt（见上面删除处注释），头部总高不变；
             // 卡片 -24pt 重叠后仍有 24pt 头部可见（原来 12pt），白卡往下移、壁纸可见区反而更大——壁纸没调小，是调大了。
-            .padding(.bottom, forceHomeBackdrop ? 36 : 48)
+            .padding(.bottom, forceHomeBackdrop ? 36 : 73)
         }
         // 我的页头像下移（2026-10-23 第二张截图定稿）：第一张截图里头像中心
         // 约 131/1000、白卡顶部约 303/1000，头像快挨着灵动岛/状态栏；第二张
