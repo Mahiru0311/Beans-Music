@@ -1815,6 +1815,42 @@ struct SettingsView: View {
         }
     }
 
+    private var equalizerSection: some View {
+        Button {
+            BeansHaptics.select()
+            showEqualizer = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.beansAmber)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(beansLocalized("均衡器", "Equalizer"))
+                        .font(BeansFont.appFont(15))
+                        .foregroundStyle(Color.beansLabel)
+                    Text(beansLocalized("调节低音、人声与高音", "Adjust bass, vocals, and treble"))
+                        .font(BeansFont.appFont(11))
+                        .foregroundStyle(Color.beansComment)
+                }
+                Spacer()
+                Text(equalizer.isEnabled ? beansLocalized("已开启", "On") : beansLocalized("已关闭", "Off"))
+                    .font(BeansFont.appFont(12, .medium))
+                    .foregroundStyle(equalizer.isEnabled ? Color.beansAmber : Color.beansComment)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.beansComment.opacity(0.6))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background {
+                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
+    }
+
     private var playbackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
