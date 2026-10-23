@@ -683,8 +683,9 @@ enum CoVIPIconCatalog {
 // 1.9.0：只改数字不够——SwiftUI 的 .frame() 本身不裁剪，CoAnimatedImage 的
 // UIImageView 又是 clipsToBounds=false，UIImageView 按图片内在尺寸（1.8.9 截图量出
 // 约 97×53pt）居中画在 26pt 的帧外，左沿向左溢出约 25pt，正好盖住昵称的“见”字。
-// 因此这里必须双重堵死：帧外加 .clipped()、UIImageView 内改 clipsToBounds=true、
-// sizeThatFits 返回帧尺寸、长条款宽上限由 180 收紧到 120（昵称约 60 + 间距 8 +
+// 因此这里必须结构性堵死：动图改纯 SwiftUI 逐帧播放（布局尺寸即帧尺寸，
+// 不再有 UIImageView 内在尺寸溢出）、帧外加 .clipped()、解码按屏幕 scale
+// 换算回点尺寸、长条款宽上限由 180 收紧到 120（昵称约 60 + 间距 8 +
 // 图标 120 = 188 < 320 行宽，正常昵称绝不被挤、被盖）。
 struct CoVIPRemoteImage: View {
     let image: UIImage
@@ -696,7 +697,8 @@ struct CoVIPRemoteImage: View {
     }
     var body: some View {
         if image.images != nil {
-            CoAnimatedImage(image: image, animated: !reduceMotion)
+            // 1.9.0 修复后：动图不再走 UIImageView（见下 CoAnimatedFramesView 的说明）。
+            CoAnimatedFramesView(image: image, animated: !reduceMotion)
                 .frame(width: width, height: 26)
                 .clipped()
         } else {
@@ -755,35 +757,38 @@ enum CoAnimatedImageDecoder {
     }
 }
 
-// 下载后仍能动起来的图片视图（动图经解码器重建多帧后用 UIImageView 播，静态图同理；
-// 减弱动态效果时只显示首帧静态，视图消失即停，不常驻）。
-struct CoAnimatedImage: UIViewRepresentable {
+// 1.9.0：动图不再走 UIImageView。根因复盘：上一版 CoAnimatedImage 是
+// UIViewRepresentable，UIImageView 按图片内在尺寸布局（截图量出约 97×53pt，
+// 而帧只有 26pt 高），外层 SwiftUI .frame() 不裁剪、且 makeUIView 设了
+// clipsToBounds=false，图居中画在帧外、左沿溢出盖住昵称的“见”字；补
+// sizeThatFits 又是 iOS 16+ API，主 App 部署目标是 iOS 15、编不过（本轮
+// run 39893654682 的 Build (unsigned) 失败即卡在这里）。彻底解法是纯
+// SwiftUI 逐帧播放：解码器已把动图展开成帧数组，TimelineView 按帧间隔
+// 轮换 Image(resizable+scaledToFit)，布局尺寸就是外层 .frame() 的尺寸，
+// 不可能再溢出；视图不在屏时 TimelineView 停摆，不常驻耗电；减弱动态
+// 效果时只显示首帧静态。
+struct CoAnimatedFramesView: View {
     let image: UIImage
     var animated: Bool = true
-    func makeUIView(context: Context) -> UIImageView {
-        let v = UIImageView()
-        v.contentMode = .scaleAspectFit
-        // 1.9.0：false 是 1.8.9 截图“见”字被盖的直接帮凶——内在尺寸的图
-        // 会画到帧外；改 true 后图只能画在帧内，帧外再由 SwiftUI .clipped() 兜底。
-        v.clipsToBounds = true
-        return v
+    private var frames: [UIImage] { image.images ?? [image] }
+    private var interval: TimeInterval {
+        let count = max(frames.count, 1)
+        let d = image.duration / Double(count)
+        return d > 0 ? d : 0.1
     }
-    // 1.9.0：UIViewRepresentable 默认按 UIImageView 内在尺寸布局，会无视
-    // 外层 .frame(width:height:)；这里明确返回提议尺寸，布局尺寸即帧尺寸。
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIImageView, context: Context) -> CGSize? {
-        CGSize(width: proposal.width ?? image.size.width, height: proposal.height ?? image.size.height)
-    }
-    func updateUIView(_ uiView: UIImageView, context: Context) {
-        if animated, image.images != nil {
-            uiView.image = image
-            uiView.startAnimating()
+    var body: some View {
+        if !animated || frames.count <= 1 {
+            Image(uiImage: frames.first ?? image)
+                .resizable()
+                .scaledToFit()
         } else {
-            uiView.image = image.images?.first ?? image
-            uiView.stopAnimating()
+            TimelineView(.periodic(from: Date(), by: interval)) { timeline in
+                let index = Int(timeline.date.timeIntervalSince1970 / interval) % frames.count
+                Image(uiImage: frames[index])
+                    .resizable()
+                    .scaledToFit()
+            }
         }
-    }
-    static func dismantleUIView(_ uiView: UIImageView, coordinator: ()) {
-        uiView.stopAnimating()
     }
 }
 
