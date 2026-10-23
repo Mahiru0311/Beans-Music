@@ -268,8 +268,8 @@ struct RootView: View {
                 items: visibleTabs.map {
                     KumoneGlassTabBar.Item(tab: $0, title: $0.title, icon: $0.icon)
                 },
-                iconVariant: tabIconStyle.variant,
                 selection: $selection,
+                iconVariant: tabIconStyle.variant,
                 labelsVisible: tabLabelsVisible,
                 accentIsNativeClean: isNativeClean,
                 onHomeLongPress: { showHomePlatformMenu = true }

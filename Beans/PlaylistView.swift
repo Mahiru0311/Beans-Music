@@ -59,9 +59,9 @@ struct PlaylistView: View {
                                 SongCell(
                                     song: song,
                                     showCover: true,
-                                    suppressNativeCleanRowGlass: true,
                                     coverSize: 46,
                                     fixedRowHeight: 64,
+                                    suppressNativeCleanRowGlass: true,
                                     playbackContext: displayedTracks,
                                     playbackIndex: index
                                 ) {
