@@ -180,7 +180,9 @@ struct ProfileView: View {
         .frame(maxWidth: 860)
         .frame(maxWidth: .infinity)
         .background {
-            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
+            // 主目标部署版本为 iOS 15，UnevenRoundedRectangle（iOS 16+）不可用；
+            // 用全圆角矩形：顶部大圆角压边效果不变，底部圆角在卡片收尾处同样自然。
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(Color(UIColor.systemBackground))
         }
         .offset(y: -24)
