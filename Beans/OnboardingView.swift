@@ -174,9 +174,11 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             Spacer()
             // 真实 App 图标
+            // 1.8.8：图标按原图比例显示，scaledToFill + 固定方框会裁图标；
+            // 改 scaledToFit，方框内完整显示、不裁剪、不压扁。
             Image("OnboardingLogo")
                 .resizable()
-                .scaledToFill()
+                .scaledToFit()
                 .frame(width: 132, height: 132)
                 .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
                 .shadow(color: Color.beansHighlight.opacity(0.45), radius: 24, y: 12)

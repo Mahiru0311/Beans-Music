@@ -722,6 +722,29 @@ enum CoVIPIconCatalog {
     }
 }
 
+// 1.8.8：远程 VIP 图按原图比例显示：只定高度 26pt，宽度 = 高度 × 原图宽高比
+// （上限 180pt），scaledToFit、不裁剪、不压扁。旧 84×20 硬框 + clipped()
+// 会把唱片圆上下左右裁掉、只剩红点 + VIP 字（1.8.7 截图实锤）。
+struct CoVIPRemoteImage: View {
+    let image: UIImage
+    private var width: CGFloat {
+        let h = image.size.height
+        guard h > 0 else { return 78 }
+        return min(26 * image.size.width / h, 180)
+    }
+    var body: some View {
+        if image.images != nil {
+            CoAnimatedImage(image: image)
+                .frame(width: width, height: 26)
+        } else {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: width, height: 26)
+        }
+    }
+}
+
 // 下载后仍能动起来的图片视图（webp 动图经 UIImage 解码后多帧时用 UIImageView 播，静态图同理）。
 struct CoAnimatedImage: UIViewRepresentable {
     let image: UIImage
@@ -786,6 +809,22 @@ struct CoVIPSelfDrawnBadge: View {
                     .background(Capsule().fill(Color(red: 0.85, green: 0.62, blue: 0.18))).clipShape(Capsule())
             }
         }
+    }
+}
+
+// MARK: - 歌单星标（1.8.8，仅本地标记，不同步到酷狗账号）
+// 歌单详情页截图布局里的收藏星没有酷狗侧接口可接，故只做本地星标：
+// 点星填充、再点取消，状态持久化在本地，详情页内可见即是全部效果，不假装同步。
+struct CoStarredPlaylists {
+    static func key() -> String { "beans.starredPlaylists" }
+    static func isStarred(id: Int) -> Bool {
+        (UserDefaults.standard.array(forKey: key()) as? [Int] ?? []).contains(id)
+    }
+    static func setStarred(id: Int, starred: Bool) {
+        var ids = UserDefaults.standard.array(forKey: key()) as? [Int] ?? []
+        if starred { if !ids.contains(id) { ids.append(id) } }
+        else { ids.removeAll { $0 == id } }
+        UserDefaults.standard.set(ids, forKey: key())
     }
 }
 

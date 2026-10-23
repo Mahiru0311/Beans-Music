@@ -69,11 +69,6 @@ struct ProfileView: View {
         }.joined(separator: " / ")
     }
 
-    private var appVersionText: String {
-        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2"
-        return "Co · \(ver)"
-    }
-
     /// 登录状态的合并提示（展示各平台真实昵称）
     private var accountStatusLine: String {
         var parts: [String] = []
@@ -219,9 +214,9 @@ struct ProfileView: View {
         Group {
             if let item = selectedVIPIconItem, !item.isSelfDrawn {
                 if let img = vipIconImage, !(item.isAnimated && !kugouAuth.hasMembership) {
-                    // 1.8.7：远程 VIP 图必须同时限宽限高——只限高时 UIImageView
-                    // 会按原图内在宽度撑开整行（截图里长条图把昵称挤到左边缘的根因）。
-                    CoAnimatedImage(image: img).frame(width: 84, height: 20).clipped()
+                    // 1.8.8：按原图比例显示（只定高 26pt、宽按比例算），不裁剪、不压扁；
+                    // 1.8.7 的 84×20 硬框 + clipped() 是唱片圆被裁成扁长条的根因。
+                    CoVIPRemoteImage(image: img)
                 } else {
                     CoVIPAutoBadge(isVIP: kugouAuth.hasMembership, isLoggedIn: kugouAuth.isLoggedIn)
                 }
@@ -325,7 +320,8 @@ struct ProfileView: View {
         hiddenPlaylistEntries = entries
         CoHiddenPlaylists.save(userId: kugouAuth.userId, entries: entries)
         BeansHaptics.select()
-        ToastCenter.shared.show("已隐藏，可在设置里恢复")
+        // 1.8.8：隐藏了就隐藏了，只给一句确认，不再引导去设置恢复。
+        ToastCenter.shared.show("已隐藏")
     }
 
     /// VIP 图标选择面板（wy.dwkc.cn 面板结构：VIP / SVIP / 长条形三档，VIP 内分普通/动效/已过期/特殊）。
@@ -334,13 +330,13 @@ struct ProfileView: View {
     /// 1.8.6 VIP 精简：只用他网站 VIP 档的核心款（普通/动效/已过期/特殊各 1 款，共 4 款），
     /// 不再铺 SVIP/长条形自绘款与 v0-v7 全量网格；展开用系统 DisclosureGroup（系统展开框），
     /// 选款仍按需下载、选新删旧只留一款、CDN 失效回落 Co 自绘（逻辑见 selectVIPIcon/loadVIPIcon）。
-    /// 白色主卡（wy 格式）：顶部大圆角压住黑色标题区，内含统计行、快捷入口、歌单、常听排行。
+    /// 白色主卡（wy 格式）：顶部大圆角压住黑色标题区，内含统计行与歌单。
     /// 统计行只用 Co 真实数据，不编造关注/粉丝/等级/小时数。
     private var myWhiteCard: some View {
         VStack(alignment: .leading, spacing: 22) {
             myStatsRowPlain
             myPlaylistsSection
-            profileVersionFooter
+            // 1.8.8：我的页不再展示版本信息（页脚已删），版本信息只在设置/关于页。
         }
         .padding(.horizontal, 16)
         .padding(.top, 20)
@@ -580,23 +576,12 @@ struct ProfileView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             } else if visiblePlaylists.isEmpty {
-                Text(hiddenPlaylistEntries.isEmpty ? "暂无歌单" : "歌单都已隐藏，可在设置 → 外观与界面 → 隐藏的歌单里恢复")
+                // 1.8.8：隐藏了就隐藏了，我的页不留任何去设置恢复的提示；
+                // 恢复入口只在设置 → 外观与界面 → 隐藏的歌单里。
+                Text("暂无歌单")
                     .font(BeansFont.appFont(13))
                     .foregroundStyle(Color.beansComment)
             } else {
-                if !hiddenPlaylistEntries.isEmpty {
-                    // 1.8.7：已隐藏提示可点进设置恢复（不再只是静态文字）。
-                    Button {
-                        BeansHaptics.tap()
-                        homeRenderingPaused = true
-                        showSettings = true
-                    } label: {
-                        Text("已隐藏 \(hiddenPlaylistEntries.count) 条歌单，点此去设置恢复 >")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansAmber)
-                    }
-                    .buttonStyle(.plain)
-                }
                 VStack(spacing: 8) {
                     ForEach(Array(visiblePlaylists.prefix(8))) { playlist in
                         // 1.8.6：点歌单进详情页（2.0.3 歌单页结构：封面/歌名/歌曲数/歌曲列表/播放全部），不再直接播放首歌。
@@ -651,20 +636,6 @@ struct ProfileView: View {
                 }
             }
         }
-    }
-
-    private var profileVersionFooter: some View {
-        VStack(spacing: 4) {
-            Text(appVersionText)
-                .font(BeansFont.appFont(11))
-                .foregroundStyle(Color.beansComment.opacity(0.7))
-            Text("基于 Beans 主分支")
-                .font(BeansFont.appFont(11))
-                .foregroundStyle(Color.beansComment.opacity(0.7))
-        }
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 2)
     }
 
     /// 常听排行：按本地播放次数排序（MD3 用户中心的听歌排行同款，数据已在本地，不调新接口）。
