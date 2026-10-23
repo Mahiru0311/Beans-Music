@@ -36,16 +36,25 @@ private struct CoProfileHeaderFrameKey: PreferenceKey {
     }
 }
 
-/// 我的页 ScrollView 顶部偏移：经典拉伸头做法，内容顶部放一个高度为 0 的
-/// GeometryReader，用命名坐标空间直接读 ScrollView 顶部偏移（静止时 0，
-/// 下拉回弹时为正、上滑时为负）。上一轮只依赖头部全局 frame 的 PreferenceKey
-/// 上报来算下拉量，真机上拉动时该值没跟手变化，壁纸缩放恒为 1，看起来就是
-/// “下拉没有任何动作”；本轮下拉量改由这个顶部偏移直接算，不再依赖头部 frame。
-private struct CoProfileScrollTopKey: PreferenceKey {
-    static let defaultValue = CGFloat.zero
+/// 我的页 ScrollView 顶部安全区处理（只在我的 tab 用，头像 sheet 不用）：
+/// ScrollView 忽略顶部安全区后，它的 frame 才到屏幕顶边，头部背景里的壁纸
+/// 才能画到状态栏区；同时加一个高度 = 顶部安全区的透明 safeAreaInset，
+/// 让滚动内容本身仍从安全区下方开始（头像位置、歌单格 scrollTo 锚点都不变），
+/// 避免标题被灵动岛/状态栏盖住。
 
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+private struct CoMyTabScrollTopInset: ViewModifier {
+    let enabled: Bool
+    let topSafeArea: CGFloat
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .ignoresSafeArea(edges: .top)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    Color.clear.frame(height: topSafeArea)
+                }
+        } else {
+            content
+        }
     }
 }
 
@@ -335,15 +344,9 @@ struct ProfileView: View {
     /// 白卡是否已滑到状态栏区域（卡顶全局 y <= 28pt，约状态栏文字中心高度）。
     @State private var isCardAtTop = false
 
-    /// 我的页头部在全局坐标里的 frame：单层壁纸层据此定位。
+    /// 我的页头部在全局坐标里的 frame：状态栏滑出判断据此定位。
     /// frame 为空（首帧未上报）时按静止状态处理。
     @State private var profileHeaderFrame = CGRect.zero
-    /// ScrollView 顶部偏移换算的下拉量（命名坐标空间读数，静止 0、下拉为正）。
-    /// 下拉放大倍率只由它算，不再由头部全局 frame 算。
-    @State private var profileScrollPull: CGFloat = 0
-    /// 顶部偏移读数的静止基准：首帧读数即静止值（坐标空间原点在不同形态下
-    /// 未必恰好是 0），先记下它，下拉量 = 读数 - 基准，正值才放大。
-    @State private var profileScrollBaseMinY: CGFloat? = nil
 
     /// 头部是否已基本滑出状态栏文字区：头部底边 <= 24pt 时，状态栏区背景已是白卡，
     /// 状态栏文字应切回深色；否则头部（黑/壁纸）仍盖住状态栏区，文字应为白色。
@@ -585,40 +588,24 @@ struct ProfileView: View {
             }
             // 单层壁纸返工：固定条只在无图 + 头部仍盖住状态栏区时起黑色兜底作用。
             // 有图时绝不再单独贴一张裁剪不同的图（上一轮两层错位的根因）；
-            // 顶部壁纸由下方 coProfileSingleWallpaper 单层承担。
+            // 顶部壁纸由头部本身 background 里的内拉伸头承担（第三次返工，体外层已删）。
             if !forceHomeBackdrop && profileHeaderWallpaper.image == nil && !profileHeaderScrolledAway {
                 coProfileTopBar
                     .frame(height: profileTopSafeArea)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(edges: .top)
             }
-            // 单层连续壁纸：从屏幕顶边一直盖到头部底边的一整张图，在 ZStack 里放在
-            // ScrollView 之前（即在其下层），据头部全局 frame 定位，不随 ScrollView 裁剪。
-            if !forceHomeBackdrop {
-                coProfileSingleWallpaper
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    // 状态栏白条返工的关键：ignoresSafeArea 必须贴在这里（body ZStack 的直接子视图），
-                    // 而不是只贴在头部 VStack 的 background 或 ScrollView 内部子视图上。
-                    // 之前单层壁纸缺这一层：它的顶边公式是全局坐标（0 = 屏幕顶边），
-                    // 但实际落点是安全区内的 ZStack 局部坐标（0 = 安全区底边），永远差一个安全区高度，白条就是这么来的。
-                    // 贴上后壁纸顶边对齐屏幕顶边，公式里的 top/height 直接就是全局值，不用再减安全区。
-                    // ScrollView 本身不动安全区：内容顶行仍从安全区下方开始（主题/齿轮不被灵动岛盖住），
-                    // 歌单格 scrollTo 锚点仍在安全区顶边，不会被状态栏盖住。
-                    .ignoresSafeArea(edges: .top)
-            }
+            // 第三次返工：体外单层壁纸已删，不再靠 ZStack 下层去跟随头部。
+            // 壁纸现在做进头部本身的 background 里（见 coNeteaseHeader），是
+            // ScrollView 内容的一部分，下拉时内容往下走、头部框直接变高、
+            // 里面的图直接放大，这才是标准拉伸头。前两轮体外层两次没动作：
+            // zoom 靠头部 frame 的 PreferenceKey 上报算下拉量、zoom2 靠 ScrollView
+            // 顶部 GeometryReader + 命名坐标空间读偏移，两轮都经过 @State 回写，
+            // 回弹过程中上报不跟手、缩放恒为 1；本轮下拉量由头部 background 里的
+            // GeometryReader 直接读全局顶边、inline 算，不经过任何 @State 回写。
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                    // 经典拉伸头读数：内容顶部一个高度为 0 的 GeometryReader，
-                    // 用命名坐标空间直接读 ScrollView 顶部偏移（静止 0、下拉为正）。
-                    // 它随滚动/回弹每帧变化，不经过头部全局 frame 的上报链。
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: CoProfileScrollTopKey.self,
-                            value: geo.frame(in: .named("coProfileScroll")).minY
-                        )
-                    }
-                    .frame(height: 0)
                     coNeteaseHeader
                     // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
                     // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
@@ -638,10 +625,7 @@ struct ProfileView: View {
                 // always 让竖直方向始终可回弹，下拉放大与松手复原不依赖内容长度。
                 .scrollBounceBehavior(.always, axes: .vertical)
                 .coordinateSpace(name: "coProfileScroll")
-                .onPreferenceChange(CoProfileScrollTopKey.self) { minY in
-                    if profileScrollBaseMinY == nil { profileScrollBaseMinY = minY }
-                    profileScrollPull = max(0, minY - (profileScrollBaseMinY ?? minY))
-                }
+                .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
                 .onChange(of: playlistsScrollRequest) { _ in
                     withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
                 }
@@ -969,51 +953,6 @@ struct ProfileView: View {
         Color.black
     }
 
-    /// 单层连续壁纸：从屏幕顶边一直盖到头部底边的一整张图。
-    /// 定位公式（profileHeaderFrame 为头部在全局坐标里的 frame，safe = 顶部安全区）：
-    ///   顶边 top = min(0, frame.minY - safe)：静止时 frame.minY = safe，top = 0；
-    ///     下拉时 frame.minY 变大，top 仍为 0、高度增大，整张图跟手拉伸；
-    ///     上滑时 frame.minY 变小，top = frame.minY - safe（负值，整体上移），图随头部滑走。
-    ///   高度 height = (frame.minY + frame.height) - top，底边恒等于头部底边。
-    /// 首帧 frame 未上报时用 safe + 320pt 估算，避免首屏闪白；上报后立即纠正。
-    /// 暗色罩罩整张连续壁纸（不只头部半截），头像/昵称/状态栏白字可读。
-    private var coProfileSingleWallpaper: some View {
-        let frame = profileHeaderFrame
-        let top: CGFloat = frame.isEmpty ? 0 : min(0, frame.minY - profileTopSafeArea)
-        // 下拉放大返工：下拉量不再由头部全局 frame 算（上一轮就是它没跟手，
-        // zoom 恒为 1，真机上“下拉没有任何动作”），改由 ScrollView 顶部偏移
-        // 直接算（profileScrollPull，命名坐标空间读数减静止基准，正值才放大）。
-        // 框高 = 静止框高 + 下拉量，图片倍率 = 1 + 下拉量 / 静止框高 * 1.25，
-        // 封顶 1.6：下拉 100pt 约 1.36 倍，肉眼明显；头像在头部 VStack 里随
-        // ScrollView 回弹自然往下走，壁纸在它后面跟着放大，不用单独给头像加位移。
-        // 上滑时 top 为负值、框仍贴住头部底边，壁纸随头部滑走，不改变上滑逻辑。
-        let pull: CGFloat = profileScrollPull
-        let baseHeight: CGFloat = frame.isEmpty ? profileTopSafeArea + 320 : profileTopSafeArea + frame.height
-        let zoom: CGFloat = min(1.6, 1 + pull / max(1, baseHeight) * 1.25)
-        let height: CGFloat = max(0, baseHeight + (top < 0 ? 0 : pull))
-        return ZStack(alignment: .top) {
-            if let image = profileHeaderWallpaper.image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    // 明确铺满壁纸框再缩放：不给 frame 时 ZStack 里图片按自身尺寸排布，
-                    // 缩放可能作用在错误尺寸上、放大后仍被裁回原样看不出来。
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 只跟手放大、不加任何连续动画引擎（省电硬要求）：倍率完全由下拉量算出，
-                    // 松手时 ScrollView 回弹、顶部偏移回落，zoom 随之回到 1，不常驻动画。
-                    .scaleEffect(zoom, anchor: .top)
-                Color.black.opacity(0.45)
-            } else {
-                Color.black
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: height, alignment: .top)
-        .clipped()
-        .offset(y: top)
-        .ignoresSafeArea(edges: .top)
-    }
-
     private var coNeteaseHeader: some View {
         VStack(spacing: 0) {
             // 定稿分拆：顶行（黑白切换 + 设置齿轮）只在头像界面放，我的 tab 里整行不出现；
@@ -1061,6 +1000,7 @@ struct ProfileView: View {
             .buttonStyle(.plain)
             .padding(.top, 12)
             // 数据行已不在黑头里：见下方白卡里的 coNeteaseStatsInCard（只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现）。
+            // 壁纸不在这里贴图：见下方 background 里的头部内拉伸头壁纸（我的 tab），头像 sheet 的静态壁纸仍在 background 里。
             // 我的页整体下调：头部底部 36pt → 48pt（只在我的 tab 里加，头像 sheet 仍 36pt），
             // 卡片 -24pt 重叠后仍有 24pt 头部可见（原来 12pt），白卡往下移、壁纸可见区反而更大——壁纸没调小，是调大了。
             .padding(.bottom, forceHomeBackdrop ? 36 : 48)
@@ -1072,9 +1012,16 @@ struct ProfileView: View {
         .padding(.top, forceHomeBackdrop ? 0 : 44)
         .frame(maxWidth: .infinity)
         .background {
-            // 常规 tab 页：只上报头部全局 frame，不再在这里贴第二张壁纸图。
-            // 壁纸由体外 coProfileSingleWallpaper 单层承担，否则两层裁剪不同必然错位。
-            // 主页头像弹出的 profile 不参与单层壁纸，仍保留它原有的头部背景（无固定条、无接缝问题）。
+            // 第三次返工：壁纸做进头部本身的 background 里，是 ScrollView 内容的一部分。
+            // 下拉量由这里的 GeometryReader 直接读头部全局顶边、inline 算：
+            // 静止时头部顶边 = 顶部安全区（ScrollView 加了透明 safeAreaInset），
+            // 下拉时头部顶边变大，pull = 顶边 - 安全区，正值才放大；上滑钳为 0。
+            // 壁纸框高 = 头部高 + 安全区 + pull，框顶偏移 = -(安全区 + pull)，
+            // 所以壁纸顶边恒在屏幕顶边、底边恒在头部底边；图片倍率 = 1 + pull / 头部高 * 1.5，
+            // 封顶 1.6（下拉 100pt 约 1.5 倍，肉眼明显），顶对齐缩放、超出框的部分裁掉。
+            // 松手时 ScrollView 回弹、顶边回落，倍率随之回到 1，无连续动画引擎、无高刷常驻。
+            // 无图时整张填黑，下拉同样跟手拉伸复原，不出白条。
+            // 头像 sheet（forceHomeBackdrop）不参与：仍保留它原有的静态头部背景。
             ZStack {
                 if forceHomeBackdrop {
                     if let image = profileHeaderWallpaper.image {
@@ -1084,6 +1031,28 @@ struct ProfileView: View {
                         Color.black.opacity(0.45)
                     } else {
                         Color.black
+                    }
+                } else {
+                    GeometryReader { geo in
+                        let headerTop = geo.frame(in: .global).minY
+                        let pull = max(0, headerTop - profileTopSafeArea)
+                        let headerHeight = geo.size.height
+                        let zoom = min(1.6, 1 + pull / max(1, headerHeight) * 1.5)
+                        ZStack(alignment: .top) {
+                            if let image = profileHeaderWallpaper.image {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .scaleEffect(zoom, anchor: .top)
+                                Color.black.opacity(0.45)
+                            } else {
+                                Color.black
+                            }
+                        }
+                        .frame(width: geo.size.width, height: headerHeight + profileTopSafeArea + pull)
+                        .offset(y: -(profileTopSafeArea + pull))
+                        .clipped()
                     }
                 }
                 GeometryReader { geo in
