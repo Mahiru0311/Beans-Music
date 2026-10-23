@@ -197,7 +197,7 @@ struct ProfileView: View {
     /// 登录状态提示（酷狗专版：只展示酷狗登录状态）
     private var accountStatusLine: String {
         if kugouAuth.isLoggedIn {
-            return kugouAuth.nickname.isEmpty ? (isEnglish ? "Kugou Music Logged In" : "酷狗已登录") : kugouAuth.nickname
+            return isEnglish ? "Kugou Music Logged In" : "酷狗已登录"
         }
         return isEnglish ? "Sign in to sync \(displayPlatformSummary) playlists" : "登录后可同步 \(displayPlatformSummary) 歌单"
     }
@@ -389,7 +389,8 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 190)
+                // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；190pt 余量不足，改为 300pt 保证常用最后一行能完整滑出。
+                .padding(.bottom, 300)
                 .beansAdaptiveContentWidth()
             }
             .beansScrollIndicatorsHidden()
@@ -576,12 +577,12 @@ struct ProfileView: View {
 
     private var coStatsCard: some View {
         HStack(spacing: 0) {
-            coStatButton(title: "我喜欢", value: "\\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
-            coStatButton(title: "歌单", value: "\\(myPlaylists.count)个") {
+            coStatButton(title: "我喜欢", value: "\(favorites.kugouFavoriteSongs.count)首") { showFavorites = true }
+            coStatButton(title: "歌单", value: "\(myPlaylists.count)个") {
                 if !kugouAuth.isLoggedIn { showAccountHub = true }
             }
-            coStatButton(title: "历史", value: "\\(player.history.count)首") { showHistory = true }
-            coStatButton(title: "常听", value: "\\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
+            coStatButton(title: "历史", value: "\(player.history.count)首") { showHistory = true }
+            coStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))次") { showTopPlayed = true }
         }
         .padding(12)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -595,7 +596,7 @@ struct ProfileView: View {
                     .foregroundStyle(Color.beansLabel)
                 Spacer()
                 if kugouAuth.isLoggedIn {
-                    Text("\\(myPlaylists.count)个")
+                    Text("\(myPlaylists.count)个")
                         .font(.system(size: 13))
                         .foregroundStyle(Color.beansSecondary)
                 }
@@ -704,7 +705,7 @@ struct ProfileView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Color.beansLabel)
             VStack(spacing: 0) {
-                coQuickRow(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: "最近播放 \\(player.history.count) 首") { showHistory = true }
+                coQuickRow(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: "最近播放 \(player.history.count) 首") { showHistory = true }
                 Divider().padding(.leading, 56)
                 coQuickRow(icon: "person.crop.circle", title: "账号与登录", subtitle: kugouAuth.isLoggedIn ? accountStatusLine : "登录酷狗音乐") { showAccountHub = true }
                 Divider().padding(.leading, 56)
@@ -734,7 +735,7 @@ struct ProfileView: View {
                 cache.savePlaylists(list, source: .kugou, accountID: kugouAuth.userId)
             }
         } catch {
-            BeansLogger.shared.log("酷狗歌单同步失败：\\(error.localizedDescription)", level: .error)
+            BeansLogger.shared.log("酷狗歌单同步失败：\(error.localizedDescription)", level: .error)
             if myPlaylists.isEmpty { myPlaylists = [] }
         }
         myPlaylistsLoading = false
