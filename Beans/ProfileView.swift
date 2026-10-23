@@ -604,6 +604,10 @@ struct ProfileView: View {
                 .beansAdaptiveContentWidth()
                 }
                 .beansScrollIndicatorsHidden()
+                // 内容不满屏时下拉也要能触发：默认回弹只在内容满屏时生效，
+                // 我的页只有 1 条歌单时内容可能不满一屏，下拉根本拉不动。
+                // always 让竖直方向始终可回弹，下拉放大与松手复原不依赖内容长度。
+                .scrollBounceBehavior(.always, axes: .vertical)
                 .onChange(of: playlistsScrollRequest) { _ in
                     withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
                 }
@@ -945,11 +949,25 @@ struct ProfileView: View {
         let height: CGFloat = frame.isEmpty
             ? profileTopSafeArea + 320
             : max(0, (frame.minY + frame.height) - top)
-        return ZStack {
+        // 下拉背景放大：此前只把框拉高，图片本身并不放大——竖图下 scaledToFill 的
+        // 缩放由宽度比主导，常规下拉量（< 约 185pt）内倍率根本不变，只是少裁了一点图，
+        // 看起来是“露图”不是“放大”。本轮显式按下拉量算倍率，图片跟手放大：
+        //   pull = 下拉量 = 头部全局顶边 - 顶部安全区（正值才放大，上滑钳为 0）
+        //   base = 静止时壁纸框高 = 顶部安全区 + 头部高度
+        //   zoom = 1 + pull / base（上限 1.6），锚点取顶部，框本身也同步变高，
+        //   放大后超出框的部分由下方 .clipped() 裁掉，顶边不动、无接缝、无重复人脸。
+        // 无图时是纯黑，没有可放大的内容，框拉高即是拉伸，松手复原逻辑相同。
+        let pull: CGFloat = frame.isEmpty ? 0 : max(0, frame.minY - profileTopSafeArea)
+        let baseHeight: CGFloat = frame.isEmpty ? profileTopSafeArea + 320 : profileTopSafeArea + frame.height
+        let zoom: CGFloat = min(1.6, 1 + pull / max(1, baseHeight))
+        return ZStack(alignment: .top) {
             if let image = profileHeaderWallpaper.image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
+                    // 只跟手放大、不加任何连续动画引擎（省电硬要求）：倍率完全由下拉量算出，
+                    // 松手时 ScrollView 回弹、frame.minY 回落，zoom 随之回到 1，不常驻动画。
+                    .scaleEffect(zoom, anchor: .top)
                 Color.black.opacity(0.45)
             } else {
                 Color.black
