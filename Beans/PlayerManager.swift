@@ -1074,7 +1074,7 @@ final class PlayerManager: NSObject, ObservableObject {
             MPNowPlayingInfoPropertyElapsedPlaybackTime: progress,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? rate : 0.0,
         ]
-        if let artworkURL = song.coverURL {
+        if UserDefaults.standard.object(forKey: "beans.lockScreenCover") as? Bool ?? true, let artworkURL = song.coverURL {
             let artworkKey = song.identityKey + "|" + artworkURL.absoluteString
             if let cached = Self.nowPlayingArtworkCache.object(forKey: artworkURL as NSURL) {
                 info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: cached.size) { _ in cached }

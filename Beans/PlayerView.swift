@@ -54,6 +54,8 @@ struct PlayerView: View {
     /// 播放器氛围：背景流动开关 / 速度 / 呼吸光晕强度
     @AppStorage("beans.playerBreath") private var playerBreath = 0.6
     @AppStorage("beans.playerDustMode") private var playerDustModeRaw = BeansPlayerDustMode.off.rawValue
+    /// 沉浸详情界面（设置页开关，默认开；关后详情页不用封面毛玻璃背景，只用静态渐变，省电）。
+    @AppStorage("beans.immersiveDetail") private var immersiveDetail = true
     @AppStorage("beans.playerDustDensity") private var playerDustDensity = 1.0
     @AppStorage("beans.playerDustSize") private var playerDustSize = 1.0
     /// 播放控件颜色是否跟随封面主色；关闭后使用全局主题色
@@ -679,7 +681,7 @@ struct PlayerView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-            } else {
+            } else if immersiveDetail {
                 CoverBlurBackground(url: song?.coverURL, scheme: colorScheme)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
