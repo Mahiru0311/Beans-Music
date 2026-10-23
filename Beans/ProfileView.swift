@@ -39,6 +39,8 @@ struct ProfileView: View {
     @State private var showStatusEditor = false
     @State private var showHideConfirm = false
     @State private var hideConfirmPlaylist: Playlist?
+    /// 1.9.1：统计行点按目的地（我喜欢/歌单/历史/常听），用 sheet 打开真实列表页。
+    @State private var statDestination: CoProfileStatDestination?
     @State private var myStatusText = ""
     @State private var statusDraft = ""
     @State private var vipIconImage: UIImage?
@@ -108,11 +110,21 @@ struct ProfileView: View {
                 Color.clear.frame(width: 44, height: 44)
             }
             Spacer()
-            GlassIconButton(systemName: "gearshape.fill", forceLiquid: true) {
+            // 1.9.1：设置齿轮改精致——不再是白圆黑粗填充齿轮（44pt 大圆 + 填充齿轮显生硬）：
+            // 改为 36pt 小液态玻璃圆钮 + 描边细齿轮（gearshape 非 fill、常规字重、浅灰色）+ 柔和描边。
+            Button {
                 BeansHaptics.tap()
                 homeRenderingPaused = true
                 showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(Color.beansComment)
+                    .frame(width: 36, height: 36)
+                    .background { BeansGlass(shape: Circle()) }
+                    .overlay { Circle().stroke(Color.beansComment.opacity(0.15), lineWidth: 0.5) }
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -154,6 +166,10 @@ struct ProfileView: View {
             // 1.9.0：行级兜底——徽标按钮本身再限高 26 并裁剪到帧内，即使徽标视图
             // 内部再溢出，也绝不能画到昵称上方；昵称 layoutPriority(1) 不变，
             // 正常长度的“明天见”不截断、不被盖，超长昵称先截断昵称。
+            // 1.9.1 间距根因：HStack 间距常量本来就是 8pt，截图量出约 42pt 空隙
+            // 的差额来自远程图画布左边的透明区——scaledToFit 把透明区也算进宽度。
+            // 修复在解码器（CoAnimatedImageDecoder.trimmedCGImages，裁掉全部帧共有的
+            // 透明边），本行不再用 maxWidth:120 的按钮框去撑宽，按钮只 hug 内容、限高 26。
             HStack(spacing: 8) {
                 Text(myDisplayNickname)
                     .font(BeansFont.appFont(20, .bold))
@@ -169,7 +185,7 @@ struct ProfileView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("切换 VIP 图标")
                 .layoutPriority(0)
-                .frame(maxWidth: 120, maxHeight: 26)
+                .frame(height: 26)
                 .clipped()
             }
             .frame(maxWidth: 320)
@@ -448,15 +464,26 @@ struct ProfileView: View {
     }
 
     /// 统计行（白卡内无底色版）：我喜欢 / 歌单 / 历史 / 常听，全部取本地真实数据。
+    /// 1.9.1：此前是纯文字、点按无效果，现每个格子都是按钮，点按进真实列表：
+    /// 我喜欢→本地喜欢歌曲列表，歌单→我的歌单列表（全部可见歌单，点进详情页），
+    /// 历史→现成 HistoryView（最近播放），常听→按播放次数排序的常听排行列表。
     private var myStatsRowPlain: some View {
         HStack(spacing: 0) {
-            myStatCell(value: "\(FavoritesStore.shared.kugouFavoriteSongs.count)", label: "我喜欢")
+            Button { BeansHaptics.tap(); statDestination = .liked } label: {
+                myStatCell(value: "\(FavoritesStore.shared.kugouFavoriteSongs.count)", label: "我喜欢")
+            }.buttonStyle(.plain)
             Divider().frame(height: 28)
-            myStatCell(value: "\(visiblePlaylists.count)", label: "歌单")
+            Button { BeansHaptics.tap(); statDestination = .playlists } label: {
+                myStatCell(value: "\(visiblePlaylists.count)", label: "歌单")
+            }.buttonStyle(.plain)
             Divider().frame(height: 28)
-            myStatCell(value: "\(player.history.count)", label: "历史")
+            Button { BeansHaptics.tap(); statDestination = .history } label: {
+                myStatCell(value: "\(player.history.count)", label: "历史")
+            }.buttonStyle(.plain)
             Divider().frame(height: 28)
-            myStatCell(value: "\(player.topPlayed.count)", label: "常听")
+            Button { BeansHaptics.tap(); statDestination = .topPlayed } label: {
+                myStatCell(value: "\(player.topPlayed.count)", label: "常听")
+            }.buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }
@@ -581,6 +608,29 @@ struct ProfileView: View {
             )
                 .onDisappear { SectionOrderStore.save(SectionOrderStore.profileKey, profileOrder) }
         }
+        // 1.9.1：统计行点按的真实列表页（sheet，环境对象由 sheet 继承并显式补齐）。
+        .sheet(item: $statDestination) { dest in
+            switch dest {
+            case .liked:
+                CoStatSongListView(title: "我喜欢", songs: FavoritesStore.shared.kugouFavoriteSongs, emptyText: "暂无喜欢的歌曲", showRank: false, counts: nil)
+                    .environmentObject(player)
+                    .environmentObject(theme)
+            case .playlists:
+                CoMyPlaylistListView(playlists: visiblePlaylists)
+                    .environmentObject(player)
+                    .environmentObject(auth)
+                    .environmentObject(theme)
+            case .history:
+                HistoryView()
+                    .environmentObject(player)
+                    .environmentObject(auth)
+                    .environmentObject(theme)
+            case .topPlayed:
+                CoStatSongListView(title: "常听", songs: player.topPlayed.map { $0.song }, emptyText: "暂无常听歌曲", showRank: true, counts: player.topPlayed.map { $0.count })
+                    .environmentObject(player)
+                    .environmentObject(theme)
+            }
+        }
         }
     }
 
@@ -676,17 +726,24 @@ struct ProfileView: View {
                     .font(BeansFont.appFont(13))
                     .foregroundStyle(Color.beansComment)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     ForEach(Array(visiblePlaylists.prefix(8))) { playlist in
                         // 1.8.6：点歌单进详情页（2.0.3 歌单页结构：封面/歌名/歌曲数/歌曲列表/播放全部），不再直接播放首歌。
+                        // 1.9.1：行上不再留任何可见按钮——“···”与“>”箭头两个都删；
+                        // 隐藏改回长按：长按整行弹出系统确认弹窗（见 showHideConfirm），
+                        // 只藏“我的”页显示，不删歌单、不影响酷狗账号内歌单。
+                        // 圆润化：行圆角 14→22、封面 44pt/圆角10→52pt/圆角16、内边距 12×8→16×12、
+                        // 加柔和描边与轻阴影，整行是圆润卡片而非方角条。
+                        // 注意：歌单详情页头部“···”菜单（含隐藏）保留，本条只改我的页歌单行，
+                        // 详情页仍可藏，不会因行上无按钮而藏不了。
                         NavigationLink {
                             PlaylistView(playlist: playlist)
                                 .environmentObject(player)
                                 .environmentObject(auth)
                                 .environmentObject(theme)
                         } label: {
-                            HStack(spacing: 10) {
-                                CoverImage(url: playlist.coverURL, size: 44, cornerRadius: 10)
+                            HStack(spacing: 12) {
+                                CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 16)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(playlist.name)
                                         .font(BeansFont.appFont(14, .semibold))
@@ -699,32 +756,19 @@ struct ProfileView: View {
                                         .lineLimit(1)
                                 }
                                 Spacer()
-                                // 1.8.7：看得见的隐藏入口（行内 ··· 钮，点开系统弹窗确认；
-                                // 长按菜单仍保留）。内层按钮优先于 NavigationLink 响应点按。
-                                Button {
-                                    BeansHaptics.tap()
-                                    hideConfirmPlaylist = playlist
-                                    showHideConfirm = true
-                                } label: {
-                                    Image(systemName: "ellipsis")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(Color.beansComment)
-                                        .frame(width: 32, height: 32)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.beansComment.opacity(0.7))
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+                            .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.beansComment.opacity(0.08), lineWidth: 0.5) }
+                            .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
                         }
                         .buttonStyle(.plain)
-                        // 长按隐藏仍保留：只藏“我的”页显示，不删歌单、不影响酷狗账号内歌单。
                         .contextMenu {
-                            Button("隐藏此歌单", role: .destructive) { hidePlaylist(playlist) }
+                            Button("隐藏此歌单", role: .destructive) {
+                                hideConfirmPlaylist = playlist
+                                showHideConfirm = true
+                            }
                         }
                     }
                 }
@@ -734,6 +778,124 @@ struct ProfileView: View {
 
     /// 常听排行：按本地播放次数排序（MD3 用户中心的听歌排行同款，数据已在本地，不调新接口）。
 
+}
+
+// MARK: - 1.9.1 我的页统计行点按目的地
+
+enum CoProfileStatDestination: String, Identifiable {
+    case liked, playlists, history, topPlayed
+    var id: String { rawValue }
+}
+
+/// 统计行用的通用歌曲列表页（我喜欢 / 常听）：歌名/歌手/时长、点歌播放，
+/// 空时明写“暂无”不编数据；常听时左侧加排行序号、右侧加真实播放次数。
+struct CoStatSongListView: View {
+    @EnvironmentObject private var player: PlayerManager
+    @EnvironmentObject private var theme: ThemeStore
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let songs: [Song]
+    let emptyText: String
+    let showRank: Bool
+    let counts: [Int]?
+    var body: some View {
+        BeansNavigationStack {
+            ZStack {
+                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
+                if songs.isEmpty {
+                    EmptyStateView(icon: "music.note", text: emptyText)
+                } else {
+                    List {
+                        ForEach(Array(songs.enumerated()), id: \.element.identityKey) { index, song in
+                            HStack(spacing: 12) {
+                                if showRank {
+                                    Text("\(index + 1)")
+                                        .font(BeansFont.appFont(14, .bold))
+                                        .foregroundStyle(Color.beansComment)
+                                        .frame(width: 22, alignment: .center)
+                                }
+                                SongCell(song: song) {
+                                    player.play(songs: songs, startAt: index)
+                                }
+                                if let counts, index < counts.count {
+                                    Text("\(counts[index]) 次")
+                                        .font(BeansFont.appFont(11))
+                                        .foregroundStyle(Color.beansComment)
+                                }
+                            }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
+                    }
+                    .beansScrollContentBackgroundHidden()
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// 统计行“歌单”用的我的歌单列表页：全部可见歌单（不只我的页截断的 8 条），
+/// 点进歌单详情页；隐藏过的歌单不在此列（与我的页一致，恢复仍在设置里）。
+struct CoMyPlaylistListView: View {
+    @EnvironmentObject private var player: PlayerManager
+    @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var theme: ThemeStore
+    @Environment(\.dismiss) private var dismiss
+    let playlists: [Playlist]
+    var body: some View {
+        BeansNavigationStack {
+            ZStack {
+                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
+                if playlists.isEmpty {
+                    EmptyStateView(icon: "music.note.list", text: "暂无歌单")
+                } else {
+                    List {
+                        ForEach(playlists) { playlist in
+                            NavigationLink {
+                                PlaylistView(playlist: playlist)
+                                    .environmentObject(player)
+                                    .environmentObject(auth)
+                                    .environmentObject(theme)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 16)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(playlist.name)
+                                            .font(BeansFont.appFont(14, .semibold))
+                                            .foregroundStyle(Color.beansLabel)
+                                            .lineLimit(1)
+                                        Text(playlist.trackCount > 0 ? "\(playlist.trackCount) 首" : "歌单")
+                                            .font(BeansFont.appFont(12))
+                                            .foregroundStyle(Color.beansComment)
+                                    }
+                                    Spacer()
+                                }
+                            }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
+                    }
+                    .beansScrollContentBackgroundHidden()
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("我的歌单")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - 统一账号登录面板（网易云 + QQ 音乐整合）

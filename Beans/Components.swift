@@ -1,5 +1,47 @@
 import SwiftUI
+import UIKit
 import CoreImage.CIFilterBuiltins
+
+// MARK: - 1.9.1 深色详情页的系统外观强制
+// 根因（每日推荐/歌单详情页状态栏黑条 + 歌曲名黑字同源）：
+// 详情页的 .preferredColorScheme(.dark) 只改 SwiftUI 环境配色，改不了 UIKit
+// 的 trait——根 TabView 仍是浅色主题，窗口 trait 仍是浅色，于是：①状态栏仍是
+// 黑字（darkContent），压在深色底上就是一条黑底黑字条；②UIColor 动态色
+// beansLabel/beansComment 按 trait 取浅色值，歌曲名/歌手在深色底上仍是黑字。
+// 解法：详情页可见期间把 key window 的 overrideUserInterfaceStyle 临时置 dark，
+// 状态栏变浅色、动态色变白/灰；退出时按计数恢复（多层深色页嵌套时不提前恢复）。
+enum CoDarkPageAppearance {
+    private static var savedStyle: UIUserInterfaceStyle?
+    private static var activeCount = 0
+    private static func keyWindow() -> UIWindow? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+    }
+    static func enable() {
+        guard let window = keyWindow() else { return }
+        if activeCount == 0 { savedStyle = window.overrideUserInterfaceStyle }
+        activeCount += 1
+        window.overrideUserInterfaceStyle = .dark
+    }
+    static func restore() {
+        guard let window = keyWindow() else { return }
+        activeCount = max(0, activeCount - 1)
+        if activeCount == 0 {
+            window.overrideUserInterfaceStyle = savedStyle ?? .unspecified
+            savedStyle = nil
+        }
+    }
+}
+
+extension View {
+    /// 深色详情页专用：可见期间强制窗口为深色外观（状态栏浅色 + 动态文字色变亮）。
+    func coForceDarkPage() -> some View {
+        self.onAppear { CoDarkPageAppearance.enable() }
+            .onDisappear { CoDarkPageAppearance.restore() }
+    }
+}
 
 // MARK: - 工具
 
@@ -718,16 +760,31 @@ enum CoAnimatedImageDecoder {
     static func animatedImage(from data: Data) -> UIImage? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return UIImage(data: data) }
         let count = CGImageSourceGetCount(src)
-        guard count > 1 else { return UIImage(data: data) }
-        var frames: [UIImage] = []
+        guard count > 1 else {
+            // 单帧也裁透明边：否则长条款图左边的透明画布会算进宽度，视觉上就是昵称与图标间多出几十 pt 空隙。
+            if let cg = CGImageSourceCreateImageAtIndex(src, 0, nil),
+               let trimmed = trimmedCGImages([cg]).first {
+                return UIImage(cgImage: trimmed, scale: UIScreen.main.scale, orientation: .up)
+            }
+            return UIImage(data: data)
+        }
+        var cgs: [CGImage] = []
         var durations: [TimeInterval] = []
         for i in 0..<min(count, 150) {
             guard let cg = CGImageSourceCreateImageAtIndex(src, i, nil) else { continue }
+            cgs.append(cg)
+            durations.append(frameDuration(src: src, index: i))
+        }
+        guard cgs.count > 1 else { return UIImage(data: data) }
+        // 1.9.1：先按全部帧的并集裁掉每帧都透明的画布边（见 trimmedCGImages），
+        // 再换算点尺寸；并集裁剪保证动图位移类动画不抖动。
+        let trimmed = trimmedCGImages(cgs)
+        var frames: [UIImage] = []
+        for cg in trimmed {
             // 1.9.0：UIImage(cgImage:) 默认 scale=1 会把像素尺寸当成点尺寸
             // （如 194×106px 报成 194×106pt），宽高比计算与内在尺寸全错；
             // 按屏幕 scale 换算回点尺寸，image.size 才与 26pt 帧口径一致。
             frames.append(UIImage(cgImage: cg, scale: UIScreen.main.scale, orientation: .up))
-            durations.append(frameDuration(src: src, index: i))
         }
         guard frames.count > 1 else { return UIImage(data: data) }
         // UIImage.animatedImage 只有总时长、没有逐帧时长：按最短帧为单位重复展开，近似还原逐帧时长。
@@ -740,6 +797,60 @@ enum CoAnimatedImageDecoder {
         }
         let total = durations.reduce(0, +)
         return UIImage.animatedImage(with: expanded, duration: total) ?? UIImage(data: data)
+    }
+
+    /// 裁掉全部帧共有的透明画布边（1.9.1 图标间距根因的修复）：
+    /// 截图量测昵称与 VIP 图标间约 42pt 空隙，HStack 间距常量只有 8pt，差额来自
+    /// 远程图本身画布左边的透明区——scaledToFit 会把透明区也算进宽度，视觉上
+    /// 图标仿佛离昵称很远。本函数扫描 alpha（>16 视为有内容），取全部帧的并集
+    /// 矩形裁剪，既去掉共有透明边，又不破坏帧间位移类动画的对齐。
+    static func trimmedCGImages(_ images: [CGImage]) -> [CGImage] {
+        var union: CGRect?
+        for cg in images {
+            if let box = contentBox(of: cg) {
+                union = union == nil ? box : union!.union(box)
+            }
+        }
+        guard let u = union, u.width > 0, u.height > 0 else { return images }
+        // 并集已等于整幅画布时无需裁剪（不透明图走此路）。
+        if let first = images.first, u.width >= CGFloat(first.width), u.height >= CGFloat(first.height) {
+            return images
+        }
+        return images.map { cg in
+            let bounds = CGRect(x: 0, y: 0, width: cg.width, height: cg.height)
+            let crop = u.intersection(bounds)
+            guard crop.width > 0, crop.height > 0 else { return cg }
+            return cg.cropping(to: crop) ?? cg
+        }
+    }
+
+    private static func contentBox(of cg: CGImage) -> CGRect? {
+        let w = cg.width, h = cg.height
+        guard w > 0, h > 0 else { return nil }
+        guard let ctx = CGContext(
+            data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else { return nil }
+        // 翻转上下文，使位图行序与 CGImage 裁剪坐标（左上原点）一致。
+        ctx.translateBy(x: 0, y: CGFloat(h))
+        ctx.scaleBy(x: 1, y: -1)
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let data = ctx.data else { return nil }
+        let ptr = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        var minX = w, minY = h, maxX = -1, maxY = -1
+        for y in 0..<h {
+            for x in 0..<w {
+                if ptr[(y * w + x) * 4 + 3] > 16 {
+                    if x < minX { minX = x }
+                    if x > maxX { maxX = x }
+                    if y < minY { minY = y }
+                    if y > maxY { maxY = y }
+                }
+            }
+        }
+        guard maxX >= 0, maxY >= 0 else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
     private static func frameDuration(src: CGImageSource, index: Int) -> TimeInterval {

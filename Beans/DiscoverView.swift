@@ -1453,27 +1453,33 @@ struct DailySongsDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let songs: [Song]
-    @State private var searchText = ""
 
     private var pageBackground: Color { Color(red: 0.08, green: 0.08, blue: 0.09) }
 
     var body: some View {
-        ZStack {
-            pageBackground.ignoresSafeArea()
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    immersiveHeader
-                    songList
+        // 1.9.1 状态栏沉浸：外层 GeometryReader 取顶安全区，ScrollView 忽略顶安全区，
+        // 封面高度 = 440 + 顶安全区，封面真正从屏幕顶边（状态栏后）开始画；
+        // 返回钮顶距 = 顶安全区 + 6，落在状态栏下方；coForceDarkPage 让状态栏变浅色。
+        GeometryReader { outer in
+            ZStack {
+                pageBackground.ignoresSafeArea()
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        immersiveHeader(topInset: outer.safeAreaInsets.top)
+                        songList
+                    }
+                    .padding(.bottom, 170)
                 }
-                .padding(.bottom, 118)
+                .beansScrollIndicatorsHidden()
+                .ignoresSafeArea(edges: .top)
             }
-            .beansScrollIndicatorsHidden()
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
+        .coForceDarkPage()
     }
 
-    private var immersiveHeader: some View {
+    private func immersiveHeader(topInset: CGFloat) -> some View {
         VStack(spacing: 0) {
             GeometryReader { geo in
                 ZStack(alignment: .topLeading) {
@@ -1484,13 +1490,13 @@ struct DailySongsDetailView: View {
                             Color(red: 0.15, green: 0.15, blue: 0.16)
                         }
                     }
-                    .frame(width: geo.size.width, height: 440)
+                    .frame(width: geo.size.width, height: 440 + topInset)
                     .clipped()
                     LinearGradient(
                         colors: [.black.opacity(0.5), .black.opacity(0.18), .clear, pageBackground.opacity(0.0), pageBackground],
                         startPoint: .top, endPoint: .bottom
                     )
-                    .frame(width: geo.size.width, height: 440)
+                    .frame(width: geo.size.width, height: 440 + topInset)
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
@@ -1501,10 +1507,10 @@ struct DailySongsDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.leading, 16)
-                    .padding(.top, geo.safeAreaInsets.top + 6)
+                    .padding(.top, topInset + 6)
                 }
             }
-            .frame(height: 440)
+            .frame(height: 440 + topInset)
             VStack(spacing: 8) {
                 Text("每日推荐")
                     .font(BeansFont.appFont(28, .bold))
@@ -1516,9 +1522,9 @@ struct DailySongsDetailView: View {
                     .foregroundStyle(.white.opacity(0.6))
                 HStack(spacing: 32) {
                     Button {
-                        guard !filteredSongs.isEmpty else { return }
+                        guard !songs.isEmpty else { return }
                         BeansHaptics.tap()
-                        player.play(songs: filteredSongs, startAt: 0)
+                        player.play(songs: songs, startAt: 0)
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
@@ -1531,9 +1537,9 @@ struct DailySongsDetailView: View {
                     }
                     .buttonStyle(.plain)
                     Button {
-                        guard !filteredSongs.isEmpty else { return }
+                        guard !songs.isEmpty else { return }
                         BeansHaptics.tap()
-                        player.play(songs: filteredSongs, startAt: Int.random(in: 0..<filteredSongs.count))
+                        player.play(songs: songs, startAt: Int.random(in: 0..<songs.count))
                     } label: {
                         Image(systemName: "shuffle")
                             .font(.system(size: 17, weight: .semibold))
@@ -1547,74 +1553,43 @@ struct DailySongsDetailView: View {
                 .padding(.top, 14)
             }
             .padding(.top, 4)
-            Divider().overlay(Color.white.opacity(0.15)).padding(.vertical, 20)
-            HStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.6))
-                    TextField("搜索每日推荐", text: $searchText)
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(.white)
-                        .autocorrectionDisabled()
-                    if !searchText.isEmpty {
-                        Button { searchText = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
-                .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 0.5) }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            Divider().overlay(Color.white.opacity(0.15)).padding(.vertical, 12)
         }
     }
 
     private var songList: some View {
         LazyVStack(spacing: 0) {
-            if filteredSongs.isEmpty {
-                Text(songs.isEmpty ? "今日推荐加载中，下拉刷新试试" : "没有匹配的歌曲")
+            if songs.isEmpty {
+                Text("今日推荐加载中，下拉刷新试试")
                     .font(BeansFont.appFont(14))
                     .foregroundStyle(.white.opacity(0.6))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 24)
             }
-            ForEach(Array(filteredSongs.enumerated()), id: \.element.identityKey) { index, song in
+            ForEach(Array(songs.enumerated()), id: \.element.identityKey) { index, song in
+                // 1.9.1：darkPage 白字/浅灰字——歌名纯白、歌手与时长浅灰，VIP 红标不变；
+                // 搜索已删（30 首没必要搜），列表直接全显，不留搜索入口与占位残留。
                 SongCell(
                     song: song,
                     showCover: true,
                     coverSize: 50,
                     fixedRowHeight: 72,
                     suppressNativeCleanRowGlass: true,
-                    playbackContext: filteredSongs,
+                    darkPage: true,
+                    playbackContext: songs,
                     playbackIndex: index
                 ) {
                     BeansHaptics.tap()
-                    player.play(songs: filteredSongs, startAt: index)
+                    player.play(songs: songs, startAt: index)
                 }
                 .padding(.horizontal, 16)
-                if index < filteredSongs.count - 1 {
+                if index < songs.count - 1 {
                     Divider().overlay(Color.white.opacity(0.12)).padding(.leading, 82)
                 }
             }
         }
     }
 
-    private var filteredSongs: [Song] {
-        let kw = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !kw.isEmpty else { return songs }
-        return songs.filter { song in
-            song.name.lowercased().contains(kw)
-                || song.artists.lowercased().contains(kw)
-                || song.album.lowercased().contains(kw)
-        }
-    }
 }
 // MARK: - 排行榜详情
 

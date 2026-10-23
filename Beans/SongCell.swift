@@ -17,6 +17,10 @@ struct SongCell: View {
     var glassRow = false
     /// 需要整体玻璃容器时，单行保持纯净背景
     var suppressNativeCleanRowGlass = false
+    /// 深色详情页专用：1.9.1 修复——SongCell 的 beansLabel/beansComment 是 UIColor
+    /// 动态色，只跟 UIKit trait（根主题浅色）走，在强制深色的详情页里仍是黑字；
+    /// 本参数为真时歌名/歌手/时长直接用白/浅灰，不依赖 trait，保证深色底可读。
+    var darkPage = false
     var playbackContext: [Song] = []
     var playbackIndex: Int?
     var onTap: (() -> Void)?
@@ -60,7 +64,7 @@ struct SongCell: View {
                 HStack(spacing: 6) {
                     Text(displayName)
                         .font(BeansFont.appFont(15, isCurrent ? .semibold : .regular))
-                        .foregroundStyle(isCurrent ? Color.beansAmber : Color.beansLabel)
+                        .foregroundStyle(isCurrent ? Color.beansAmber : (darkPage ? .white : Color.beansLabel))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -77,7 +81,7 @@ struct SongCell: View {
                 if !displayArtists.isEmpty {
                     Text(displayArtists)
                         .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(darkPage ? .white.opacity(0.6) : Color.beansComment)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -90,7 +94,7 @@ struct SongCell: View {
             } else {
                 Text(song.formattedDuration)
                     .font(BeansFont.appFont(12, .regular, .monospaced))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(darkPage ? .white.opacity(0.6) : Color.beansComment)
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)

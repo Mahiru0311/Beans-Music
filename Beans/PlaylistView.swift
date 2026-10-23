@@ -42,38 +42,45 @@ struct PlaylistView: View {
     }
 
     var body: some View {
-        ZStack {
-            pageBackground.ignoresSafeArea()
-            Group {
-                if loading {
-                    LoadingStateView()
-                } else if let errorMessage {
-                    ErrorStateView(message: errorMessage) {
-                        Task { await load(force: true) }
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            immersiveHeader
-                            songList
+        // 1.9.1：与每日推荐页同病同治——外层取顶安全区，ScrollView 忽略顶安全区，
+        // 封面 440 + 顶安全区从屏幕顶边开始画，返回钮在状态栏下方；窗口强制深色让状态栏变浅色。
+        GeometryReader { outer in
+            ZStack {
+                pageBackground.ignoresSafeArea()
+                Group {
+                    if loading {
+                        LoadingStateView()
+                    } else if let errorMessage {
+                        ErrorStateView(message: errorMessage) {
+                            Task { await load(force: true) }
                         }
-                        .padding(.bottom, 118)
+                    } else {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                immersiveHeader(topInset: outer.safeAreaInsets.top)
+                                songList
+                            }
+                            .padding(.bottom, 118)
+                        }
+                        .beansScrollIndicatorsHidden()
+                        .ignoresSafeArea(edges: .top)
                     }
-                    .beansScrollIndicatorsHidden()
                 }
             }
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
+        .coForceDarkPage()
         .task { await load() }
         .onAppear { isStarred = CoStarredPlaylists.isStarred(id: playlist.id) }
         .sheet(isPresented: $showShare) { ShareSheet(items: [shareText]) }
     }
 
-    private var immersiveHeader: some View {
+    private func immersiveHeader(topInset: CGFloat) -> some View {
         VStack(spacing: 0) {
             // 1.8.9 更沉浸：封面由 400pt 加高到 440pt、顶部压暗更足（状态栏区与封面连成一片深色）、
             // 底部五段渐变（暗→淡→透明→底色）让标题区与封面的衔接不割裂；结构仍是 1.8.8 截图布局，不改回小封面头。
+            // 1.9.1：封面再加顶安全区，从屏幕顶边开始画，返回钮顶距 = 顶安全区 + 6。
             GeometryReader { geo in
                 ZStack(alignment: .topLeading) {
                     AsyncImage(url: playlist.coverURL) { phase in
@@ -83,13 +90,13 @@ struct PlaylistView: View {
                             Color(red: 0.15, green: 0.15, blue: 0.16)
                         }
                     }
-                    .frame(width: geo.size.width, height: 440)
+                    .frame(width: geo.size.width, height: 440 + topInset)
                     .clipped()
                     LinearGradient(
                         colors: [.black.opacity(0.5), .black.opacity(0.18), .clear, pageBackground.opacity(0.0), pageBackground],
                         startPoint: .top, endPoint: .bottom
                     )
-                    .frame(width: geo.size.width, height: 440)
+                    .frame(width: geo.size.width, height: 440 + topInset)
                     // 1.8.9 液态玻璃：返回钮走全站 BeansGlass（iOS26+ 真 glassEffect，
                     // iOS15-25 回落超薄材质；紧凑/简洁样式下 BeansGlass 自带平面回落，不强制液态）。
                     Button { dismiss() } label: {
@@ -102,10 +109,10 @@ struct PlaylistView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.leading, 16)
-                    .padding(.top, geo.safeAreaInsets.top + 6)
+                    .padding(.top, topInset + 6)
                 }
             }
-            .frame(height: 440)
+            .frame(height: 440 + topInset)
             // 居中标题区（多行可换行）：歌单名、创建者、歌曲数。
             VStack(spacing: 8) {
                 Text(playlist.name)
@@ -236,6 +243,7 @@ struct PlaylistView: View {
                     coverSize: 50,
                     fixedRowHeight: 72,
                     suppressNativeCleanRowGlass: true,
+                    darkPage: true,
                     playbackContext: displayedTracks,
                     playbackIndex: index
                 ) {
