@@ -299,7 +299,8 @@ struct ProfileView: View {
     /// 网格里只放文字款式（不预下载全部款式图），当前选中的一款放大显示在顶部（已缓存的图或自绘）；
     /// 点选即生效、只保留当前一款，旧缓存已在 selectVIPIcon 里先删掉。
     private var vipIconPickerSheet: some View {
-        NavigationStack {
+        // 主目标部署版本为 iOS 15，NavigationStack（iOS 16+）不可用，改用项目内 BeansNavigationStack（iOS 15 回退 NavigationView）。
+        BeansNavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 10) {
@@ -794,17 +795,6 @@ struct ProfileView: View {
         }
     }
 
-    private struct Donor {
-        let name: String
-        let amount: Double
-    }
-
-    private static let donors: [Donor] = [
-        Donor(name: "WeChat", amount: 26.66),
-        Donor(name: "Aert", amount: 8.88),
-        Donor(name: "wxx", amount: 5),
-        Donor(name: "！", amount: 3),
-    ]
 }
 
 // MARK: - 统一账号登录面板（网易云 + QQ 音乐整合）
@@ -930,6 +920,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
+    @AppStorage("beans.profileBackground") private var profileBackgroundRaw = "auto"
+    @AppStorage("beans.profileBackgroundCustomHex") private var profileBackgroundCustomHex = ""
     @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
     @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
     /// 底栏是否显示文字（关闭后只显示图标）
@@ -1001,6 +993,9 @@ struct SettingsView: View {
     @State private var greetingExpanded = false
     @State private var hideExpanded = false
     @State private var legacyTabExpanded = false
+    @State private var profileBackgroundExpanded = true
+    @State private var hiddenPlaylistsExpanded = false
+    @State private var hiddenAccounts: [(userId: String, entries: [(id: Int, name: String)])] = []
     /// 沉浸详情界面：关闭后播放器详情页不再用封面毛玻璃背景，只用静态渐变（省电）。
     @AppStorage("beans.immersiveDetail") private var immersiveDetail = true
     /// 锁屏沉浸封面：关闭后锁屏/灵动岛不再取封面，只显示文字信息。
@@ -1031,7 +1026,6 @@ struct SettingsView: View {
         )
     }
     @ObservedObject private var equalizer = BeansEqualizer.shared
-    @AppStorage(ThirdPartyAudioQuality.storageKey) private var thirdPartyAudioQualityRaw = ThirdPartyAudioQuality.kb320.rawValue
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
     @State private var playbackExpanded = false
@@ -1064,7 +1058,7 @@ struct SettingsView: View {
     }
 
     /// 新组“外观与界面”的搜索可见性：界面 / 字体 / 静态壁纸 / 音质任一关键词命中即显示。
-    private var showAppearanceInterfaceSettings: Bool { settingsMatches("外观 界面 主题 强调色 壁纸 字体 音质 底栏 语言 沉浸 液态 高刷新 动态 背景色 问候语 隐藏 低系统") }
+    private var showAppearanceInterfaceSettings: Bool { settingsMatches("外观 界面 主题 强调色 壁纸 字体 音质 底栏 语言 沉浸 液态 高刷新 动态 背景色 问候语 隐藏 低系统 用户页背景 隐藏歌单") }
     private var showPlaybackSettings: Bool { settingsMatches("播放 音质 睡眠 定时 触感 混音") }
     private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
     private var showChangelogSettings: Bool { settingsMatches("更新 日志 版本") }
@@ -1088,42 +1082,6 @@ struct SettingsView: View {
 
     private var customSourceCount: Int {
         0  // Co：第三方音源已删
-    }
-
-    private var thirdPartyAudioQualityOptions: [ThirdPartyAudioQuality] {
-        let options = ThirdPartyAudioQuality.allCases
-        return options.isEmpty ? ThirdPartyAudioQuality.allCases : options
-    }
-
-    private var thirdPartyAudioQualitySelection: Binding<ThirdPartyAudioQuality> {
-        Binding(
-            get: {
-                let stored = ThirdPartyAudioQuality(sourceValue: thirdPartyAudioQualityRaw) ?? .kb320
-                return thirdPartyAudioQualityOptions.first(where: { $0 == stored }) ?? thirdPartyAudioQualityOptions.first ?? .kb320
-            },
-            set: { newValue in
-                thirdPartyAudioQualityRaw = newValue.rawValue
-            }
-        )
-    }
-
-    private var thirdPartyAudioQualityTitle: String {
-        beansLocalized("第三方音源音质", "Third-party source quality")
-    }
-
-    private var thirdPartyAudioQualityHint: String {
-        beansLocalized("会优先按所选音质解析第三方音源，不可用时会自动降级。", "Third-party sources will try the selected quality first and downgrade automatically when unavailable.")
-    }
-
-    private var thirdPartyAudioQualityOptionsSignature: String {
-        thirdPartyAudioQualityOptions.map(\.rawValue).joined(separator: ",")
-    }
-
-    private func normalizeThirdPartyAudioQualitySelection() {
-        let valid = thirdPartyAudioQualityOptions.first(where: { $0.rawValue == thirdPartyAudioQualityRaw }) ?? thirdPartyAudioQualityOptions.first ?? .kb320
-        if valid.rawValue != thirdPartyAudioQualityRaw {
-            thirdPartyAudioQualityRaw = valid.rawValue
-        }
     }
 
     private var playbackAudioQualitySelection: Binding<BeansAudioQuality> {
@@ -1470,7 +1428,7 @@ struct SettingsView: View {
     /// 1.8.4 恢复：1.8.3 合并时随旧区删掉的问候语逐行定制、隐藏开关、低系统底栏已恢复为本组内三个可收起子项（仍是唯一一个“外观与界面”组，不另立重复组）；
     /// 核心项（主题模式、语言、全局/问候语字体、壁纸、音质、底栏显示）全部保留在本组内，子项均可收起、收起时标题行显示当前值。
     private var appearanceInterfaceSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             // MARK: - 界面
             DisclosureGroup(isExpanded: $themeModeExpanded) {
                 VStack(alignment: .leading, spacing: 14) {
@@ -1583,51 +1541,6 @@ struct SettingsView: View {
                         .font(BeansFont.appFont(12))
                         .foregroundStyle(Color.beansComment)
                     Image(systemName: themeModeExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
-                }
-            }
-            .padding(16)
-            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
-            .beansCardShadow(radius: 9, y: 3)
-
-            // MARK: - 导航栏显示（参照 2.0.3 BeansTabVisibility，Co 四页版，不含精选标签、不含聚合切换）
-            DisclosureGroup(isExpanded: $navVisibilityExpanded) {
-                VStack(alignment: .leading, spacing: 14) {
-                ForEach([
-                    ("discover", "主页", "house.fill"),
-                    ("library", "音乐库", "music.note.list"),
-                    ("profile", "我的", "person.crop.circle"),
-                    ("search", "搜索", "magnifyingglass"),
-                ], id: \.0) { item in
-                    Toggle(isOn: navBinding(for: item.0)) {
-                        HStack(spacing: 12) {
-                            Image(systemName: item.2)
-                                .font(.system(size: 14))
-                                .foregroundStyle(Color.beansAmber)
-                                .frame(width: 28)
-                            Text(item.1)
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .tint(Color.beansAmber)
-                }
-                Text("关掉即从底栏消失，打开即恢复；至少保留一页；当前页被关闭时自动切到第一个可见页。")
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
-            }
-            } label: {
-                HStack {
-                    Text("底部栏显示")
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Spacer()
-                    Text("已显示 \(navVisibleCount)/4 页")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                    Image(systemName: navVisibilityExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.beansComment.opacity(0.6))
                 }
@@ -1832,6 +1745,144 @@ struct SettingsView: View {
                     Image(systemName: staticWallpaperExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 用户页背景（1.8.5：默认自动适配浅灰，不黑、不与白卡同色，不做动态背景）
+            DisclosureGroup(isExpanded: $profileBackgroundExpanded) {
+                VStack(alignment: .leading, spacing: 14) {
+                Picker("用户页背景", selection: $profileBackgroundRaw) {
+                    Text("自动").tag("auto")
+                    Text("主题浅色").tag("accentTint")
+                    Text("浅灰").tag("lightGray")
+                    Text("自定义").tag("custom")
+                }
+                .pickerStyle(.segmented)
+                if profileBackgroundRaw == "custom" {
+                    HStack {
+                        Text("自定义颜色").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                        Spacer()
+                        ColorPicker("", selection: Binding(
+                            get: { Color(hex: profileBackgroundCustomHex) ?? Color(UIColor.systemGray6) },
+                            set: { profileBackgroundCustomHex = $0.hexString }
+                        ))
+                        .labelsHidden()
+                    }
+                    Text("深色自定义色时标题区文字自动变白字；浅色时用深色字。")
+                        .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                }
+                Text("默认“自动”为浅灰适配：不再是纯黑，与下方白色主卡有区分、层次分明；切换后标题区与头像区同步变色。本项只改静态背景色，不做动态壁纸、持续动画。")
+                    .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+            }
+            } label: {
+                HStack {
+                    Text("用户页背景").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text(profileBackgroundRaw == "auto" ? "自动适配" : profileBackgroundRaw == "accentTint" ? "主题浅色" : profileBackgroundRaw == "lightGray" ? "浅灰" : "自定义").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    Image(systemName: profileBackgroundExpanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 导航栏显示（参照 2.0.3 BeansTabVisibility，Co 四页版，不含精选标签、不含聚合切换）
+            DisclosureGroup(isExpanded: $navVisibilityExpanded) {
+                VStack(alignment: .leading, spacing: 14) {
+                ForEach([
+                    ("discover", "主页", "house.fill"),
+                    ("library", "音乐库", "music.note.list"),
+                    ("profile", "我的", "person.crop.circle"),
+                    ("search", "搜索", "magnifyingglass"),
+                ], id: \.0) { item in
+                    Toggle(isOn: navBinding(for: item.0)) {
+                        HStack(spacing: 12) {
+                            Image(systemName: item.2)
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.beansAmber)
+                                .frame(width: 28)
+                            Text(item.1)
+                                .font(BeansFont.appFont(15))
+                                .foregroundStyle(Color.beansLabel)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .tint(Color.beansAmber)
+                }
+                Text("关掉即从底栏消失，打开即恢复；至少保留一页；当前页被关闭时自动切到第一个可见页。")
+                    .font(BeansFont.appFont(11))
+                    .foregroundStyle(Color.beansComment)
+            }
+            } label: {
+                HStack {
+                    Text("底部栏显示")
+                        .font(BeansFont.appFont(13, .semibold))
+                        .foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text("已显示 \(navVisibleCount)/4 页")
+                        .font(BeansFont.appFont(12))
+                        .foregroundStyle(Color.beansComment)
+                    Image(systemName: navVisibilityExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 隐藏的歌单（1.8.5：我的页长按隐藏的歌单在此逐条恢复，只藏显示、不删歌单）
+            DisclosureGroup(isExpanded: $hiddenPlaylistsExpanded) {
+                VStack(alignment: .leading, spacing: 14) {
+                Button { hiddenAccounts = CoHiddenPlaylists.allAccounts() } label: {
+                    Text("刷新列表").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background { BeansSurface(shape: Capsule()) }
+                }
+                .buttonStyle(.plain)
+                if hiddenAccounts.isEmpty {
+                    Text("暂无隐藏的歌单。在“我的”页长按一条歌单可隐藏它，隐藏后只不在“我的”页显示，歌单本身不删除。")
+                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                } else {
+                    ForEach(hiddenAccounts, id: \.userId) { account in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(account.userId == "local" ? "本地（未登录）" : "账号 \(account.userId)")
+                                .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansComment)
+                            ForEach(account.entries, id: \.id) { entry in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
+                                        Text("歌单 ID \(entry.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                    }
+                                    Spacer()
+                                    Button {
+                                        var entries = account.entries.filter { $0.id != entry.id }
+                                        CoHiddenPlaylists.save(userId: account.userId, entries: entries)
+                                        hiddenAccounts = CoHiddenPlaylists.allAccounts()
+                                        BeansHaptics.select()
+                                        ToastCenter.shared.show("已恢复显示")
+                                    } label: {
+                                        Text("恢复显示").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
+                                            .padding(.horizontal, 12).padding(.vertical, 6)
+                                            .background { BeansSurface(shape: Capsule()) }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .onAppear { hiddenAccounts = CoHiddenPlaylists.allAccounts() }
+            } label: {
+                HStack {
+                    Text("隐藏的歌单").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text(hiddenAccounts.isEmpty ? "无" : "\(hiddenAccounts.reduce(0) { $0 + $1.entries.count }) 条已隐藏").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
             .padding(16)
@@ -2400,9 +2451,6 @@ struct SettingsView: View {
             }
             .beansCardShadow(radius: 9, y: 3)
             .transition(.opacity.combined(with: .move(edge: .top)))
-            .task(id: thirdPartyAudioQualityOptionsSignature) {
-                normalizeThirdPartyAudioQualitySelection()
-            }
             }
         }
     }
