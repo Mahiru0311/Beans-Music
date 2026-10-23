@@ -1473,6 +1473,21 @@ struct DailySongsDetailView: View {
                 .beansScrollIndicatorsHidden()
                 .ignoresSafeArea(edges: .top)
             }
+            // 1.9.2：返回键悬空固定（与歌单页同款）——盖在整页 ZStack 层上方，
+            // 不随 ScrollView 滚动，位置仍是左 16、顶安全区+6（状态栏下方）。
+            .overlay(alignment: .topLeading) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background { BeansGlass(shape: Circle()) }
+                        .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 16)
+                .padding(.top, outer.safeAreaInsets.top + 6)
+            }
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
@@ -1497,17 +1512,7 @@ struct DailySongsDetailView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 440 + topInset)
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                            .background { BeansGlass(shape: Circle()) }
-                            .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 16)
-                    .padding(.top, topInset + 6)
+                    // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层），只留封面 + 渐变。
                 }
             }
             .frame(height: 440 + topInset)
@@ -1526,14 +1531,17 @@ struct DailySongsDetailView: View {
                         BeansHaptics.tap()
                         player.play(songs: songs, startAt: 0)
                     } label: {
+                        // 1.9.2：播放全部改液态玻璃胶囊（与歌单页同款），
+                        // 白字白图标压玻璃/深色底可读，行位置与功能不动。
                         HStack(spacing: 8) {
                             Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
                             Text("播放全部").font(BeansFont.appFont(17, .bold))
                         }
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 36)
                         .padding(.vertical, 14)
-                        .background(Capsule().fill(.white))
+                        .background { BeansGlass(shape: Capsule()) }
+                        .overlay { Capsule().stroke(.white.opacity(0.25), lineWidth: 0.5) }
                     }
                     .buttonStyle(.plain)
                     Button {

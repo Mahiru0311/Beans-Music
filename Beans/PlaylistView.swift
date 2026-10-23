@@ -67,6 +67,21 @@ struct PlaylistView: View {
                     }
                 }
             }
+            // 1.9.2：返回键悬空固定——从滚动内容里拿出来，盖在整页上方（ZStack 层，
+            // 不随 ScrollView 滚动，加载/报错态也一直在），位置仍是左 16、顶安全区+6（状态栏下方）。
+            .overlay(alignment: .topLeading) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background { BeansGlass(shape: Circle()) }
+                        .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 16)
+                .padding(.top, outer.safeAreaInsets.top + 6)
+            }
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
@@ -97,19 +112,8 @@ struct PlaylistView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 440 + topInset)
-                    // 1.8.9 液态玻璃：返回钮走全站 BeansGlass（iOS26+ 真 glassEffect，
-                    // iOS15-25 回落超薄材质；紧凑/简洁样式下 BeansGlass 自带平面回落，不强制液态）。
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                            .background { BeansGlass(shape: Circle()) }
-                            .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 16)
-                    .padding(.top, topInset + 6)
+                    // 1.9.2：沉浸头里不再放返回钮（已移到整页悬空覆盖层，下滑也不滚走），
+                    // 这里只留封面 + 渐变，封面高度与渐变不动。
                 }
             }
             .frame(height: 440 + topInset)
@@ -141,15 +145,20 @@ struct PlaylistView: View {
                             .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 0.5) }
                     }
                     .buttonStyle(.plain)
+                    // 1.9.2：播放全部改液态玻璃胶囊——走全站 BeansGlass 胶囊
+                    // （iOS26+ 真 glassEffect、低系统回落半透明，遵循用户界面样式），
+                    // 字与图标改白字，压在玻璃/深色底上可读；行位置与功能不动，
+                    // 文案统一为“播放全部”（与每日推荐页同款）。
                     Button { player.play(songs: displayedTracks, startAt: 0) } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
-                            Text("播放").font(BeansFont.appFont(17, .bold))
+                            Text("播放全部").font(BeansFont.appFont(17, .bold))
                         }
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 44)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 36)
                         .padding(.vertical, 14)
-                        .background(Capsule().fill(.white))
+                        .background { BeansGlass(shape: Capsule()) }
+                        .overlay { Capsule().stroke(.white.opacity(0.25), lineWidth: 0.5) }
                     }
                     .buttonStyle(.plain)
                     Button {
