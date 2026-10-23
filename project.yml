@@ -105,18 +105,6 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.tests
-  BeansUITests:
-    type: bundle.ui-testing
-    platform: iOS
-    deploymentTarget: "26.1"
-    sources:
-      - BeansUITests
-    dependencies:
-      - target: Beans
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.music.coco.uitests
-
 schemes:
   Beans:
     build:
@@ -129,5 +117,4 @@ schemes:
     test:
       targets:
         - BeansTests
-        - BeansUITests
 
