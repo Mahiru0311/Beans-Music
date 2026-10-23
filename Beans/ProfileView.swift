@@ -573,6 +573,7 @@ struct ProfileView: View {
                                 .padding(.top, -24)
                         }
                         .padding(.bottom, 40)
+                        .beansAdaptiveContentWidth()
                     } else {
                         // 我的 tab：只放歌单，不放头像、黑白切换、设置、头部、壁纸、沉浸桥。
                         VStack(spacing: 0) {
@@ -584,8 +585,8 @@ struct ProfileView: View {
                         // 底部内边距重算（不照抄原 300pt，那是带头部时的量）：
                         // 迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；220pt 留约 55pt 滑出余量。
                         .padding(.bottom, 220)
+                        .beansAdaptiveContentWidth()
                     }
-                .beansAdaptiveContentWidth()
                 }
                 .beansScrollIndicatorsHidden()
                 .onChange(of: playlistsScrollRequest) { _ in
