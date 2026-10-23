@@ -17,32 +17,14 @@ final class PlatformPreferenceStore: ObservableObject {
     var changes: AnyPublisher<Set<String>, Never> { $selectedRaw.eraseToAnyPublisher() }
 
     private init() {
-        let saved = UserDefaults.standard.stringArray(forKey: Self.key) ?? []
-        var selected = saved.isEmpty
-            ? Set(SearchProvider.allCases.map(\.rawValue))
-            : Set(saved.map(Self.migrateRawValue))
-        if !saved.isEmpty, !UserDefaults.standard.bool(forKey: "beans.platforms.migrated.bilibili.v1") {
-            selected.insert(SearchProvider.bilibili.rawValue)
-            UserDefaults.standard.set(true, forKey: "beans.platforms.migrated.bilibili.v1")
-        }
-        selectedRaw = selected
-        orderedRaw = UserDefaults.standard.stringArray(forKey: Self.orderKey)?
-            .map(Self.migrateRawValue) ?? []
-        normalize()
-        normalizeOrder()
+        // 酷狗专版：只剩酷狗一个平台，旧的多平台偏好一律归一。
+        selectedRaw = [SearchProvider.kugou.rawValue]
+        orderedRaw = [SearchProvider.kugou.rawValue]
     }
 
-    var enabledSearchProviders: [SearchProvider] {
-        let list = orderedSearchProviders.filter { selectedRaw.contains($0.rawValue) }
-        return list.isEmpty ? [.netease] : list
-    }
+    var enabledSearchProviders: [SearchProvider] { [.kugou] }
 
-    var enabledLibraryProviders: [LibraryProvider] {
-        let providers = enabledSearchProviders.filter { $0 != .qishui }.compactMap { provider in
-            LibraryProvider(rawValue: provider.rawValue)
-        }
-        return providers.isEmpty ? [.netease] : providers
-    }
+    var enabledLibraryProviders: [LibraryProvider] { [.kugou] }
 
     var summaryText: String {
         enabledSearchProviders.map(\.rawValue).joined(separator: " / ")
@@ -57,40 +39,27 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     func set(_ provider: SearchProvider, enabled: Bool) {
-        if enabled {
-            selectedRaw.insert(provider.rawValue)
-        } else if selectedRaw.count > 1 {
-            selectedRaw.remove(provider.rawValue)
-        }
-        normalize()
-        save()
+        // 酷狗专版不做平台开关，调用保持空操作以免旧调用点断链。
+        _ = provider; _ = enabled
     }
 
-    func ensureVisible(_ provider: SearchProvider) -> SearchProvider {
-        isEnabled(provider) ? provider : enabledSearchProviders.first ?? .netease
-    }
+    func ensureVisible(_ provider: SearchProvider) -> SearchProvider { .kugou }
 
-    func ensureVisible(_ provider: LibraryProvider) -> LibraryProvider {
-        enabledLibraryProviders.contains(provider) ? provider : enabledLibraryProviders.first ?? .netease
-    }
+    func ensureVisible(_ provider: LibraryProvider) -> LibraryProvider { .kugou }
 
     func resetToDefault() {
-        selectedRaw = Set(SearchProvider.allCases.map(\.rawValue))
+        selectedRaw = [SearchProvider.kugou.rawValue]
         resetOrder()
         save()
     }
 
     func applyRemoteEnabledProviders(_ providers: [SearchProvider]) {
-        let values = Set(providers.map(\.rawValue))
-        guard !values.isEmpty else { return }
-        selectedRaw = values
-        normalize()
-        save()
-        objectWillChange.send()
+        // 酷狗专版忽略远程平台列表。
+        _ = providers
     }
 
     func resetOrder() {
-        orderedRaw = SearchProvider.allCases.map(\.rawValue)
+        orderedRaw = [SearchProvider.kugou.rawValue]
         saveOrder()
         objectWillChange.send()
     }
@@ -107,11 +76,7 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     private func normalize() {
-        let allowed = Set(SearchProvider.allCases.map(\.rawValue))
-        selectedRaw = selectedRaw.intersection(allowed)
-        if selectedRaw.isEmpty {
-            selectedRaw = [SearchProvider.netease.rawValue]
-        }
+        selectedRaw = [SearchProvider.kugou.rawValue]
     }
 
     private func save() {
@@ -119,12 +84,7 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     private func normalizeOrder() {
-        let defaults = SearchProvider.allCases.map(\.rawValue)
-        var result = orderedRaw.filter { defaults.contains($0) }
-        for raw in defaults where !result.contains(raw) {
-            result.append(raw)
-        }
-        orderedRaw = result
+        orderedRaw = [SearchProvider.kugou.rawValue]
     }
 
     private func saveOrder() {
@@ -132,20 +92,12 @@ final class PlatformPreferenceStore: ObservableObject {
     }
 
     private static func migrateRawValue(_ raw: String) -> String {
-        raw == "网易云" ? SearchProvider.netease.rawValue : raw
+        SearchProvider.kugou.rawValue
     }
 }
 
 extension LibraryProvider {
-    var searchProvider: SearchProvider {
-        switch self {
-        case .netease: return .netease
-        case .qq: return .qq
-        case .kugou: return .kugou
-        case .qishui: return .qishui
-        case .bilibili: return .bilibili
-        }
-    }
+    var searchProvider: SearchProvider { .kugou }
 }
 
 struct PlatformPreferencePicker: View {

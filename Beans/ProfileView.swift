@@ -2493,8 +2493,7 @@ struct SettingsView: View {
                 appearanceToggle("隐藏顶部平台列表", isOn: $hidePlatformPicker)
                 appearanceToggle("隐藏主页刷新按钮", isOn: $homeHeaderHideRefresh)
                 appearanceToggle("每日推荐使用旧版样式", isOn: $dailySongsListStyle)
-                appearanceToggle("隐藏自愿赞助", isOn: $hideDonation)
-
+                
                 HStack {
                     Image(systemName: "textformat")
                         .font(.system(size: 14))
@@ -2669,12 +2668,7 @@ struct SettingsView: View {
                     .font(BeansFont.appFont(11))
                     .foregroundStyle(Color.beansComment)
                 Button("清理未使用的锁屏素材") {
-                    Task {
-                        do {
-                            try await BeansLockScreenVideoStore.shared.clearUnused()
-                            ToastCenter.shared.show("已清理未使用的锁屏素材")
-                        } catch { ToastCenter.shared.show(error.localizedDescription) }
-                    }
+                    ToastCenter.shared.show("锁屏视频素材已在酷狗专版移除")
                 }
 
                 Divider().overlay(Color.beansComment.opacity(0.15))

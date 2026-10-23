@@ -22,11 +22,8 @@ func beansLocalized(_ chinese: String, _ english: String) -> String {
 
 func beansPlatformName(_ provider: SearchProvider) -> String {
     switch provider {
-    case .netease: return beansLocalized("网易云音乐", "NetEase Cloud Music")
-    case .qq: return beansLocalized("QQ音乐", "QQ Music")
     case .kugou: return beansLocalized("酷狗音乐", "Kugou Music")
-    case .qishui: return beansLocalized("汽水音乐", "Qishui Music")
-    case .bilibili: return "哔哩哔哩"
+    default: return beansLocalized("酷狗音乐", "Kugou Music")
     }
 }
 

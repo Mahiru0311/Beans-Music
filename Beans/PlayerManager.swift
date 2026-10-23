@@ -853,7 +853,7 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         Task {
             var urlString: String?
-            let quality = forceKugouStandard ? NetworkAudioQuality.standard : NetworkAudioQuality.officialPreferred
+            let quality = forceKugouStandard ? BeansAudioQuality.standard : NetworkAudioQuality.officialPreferred
             for attempt in 0..<3 {
                 if attempt > 0 {
                     try? await Task.sleep(nanoseconds: 800_000_000)

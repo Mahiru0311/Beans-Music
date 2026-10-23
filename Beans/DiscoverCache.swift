@@ -40,11 +40,6 @@ final class DiscoverCache {
             return
         }
         store = snapshots
-        if UserDefaults.standard.integer(forKey: qishuiSnapshotVersionKey) != qishuiSnapshotVersion {
-            store.removeValue(forKey: SearchProvider.qishui.rawValue)
-            UserDefaults.standard.set(qishuiSnapshotVersion, forKey: qishuiSnapshotVersionKey)
-            persist()
-        }
     }
 
     func cached(for source: SearchProvider) -> Snapshot? {

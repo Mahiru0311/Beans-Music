@@ -35,7 +35,7 @@ struct DiscoverView: View {
     /// 主页只保留每日推荐和排行榜；歌单广场位于独立底栏页面。
     private var availableSections: [String] { SectionOrderStore.homeDefaults }
     /// 首页数据源：记住上次选择，下次打开仍保持该平台（默认哔哩哔哩）
-    @AppStorage("beans.homeSource") private var homeSourceRaw = SearchProvider.bilibili.rawValue
+    @AppStorage("beans.homeSource") private var homeSourceRaw = SearchProvider.kugou.rawValue
     /// 每日推荐的旧版横向歌曲卡样式，默认使用新版推荐卡片。
     @AppStorage("beans.home.dailySongsListStyle") private var dailySongsListStyle = false
     @AppStorage("beans.homeGreetingText") private var homeGreetingText = ""
@@ -104,8 +104,8 @@ struct DiscoverView: View {
 
     init() {
         let savedRaw = UserDefaults.standard.string(forKey: "beans.homeSource")
-            ?? SearchProvider.bilibili.rawValue
-        let savedSource = SearchProvider(rawValue: savedRaw) ?? .bilibili
+            ?? SearchProvider.kugou.rawValue
+        let savedSource = SearchProvider(rawValue: savedRaw) ?? .kugou
         let snapshot = DiscoverCache.shared.cached(for: savedSource)
         _topLists = State(initialValue: snapshot?.topLists ?? [])
         _dailySongs = State(initialValue: snapshot?.dailySongs ?? [])
@@ -158,7 +158,7 @@ struct DiscoverView: View {
                             ForEach(homeOrder.filter { availableSections.contains($0) }, id: \.self) { key in
                                 switch key {
                                 case "每日推荐":
-                                    if source == .netease || !dailySongs.isEmpty {
+                                    if !dailySongs.isEmpty {
                                         dailySection
                                             .sectionEntrance(delay: 0)
                                     }
@@ -432,17 +432,13 @@ struct DiscoverView: View {
 
     private var recommendationSkeletonCount: Int {
         if dailySongsListStyle { return 4 }
-        if source == .qq { return 1 }
-        return source == .kugou ? 2 : 3
+        return 2
     }
 
     private var recommendationSkeletonSize: CGSize {
         if dailySongsListStyle {
             let side = isNativeClean ? 156.0 : 108.0
             return CGSize(width: side, height: side)
-        }
-        if source == .qq {
-            return CGSize(width: isNativeClean ? 304 : 278, height: isNativeClean ? 172 : 160)
         }
         let side = isNativeClean ? 172.0 : 160.0
         return CGSize(width: side, height: side)
@@ -890,12 +886,8 @@ struct DiscoverView: View {
         emphasized: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        let cardWidth: CGFloat = title == "每日推荐" && source == .qq
-            ? (isNativeClean ? 304 : 278)
-            : (emphasized ? (isNativeClean ? 172 : 160) : (isNativeClean ? 160 : 148))
-        let cardHeight: CGFloat = title == "每日推荐" && source == .qq
-            ? (isNativeClean ? 172 : 160)
-            : (emphasized ? (isNativeClean ? 172 : 160) : (isNativeClean ? 160 : 148))
+        let cardWidth: CGFloat = emphasized ? (isNativeClean ? 172 : 160) : (isNativeClean ? 160 : 148)
+        let cardHeight: CGFloat = emphasized ? (isNativeClean ? 172 : 160) : (isNativeClean ? 160 : 148)
         Button(action: action) {
             ZStack(alignment: .bottomLeading) {
                 if let coverURL {
@@ -1103,26 +1095,14 @@ struct DiscoverView: View {
         if playlistSearchActive {
             return beansLocalized("歌单搜索结果", "Playlist Search Results")
         }
-        switch source {
-        case .netease: return "推荐歌单"
-        case .qq: return "QQ音乐热门歌单"
-        case .kugou: return "歌单广场"
-        case .qishui: return "汽水音乐歌单"
-        case .bilibili: return "哔哩哔哩音乐"
-        }
+        return "歌单广场" 
     }
 
     private var playlistEmptyText: String {
         if playlistSearchActive {
             return beansLocalized("没有找到相关歌单", "No matching playlists found")
         }
-        switch source {
-        case .netease: return "推荐歌单暂时没有内容"
-        case .qq: return "QQ音乐热门歌单暂未加载成功\n请稍后重试"
-        case .kugou: return "歌单广场暂时没有内容"
-        case .qishui: return "汽水音乐歌单暂时没有内容"
-        case .bilibili: return "哔哩哔哩音乐暂时没有内容"
-        }
+        return "歌单广场暂时没有内容" 
     }
 
     private var collapsedPlaylistCount: Int { 6 }

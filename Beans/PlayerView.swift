@@ -23,7 +23,6 @@ struct PlayerView: View {
     @State private var showVinylQueue = false
     @State private var showSleepTimer = false
     @State private var showAddToPlaylist = false
-    @State private var showComments = false
     @State private var showOfficialPlaylistPicker = false
     @State private var showOfficialFavoriteActionPicker = false
     @State private var officialPlaylistMode: OfficialPlaylistMode = .save
@@ -526,7 +525,7 @@ struct PlayerView: View {
                       abs(value.translation.height) > abs(value.translation.width),
                       song != nil else { return }
                 BeansHaptics.medium()
-                showComments = true
+                ToastCenter.shared.show("评论功能已在酷狗专版移除")
             }
     }
 
@@ -656,7 +655,7 @@ struct PlayerView: View {
                             toggleLocalFavorite(song)
                         },
                         onComments: {
-                            if song != nil { showComments = true }
+                            if song != nil { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
                         },
                         onSleepTimer: {
                             showSleepTimer = true
@@ -704,7 +703,7 @@ struct PlayerView: View {
                         toggleLocalFavorite(song)
                     },
                     onComments: {
-                        if song != nil { showComments = true }
+                        if song != nil { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
                     },
                     onSettings: {
                         openPlayerSettings()
@@ -892,17 +891,9 @@ struct PlayerView: View {
                     .environmentObject(auth)
             }
         }
-        .sheet(isPresented: $showComments) {
-            if let song {
-                CommentsSheetHost(
-                    song: song,
-                    presentation: .reference
-                )
-            }
-        }
         .sheet(isPresented: $showOfficialPlaylistPicker) {
             OfficialPlaylistPickerSheet(
-                source: favoriteCandidate?.source ?? .netease,
+                source: favoriteCandidate?.source ?? .kugou,
                 mode: officialPlaylistMode,
                 playlists: officialPlaylists,
                 onSelect: { playlist in
@@ -962,7 +953,7 @@ struct PlayerView: View {
         }
         .sheet(isPresented: $showArtistHome) {
             if !pickedArtistName.isEmpty {
-                ArtistHomeSheet(artistName: pickedArtistName, artistSource: song?.source ?? .netease)
+                ArtistHomeSheet(artistName: pickedArtistName, artistSource: song?.source ?? .kugou)
                     .environmentObject(player)
             }
         }
@@ -1588,7 +1579,7 @@ struct PlayerView: View {
                             guard value.translation.height < -54,
                                   abs(value.translation.height) > abs(value.translation.width) else { return }
                             BeansHaptics.medium()
-                            showComments = true
+                            ToastCenter.shared.show("评论功能已在酷狗专版移除")
                         }
                 )
                 : nil
@@ -1639,7 +1630,7 @@ struct PlayerView: View {
                     showAppleMusicQueue.toggle()
                 }
             },
-            onComments: { showComments = true }
+            onComments: { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
         )
     }
 
@@ -2002,7 +1993,7 @@ struct PlayerView: View {
                     guard value.translation.height < -54,
                           abs(value.translation.height) > abs(value.translation.width) else { return }
                     BeansHaptics.medium()
-                    showComments = true
+                    ToastCenter.shared.show("评论功能已在酷狗专版移除")
                 }
         )
     }
@@ -2719,7 +2710,7 @@ struct PlayerView: View {
                         }
                     }
                     controlPanelAction(icon: "text.bubble", title: "评论") {
-                        showComments = true
+                        ToastCenter.shared.show("评论功能已在酷狗专版移除")
                     }
                     controlPanelAction(icon: "ellipsis", title: "更多") {
                         showNativeMoreActions = true
@@ -3288,7 +3279,7 @@ struct PlayerView: View {
                               abs(value.translation.height) > abs(value.translation.width),
                               song != nil else { return }
                         BeansHaptics.medium()
-                        showComments = true
+                        ToastCenter.shared.show("评论功能已在酷狗专版移除")
                     }
             )
     }
@@ -3988,7 +3979,7 @@ struct PlayerView: View {
                             toggleLocalFavorite(song)
                         },
                         onComments: {
-                            if song != nil { showComments = true }
+                            if song != nil { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
                         },
                         onSleepTimer: {
                             showSleepTimer = true
