@@ -40,8 +40,6 @@ private struct CoProfileHeaderFrameKey: PreferenceKey {
 /// 页面颜色由 body 上的 preferredColorScheme（见 profileEffectiveScheme）单独定，
 /// 白卡在浅色主题下仍是白卡、深色文字，不会被窗口样式带翻。
 private enum CoProfileStatusBarStyle {
-    private static var applied = false
-
     private static func keyWindow() -> UIWindow? {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -49,15 +47,14 @@ private enum CoProfileStatusBarStyle {
             .first(where: { $0.isKeyWindow })
     }
 
+    /// 无条件设置，不用 applied 守卫：旧守卫在多实例 / 切 tab 时一旦被 restore 掉，
+    /// 之后 update 不再触发就永远设不回深色，是窗口桥三轮失效的另一半原因。
+    /// 调用方每次 update 都同步设一次 + 下一 runloop 再设一次，顶掉根视图 preferredColorScheme 的重断言。
     static func applyDark() {
-        guard !applied, let window = keyWindow() else { return }
-        applied = true
-        window.overrideUserInterfaceStyle = .dark
+        keyWindow()?.overrideUserInterfaceStyle = .dark
     }
 
     static func restore() {
-        guard applied else { return }
-        applied = false
         keyWindow()?.overrideUserInterfaceStyle = .unspecified
     }
 }
@@ -69,6 +66,33 @@ private enum CoProfileStatusBarStyle {
 final class CoProfileHeaderWallpaper: ObservableObject {
     static let shared = CoProfileHeaderWallpaper()
     @Published private(set) var image: UIImage?
+    /// 壁纸顶部（上 1/4）平均亮度是否偏亮：true = 浅色顶，状态栏用黑字；false = 深色顶/无图，状态栏用白字。
+    /// 用确定格式的 CGContext 重绘取样（RGBA 大端），不依赖渲染器像素顺序。
+    @Published private(set) var topIsLight = false
+
+    private static func computeTopIsLight(_ image: UIImage) -> Bool {
+        let w = 64, h = 64
+        guard let cg = image.cgImage,
+              let cs = CGColorSpace(name: CGColorSpace.sRGB),
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: cs,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return false }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let data = ctx.data else { return false }
+        var sum: Double = 0
+        var count = 0
+        for y in 0..<(h / 4) {
+            for x in 0..<w {
+                let off = y * w * 4 + x * 4
+                let r = Double(data.load(fromByteOffset: off, as: UInt8.self))
+                let g = Double(data.load(fromByteOffset: off + 1, as: UInt8.self))
+                let b = Double(data.load(fromByteOffset: off + 2, as: UInt8.self))
+                sum += (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+                count += 1
+            }
+        }
+        guard count > 0 else { return false }
+        return (sum / Double(count)) > 0.55
+    }
     private var fileURL: URL? {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("CoProfileHeaderWallpaper.jpg")
@@ -77,6 +101,7 @@ final class CoProfileHeaderWallpaper: ObservableObject {
     private func load() {
         guard let url = fileURL, let data = try? Data(contentsOf: url), let img = UIImage(data: data) else { return }
         image = img
+        topIsLight = Self.computeTopIsLight(img)
     }
     func save(data: Data) {
         guard let raw = UIImage(data: data) else { return }
@@ -93,11 +118,12 @@ final class CoProfileHeaderWallpaper: ObservableObject {
         guard let jpeg = img.jpegData(compressionQuality: 0.85), let url = fileURL else { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? jpeg.write(to: url, options: .atomic)
-        DispatchQueue.main.async { self.image = img }
+        let light = Self.computeTopIsLight(img)
+        DispatchQueue.main.async { self.image = img; self.topIsLight = light }
     }
     func clear() {
         if let url = fileURL { try? FileManager.default.removeItem(at: url) }
-        DispatchQueue.main.async { self.image = nil }
+        DispatchQueue.main.async { self.image = nil; self.topIsLight = false }
     }
 }
 
@@ -326,12 +352,13 @@ struct ProfileView: View {
     /// 状态栏文字才为白色；白卡/歌单颜色用下方显式颜色，不随本方案翻转。
     private var profileStatusBarScheme: ColorScheme {
         if forceHomeBackdrop { return profileEffectiveScheme }
-        // 单层壁纸返工：头部在顶时用深色方案（白字），头部滑出状态栏区后
-        // 回到生效方案（浅色主题下为深色文字），与窗口桥逻辑一致。
-        if profileEffectiveScheme == .light {
-            return profileHeaderScrolledAway ? .light : .dark
-        }
-        return profileEffectiveScheme
+        // 头部滑出状态栏区后，状态栏区背景已是白卡，回到生效方案。
+        if profileHeaderScrolledAway { return profileEffectiveScheme }
+        // 头部在顶时按壁纸顶部亮度定黑白字（方案 ① 采样，不用渐隐罩赌白字）：
+        // 无图黑头、深色顶 -> 深色方案（白字）；浅色顶 -> 浅色方案（黑字，新截图里壁纸顶部就是浅色，黑字可读）。
+        if profileEffectiveScheme == .dark { return .dark }
+        if profileHeaderWallpaper.image == nil { return .dark }
+        return profileHeaderWallpaper.topIsLight ? .light : .dark
     }
 
     /// 显式颜色（不随 environment 颜色方案翻转）：浅色主题下黑字/灰字/浅灰底，
@@ -344,13 +371,17 @@ struct ProfileView: View {
     /// 深色主题（文字本来就是浅色）、白卡滑到顶、白卡在顶时都不需要窗口改色。
     /// 主页头像 sheet 打开的 profile（forceHomeBackdrop）不参与，避免与 tab 页互相抢。
     private func updateProfileStatusBarStyle() {
-        // 返工：固定黑条恒在顶部，浅色主题下状态栏恒为白色文字，不再按白卡位置切换。
         guard !forceHomeBackdrop else { return }
-        if profileEffectiveScheme == .light && !profileHeaderScrolledAway {
-            CoProfileStatusBarStyle.applyDark()
-        } else {
-            CoProfileStatusBarStyle.restore()
+        let apply = {
+            if self.profileStatusBarScheme == .dark {
+                CoProfileStatusBarStyle.applyDark()
+            } else {
+                CoProfileStatusBarStyle.restore()
+            }
         }
+        apply()
+        // 根视图的 preferredColorScheme 会在重渲染时重断言窗口样式，下一 runloop 再设一次顶回去。
+        DispatchQueue.main.async { apply() }
     }
 
     private var resolvedThemeToggleTarget: BeansThemeMode {
@@ -547,6 +578,14 @@ struct ProfileView: View {
             if !forceHomeBackdrop {
                 coProfileSingleWallpaper
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    // 状态栏白条返工的关键：ignoresSafeArea 必须贴在这里（body ZStack 的直接子视图），
+                    // 而不是只贴在头部 VStack 的 background 或 ScrollView 内部子视图上。
+                    // 之前单层壁纸缺这一层：它的顶边公式是全局坐标（0 = 屏幕顶边），
+                    // 但实际落点是安全区内的 ZStack 局部坐标（0 = 安全区底边），永远差一个安全区高度，白条就是这么来的。
+                    // 贴上后壁纸顶边对齐屏幕顶边，公式里的 top/height 直接就是全局值，不用再减安全区。
+                    // ScrollView 本身不动安全区：内容顶行仍从安全区下方开始（主题/齿轮不被灵动岛盖住），
+                    // 歌单格 scrollTo 锚点仍在安全区顶边，不会被状态栏盖住。
+                    .ignoresSafeArea(edges: .top)
             }
             ScrollViewReader { proxy in
                 ScrollView {
@@ -611,6 +650,7 @@ struct ProfileView: View {
         .onChange(of: themeModeRaw) { _ in updateProfileStatusBarStyle() }
         .onChange(of: isCardAtTop) { _ in updateProfileStatusBarStyle() }
         .onChange(of: profileHeaderFrame) { _ in updateProfileStatusBarStyle() }
+        .onChange(of: profileHeaderWallpaper.topIsLight) { _ in updateProfileStatusBarStyle() }
         .onPreferenceChange(BeansProfileCardTopKey.self) { minY in
             isCardAtTop = minY <= 28
         }
@@ -914,6 +954,7 @@ struct ProfileView: View {
         .frame(height: height, alignment: .top)
         .clipped()
         .offset(y: top)
+        .ignoresSafeArea(edges: .top)
     }
 
     private var coNeteaseHeader: some View {
