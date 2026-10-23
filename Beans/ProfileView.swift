@@ -745,6 +745,10 @@ struct SettingsView: View {
     @State private var staticWallpaperExpanded = true
     @State private var dynamicWallpaperExpanded = false
     @State private var highRefreshExpanded = false
+    /// 1.8.4 恢复项（默认收起的高级项）：问候语、隐藏开关、低系统底栏。
+    @State private var greetingExpanded = false
+    @State private var hideExpanded = false
+    @State private var legacyTabExpanded = false
     /// 沉浸详情界面：关闭后播放器详情页不再用封面毛玻璃背景，只用静态渐变（省电）。
     @AppStorage("beans.immersiveDetail") private var immersiveDetail = true
     /// 锁屏沉浸封面：关闭后锁屏/灵动岛不再取封面，只显示文字信息。
@@ -808,7 +812,7 @@ struct SettingsView: View {
     }
 
     /// 新组“外观与界面”的搜索可见性：界面 / 字体 / 静态壁纸 / 音质任一关键词命中即显示。
-    private var showAppearanceInterfaceSettings: Bool { settingsMatches("外观 界面 主题 强调色 壁纸 字体 音质 底栏 语言 沉浸 液态 高刷新 动态 背景色 问候语") }
+    private var showAppearanceInterfaceSettings: Bool { settingsMatches("外观 界面 主题 强调色 壁纸 字体 音质 底栏 语言 沉浸 液态 高刷新 动态 背景色 问候语 隐藏 低系统") }
     private var showPlaybackSettings: Bool { settingsMatches("播放 音质 睡眠 定时 触感 混音") }
     private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
     private var showChangelogSettings: Bool { settingsMatches("更新 日志 版本") }
@@ -1211,7 +1215,7 @@ struct SettingsView: View {
     /// “外观与界面” curated 组（参照 2.0.3 设置页的界面/字体/壁纸/音质项，但只留日常项、按清晰度做）：
     /// 界面（主题模式、全局 UI 样式、底栏文字、强调色）、字体（全局、问候语专属，带预览）、
     /// 静态壁纸（上传、壁纸库、模糊度、同步、恢复默认；明确不做动态壁纸）、音质（酷狗官方 5 档简化版，按账号权益自动降级）。
-    /// 1.8.3 合并：旧的完整“主题模式”折叠区已删除（与本组重复），其独特高级项（问候语逐行定制、隐藏开关、低系统底栏）随之移除；
+    /// 1.8.4 恢复：1.8.3 合并时随旧区删掉的问候语逐行定制、隐藏开关、低系统底栏已恢复为本组内三个可收起子项（仍是唯一一个“外观与界面”组，不另立重复组）；
     /// 核心项（主题模式、语言、全局/问候语字体、壁纸、音质、底栏显示）全部保留在本组内，子项均可收起、收起时标题行显示当前值。
     private var appearanceInterfaceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1701,6 +1705,204 @@ struct SettingsView: View {
                     Image(systemName: highRefreshExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 问候语（1.8.4 恢复：原旧区的高级项，存储键与逐行绑定函数一直都在，只补回界面）
+            DisclosureGroup(isExpanded: $greetingExpanded) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("主页问候文字（留空自动显示早上好/下午好/晚上好）")
+                        .font(BeansFont.appFont(13))
+                        .foregroundStyle(Color.beansComment)
+                    TextEditor(text: $homeGreetingText)
+                        .frame(height: 80)
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.beansLabel.opacity(0.12), lineWidth: 0.8))
+                    HStack {
+                        Text("文字大小").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                        Spacer()
+                        Text("\(Int(homeGreetingSize))").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    }
+                    Slider(value: $homeGreetingSize, in: 20...64, step: 1).tint(Color.beansAmber)
+                    HStack {
+                        Text("文字高度").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                        Spacer()
+                        Text(homeGreetingHeight <= 0 ? "自动" : "\(Int(homeGreetingHeight))").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    }
+                    Slider(value: $homeGreetingHeight, in: 0...260, step: 1).tint(Color.beansAmber)
+                    HStack {
+                        Text("问候文字颜色").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                        Spacer()
+                        ColorPicker("", selection: Binding(
+                            get: { Color(hex: homeGreetingColorHex) ?? Color.beansLabel },
+                            set: { homeGreetingColorHex = $0.hexString }
+                        )).labelsHidden()
+                    }
+                    Toggle(isOn: $homeGreetingGlowEnabled) {
+                        Text("开启文字背景发光").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    if homeGreetingGlowEnabled {
+                        HStack {
+                            Text("发光强度").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                            Spacer()
+                            Text("\(Int(homeGreetingGlowIntensity * 100))%").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                        }
+                        Slider(value: $homeGreetingGlowIntensity, in: 0...2, step: 0.01).tint(Color.beansAmber)
+                    }
+                    Toggle(isOn: $homeGreetingUnderline) {
+                        Text("显示底部横线").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    Toggle(isOn: $homeGreetingGradient) {
+                        Text("开启上下渐变字").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    if homeGreetingGradient {
+                        HStack {
+                            Text("渐变起始颜色").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                            Spacer()
+                            ColorPicker("", selection: Binding(
+                                get: { Color(hex: homeGreetingGradientStartHex) ?? Color.beansLabel },
+                                set: { homeGreetingGradientStartHex = $0.hexString }
+                            )).labelsHidden()
+                        }
+                        HStack {
+                            Text("渐变结束颜色").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                            Spacer()
+                            ColorPicker("", selection: Binding(
+                                get: { Color(hex: homeGreetingGradientEndHex) ?? Color.beansLabel },
+                                set: { homeGreetingGradientEndHex = $0.hexString }
+                            )).labelsHidden()
+                        }
+                    }
+                    ForEach(Array(homeGreetingLines.prefix(3).enumerated()), id: \.offset) { index, line in
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("第 \(index + 1) 行：\(line)").font(BeansFont.appFont(14, .semibold)).foregroundStyle(Color.beansLabel).lineLimit(1)
+                                Spacer()
+                                Button("恢复默认行") { resetGreetingLineStyle(index) }
+                                    .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansAmber).buttonStyle(.plain)
+                            }
+                            HStack {
+                                Text("字号").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                                Spacer()
+                                Text("\(Int(greetingLineSizeBinding(index).wrappedValue))").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                            }
+                            Slider(value: greetingLineSizeBinding(index), in: 12...80, step: 1).tint(Color.beansAmber)
+                            HStack {
+                                Text("颜色").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                                Spacer()
+                                ColorPicker("", selection: greetingLineColorBinding(index), supportsOpacity: false).labelsHidden()
+                            }
+                            HStack {
+                                Text("上下偏移").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                                Spacer()
+                                Text("\(Int(greetingLineOffsetBinding(index).wrappedValue))").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                            }
+                            Slider(value: greetingLineOffsetBinding(index), in: -80...80, step: 1).tint(Color.beansAmber)
+                            if homeGreetingGradient {
+                                HStack {
+                                    Text("渐变起始").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                                    Spacer()
+                                    ColorPicker("", selection: greetingLineGradientStartBinding(index), supportsOpacity: false).labelsHidden()
+                                }
+                                HStack {
+                                    Text("渐变结束").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                                    Spacer()
+                                    ColorPicker("", selection: greetingLineGradientEndBinding(index), supportsOpacity: false).labelsHidden()
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                    }
+                    Text("逐行设置只对主页问候语生效，改动即时保存；恢复默认行会清掉该行的字号/颜色/偏移/渐变。")
+                        .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                }
+            } label: {
+                HStack {
+                    Text("问候语").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text(homeGreetingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自动问候" : (homeGreetingLines.first ?? "自动问候"))
+                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment).lineLimit(1)
+                    Image(systemName: greetingExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 隐藏开关（1.8.4 恢复：原旧区的隐藏项，只影响界面显示，不删数据）
+            DisclosureGroup(isExpanded: $hideExpanded) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Toggle(isOn: $homeHideUsername) {
+                        Text("隐藏主页用户名").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    Toggle(isOn: $homeHeaderHideSort) {
+                        Text("隐藏所有界面排序按钮").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    Toggle(isOn: $hidePlatformPicker) {
+                        Text("隐藏顶部平台列表").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    Toggle(isOn: $homeHeaderHideRefresh) {
+                        Text("隐藏主页刷新按钮").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    Toggle(isOn: $showSongVIPBadge) {
+                        Text("显示歌曲 VIP 图标").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                    }.toggleStyle(.switch).tint(Color.beansAmber)
+                    Text("排序按钮隐藏后，“我的”页左菜单会消失，但设置齿轮还在，可随时回来再打开；其余隐藏项只藏界面元素，不影响播放与数据。")
+                        .font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                }
+            } label: {
+                HStack {
+                    Text("隐藏开关").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text("\([homeHideUsername, homeHeaderHideSort, hidePlatformPicker, homeHeaderHideRefresh].filter { $0 }.count + (showSongVIPBadge ? 0 : 1)) 项已隐藏")
+                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    Image(systemName: hideExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+            }
+            .padding(16)
+            .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+            .beansCardShadow(radius: 9, y: 3)
+
+            // MARK: - 低系统底栏（1.8.4 恢复：原旧区的低系统悬浮底栏微调，仅 iOS 26 以下生效）
+            DisclosureGroup(isExpanded: $legacyTabExpanded) {
+                VStack(alignment: .leading, spacing: 14) {
+                    if #unavailable(iOS 26) {
+                        HStack {
+                            Text("低系统悬浮底栏").font(BeansFont.appFont(15)).foregroundStyle(Color.beansLabel)
+                            Spacer()
+                            Button("恢复默认") { resetLegacyTabBar() }
+                                .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansAmber).buttonStyle(.plain)
+                        }
+                        settingsSlider("圆润度", valueText: "\(Int(legacyTabCornerRadius))") {
+                            Slider(value: $legacyTabCornerRadius, in: 18...42, step: 1).tint(Color.beansAmber)
+                        }
+                        settingsSlider("长度", valueText: "\(Int(legacyTabWidth))") {
+                            Slider(value: $legacyTabWidth, in: 300...420, step: 1).tint(Color.beansAmber)
+                        }
+                        settingsSlider("X 位置", valueText: signedIntText(legacyTabOffsetX)) {
+                            Slider(value: $legacyTabOffsetX, in: -40...40, step: 1).tint(Color.beansAmber)
+                        }
+                        settingsSlider("Y 位置", valueText: signedIntText(legacyTabOffsetY)) {
+                            Slider(value: $legacyTabOffsetY, in: -36...36, step: 1).tint(Color.beansAmber)
+                        }
+                    } else {
+                        Text("iOS 26 及以上走新式系统底栏，本项不生效；Co 在 iOS 27 上不走这条旧底栏路径，故不提供假调节。")
+                            .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("低系统底栏").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text("仅 iOS 26 以下生效")
+                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                    Image(systemName: legacyTabExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
                 }
             }
             .padding(16)
