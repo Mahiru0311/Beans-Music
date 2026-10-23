@@ -163,7 +163,7 @@ struct DiscoverView: View {
                                             .sectionEntrance(delay: 0)
                                     }
                                 case "新碟上架":
-                                    if source != .qq, !newAlbums.isEmpty {
+                                    if !newAlbums.isEmpty {
                                         newAlbumsSection
                                             .sectionEntrance(delay: 0.04)
                                     }

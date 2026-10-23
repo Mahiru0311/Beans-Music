@@ -408,7 +408,9 @@ struct LocalPlaylistDetailSheet: View {
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                             } else {
-                                ForEach(visibleSongs, id: \.element.identityKey) { index, song in
+                                ForEach(visibleSongs, id: \.element.identityKey) { pair in
+                                    let index = pair.offset
+                                    let song = pair.element
                                     if multiSelectMode {
                                         HStack(spacing: 10) {
                                             Image(systemName: selectedSongKeys.contains(song.identityKey) ? "checkmark.circle.fill" : "circle")
