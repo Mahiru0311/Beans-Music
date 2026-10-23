@@ -2022,6 +2022,16 @@ final class PlayerManager: NSObject, ObservableObject {
         buildPlayOrder()
     }
 
+    /// 清除常听记录（只清常听这一项）：播放次数 playCounts、计过数的歌库
+    /// countedSongs 一起清并落盘，外面那个数回到 0、详情页回到空状态。
+    /// 不动历史（beans.history）、不收藏、不动歌单、不动播放队列，确认后才调。
+    func clearTopPlayed() {
+        playCounts = [:]
+        countedSongs = [:]
+        defaults.removeObject(forKey: countsKey)
+        defaults.removeObject(forKey: countedSongsKey)
+    }
+
     /// 听歌排行：按真实播放次数排序的前 8 首，歌从 countedSongs 里找，
     /// 不再从 history 里找——history 上限 50 首，老歌滚出去后榜单会掉歌、但总数还在。
     var topPlayed: [(song: Song, count: Int)] {

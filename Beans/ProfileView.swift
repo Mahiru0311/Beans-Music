@@ -135,7 +135,9 @@ final class CoProfileHeaderWallpaper: ObservableObject {
     }
     /// 直接存一张已裁好的图：与 save(data:) 同规格（最长边 1600、JPEG 0.85），
     /// 供裁切完成后调用；取消时不调它，旧壁纸原样保留。
-    func save(image raw: UIImage) {
+    /// 返回是否真的写进了沙盒：写失败时调用方必须提示、不要静默关掉裁切页。
+    @discardableResult
+    func save(image raw: UIImage) -> Bool {
         let maxSide: CGFloat = 1600
         let scale = min(1, maxSide / max(raw.size.width, raw.size.height))
         let img: UIImage
@@ -146,11 +148,16 @@ final class CoProfileHeaderWallpaper: ObservableObject {
         } else {
             img = raw
         }
-        guard let jpeg = img.jpegData(compressionQuality: 0.85), let url = fileURL else { return }
+        guard let jpeg = img.jpegData(compressionQuality: 0.85), let url = fileURL else { return false }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? jpeg.write(to: url, options: .atomic)
+        do {
+            try jpeg.write(to: url, options: .atomic)
+        } catch {
+            return false
+        }
         let light = Self.computeTopIsLight(img)
         DispatchQueue.main.async { self.image = img; self.topIsLight = light }
+        return true
     }
     /// 把一张图转成方向朝上的图（像素尺寸 = 原图的方向后尺寸），裁切时按它算 rect，
     /// 否则手机拍的竖图/横图用 cgImage 直接裁会转错方向。scale 保持原图 scale，
@@ -165,8 +172,18 @@ final class CoProfileHeaderWallpaper: ObservableObject {
     }
     /// 按显示坐标裁一刀：cropRectInImagePoints 是裁切框在原图显示尺寸（points，
     /// 已按方向归一化）里的 rect，返回裁好的 UIImage（方向朝上）；rect 越界时钳到图内。
+    /// 注意：动态图（GIF 等）或 CIImage 图的 cgImage 可能为空，上一轮这里直接
+    /// 返回空、完成按钮按了等于没按；本轮先把它重绘成一张静态图再裁，保证
+    /// 只要图能显示、完成就一定能裁出来（极端情况下调用方还会用原图兜底）。
     static func croppedImage(_ image: UIImage, rectInPoints: CGRect) -> UIImage? {
-        let normalized = normalizedImage(image)
+        var normalized = normalizedImage(image)
+        if normalized.cgImage == nil {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = normalized.scale
+            format.opaque = false
+            let renderer = UIGraphicsImageRenderer(size: normalized.size, format: format)
+            normalized = renderer.image { _ in normalized.draw(in: CGRect(origin: .zero, size: normalized.size)) }
+        }
         guard let cg = normalized.cgImage else { return nil }
         let scaleX = CGFloat(cg.width) / max(1, normalized.size.width)
         let scaleY = CGFloat(cg.height) / max(1, normalized.size.height)
@@ -776,7 +793,8 @@ struct ProfileView: View {
                 // 外面那格是总播放次数（41 次是 41 次播放，不是 41 首歌），
                 // 里面列表是按次数排的歌 + 对不上的那部分，两者口径写清。
                 totalPlayCount: player.playCounts.values.reduce(0, +),
-                orphanPlayCount: player.orphanPlayCount
+                orphanPlayCount: player.orphanPlayCount,
+                onClear: { player.clearTopPlayed() }
             )
                 .environmentObject(player)
                 .environmentObject(theme)
@@ -1554,11 +1572,23 @@ struct CoSongListSheet: View {
     /// 不能因为它没有歌名就让整页空白。
     var totalPlayCount: Int? = nil
     var orphanPlayCount: Int = 0
+    /// 常听详情专用清除：只有常听 sheet 传它（“我喜欢”不传，表现不变）。
+    /// 清除入口放在详情页顶部工具栏，不放在我的页数据格上（点数据格是进详情页，
+    /// 不要把进详情和清除混成一个动作）。
+    var onClear: (() -> Void)? = nil
+    @State private var showClearConfirm = false
 
     var body: some View {
-        BeansNavigationStack {
+        // 常听 sheet 要读实时数据：清除后 playCounts 一变，详情页本身就要
+        // 立刻变回空状态，不能等父视图重传 songs（父视图不一定重算）。
+        // 所以传了 onClear 的 sheet 用 player 的实时 topPlayed/计数，不用传入的快照。
+        let displaySongs = onClear == nil ? songs : player.topPlayed.map(\.song)
+        let displaySubtitles = onClear == nil ? subtitles : Dictionary(uniqueKeysWithValues: player.topPlayed.map { ($0.song.identityKey, "\($0.count)次") })
+        let displayTotal = onClear == nil ? totalPlayCount : player.playCounts.values.reduce(0, +)
+        let displayOrphan = onClear == nil ? orphanPlayCount : player.orphanPlayCount
+        return BeansNavigationStack {
             Group {
-                if songs.isEmpty && orphanPlayCount == 0 {
+                if displaySongs.isEmpty && displayOrphan == 0 {
                     VStack(spacing: 8) {
                         Image(systemName: "music.note")
                             .font(.system(size: 28))
@@ -1568,19 +1598,19 @@ struct CoSongListSheet: View {
                             .foregroundStyle(Color.beansSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if songs.isEmpty {
+                } else if displaySongs.isEmpty {
                     // 外面有次数、里面没有能显示的歌名时：不要留一个“这里还没有歌曲”
                     // 就打发掉——总次数是真的，把有计数、无歌名的那部分写出来。
                     VStack(spacing: 12) {
                         Image(systemName: "music.note")
                             .font(.system(size: 28))
                             .foregroundStyle(Color.beansSecondary)
-                        if let total = totalPlayCount {
+                        if let total = displayTotal {
                             Text("共 \(total) 次播放")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(Color.beansLabel)
                         }
-                        Text("其中 \(orphanPlayCount) 次的歌名记录已不在（历史被清空或旧记录无法对应），没有编一首假歌；新播放的歌会从这里开始出现。")
+                        Text("其中 \(displayOrphan) 次的歌名记录已不在（历史被清空或旧记录无法对应），没有编一首假歌；新播放的歌会从这里开始出现。")
                             .font(.system(size: 13))
                             .foregroundStyle(Color.beansSecondary)
                             .multilineTextAlignment(.center)
@@ -1589,10 +1619,10 @@ struct CoSongListSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(songs, id: \.identityKey) { song in
+                        ForEach(displaySongs, id: \.identityKey) { song in
                             Button {
-                                if let index = songs.firstIndex(where: { $0.identityKey == song.identityKey }) {
-                                    player.play(songs: songs, startAt: index)
+                                if let index = displaySongs.firstIndex(where: { $0.identityKey == song.identityKey }) {
+                                    player.play(songs: displaySongs, startAt: index)
                                 }
                                 dismiss()
                             } label: {
@@ -1603,7 +1633,7 @@ struct CoSongListSheet: View {
                                             .font(.system(size: 16))
                                             .foregroundStyle(Color.beansLabel)
                                             .lineLimit(1)
-                                        Text([song.artists, subtitles[song.identityKey]].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                                        Text([song.artists, displaySubtitles[song.identityKey]].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
                                             .font(.system(size: 13))
                                             .foregroundStyle(Color.beansSecondary)
                                             .lineLimit(1)
@@ -1617,7 +1647,7 @@ struct CoSongListSheet: View {
                         }
                         // 有歌名、也有对不上的计数时：下面补一行“其他已播放”，
                         // 不点按、不编歌名，让外面那个总数和里面列表对得上。
-                        if orphanPlayCount > 0 {
+                        if displayOrphan > 0 {
                             HStack(spacing: 12) {
                                 Image(systemName: "music.note")
                                     .font(.system(size: 20))
@@ -1628,7 +1658,7 @@ struct CoSongListSheet: View {
                                         .font(.system(size: 16))
                                         .foregroundStyle(Color.beansLabel)
                                         .lineLimit(1)
-                                    Text("\(orphanPlayCount)次 · 歌名记录已不在")
+                                    Text("\(displayOrphan)次 · 歌名记录已不在")
                                         .font(.system(size: 13))
                                         .foregroundStyle(Color.beansSecondary)
                                         .lineLimit(1)
@@ -1643,6 +1673,21 @@ struct CoSongListSheet: View {
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // 常听清除入口（只在传了 onClear 的常听 sheet 里出现）：
+                // 放在详情页顶部工具栏，不放在我的页数据格上。
+                if onClear != nil {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("清除", role: .destructive) { showClearConfirm = true }
+                    }
+                }
+            }
+            .alert("清除常听记录？", isPresented: $showClearConfirm) {
+                Button("清除", role: .destructive) { onClear?() }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("将清除全部常听播放次数，此操作不可恢复；历史、收藏、歌单不受影响。")
+            }
             // 关闭路径只剩下滑关闭：点行即播后自动关闭，不再另设“完成”按钮。
         }
     }
@@ -1840,6 +1885,8 @@ struct SettingsView: View {
     @State private var showProfileHeaderWallpaperPicker = false
     // 选图后先裁切、不直接存：有值时弹裁切页，点“完成”才存、点“取消”不存旧图不动。
     @State private var pendingHeaderWallpaperCropImage: UIImage?
+    // 选图格式解不出来时不要静默退出：弹提示、留在设置页、旧壁纸不动。
+    @State private var showWallpaperFormatError = false
     @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
     @State private var wallpaperAppearanceTarget: BeansWallpaperAppearance = .light
     @State private var showFontImporter = false
@@ -2166,6 +2213,43 @@ struct SettingsView: View {
                 }
             }
             .ignoresSafeArea()
+        }
+        // 我的页头部壁纸选图 + 裁切（根层级呈现，不再挂在折叠区 HStack 上）：
+        // 选图用 WallpaperImagePicker（多路解码兜底），解不出来走 onFailed 弹提示，
+        // 不静默退出、不换旧壁纸；解出来才进裁切，裁切页用系统导航栏 + 底部大按钮。
+        .sheet(isPresented: $showProfileHeaderWallpaperPicker) {
+            WallpaperImagePicker(
+                onPicked: { pendingHeaderWallpaperCropImage = $0 },
+                onFailed: { showWallpaperFormatError = true }
+            )
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { pendingHeaderWallpaperCropImage != nil },
+                set: { if !$0 { pendingHeaderWallpaperCropImage = nil } }
+            )
+        ) {
+            if let picked = pendingHeaderWallpaperCropImage {
+                CoHeaderWallpaperCropView(
+                    image: picked,
+                    onDone: { cropped in
+                        let ok = CoProfileHeaderWallpaper.shared.save(image: cropped)
+                        if ok { pendingHeaderWallpaperCropImage = nil }
+                        return ok
+                    },
+                    onCancel: {
+                        pendingHeaderWallpaperCropImage = nil
+                    }
+                )
+            } else {
+                Color.black.ignoresSafeArea()
+            }
+        }
+        .alert("此图片格式不支持", isPresented: $showWallpaperFormatError) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text("请换一张 JPG、PNG、HEIC/HEIF 图片；GIF 取第一帧。WebP 视系统解码器而定，解不出来时也会这样提示，旧壁纸没有被换掉。")
         }
         .fullScreenCover(isPresented: $showFontImporter) {
             FontDocumentPicker { url in
@@ -2687,39 +2771,10 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .sheet(isPresented: $showProfileHeaderWallpaperPicker) {
-                    WallpaperPhotoPicker(allowsMultiple: false) { data in
-                        // 选图后先进裁切，不直接存、直接显示；解不出来就不弹裁切、旧图不动。
-                        if let picked = UIImage(data: data) {
-                            pendingHeaderWallpaperCropImage = picked
-                        }
-                    }
-                }
-                .fullScreenCover(
-                    isPresented: Binding(
-                        get: { pendingHeaderWallpaperCropImage != nil },
-                        set: { if !$0 { pendingHeaderWallpaperCropImage = nil } }
-                    )
-                ) {
-                    if let picked = pendingHeaderWallpaperCropImage {
-                        // 裁切页不再忽略安全区：上一轮这里加了 ignoresSafeArea，
-                        // 顶部栏被顶到屏幕顶边、和状态栏/灵动岛重叠，“完成”被电量
-                        // 图标挡了一半、点不到。去掉后顶部栏自然落在安全区下方。
-                        CoHeaderWallpaperCropView(
-                            image: picked,
-                            onDone: { cropped in
-                                CoProfileHeaderWallpaper.shared.save(image: cropped)
-                                BeansHaptics.success()
-                                pendingHeaderWallpaperCropImage = nil
-                            },
-                            onCancel: {
-                                pendingHeaderWallpaperCropImage = nil
-                            }
-                        )
-                    } else {
-                        Color.black.ignoresSafeArea()
-                    }
-                }
+                // 选图与裁切的呈现不再挂在折叠区里的这个 HStack 上：
+                // 上一轮裁切完成反复点不到，呈现层级是嫌疑之一（嵌在折叠区
+                // 里的全屏弹窗 + 自定义顶部栏）。本轮把 sheet / 全屏弹窗移到
+                // SettingsView 根层级（见 body 处），这里只留“更换”按钮。
                 Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
                     .tint(Color.beansAmber)
                     .accessibilityIdentifier("beans.settings.immersive-detail")
@@ -4920,6 +4975,109 @@ struct WallpaperPhotoPicker: UIViewControllerRepresentable {
     }
 }
 
+/// 我的页头部壁纸专用选图器（与上面那个只回 Data 的选图器分开）：
+/// 上一轮的问题：只用一条路——先 canLoadObject(UIImage) 再按 public.image 取 data、
+/// 再用 UIImage(data:) 解码，任何一步失败都静默无回调，选图器一关就“直接退出”，
+/// 用户不知道是格式不支持、还是没选上。本轮用三路兜底，全部失败才走 onFailed：
+/// ① 直接载 UIImage 对象（系统解码，含 HEIC/JPG/PNG/GIF 首帧等）；
+/// ② 按注册的图片类型逐个取 data，先 UIImage(data:) 再用 ImageIO CGImageSource
+///    解第一帧（GIF 取第一帧；WebP 能不能解看系统 ImageIO 支不支持，不硬说支持）；
+/// ③ 取文件表示再按②解。preferredAssetRepresentationMode 用 .compatible，
+///    系统对部分格式会先转码成兼容表示，等于多了一层系统兜底。
+/// 注意：Live Photo 取的是静态图，视频不在 filter 里，选不到视频。
+struct WallpaperImagePicker: UIViewControllerRepresentable {
+    let onPicked: (UIImage) -> Void
+    let onFailed: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.filter = .images
+        config.selectionLimit = 1
+        config.preferredAssetRepresentationMode = .compatible
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    static func decodeImage(from data: Data) -> UIImage? {
+        if let img = UIImage(data: data), img.size.width > 0, img.size.height > 0 {
+            return img
+        }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cg = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: WallpaperImagePicker
+        private var finished = false
+        init(_ parent: WallpaperImagePicker) { self.parent = parent }
+
+        private func succeed(_ image: UIImage) {
+            guard !finished else { return }
+            finished = true
+            DispatchQueue.main.async { self.parent.onPicked(image) }
+        }
+
+        private func fail() {
+            guard !finished else { return }
+            finished = true
+            DispatchQueue.main.async { self.parent.onFailed() }
+        }
+
+        private func tryData(_ provider: NSItemProvider) {
+            let imageTypes = provider.registeredTypeIdentifiers.filter {
+                UTType($0)?.conforms(to: .image) == true
+            }
+            // 先按注册的图片类型逐个取 data，再按通用 public.image 取一次兜底。
+            let candidates = imageTypes + [UTType.image.identifier]
+            func tryNext(_ index: Int) {
+                guard index < candidates.count else {
+                    // 最后一条路：取文件表示再解。
+                    provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, _ in
+                        guard let url, let data = try? Data(contentsOf: url),
+                              let img = WallpaperImagePicker.decodeImage(from: data) else {
+                            self.fail()
+                            return
+                        }
+                        self.succeed(img)
+                    }
+                    return
+                }
+                provider.loadDataRepresentation(forTypeIdentifier: candidates[index]) { data, _ in
+                    if let data, let img = WallpaperImagePicker.decodeImage(from: data) {
+                        self.succeed(img)
+                    } else {
+                        tryNext(index + 1)
+                    }
+                }
+            }
+            tryNext(0)
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+            guard let provider = results.first?.itemProvider else { return }
+            // 用户取消选图（results 为空）时不弹“格式不支持”，直接什么都不做。
+            if provider.canLoadObject(ofClass: UIImage.self) {
+                provider.loadObject(ofClass: UIImage.self) { object, _ in
+                    if let img = object as? UIImage, img.size.width > 0, img.size.height > 0 {
+                        self.succeed(img)
+                    } else {
+                        self.tryData(provider)
+                    }
+                }
+            } else {
+                tryData(provider)
+            }
+        }
+    }
+}
+
 /// 我的页头部壁纸裁切：选图后先裁、裁完点“完成”才存，不直接显示原图。
 /// 裁切框宽高比 = 头部壁纸框宽高比（框宽 = 屏幕宽，框高 = max(屏幕宽 + 30, 410)，
 /// 用户机型约 393/423），按当前机型实时算，不写死一个比；裁好的图宽高比与头部框
@@ -4927,14 +5085,28 @@ struct WallpaperPhotoPicker: UIViewControllerRepresentable {
 /// 手势只用系统手势，不引第三方裁切库：单指拖动平移、双指缩放；框外部分是暗的，
 /// 框内看到什么、头部就显示什么。取消不存图，旧壁纸原样保留。
 struct CoHeaderWallpaperCropView: View {
+    /// onDone 返回是否真的存进了沙盒：存失败时裁切页不关、弹提示，不静默无反应。
     let image: UIImage
-    let onDone: (UIImage) -> Void
+    let onDone: (UIImage) -> Bool
     let onCancel: () -> Void
 
     @State private var userScale: CGFloat = 1
     @State private var baseScale: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var baseOffset: CGSize = .zero
+    @State private var showSaveError = false
+
+    /// 完成动作（顶部工具栏与底部大按钮共用同一条路）：
+    /// 先算裁切图，算不出来就退回用原图保存，绝不静默失败；
+    /// 保存失败就弹提示、页不关，保存成功才由调用方关页。
+    private func finish() {
+        let toSave = CoProfileHeaderWallpaper.croppedImage(image, rectInPoints: cropRectInImagePoints()) ?? image
+        if onDone(toSave) {
+            BeansHaptics.success()
+        } else {
+            showSaveError = true
+        }
+    }
 
     private var cropWidth: CGFloat { UIScreen.main.bounds.width }
     private var cropHeight: CGFloat { max(cropWidth + 30, 410) }
@@ -4968,36 +5140,15 @@ struct CoHeaderWallpaperCropView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部栏：不再贴屏幕顶边（外层已不再忽略安全区，顶部栏自然落在
-            // 安全区下方、灵动岛下面）；取消与完成各给满 44pt 点击区，文字本身
-            // 只有约 20pt 高、之前点不到的一半原因就是点击区太小。
-            HStack {
-                Button("取消") { onCancel() }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 17))
-                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
-                    .contentShape(Rectangle())
-                Spacer()
-                Text("裁切头部壁纸")
-                    .font(.system(size: 17, weight: .semibold))
-                Spacer()
-                Button("完成") {
-                    if let cropped = CoProfileHeaderWallpaper.croppedImage(image, rectInPoints: cropRectInImagePoints()) {
-                        onDone(cropped)
-                    }
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
-                .contentShape(Rectangle())
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            // 裁切框紧贴顶部栏，不再用上下两个 Spacer 把它居中、上下留大黑边；
-            // 框内即头部显示范围，框一上来就看得见。
-            .padding(.top, 4)
-            ZStack {
+        // 上一轮的教训：自定义顶部栏 + 全屏弹窗的组合在真机上反复出问题
+        // （先是忽略安全区顶到状态栏，修了安全区还是点不到——因为完成回调
+        // 里裁切图为空就静默无反应，页也不关）。本轮不再用自定义顶部栏：
+        // 用系统导航栏工具栏放取消/完成（系统保证它在灵动岛下方、可点），
+        // 再在底部放一个满宽大完成按钮作第二条路，两条路走同一个 finish()，
+        // 完成一定有反应：要么关页换壁纸，要么弹保存失败提示。
+        NavigationStack {
+            VStack(spacing: 0) {
+                ZStack {
                 Color.black
                 Image(uiImage: image)
                     .resizable()
@@ -5037,7 +5188,41 @@ struct CoHeaderWallpaperCropView: View {
             Text("拖动平移，双指缩放，框内即头部显示范围")
                 .font(.system(size: 13))
                 .foregroundStyle(Color.secondary)
-                .padding(.bottom, 24)
+                .padding(.bottom, 12)
+            // 底部大完成按钮：与顶部工具栏的“完成”走同一个 finish()，
+            // 顶部万一再出问题，底部这条路一定能点到、一定有反应。
+            Button(action: finish) {
+                Text("完成")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.black)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+            }
+            .navigationTitle("裁切头部壁纸")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.black, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成", action: finish)
+                        .font(.system(size: 17, weight: .semibold))
+                }
+            }
+            .alert("保存失败", isPresented: $showSaveError) {
+                Button("好", role: .cancel) {}
+            } message: {
+                Text("壁纸没有存上，请再点一次完成；如果一直失败，请换一张图片重试。")
+            }
         }
         .background(Color.black.ignoresSafeArea())
         .foregroundStyle(Color.white)
