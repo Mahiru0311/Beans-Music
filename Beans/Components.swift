@@ -913,6 +913,32 @@ private struct BeansDetailMiniPlayerModifier: ViewModifier {
     }
 }
 
+// MARK: - 我的页隐藏歌单存储（旧线 1.8.5，只藏显示、不删歌单）
+// 按酷狗账号 userId 区分键：beans.hiddenPlaylists.<userId>，未登录时为 "local"。
+// 每条存 "id|name"（恢复入口靠名字展示，靠 id 恢复），换号后各号的隐藏互不串。
+struct CoHiddenPlaylists {
+    static func key(userId: String) -> String {
+        "beans.hiddenPlaylists.\(userId.isEmpty ? "local" : userId)"
+    }
+    static func load(userId: String) -> [(id: Int, name: String)] {
+        let raw = UserDefaults.standard.stringArray(forKey: key(userId: userId)) ?? []
+        return raw.compactMap { s in
+            guard let sep = s.firstIndex(of: "|"), let id = Int(s[..<sep]) else { return nil }
+            return (id: id, name: String(s[s.index(after: sep)...]))
+        }
+    }
+    static func save(userId: String, entries: [(id: Int, name: String)]) {
+        UserDefaults.standard.set(entries.map { "\($0.id)|\($0.name)" }, forKey: key(userId: userId))
+    }
+    static func allAccounts() -> [(userId: String, entries: [(id: Int, name: String)])] {
+        UserDefaults.standard.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix("beans.hiddenPlaylists.") }
+            .sorted()
+            .map { (userId: String($0.dropFirst("beans.hiddenPlaylists.".count)), entries: load(userId: String($0.dropFirst("beans.hiddenPlaylists.".count)))) }
+            .filter { !$0.entries.isEmpty }
+    }
+}
+
 // MARK: - 封面图
 
 /// 固定尺寸的扫光骨架，占位期间不改变父布局尺寸。

@@ -141,6 +141,13 @@ struct ProfileView: View {
     @State private var playlistsScrollRequest = 0
     @State private var myPlaylists: [Playlist] = []
     @State private var myPlaylistsLoading = false
+    // 我的页长按隐藏歌单（旧线 1.8.5 移植）：只藏显示、不删歌单，按酷狗账号区分存，见 CoHiddenPlaylists。
+    @State private var hiddenPlaylistEntries: [(id: Int, name: String)] = []
+    @State private var showHideConfirm = false
+    @State private var hideConfirmPlaylist: Playlist?
+    // 旧线 1.9.4 做法：歌单行不用 NavigationLink（其内部点按手势会吞掉长按），
+    // 改用 Button 点按 + onLongPressGesture 长按，导航由下方隐藏链接驱动，仍是页面推入、不是 sheet。
+    @State private var navPlaylist: Playlist?
 
     /// 统一账号登录面板（网易云 + QQ 音乐整合）
     @State private var showAccountHub = false
@@ -187,11 +194,6 @@ struct ProfileView: View {
 
     private var displayPlatformSummary: String {
         isEnglish ? "Kugou Music" : "酷狗音乐"
-    }
-
-    private var appVersionText: String {
-        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2"
-        return "Co · \(ver)"
     }
 
     /// 登录状态提示（酷狗专版：只展示酷狗登录状态）
@@ -386,9 +388,6 @@ struct ProfileView: View {
                     coNeteaseHeader
                     coNeteaseMainCard
                         .padding(.top, -24)
-                    profileVersionFooter
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
                 }
                 // 底部叠层实测：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；300pt 保证最后一行能完整滑出，不被迷你播放器和底栏盖住（上一轮插值修复的内边距，本轮保留不回退）。
                 .padding(.bottom, 300)
@@ -423,6 +422,16 @@ struct ProfileView: View {
             guard !didRefreshProfileAccount else { return }
             didRefreshProfileAccount = true
             await auth.refreshAccount()
+        }
+        .task(id: kugouAuth.userId) { loadHiddenPlaylists() }
+        .confirmationDialog("隐藏此歌单？", isPresented: $showHideConfirm, titleVisibility: .visible) {
+            Button("隐藏此歌单", role: .destructive) {
+                if let target = hideConfirmPlaylist { hidePlaylist(target) }
+                hideConfirmPlaylist = nil
+            }
+            Button("取消", role: .cancel) { hideConfirmPlaylist = nil }
+        } message: {
+            Text("只在“我的”页隐藏，不删除酷狗里的歌单，可在设置里恢复。")
         }
         // The avatar-presented profile is its own sheet, so its content must
         // receive the selected color scheme instead of only the backdrop.
@@ -590,11 +599,6 @@ struct ProfileView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.beansLabel)
                 Spacer()
-                if kugouAuth.isLoggedIn {
-                    Text("\(myPlaylists.count)个")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.beansSecondary)
-                }
             }
             if !kugouAuth.isLoggedIn {
                 Button {
@@ -623,32 +627,54 @@ struct ProfileView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else if visiblePlaylists.isEmpty {
+                Text("暂无歌单")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.beansSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else {
                 VStack(spacing: 0) {
-                    ForEach(myPlaylists) { playlist in
-                        NavigationLink(destination: PlaylistView(playlist: playlist)) {
-                            HStack(spacing: 12) {
-                                CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(playlist.name)
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(Color.beansLabel)
-                                        .lineLimit(1)
-                                    Text(beansSongCountText(playlist.trackCount))
-                                        .font(.system(size: 13))
+                    ForEach(visiblePlaylists) { playlist in
+                        ZStack {
+                            // 隐藏链接：只负责推入歌单页，本身不显示；点按走下方 Button，长按走确认弹窗。
+                            NavigationLink(destination: PlaylistView(playlist: playlist), isActive: Binding(get: { navPlaylist?.id == playlist.id }, set: { if !$0 { navPlaylist = nil } })) {
+                                EmptyView()
+                            }
+                            .opacity(0)
+                            Button {
+                                BeansHaptics.tap()
+                                navPlaylist = playlist
+                            } label: {
+                                HStack(spacing: 12) {
+                                    CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(playlist.name)
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(Color.beansLabel)
+                                            .lineLimit(1)
+                                        Text(beansSongCountText(playlist.trackCount))
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(Color.beansSecondary)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
                                         .foregroundStyle(Color.beansSecondary)
                                 }
-                                Spacer(minLength: 8)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.beansSecondary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .onLongPressGesture(minimumDuration: 0.5) {
+                                BeansHaptics.select()
+                                hideConfirmPlaylist = playlist
+                                showHideConfirm = true
+                            }
                         }
-                        .buttonStyle(.plain)
-                        if playlist.id != myPlaylists.last?.id {
+                        if playlist.id != visiblePlaylists.last?.id {
                             Divider().padding(.leading, 78)
                         }
                     }
@@ -759,6 +785,23 @@ struct ProfileView: View {
             UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 28, style: .continuous)
                 .fill(colorScheme == .dark ? Color(.secondarySystemBackground) : Color.white)
         )
+    }
+
+    // MARK: - 我的页隐藏歌单（旧线 1.8.5 移植，只藏显示、不删歌单）
+    private var hiddenPlaylistIds: Set<Int> { Set(hiddenPlaylistEntries.map(\.id)) }
+    private var visiblePlaylists: [Playlist] { myPlaylists.filter { !hiddenPlaylistIds.contains($0.id) } }
+    private func loadHiddenPlaylists() {
+        hiddenPlaylistEntries = CoHiddenPlaylists.load(userId: kugouAuth.userId)
+    }
+    private func hidePlaylist(_ playlist: Playlist) {
+        var entries = hiddenPlaylistEntries
+        if !entries.contains(where: { $0.id == playlist.id }) {
+            entries.append((id: playlist.id, name: playlist.name))
+        }
+        hiddenPlaylistEntries = entries
+        CoHiddenPlaylists.save(userId: kugouAuth.userId, entries: entries)
+        BeansHaptics.select()
+        ToastCenter.shared.show("已隐藏")
     }
 
     private func coLoadMyPlaylists(force: Bool = false) async {
@@ -1128,15 +1171,6 @@ struct ProfileView: View {
         .buttonStyle(GlassPressButtonStyle(scale: 0.97))
     }
 
-    private var profileVersionFooter: some View {
-        Text(appVersionText)
-            .font(BeansFont.appFont(11))
-            .foregroundStyle(Color.beansComment.opacity(0.7))
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 2)
-    }
-
 }
 
 private extension ProfileView {
@@ -1493,6 +1527,9 @@ struct SettingsView: View {
 
     @State private var appearanceExpanded = false
     @State private var appearanceDetailsExpanded = false
+    // 设置里隐藏的歌单恢复入口（旧线 1.8.5 移植：我的页长按隐藏的歌单在此逐条恢复）。
+    @State private var hiddenPlaylistsExpanded = false
+    @State private var hiddenAccounts: [(userId: String, entries: [(id: Int, name: String)])] = []
     @State private var playbackExpanded = false
     @State private var audioQualityExpanded = false
     @State private var showWallpaperPicker = false
@@ -1908,6 +1945,9 @@ struct SettingsView: View {
     private var showAccountSettings: Bool {
         settingsMatches("账号 登录 酷狗")
     }
+    private var showHiddenPlaylistsSettings: Bool {
+        settingsMatches("隐藏 歌单")
+    }
 
     private var settingsSearchField: some View {
         HStack(spacing: 10) {
@@ -1950,21 +1990,78 @@ struct SettingsView: View {
     private var showChangelogSettings: Bool { settingsMatches("日志 版本") }
     private var showSupportSettings: Bool { settingsMatches("帮助 声明") }
     private var hasSettingsSearchResults: Bool {
-        showAccountSettings || showAppearanceSettings || showPlatformSettings
+        showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings || showPlatformSettings
             || showAudioSettings || showPlaybackSettings || showEqualizerSettings
             || showBackupSettings || showChangelogSettings || showSupportSettings
     }
 
     @ViewBuilder
     private var coreSettingsGroup: some View {
-        if showAccountSettings || showAppearanceSettings || showPlatformSettings {
+        if showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings || showPlatformSettings {
             SettingsCatalogGroup {
                 if showAccountSettings { accountSection }
-                if showAccountSettings && (showAppearanceSettings || showPlatformSettings) { catalogDivider }
+                if showAccountSettings && (showHiddenPlaylistsSettings || showAppearanceSettings || showPlatformSettings) { catalogDivider }
+                if showHiddenPlaylistsSettings { hiddenPlaylistsSettingsSection }
+                if showHiddenPlaylistsSettings && (showAppearanceSettings || showPlatformSettings) { catalogDivider }
                 if showAppearanceSettings { appearanceSection }
                 if showAppearanceSettings && showPlatformSettings { catalogDivider }
             }
         }
+    }
+
+    // MARK: - 隐藏的歌单（旧线 1.8.5 移植：我的页长按隐藏的歌单在此逐条恢复，只藏显示、不删歌单）
+    private var hiddenPlaylistsSettingsSection: some View {
+        DisclosureGroup(isExpanded: $hiddenPlaylistsExpanded) {
+            VStack(alignment: .leading, spacing: 14) {
+                Button { hiddenAccounts = CoHiddenPlaylists.allAccounts() } label: {
+                    Text("刷新列表").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background { BeansSurface(shape: Capsule()) }
+                }
+                .buttonStyle(.plain)
+                if hiddenAccounts.isEmpty {
+                    Text("暂无隐藏的歌单。在“我的”页长按一条歌单可隐藏它，隐藏后只不在“我的”页显示，歌单本身不删除。")
+                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                } else {
+                    ForEach(hiddenAccounts, id: \.userId) { account in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(account.userId == "local" ? "本地（未登录）" : "账号 \(account.userId)")
+                                .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansComment)
+                            ForEach(account.entries, id: \.id) { entry in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
+                                        Text("歌单 ID \(entry.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                    }
+                                    Spacer()
+                                    Button {
+                                        let entries = account.entries.filter { $0.id != entry.id }
+                                        CoHiddenPlaylists.save(userId: account.userId, entries: entries)
+                                        hiddenAccounts = CoHiddenPlaylists.allAccounts()
+                                        BeansHaptics.select()
+                                        ToastCenter.shared.show("已恢复显示")
+                                    } label: {
+                                        Text("恢复显示").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
+                                            .padding(.horizontal, 12).padding(.vertical, 6)
+                                            .background { BeansSurface(shape: Capsule()) }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .onAppear { hiddenAccounts = CoHiddenPlaylists.allAccounts() }
+        } label: {
+            HStack {
+                Text("隐藏的歌单").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
+                Spacer()
+                Text(hiddenAccounts.isEmpty ? "无" : "\(hiddenAccounts.reduce(0) { $0 + $1.entries.count }) 条已隐藏").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     @ViewBuilder
