@@ -4427,7 +4427,9 @@ private struct SettingsCatalogGroup<Content: View>: View {
     }
 }
 
-private struct SettingsLiquidSheetPresentation: ViewModifier {
+// 由 private 改为内部可见（2026-10-23）：主页右上角头像直进设置时，DiscoverView
+// 的设置 sheet 也要用同一个液态呈现修饰符，否则编译报 private 不可访问。
+struct SettingsLiquidSheetPresentation: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 16.4, *) {
