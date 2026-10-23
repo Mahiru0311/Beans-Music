@@ -91,11 +91,7 @@ struct ProfileView: View {
         return parts.joined(separator: " · ")
     }
 
-    private var hasVisibleAccountLogin: Bool {
-        (platformPrefs.isEnabled(SearchProvider.netease) && auth.isLoggedIn)
-            || (platformPrefs.isEnabled(SearchProvider.qq) && false)
-            || (platformPrefs.isEnabled(SearchProvider.kugou) && kugouAuth.isLoggedIn)
-    }
+
 
     /// “我的”页顶部（wy.dwkc.cn 格式）：无大标题；左三横菜单、右设置齿轮；
     /// 黑色标题区 + 白色主卡大圆角压边。左菜单仍开板块排序（Co 在“我的”页唯一的菜单入口）。
@@ -252,7 +248,7 @@ struct ProfileView: View {
             do {
                 let (data, resp) = try await URLSession.shared.data(from: url)
                 guard let http = resp as? HTTPURLResponse, http.statusCode == 200, !data.isEmpty,
-                      CoVIPIconCatalog.isDecodable(data), let img = UIImage(data: data) else {
+                      CoVIPIconCatalog.isDecodable(data), let img = CoAnimatedImageDecoder.animatedImage(from: data) else {
                     throw URLError(.cannotDecodeContentData)
                 }
                 let dir = CoVIPIconCatalog.cacheFileURL().deletingLastPathComponent()
@@ -941,61 +937,6 @@ struct SettingsView: View {
             get: { BeansAudioQuality(rawValue: playbackAudioQualityRaw) ?? .hires },
             set: { playbackAudioQualityRaw = $0.rawValue }
         )
-    }
-
-    private var playbackQualitySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 9) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(beansLocalized("播放音质", "Playback quality"))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text(beansLocalized("按列表选择，无法使用时会由平台自动降级。", "Choose a quality below; the platform will downgrade automatically when unavailable."))
-                        .font(BeansFont.appFont(10))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(1)
-                }
-                Spacer()
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(BeansAudioQuality.allCases) { quality in
-                        let selected = playbackAudioQualitySelection.wrappedValue == quality
-                        Button {
-                            playbackAudioQualitySelection.wrappedValue = quality
-                            BeansHaptics.select()
-                        } label: {
-                            HStack(spacing: 5) {
-                                Text(quality.displayName)
-                                if selected {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .bold))
-                                }
-                            }
-                            .font(BeansFont.appFont(12, selected ? .semibold : .medium))
-                            .foregroundStyle(selected ? Color.beansAmber : Color.beansLabel)
-                            .padding(.horizontal, 12)
-                            .frame(height: 31)
-                            .background {
-                                Capsule()
-                                    .fill(selected ? Color.beansAmber.opacity(0.14) : Color.beansLabel.opacity(0.055))
-                            }
-                            .overlay {
-                                Capsule()
-                                    .strokeBorder(selected ? Color.beansAmber.opacity(0.42) : Color.beansLabel.opacity(0.08), lineWidth: 0.8)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 1)
-            }
-        }
     }
 
     private var homeGreetingLines: [String] {

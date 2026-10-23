@@ -52,11 +52,6 @@ final class FavoritesStore: ObservableObject {
         return true
     }
 
-    /// 移除 QQ 收藏（音乐库侧滑删除）
-    func removeQQFavorite(_ song: Song) {
-        updateQQ(song, liked: false)
-    }
-
     /// 登录 QQ / 微信后从 QQ 音乐云端同步“我的喜欢”。
     /// 只有云端明确返回歌曲时才覆盖本地，避免接口空响应误清空收藏。
     @MainActor
@@ -112,9 +107,5 @@ final class FavoritesStore: ObservableObject {
         }
     }
 
-    /// 退出网易云登录时清空本地网易云收藏缓存（保留 QQ 收藏）
-    func resetNetease() {
-        neteaseFavoriteSongs = []
-        defaults.removeObject(forKey: neteaseKey)
-    }
+
 }

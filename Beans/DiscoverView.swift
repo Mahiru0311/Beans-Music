@@ -599,20 +599,6 @@ struct DiscoverView: View {
         .buttonStyle(.plain)
     }
 
-    /// QQ 峰尖榜占位渐变（保留备用）
-    private func qqRankGradient(_ name: String) -> LinearGradient {
-        let palettes: [[Color]] = [
-            [Color(red: 0.35, green: 0.55, blue: 0.95), Color(red: 0.20, green: 0.30, blue: 0.65)],
-            [Color(red: 0.95, green: 0.42, blue: 0.36), Color(red: 0.70, green: 0.18, blue: 0.20)],
-            [Color(red: 0.20, green: 0.78, blue: 0.62), Color(red: 0.08, green: 0.52, blue: 0.44)],
-            [Color(red: 0.92, green: 0.62, blue: 0.25), Color(red: 0.72, green: 0.38, blue: 0.12)],
-            [Color(red: 0.62, green: 0.45, blue: 0.90), Color(red: 0.40, green: 0.25, blue: 0.68)],
-            [Color(red: 0.30, green: 0.70, blue: 0.85), Color(red: 0.16, green: 0.45, blue: 0.65)]
-        ]
-        let seed = abs(name.hashValue) % palettes.count
-        return LinearGradient(colors: palettes[seed], startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
-
     // MARK: - 每日推荐
 
     @ViewBuilder
@@ -934,14 +920,6 @@ struct DiscoverView: View {
 
 
     // MARK: - 歌单广场（官方分类 + 双列网格）
-
-    /// 官方歌单分类：全部 + 热门分类（接口失败时用内置兜底）
-    private var catChips: [String] {
-        if playlistCats.isEmpty {
-            return ["全部", "华语", "流行", "经典", "摇滚", "民谣", "电子", "影视原声", "ACG", "怀旧", "欧美", "日韩", "粤语", "古风", "轻音乐", "治愈", "学习", "运动", "夜晚"]
-        }
-        return ["全部"] + Array(playlistCats.prefix(18))
-    }
 
     private var personalizedSection: some View {
         VStack(alignment: .leading, spacing: 12) {

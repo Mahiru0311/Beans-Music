@@ -240,9 +240,6 @@ struct Playlist: Identifiable, Hashable, Codable {
         source = .netease
     }
 
-    var isNetEaseLikedPlaylist: Bool {
-        source == .netease && (specialType == 5 || name == "我喜欢的音乐" || name.localizedCaseInsensitiveContains("liked songs"))
-    }
 }
 
 struct TopList: Identifiable, Hashable {

@@ -431,52 +431,6 @@ extension View {
         if #available(iOS 16, *) { self.scrollContentBackground(.hidden) } else { self }
     }
 
-    /// 在歌单、排行榜等详情页底部保留可用的迷你播放器。
-    func beansDetailMiniPlayer() -> some View {
-        modifier(BeansDetailMiniPlayerModifier())
-    }
-}
-
-private struct BeansDetailMiniPlayerModifier: ViewModifier {
-    @EnvironmentObject private var auth: AuthStore
-    @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var theme: ThemeStore
-    @ObservedObject private var favorites = FavoritesStore.shared
-    @State private var showPlayer = false
-
-    func body(content: Content) -> some View {
-        content
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if player.currentSong != nil {
-                    MiniPlayerView(
-                        showPlayer: $showPlayer,
-                        presentation: .dock
-                    )
-                    .environmentObject(player.clock)
-                    .environmentObject(theme)
-                    .environmentObject(favorites)
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 4)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .fullScreenCover(isPresented: $showPlayer) {
-                // 详情页使用与主页相同的播放页容器，确保顶部下拉手势可以关闭播放器。
-                BeansNowPlayingPresentation(
-                    isPresented: $showPlayer,
-                    usesSystemInteractiveDismissal: false
-                ) {
-                    PlayerView(isPresented: $showPlayer)
-                        .environmentObject(auth)
-                        .environmentObject(player)
-                        .environmentObject(player.clock)
-                        .environmentObject(theme)
-                        .environmentObject(favorites)
-                }
-            }
-    }
-}
-
 // MARK: - 封面图
 
 struct CoverImage: View {
@@ -714,7 +668,7 @@ enum CoVIPIconCatalog {
     }
     static func cachedImage() -> UIImage? {
         guard let data = try? Data(contentsOf: cacheFileURL()), !data.isEmpty else { return nil }
-        return UIImage(data: data)
+        return CoAnimatedImageDecoder.animatedImage(from: data)
     }
     static func isDecodable(_ data: Data) -> Bool {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return false }
@@ -727,6 +681,7 @@ enum CoVIPIconCatalog {
 // 会把唱片圆上下左右裁掉、只剩红点 + VIP 字（1.8.7 截图实锤）。
 struct CoVIPRemoteImage: View {
     let image: UIImage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var width: CGFloat {
         let h = image.size.height
         guard h > 0 else { return 78 }
@@ -734,7 +689,7 @@ struct CoVIPRemoteImage: View {
     }
     var body: some View {
         if image.images != nil {
-            CoAnimatedImage(image: image)
+            CoAnimatedImage(image: image, animated: !reduceMotion)
                 .frame(width: width, height: 26)
         } else {
             Image(uiImage: image)
@@ -745,9 +700,54 @@ struct CoVIPRemoteImage: View {
     }
 }
 
-// 下载后仍能动起来的图片视图（webp 动图经 UIImage 解码后多帧时用 UIImageView 播，静态图同理）。
+// 1.8.9 动效解码：UIImage(data:) 对动图经常只剩首帧（webp 动效款实测风险点），
+// 故用 CGImageSource 逐帧抽帧：多帧时按每帧时长展开成 UIImage.animatedImage，
+// 单帧/解码失败时回落 UIImage(data:)；帧数上限 150、展开后上限 300，避免爆内存。
+enum CoAnimatedImageDecoder {
+    static func animatedImage(from data: Data) -> UIImage? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return UIImage(data: data) }
+        let count = CGImageSourceGetCount(src)
+        guard count > 1 else { return UIImage(data: data) }
+        var frames: [UIImage] = []
+        var durations: [TimeInterval] = []
+        for i in 0..<min(count, 150) {
+            guard let cg = CGImageSourceCreateImageAtIndex(src, i, nil) else { continue }
+            frames.append(UIImage(cgImage: cg))
+            durations.append(frameDuration(src: src, index: i))
+        }
+        guard frames.count > 1 else { return UIImage(data: data) }
+        // UIImage.animatedImage 只有总时长、没有逐帧时长：按最短帧为单位重复展开，近似还原逐帧时长。
+        let unit = max(durations.min() ?? 0.1, 0.02)
+        var expanded: [UIImage] = []
+        for (frame, d) in zip(frames, durations) {
+            let repeats = max(1, min(5, Int((d / unit).rounded())))
+            expanded.append(contentsOf: Array(repeating: frame, count: repeats))
+            if expanded.count >= 300 { break }
+        }
+        let total = durations.reduce(0, +)
+        return UIImage.animatedImage(with: expanded, duration: total) ?? UIImage(data: data)
+    }
+
+    private static func frameDuration(src: CGImageSource, index: Int) -> TimeInterval {
+        guard let props = CGImageSourceCopyPropertiesAtIndex(src, index, nil) as? [String: Any] else { return 0.1 }
+        if let d = findDelay(in: props), d > 0 { return d < 0.02 ? 0.1 : d }
+        return 0.1
+    }
+
+    private static func findDelay(in dict: [String: Any]) -> TimeInterval? {
+        for (key, value) in dict {
+            if key == "UnclampedDelayTime" || key == "DelayTime", let d = value as? Double { return d }
+            if let sub = value as? [String: Any], let d = findDelay(in: sub) { return d }
+        }
+        return nil
+    }
+}
+
+// 下载后仍能动起来的图片视图（动图经解码器重建多帧后用 UIImageView 播，静态图同理；
+// 减弱动态效果时只显示首帧静态，视图消失即停，不常驻）。
 struct CoAnimatedImage: UIViewRepresentable {
     let image: UIImage
+    var animated: Bool = true
     func makeUIView(context: Context) -> UIImageView {
         let v = UIImageView()
         v.contentMode = .scaleAspectFit
@@ -755,8 +755,16 @@ struct CoAnimatedImage: UIViewRepresentable {
         return v
     }
     func updateUIView(_ uiView: UIImageView, context: Context) {
-        uiView.image = image
-        if image.images != nil { uiView.startAnimating() } else { uiView.stopAnimating() }
+        if animated, image.images != nil {
+            uiView.image = image
+            uiView.startAnimating()
+        } else {
+            uiView.image = image.images?.first ?? image
+            uiView.stopAnimating()
+        }
+    }
+    static func dismantleUIView(_ uiView: UIImageView, coordinator: ()) {
+        uiView.stopAnimating()
     }
 }
 

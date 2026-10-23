@@ -24,21 +24,11 @@ struct PlaylistView: View {
     @State private var showShare = false
     @State private var isStarred = false
     @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
 
-    private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
-
+    // 1.8.9 审计：旧 uiStyleRaw/isNativeClean 在 1.8.8 深色页后已 0 引用，删；
+    // 缓存账号三分支返回值全相同，合并为一句（歌单只走酷狗，来源分支已无意义）。
     private var cacheAccountID: String {
-        switch playlist.source {
-        case .netease:
-            return KugouMusicAuth.shared.userId
-        case .qq:
-            return KugouMusicAuth.shared.userId
-        case .kugou:
-            return KugouMusicAuth.shared.userId
-        }
+        KugouMusicAuth.shared.userId
     }
 
     // 1.8.8：按用户发的截图布局改回全幅封面沉浸头（1.8.7 的小封面头是改错方向）：
@@ -99,13 +89,15 @@ struct PlaylistView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                     .frame(width: geo.size.width, height: 400)
+                    // 1.8.9 液态玻璃：返回钮走全站 BeansGlass（iOS26+ 真 glassEffect，
+                    // iOS15-25 回落超薄材质；紧凑/简洁样式下 BeansGlass 自带平面回落，不强制液态）。
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 44, height: 44)
-                            .background(Color.black.opacity(0.35))
-                            .clipShape(Circle())
+                            .background { BeansGlass(shape: Circle()) }
+                            .overlay { Circle().stroke(.white.opacity(0.25), lineWidth: 0.5) }
                     }
                     .buttonStyle(.plain)
                     .padding(.leading, 16)
@@ -137,8 +129,8 @@ struct PlaylistView: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 48, height: 48)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Circle())
+                            .background { BeansGlass(shape: Circle()) }
+                            .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 0.5) }
                     }
                     .buttonStyle(.plain)
                     Button { player.play(songs: displayedTracks, startAt: 0) } label: {
@@ -161,8 +153,8 @@ struct PlaylistView: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 48, height: 48)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Circle())
+                            .background { BeansGlass(shape: Circle()) }
+                            .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 0.5) }
                     }
                     .buttonStyle(.plain)
                 }
@@ -191,7 +183,9 @@ struct PlaylistView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.12)))
+                // 1.8.9 液态玻璃：搜索框容器走 BeansGlass，细描边保深色底可读；播放白 pill 不动。
+                .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
+                .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 0.5) }
                 Button {
                     isStarred.toggle()
                     CoStarredPlaylists.setStarred(id: playlist.id, starred: isStarred)
@@ -225,7 +219,8 @@ struct PlaylistView: View {
     }
 
     private var songList: some View {
-        VStack(spacing: 0) {
+        // 1.8.9 审计：VStack 改 LazyVStack，长歌单只渲染可见行，不再整单物化。
+        LazyVStack(spacing: 0) {
             ForEach(Array(displayedTracks.enumerated()), id: \.element.identityKey) { index, song in
                 SongCell(
                     song: song,
