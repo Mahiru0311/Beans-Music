@@ -930,7 +930,16 @@ struct ProfileView: View {
                     .padding(.vertical, 20)
                     .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else {
-                VStack(spacing: 0) {
+                // 每条歌单一块独立卡片（上一轮整块列表套紧框是丑的根因：单条时框只比行
+                // 大约 11×8pt，像给一条歌单套了个按钮框）：外层间距 12pt（与本页其他
+                // 卡片间距一致），每行自己带背景 + 圆角 16 + 描边（clip 之后，primary
+                // 0.08、1pt，深浅下都可见），行与行之间不再用 Divider 分隔；
+                // 多条是几张并列卡片，单条也是一张正常卡片。行内边距沿用
+                // CoPlaylistRowLabel 自带的 14×10pt（约 12pt 上下，封面 52pt、
+                // 歌名/首数/右箭头不动）；该行组件与歌单弹窗共用，不为此单改它，
+                // 免得弹窗行距跟着变。未登录/加载中/空态占位块保持原样；
+                // 歌单行只剩点按推入（长按隐藏上一轮已删，不接回来）。
+                VStack(spacing: 12) {
                     ForEach(visiblePlaylists) { playlist in
                         ZStack {
                             // 隐藏链接：只负责推入歌单页，本身不显示；点按走下方 Button。
@@ -946,21 +955,14 @@ struct ProfileView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        if playlist.id != visiblePlaylists.last?.id {
-                            Divider().padding(.leading, 78)
+                        .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                                .allowsHitTesting(false)
                         }
                     }
-                }
-                .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                // 歌单列表容器一圈边框：描边放在 clipShape 之后，不会被裁成半线；
-                // 数值复用设置页卡片描边风格（1pt，primary 0.08，深浅主题下都可见，
-                // 深色下是白 8%、浅色下是黑 8%，不自创粗黑边）。只加在列表容器上，
-                // 每行不单独套框；未登录/加载中/空态占位块保持原样。
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-                        .allowsHitTesting(false)
                 }
             }
         }

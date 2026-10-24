@@ -1601,7 +1601,9 @@ struct AlbumDetailView: View {
     @State private var selectedOtherAlbum: Album?
     @State private var showArtistHome = false
     @State private var showAlbumDescription = false
-    @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
+    // 新版统一布局（与 PlaylistView 同款，见 CoUnifiedDetail.swift）：不再读沉浸开关分叉，
+    // body 永远走固定封面 + 28pt 标题 + 同款控制排；设置页开关本身不动。
+    @StateObject private var detailScroll = CoDetailScrollState()
 
     init(album: Album, embeddedInNavigation: Bool = false) {
         self.album = album
@@ -1644,121 +1646,125 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private var albumPage: some View {
         ZStack {
-            GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
+            // 新版底：固定深色底（歌单页同款），不跟随系统深浅；整页强制深色外观，
+            // SongCell / 专辑架的 beansLabel / beansComment 在此页按深色取值，白字可读。
+            coDetailDarkBackground.ignoresSafeArea()
             if isLoading {
                 albumDetailLoadingState
             } else if let errorMessage {
                 ErrorStateView(message: errorMessage) { Task { await load() } }
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        albumHeader
+                ZStack {
+                    CoUnifiedDetailCoverLayers(coverURL: album.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            CoDetailCoverSpacer()
+                            albumTitleBlock
+                            if !tracks.isEmpty {
+                                CoDetailControlsRow {
+                                    CoDetailPlayCapsule(title: "播放全部") {
+                                        player.play(songs: tracks, startAt: 0)
+                                    }
+                                }
+                            }
+                            if let description = resolvedAlbumDescription {
+                                Button {
+                                    BeansHaptics.tap()
+                                    showAlbumDescription = true
+                                } label: {
+                                    HStack(alignment: .top, spacing: 6) {
+                                        Text(description.replacingOccurrences(of: "\n", with: " "))
+                                            .font(BeansFont.appFont(15))
+                                            .foregroundStyle(.white.opacity(0.85))
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                        Spacer(minLength: 0)
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(.white.opacity(0.6))
+                                            .padding(.top, 2)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 22)
+                                .padding(.bottom, 8)
+                            }
+                            ForEach(Array(tracks.enumerated()), id: \.element.identityKey) { index, song in
+                                SongCell(
+                                    song: song,
+                                    showCover: false,
+                                    suppressNativeCleanRowGlass: true,
+                                    leadingIndex: index + 1,
+                                    compactAlbumRow: true,
+                                    playbackContext: tracks,
+                                    playbackIndex: index
+                                ) {
+                                    player.play(songs: tracks, startAt: index)
+                                }
+                            }
 
-                        ForEach(Array(tracks.enumerated()), id: \.element.identityKey) { index, song in
-                            SongCell(
-                                song: song,
-                                showCover: false,
-                                suppressNativeCleanRowGlass: true,
-                                leadingIndex: index + 1,
-                                compactAlbumRow: true,
-                                playbackContext: tracks,
-                                playbackIndex: index
-                            ) {
-                                player.play(songs: tracks, startAt: index)
+                            if !otherAlbums.isEmpty {
+                                otherAlbumsShelf
+                                    .padding(.top, 20)
+                            } else if isLoadingOtherAlbums {
+                                otherAlbumsLoadingShelf
+                                    .padding(.top, 20)
                             }
                         }
-
-                        if !otherAlbums.isEmpty {
-                            otherAlbumsShelf
-                                .padding(.top, 20)
-                        } else if isLoadingOtherAlbums {
-                            otherAlbumsLoadingShelf
-                                .padding(.top, 20)
-                        }
+                        .padding(.bottom, 118)
                     }
-                    .padding(.top, 12)
-                    .padding(.bottom, 118)
+                    .beansScrollIndicatorsHidden()
+                    .ignoresSafeArea(edges: .top)
+                    .coDetailScroll(detailScroll)
                 }
-                .beansScrollIndicatorsHidden()
             }
         }
-        .navigationTitle(album.name)
+        // 标题已在内容里（28pt 居中），导航栏标题留空、背景隐藏，像歌单页一样让封面铺到顶边；
+        // 返回键仍在导航栏位置、压在封面图上、照常可点。
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private var albumHeader: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if immersiveDetail {
-                BeansImmersiveDetailHeader(coverURL: album.coverURL, title: album.name, subtitle: album.artistName,
-                                          metadata: "\(beansSongCountText(tracks.count)) · \(album.releaseCaption)",
-                                          onSubtitle: { showArtistHome = true })
-            } else {
-            HStack(alignment: .top, spacing: 14) {
-                CoverImage(url: album.coverURL, size: 120, cornerRadius: 12)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(album.name)
-                        .font(BeansFont.appFont(16, .bold))
-                        .foregroundStyle(Color.beansLabel)
-                        .lineLimit(3)
-                    if album.artistName.isEmpty {
-                        Text("未知歌手")
-                            .font(BeansFont.appFont(13))
-                            .foregroundStyle(Color.beansComment)
-                    } else {
-                        Button {
-                            BeansHaptics.tap()
-                            showArtistHome = true
-                        } label: {
-                            Text(album.artistName)
-                                .font(BeansFont.appFont(13, .medium))
-                                .foregroundStyle(Color.beansHighlight)
-                                .lineLimit(1)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("打开 \(album.artistName) 的歌手主页")
-                    }
-                    Text([beansSongCountText(tracks.count), album.releaseCaption]
-                        .filter { !$0.isEmpty }
-                        .joined(separator: " · "))
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-                Spacer(minLength: 0)
-            }
-            }
-            if let description = resolvedAlbumDescription {
-                Button {
-                    BeansHaptics.tap()
-                    showAlbumDescription = true
-                } label: {
-                    HStack(alignment: .top, spacing: 6) {
-                        Text(description.replacingOccurrences(of: "\n", with: " "))
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color.beansComment.opacity(0.72))
-                            .padding(.top, 2)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-            if !tracks.isEmpty {
-                HStack(spacing: 10) {
-                    GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
-                        player.play(songs: tracks, startAt: 0)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 14)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .preferredColorScheme(.dark)
         .sheet(isPresented: $showAlbumDescription) {
             BeansLongDescriptionSheet(title: "专辑简介", text: resolvedAlbumDescription ?? "")
+        }
+    }
+
+    /// 歌单页 unifiedTitleBlock 同款口径：标题 28pt 居中、歌手 16pt、首数/发行 14pt；
+    /// 歌手仍是按钮（点进歌手页），文案与字段一律按专辑真实字段，不套歌单文案。
+    private var albumTitleBlock: some View {
+        VStack(spacing: 4) {
+            Text(album.name)
+                .font(BeansFont.appFont(28, .bold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.horizontal, 24)
+            if album.artistName.isEmpty {
+                Text("未知歌手")
+                    .font(BeansFont.appFont(16, .medium))
+                    .foregroundStyle(.white.opacity(0.85))
+            } else {
+                Button {
+                    BeansHaptics.tap()
+                    showArtistHome = true
+                } label: {
+                    Text(album.artistName)
+                        .font(BeansFont.appFont(16, .medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("打开 \(album.artistName) 的歌手主页")
+            }
+            Text([beansSongCountText(tracks.count), album.releaseCaption]
+                .filter { !$0.isEmpty }
+                .joined(separator: " · "))
+                .font(BeansFont.appFont(14))
+                .foregroundStyle(.white.opacity(0.6))
         }
     }
 

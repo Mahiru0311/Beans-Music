@@ -239,6 +239,13 @@ struct BeansAvatarView: View {
 /// 各主页面共用的“我的”快捷入口，始终优先显示用户选择的本地头像。
 struct BeansProfileShortcutButton: View {
     @EnvironmentObject private var auth: AuthStore
+    // 主页头像直接读与我的页同一个源（KugouMusicAuth.shared，@ObservedObject 监听）：
+    // AuthStore 只在 init / finishLogin / refreshAccount / loadLibrary 时从酷狗同步一次快照，
+    // 登录发生在 AuthStore 初始化之后、用户还没打开过我的页时，auth.user 就是旧的/空的，
+    // 头像只能显示灰色人形占位——而我的页直接读 kugouAuth 不会有这个问题。
+    // 直接读酷狗源后，登录保存瞬间 @Published 变化就会刷新头像，不依赖快照时机；
+    // auth 仍保留在环境里（其他调用点与环境注入不动），头像本身不再读它。
+    @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("beans.headerAccessoryMode") private var accessoryModeRaw = BeansHeaderAccessoryMode.avatar.rawValue
     var action: () -> Void
@@ -266,7 +273,8 @@ struct BeansProfileShortcutButton: View {
     }
 
     private var avatarLabel: some View {
-        BeansAvatarView(remoteURL: auth.user?.avatarURL, size: 38, useCustom: true)
+        // 与我的页同源：酷狗头像（本地自定义头像优先逻辑在 BeansAvatarView 的 useCustom 里，不动）。
+        BeansAvatarView(remoteURL: kugouAuth.avatarURL, size: 38, useCustom: true)
             .frame(width: 38, height: 38)
             .overlay {
                 Circle().strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)

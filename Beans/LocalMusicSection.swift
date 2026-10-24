@@ -357,7 +357,7 @@ struct LocalPlaylistDetailSheet: View {
     @State private var selectedSongKeys: Set<String> = []
     @State private var showAddSelectedDestination = false
     @State private var exportFile: ShareFileItem?
-    @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
+    // 不再读沉浸开关分叉（设置页开关本身不动）：本页永远走下面统一的标题 + 控制排。
     private var playlist: LocalPlaylist? {
         store.playlists.first { $0.id == playlistID }
     }
@@ -415,27 +415,75 @@ struct LocalPlaylistDetailSheet: View {
                 Group {
                 if let playlist {
                     List {
+                        // 等价实现（为什么不照搬歌单页 ScrollView 固定层）：本页是 List 结构，
+                        // 歌曲行的左滑删除（swipeActions）、多选、分隔线隐藏都只在 List 里有，
+                        // 改成 ScrollView 会丢掉左滑删除；固定封面层也不能放在 List 外面
+                        // （List 内容区不透明，固定层会被盖住或压在歌曲行上面）。
+                        // 所以统一的是设计语言而非字面结构：首行方形封面（屏宽正方形、
+                        // 底部 120pt 渐变淡出、无横线）+ 标题 28pt 居中紧贴封面
+                        // + 控制排同款尺寸（播放胶囊 168×50pt、圆键 48×48pt、间距 12pt），
+                        // 且不再按沉浸开关分叉。颜色仍走本页 GlassBackdrop 自适应体系
+                        // （不像歌单页那样强制深色底），保证浅色下也可读；
+                        // 随机键的圆键因此用自适应玻璃 + beansLabel 图标，而不是歌单页
+                        // 那支深色底专用的白图标圆键（浅色下白图标会看不见）。
+                        // 播放/随机/搜索/多选/重命名/导出等功能一律不动。
                         Section {
-                            if immersiveDetail {
-                                let headerCover: URL? = playlist.coverURL ?? playlist.songs.first?.coverURL
-                                let headerMetadata: String = beansSongCountText(playlist.songs.count)
-                                BeansImmersiveDetailHeader(coverURL: headerCover,
-                                                          title: playlist.name, metadata: headerMetadata)
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
+                            let headerCover: URL? = playlist.coverURL ?? playlist.songs.first?.coverURL
+                            let coverWidth = UIScreen.main.bounds.width
+                            CoverImage(url: headerCover, size: coverWidth, cornerRadius: 0)
+                                .mask(
+                                    LinearGradient(
+                                        stops: [
+                                            .init(color: .black, location: 0),
+                                            .init(color: .black, location: max(0, (coverWidth - 120) / coverWidth)),
+                                            .init(color: .clear, location: 1),
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                            VStack(spacing: 4) {
+                                Text(playlist.name)
+                                    .font(BeansFont.appFont(28, .bold))
+                                    .foregroundStyle(Color.beansLabel)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                Text(beansSongCountText(playlist.songs.count))
+                                    .font(BeansFont.appFont(14))
+                                    .foregroundStyle(Color.beansComment)
                             }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                             HStack(spacing: 12) {
-                                GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
+                                CoDetailPlayCapsule(title: "播放全部") {
                                     let songs = visibleSongs.map(\.element)
                                     guard !songs.isEmpty else { return }
                                     player.play(songs: songs, startAt: 0)
                                 }
-                                GlassButton(title: "随机播放", systemName: "shuffle", forceLiquid: true) {
+                                Button {
+                                    BeansHaptics.tap()
                                     let songs = visibleSongs.map(\.element)
                                     guard !songs.isEmpty else { return }
                                     player.play(songs: songs.shuffled(), startAt: 0)
+                                } label: {
+                                    Image(systemName: "shuffle")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .frame(width: 48, height: 48)
+                                        .background {
+                                            BeansGlass(shape: Circle(), forceLiquid: true)
+                                        }
                                 }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("随机播放")
                             }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
                         .listRowBackground(Color.clear)
                         Section {

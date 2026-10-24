@@ -53,7 +53,9 @@ struct ArtistHomeSheet: View {
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
-    @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
+    // 新版统一布局（与 PlaylistView 同款，见 CoUnifiedDetail.swift）：不再读沉浸开关分叉，
+    // body 永远走固定封面 + 28pt 标题 + 同款控制排；设置页开关本身不动。
+    @StateObject private var detailScroll = CoDetailScrollState()
     @State private var selectedAlbum: Album?
     @State private var loadTask: Task<Void, Never>?
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
@@ -90,8 +92,9 @@ struct ArtistHomeSheet: View {
     @ViewBuilder
     private var artistPage: some View {
         ZStack {
-            // 歌手页沿用主页壁纸，不受“同步到全部页面”开关影响。
-            GlassBackdrop(customColor: theme.customBackground, homeMode: true)
+            // 新版底：固定深色底（歌单页同款），整页强制深色外观，行文字按深色取值；
+            // 不再用主页壁纸 GlassBackdrop，歌手页不再是“主页壁纸 + 居中大封面/小头像横排”两套。
+            coDetailDarkBackground.ignoresSafeArea()
             Group {
                 if loading {
                     artistLoadingState
@@ -100,21 +103,40 @@ struct ArtistHomeSheet: View {
                         Task { await load() }
                     }
                 } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            artistHeader
-                            hotSongsSection
-                            albumsSection
+                    ZStack {
+                        CoUnifiedDetailCoverLayers(coverURL: artist?.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                CoDetailCoverSpacer()
+                                artistTitleBlock
+                                if !hotSongs.isEmpty {
+                                    CoDetailControlsRow {
+                                        CoDetailPlayCapsule(title: "播放全部") {
+                                            player.play(songs: displayedHotSongs, startAt: 0)
+                                        }
+                                    }
+                                }
+                                hotSongsSection
+                                albumsSection
+                                    .padding(.top, 16)
+                            }
+                            .padding(.bottom, 16)
                         }
-                        .padding(.top, 6)
-                        .padding(.bottom, 16)
+                        .beansScrollIndicatorsHidden()
+                        .ignoresSafeArea(edges: .top)
+                        .coDetailScroll(detailScroll)
                     }
-                    .beansScrollIndicatorsHidden()
                 }
             }
         }
-        .navigationTitle("歌手主页")
+        // 标题已在内容里（28pt 居中），导航栏标题留空、背景隐藏，像歌单页一样让封面铺到顶边；
+        // 搜索框（navigationBarDrawer）与返回/拖动指示仍在原位，功能不动。
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .preferredColorScheme(.dark)
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .always),
@@ -122,30 +144,19 @@ struct ArtistHomeSheet: View {
         )
     }
 
-    @ViewBuilder
-    private var artistHeader: some View {
-        if immersiveDetail {
-            BeansImmersiveDetailHeader(coverURL: artist?.coverURL, title: artist?.name ?? artistName,
-                                      metadata: "热门歌曲 \(hotSongs.count) 首 · 专辑 \(albums.count) 张", portrait: true)
-        } else {
-        HStack(spacing: 14) {
-            BeansAvatarView(remoteURL: artist?.coverURL, size: 72)
-            .background(Color.beansGlassFill, in: Circle())
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(artist?.name ?? artistName)
-                    .font(BeansFont.appFont(20, .bold))
-                    .foregroundStyle(Color.beansLabel)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                Text(beansLocalized("热门歌曲 \(hotSongs.count) 首 · 专辑 \(albums.count) 张", "Popular songs: \(hotSongs.count) · Albums: \(albums.count)"))
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 16)
+    /// 歌单页 unifiedTitleBlock 同款口径：歌手名 28pt 居中、热门/专辑数 14pt；
+    /// 字段按歌手真实数据（热门歌曲数、专辑数），不套歌单文案。
+    private var artistTitleBlock: some View {
+        VStack(spacing: 4) {
+            Text(artist?.name ?? artistName)
+                .font(BeansFont.appFont(28, .bold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.horizontal, 24)
+            Text(beansLocalized("热门歌曲 \(hotSongs.count) 首 · 专辑 \(albums.count) 张", "Popular songs: \(hotSongs.count) · Albums: \(albums.count)"))
+                .font(BeansFont.appFont(14))
+                .foregroundStyle(.white.opacity(0.6))
         }
     }
 
@@ -191,16 +202,7 @@ struct ArtistHomeSheet: View {
                 .font(BeansFont.appFont(17, .bold))
                 .foregroundStyle(Color.beansLabel)
                 .padding(.horizontal, 16)
-            if !hotSongs.isEmpty {
-                HStack(spacing: 12) {
-                    GlassButton(title: "播放全部", systemName: "play.fill", prominent: true, expandsHorizontally: true) {
-                        BeansHaptics.tap()
-                        player.play(songs: displayedHotSongs, startAt: 0)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 2)
-            }
+            // 播放全部已移到标题下的新版控制排（168×50pt 胶囊），这里不再重复放一个按钮。
             if hotSongs.isEmpty {
                 Text("暂无歌曲")
                     .font(BeansFont.appFont(13))
