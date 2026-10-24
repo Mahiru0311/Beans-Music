@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 字体入口：全局字体功能已删，永远用系统字体（不再读用户上传的字体）。
-enum BeansFont {
+enum CoFont {
     static func appFont(_ size: CGFloat, _ weight: Font.Weight = .regular, _ design: Font.Design = .default) -> Font {
         .system(size: size, weight: weight, design: design)
     }

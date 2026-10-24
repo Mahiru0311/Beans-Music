@@ -15,22 +15,22 @@ struct KugouLoginSheet: View {
             GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
             VStack(spacing: 18) {
                 Capsule()
-                    .fill(Color.beansComment.opacity(0.3))
+                    .fill(Color.coComment.opacity(0.3))
                     .frame(width: 38, height: 4)
                     .padding(.top, 12)
 
                 HStack {
                     Text("登录酷狗音乐")
-                        .font(BeansFont.appFont(20, .bold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(20, .bold))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     Button {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         dismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 22))
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                     }
                     .buttonStyle(GlassPressButtonStyle(scale: 0.9))
                 }
@@ -39,15 +39,15 @@ struct KugouLoginSheet: View {
                 qrArea
                     .frame(width: 250, height: 250)
                     .padding(18)
-                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 30, style: .continuous)) }
+                    .background { CoSurface(shape: RoundedRectangle(cornerRadius: 30, style: .continuous)) }
                     .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
                     .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
 
                 statusView
 
                 Text("请使用酷狗音乐 App 扫码。登录成功后会保存移动端 token、设备 mid 和 dfid，用于同步云端歌单。")
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(11))
+                    .foregroundStyle(Color.coComment)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 28)
 
@@ -64,19 +64,19 @@ struct KugouLoginSheet: View {
             if let qr {
                 QRCodeView(text: qr.url)
             } else {
-                ProgressView().tint(Color.beansAmber)
+                ProgressView().tint(Color.coAmber)
             }
             if status == .expired || isError {
                 VStack(spacing: 10) {
                     Image(systemName: "arrow.clockwise.circle.fill")
                         .font(.system(size: 34))
                     Text(isError ? errorText : "二维码已过期")
-                        .font(BeansFont.appFont(13))
+                        .font(CoFont.appFont(13))
                     GlassButton(title: "刷新", systemName: "arrow.clockwise", prominent: true) {
                         startLogin()
                     }
                 }
-                .foregroundStyle(Color.beansLabel)
+                .foregroundStyle(Color.coLabel)
                 .frame(width: 210, height: 210)
                 .background(.black.opacity(0.55))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -101,8 +101,8 @@ struct KugouLoginSheet: View {
                 Text(message)
             }
         }
-        .font(BeansFont.appFont(13))
-        .foregroundStyle(isError ? Color.red.opacity(0.85) : Color.beansComment)
+        .font(CoFont.appFont(13))
+        .foregroundStyle(isError ? Color.red.opacity(0.85) : Color.coComment)
         .multilineTextAlignment(.center)
         .frame(height: 44)
     }

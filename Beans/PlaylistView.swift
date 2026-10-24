@@ -58,8 +58,8 @@ struct PlaylistView: View {
         guard let rest = playlistScrollRestOffset else { return 0 }
         return max(0, playlistScrollOffset - rest)
     }
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
 
     init(playlist: Playlist) {
         self.loadMode = .userPlaylist(playlist)
@@ -211,16 +211,16 @@ struct PlaylistView: View {
             .frame(height: UIScreen.main.bounds.width - 60)
     }
 
-    /// 虚化层用图刷新：图只从 BeansCoverImageStore 已有的缓存里读（内存优先，
+    /// 虚化层用图刷新：图只从 CoCoverImageStore 已有的缓存里读（内存优先，
     /// 再走磁盘 / URLCache 复水），不另起下载；网络图还没回来时 1.5 秒后只重试一次。
     private func refreshCoverBlurImage() {
         let url = CustomSongCoverStore.shared.resolvedURL(for: headerData.coverURL) ?? headerData.coverURL
         guard let url else { coverBlurImage = nil; return }
-        if let image = BeansCoverImageStore.memoryImage(for: url) {
+        if let image = CoCoverImageStore.memoryImage(for: url) {
             coverBlurImage = image
             return
         }
-        BeansCoverImageStore.loadCachedImage(for: url) { image in
+        CoCoverImageStore.loadCachedImage(for: url) { image in
             if let image {
                 coverBlurImage = image
             } else if !coverBlurRetried {
@@ -280,7 +280,7 @@ struct PlaylistView: View {
         return ZStack {
             coCoverTint(from: coverBlurImage).ignoresSafeArea()
             if loading && tracks.isEmpty {
-                BeansDetailSongsLoadingState(coverSize: 96, rowCount: 10)
+                CoDetailSongsLoadingState(coverSize: 96, rowCount: 10)
             } else if let errorMessage, tracks.isEmpty {
                 ErrorStateView(message: errorMessage) {
                     Task { await load(force: true) }
@@ -310,7 +310,7 @@ struct PlaylistView: View {
                         unifiedControls
                         if let description = headerData.description, !description.isEmpty {
                             Text(description)
-                                .font(BeansFont.appFont(15))
+                                .font(CoFont.appFont(15))
                                 .foregroundStyle(.white.opacity(0.85))
                                 .lineLimit(3)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -322,7 +322,7 @@ struct PlaylistView: View {
                         unifiedSearchRow
                         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Text("在已加载的 \(orderedTracks.count) 首中，筛出 \(displayedTracks.count) 首")
-                                .font(BeansFont.appFont(12))
+                                .font(CoFont.appFont(12))
                                 .foregroundStyle(.white.opacity(0.55))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 22)
@@ -330,7 +330,7 @@ struct PlaylistView: View {
                         }
                         ForEach(Array(displayedTracks.enumerated()), id: \.element.identityKey) { _, song in
                             Button {
-                                BeansHaptics.tap()
+                                CoHaptics.tap()
                                 player.play(songs: orderedTracks, startAt: playbackIndex(for: song))
                             } label: {
                                 unifiedSongRow(song)
@@ -345,7 +345,7 @@ struct PlaylistView: View {
                     }
                     .padding(.bottom, 140)
                 }
-                .beansScrollIndicatorsHidden()
+                .coScrollIndicatorsHidden()
                 // 内容不满屏时也能回弹下拉（与我的页 .always 同款），短歌单也能拉动放大。
                 .scrollBounceBehavior(.always, axes: .vertical)
                 // 封面铺到顶边：滚动视图忽略顶部安全区，内容从屏幕顶边 0 开始，
@@ -426,17 +426,17 @@ struct PlaylistView: View {
         //（参考图歌名行高约 31pt，对应约 26-28pt 字号，取 28pt 贴近而不冒进）。
         VStack(spacing: 4) {
             Text(headerData.title)
-                .font(BeansFont.appFont(28, .bold))
+                .font(CoFont.appFont(28, .bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .padding(.horizontal, 24)
             Text(headerData.sourceName)
-                .font(BeansFont.appFont(16, .medium))
+                .font(CoFont.appFont(16, .medium))
                 .foregroundStyle(.white.opacity(0.85))
             // 首数读已加载的真实歌曲数，不读歌单宣称的首数、不编数字。
             Text(beansSongCountText(tracks.count))
-                .font(BeansFont.appFont(14))
+                .font(CoFont.appFont(14))
                 .foregroundStyle(.white.opacity(0.6))
         }
     }
@@ -465,18 +465,18 @@ struct PlaylistView: View {
             // 所以胶囊播出来的顺序就是左键当前显示的模式，不再留一个只播一次
             // 随机、图标不动的假随机键。
             Button {
-                BeansHaptics.select()
+                CoHaptics.select()
                 player.togglePlayMode()
             } label: {
                 Image(systemName: player.playMode.icon)
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(player.playMode == .shuffle ? Color.beansAmber : .white)
+                    .foregroundStyle(player.playMode == .shuffle ? Color.coAmber : .white)
                     .frame(width: 48, height: 48)
                     .background {
                         if !disableLiquidGlass {
                             Circle()
                                 .fill(.clear)
-                                .glassEffect(player.playMode == .shuffle ? .regular.tint(Color.beansAmber.opacity(0.45)) : .regular, in: Circle())
+                                .glassEffect(player.playMode == .shuffle ? .regular.tint(Color.coAmber.opacity(0.45)) : .regular, in: Circle())
                         } else {
                             Circle().fill(player.playMode == .shuffle ? .white.opacity(0.25) : .white.opacity(0.15))
                         }
@@ -485,14 +485,14 @@ struct PlaylistView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(player.playMode.title)
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 playAll()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "play.fill")
                     Text("播放")
                 }
-                .font(BeansFont.appFont(18, .semibold))
+                .font(CoFont.appFont(18, .semibold))
                 .foregroundStyle(.black)
                 .frame(width: 168, height: 50)
                 .background {
@@ -509,7 +509,7 @@ struct PlaylistView: View {
             // 下载管线不存在（精简时已删下载管理器与批量下载，唯一的 download 是歌词下载），
             // 不做点了没反应的假下载键：保留截图里的下载键位置，点它明说暂不支持。
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 showDownloadUnsupported = true
             } label: {
                 Image(systemName: "arrow.down")
@@ -543,12 +543,12 @@ struct PlaylistView: View {
                 ZStack(alignment: .leading) {
                     if searchText.isEmpty {
                         Text(beansLocalized("搜索歌曲", "Search songs"))
-                            .font(BeansFont.appFont(16))
+                            .font(CoFont.appFont(16))
                             .foregroundStyle(.white.opacity(0.6))
                             .allowsHitTesting(false)
                     }
                     TextField("", text: $searchText)
-                        .font(BeansFont.appFont(16))
+                        .font(CoFont.appFont(16))
                         .foregroundStyle(.white)
                         .autocorrectionDisabled()
                 }
@@ -565,7 +565,7 @@ struct PlaylistView: View {
             // 收藏歌单没有真实接口（酷狗 API 里只有加歌进歌单、建歌单，没有收藏歌单），
             // 不做点了假装收藏的星：星保持空心，点它明说暂不支持。
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 showCollectUnsupported = true
             } label: {
                 Image(systemName: "star")
@@ -585,8 +585,8 @@ struct PlaylistView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(song.name)
-                        .font(BeansFont.appFont(16))
-                        .foregroundStyle(isCurrent ? Color.beansAmber : .white)
+                        .font(CoFont.appFont(16))
+                        .foregroundStyle(isCurrent ? Color.coAmber : .white)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     if showSongVIPBadge, song.isVIP {
@@ -595,7 +595,7 @@ struct PlaylistView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Text(song.artists.isEmpty ? "未知歌手" : song.artists)
-                    .font(BeansFont.appFont(13))
+                    .font(CoFont.appFont(13))
                     .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -605,7 +605,7 @@ struct PlaylistView: View {
             // 时长缺了（duration == 0）就不显示时长，不编一个假时长。
             if song.duration > 0 {
                 Text(song.formattedDuration)
-                    .font(BeansFont.appFont(13, .regular, .default))
+                    .font(CoFont.appFont(13, .regular, .default))
                     .foregroundStyle(.white.opacity(0.6))
             }
         }
@@ -667,14 +667,14 @@ struct PlaylistView: View {
             if !force, playlist.source == .qishui, cache.isFresh(cached) {
                 return
             }
-            if !force, cache.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
+            if !force, cache.isFresh(cached), !CoNetworkStatus.shared.isReachable {
                 return
             }
         } else {
             loading = true
         }
         errorMessage = nil
-        BeansLogger.shared.log("歌单页面打开 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) advertisedCount=\(playlist.trackCount)", level: .info)
+        CoLogger.shared.log("歌单页面打开 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) advertisedCount=\(playlist.trackCount)", level: .info)
         do {
             if playlist.source == .kugou {
                 tracks = try await KugouMusicAPI.shared.playlistSongs(playlist: playlist)
@@ -686,15 +686,15 @@ struct PlaylistView: View {
             if !tracks.isEmpty {
                 cache.saveSongs(tracks, playlist: playlist, accountID: cacheAccountID)
             }
-            BeansLogger.shared.log("歌单页面加载完成 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) count=\(tracks.count) error=无", level: tracks.isEmpty ? .warn : .info)
+            CoLogger.shared.log("歌单页面加载完成 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) count=\(tracks.count) error=无", level: tracks.isEmpty ? .warn : .info)
             loading = false
         } catch {
             if tracks.isEmpty {
                 errorMessage = error.localizedDescription
             } else {
-                BeansLogger.shared.log("歌单页面刷新失败，继续使用缓存 source=\(playlist.source.rawValue) id=\(playlist.id) error=\(error.localizedDescription)", level: .warn)
+                CoLogger.shared.log("歌单页面刷新失败，继续使用缓存 source=\(playlist.source.rawValue) id=\(playlist.id) error=\(error.localizedDescription)", level: .warn)
             }
-            BeansLogger.shared.log("歌单页面加载失败 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) error=\(error.localizedDescription)", level: .error)
+            CoLogger.shared.log("歌单页面加载失败 source=\(playlist.source.rawValue) id=\(playlist.id) name=\(playlist.name) error=\(error.localizedDescription)", level: .error)
             loading = false
         }
     }
@@ -714,7 +714,7 @@ struct PlaylistView: View {
             } else {
                 refreshed = try await KugouMusicAPI.shared.searchSongs(keyword: "热门歌曲", limit: 30)
             }
-            guard !refreshed.isEmpty else { throw BeansDailyRecommendError.empty }
+            guard !refreshed.isEmpty else { throw CoDailyRecommendError.empty }
             tracks = refreshed
             onRefreshed?(refreshed)
             errorMessage = nil
@@ -734,7 +734,7 @@ struct PlaylistView: View {
             tracks = cached.songs
             loading = false
             errorMessage = nil
-            if cache.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
+            if cache.isFresh(cached), !CoNetworkStatus.shared.isReachable {
                 return
             }
         } else {
@@ -752,7 +752,7 @@ struct PlaylistView: View {
             if tracks.isEmpty {
                 errorMessage = error.localizedDescription
             } else {
-                BeansLogger.shared.log(
+                CoLogger.shared.log(
                     "酷狗排行榜详情后台刷新失败，继续使用缓存 id=\(info.id) error=\(error.localizedDescription)",
                     level: .warn
                 )
@@ -762,7 +762,7 @@ struct PlaylistView: View {
     }
 }
 
-private enum BeansDailyRecommendError: LocalizedError {
+private enum CoDailyRecommendError: LocalizedError {
     case empty
 
     var errorDescription: String? {

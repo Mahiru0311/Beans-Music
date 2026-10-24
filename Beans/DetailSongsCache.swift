@@ -11,10 +11,10 @@ final class DetailSongsCache {
     }
 
     private let defaults = UserDefaults.standard
-    private let storageKey = "beans.detailSongsCache.v1"
+    private let storageKey = "co.detailSongsCache.v1"
     private let lock = NSLock()
     private let persistenceQueue = DispatchQueue(
-        label: "Beans.DetailSongsCache.persistence",
+        label: "Co.DetailSongsCache.persistence",
         qos: .utility
     )
     private var entries: [String: Entry]

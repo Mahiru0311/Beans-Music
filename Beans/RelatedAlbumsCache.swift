@@ -11,10 +11,10 @@ final class RelatedAlbumsCache {
     }
 
     private let defaults = UserDefaults.standard
-    private let storageKey = "beans.relatedAlbumsCache.v1"
+    private let storageKey = "co.relatedAlbumsCache.v1"
     private let lock = NSLock()
     private let persistenceQueue = DispatchQueue(
-        label: "Beans.RelatedAlbumsCache.persistence",
+        label: "Co.RelatedAlbumsCache.persistence",
         qos: .utility
     )
     private var entries: [String: Entry]

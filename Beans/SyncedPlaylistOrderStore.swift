@@ -5,7 +5,7 @@ final class SyncedPlaylistOrderStore {
     static let shared = SyncedPlaylistOrderStore()
 
     private let defaults = UserDefaults.standard
-    private let key = "beans.syncedPlaylistOrder.v1"
+    private let key = "co.syncedPlaylistOrder.v1"
     private var orders: [String: [Int]]
 
     private init() {

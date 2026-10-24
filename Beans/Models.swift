@@ -1,7 +1,7 @@
 import Foundation
 
 /// 音质等级。
-enum BeansAudioQuality: String, CaseIterable, Identifiable {
+enum CoAudioQuality: String, CaseIterable, Identifiable {
     case standard
     case higher
     case exhigh
@@ -33,9 +33,9 @@ enum BeansAudioQuality: String, CaseIterable, Identifiable {
     }
 
     /// 当前官方播放音质（默认 Hi-Res；服务端不可用时由各平台接口自行降级）。
-    static var current: BeansAudioQuality {
-        let raw = UserDefaults.standard.string(forKey: "beans.audioQuality") ?? Self.hires.rawValue
-        return BeansAudioQuality(rawValue: raw) ?? .hires
+    static var current: CoAudioQuality {
+        let raw = UserDefaults.standard.string(forKey: "co.audioQuality") ?? Self.hires.rawValue
+        return CoAudioQuality(rawValue: raw) ?? .hires
     }
 }
 
@@ -50,7 +50,7 @@ enum ThirdPartyAudioQuality: String, CaseIterable, Identifiable, Sendable {
     case atmosPlus = "atmos_plus"
     case master = "master"
 
-    static let storageKey = "beans.thirdPartyAudioQuality"
+    static let storageKey = "co.thirdPartyAudioQuality"
 
     var id: String { rawValue }
 
@@ -182,7 +182,7 @@ enum PlaybackSourcePreference: String, CaseIterable, Identifiable {
     case official
     case thirdParty
 
-    static let storageKey = "beans.playback.sourcePreference"
+    static let storageKey = "co.playback.sourcePreference"
 
     var id: String { rawValue }
 
@@ -789,7 +789,7 @@ enum LyricParser {
 }
 
 enum LyricTiming {
-    static let userOffsetKey = "beans.lyricOffset"
+    static let userOffsetKey = "co.lyricOffset"
 
     static func effectiveProgress(_ progress: Double, userOffset: Double? = nil) -> Double {
         let offset = userOffset ?? UserDefaults.standard.double(forKey: userOffsetKey)

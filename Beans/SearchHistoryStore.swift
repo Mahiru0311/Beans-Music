@@ -7,7 +7,7 @@ final class SearchHistoryStore: ObservableObject {
     @Published private(set) var history: [String] = []
 
     private let defaults = UserDefaults.standard
-    private let key = "beans.search.history.v1"
+    private let key = "co.search.history.v1"
     private let maxCount = 20
 
     private init() {

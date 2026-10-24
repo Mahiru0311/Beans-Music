@@ -11,7 +11,7 @@ struct SyncedPlaylistOrderSheet: View {
     @State private var editMode: EditMode = .active
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             List {
                 if playlists.isEmpty {
                     EmptyStateView(icon: "music.note.list", text: "暂无可排序的云端歌单")
@@ -23,12 +23,12 @@ struct SyncedPlaylistOrderSheet: View {
                             CoverImage(url: playlist.coverURL, size: 44, cornerRadius: 10)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(playlist.name)
-                                    .font(BeansFont.appFont(15, .medium))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(15, .medium))
+                                    .foregroundStyle(Color.coLabel)
                                     .lineLimit(1)
                                 Text(beansSongCountText(playlist.trackCount))
-                                    .font(BeansFont.appFont(12))
-                                    .foregroundStyle(Color.beansComment)
+                                    .font(CoFont.appFont(12))
+                                    .foregroundStyle(Color.coComment)
                             }
                             Spacer(minLength: 0)
                         }
@@ -46,7 +46,7 @@ struct SyncedPlaylistOrderSheet: View {
             }
             .environment(\.editMode, $editMode)
             .listStyle(.plain)
-            .beansScrollContentBackgroundHidden()
+            .coScrollContentBackgroundHidden()
             .background {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
             }

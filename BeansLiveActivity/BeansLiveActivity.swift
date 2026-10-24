@@ -3,9 +3,9 @@ import SwiftUI
 import WidgetKit
 
 @main
-struct BeansLiveActivity: Widget {
+struct CoLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: BeansNowPlayingAttributes.self) { context in
+        ActivityConfiguration(for: CoNowPlayingAttributes.self) { context in
             HStack(spacing: 12) {
                 Image(systemName: context.state.isPlaying ? "music.note" : "pause.fill")
                     .font(.system(size: 18, weight: .semibold))

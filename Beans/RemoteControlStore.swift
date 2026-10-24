@@ -6,8 +6,8 @@ final class RemoteControlStore: ObservableObject {
     static let shared = RemoteControlStore()
 
     private let configURL = URL(string: "http://189.24.78.193/beans/config.json")!
-    private let appliedKeysKey = "beans.remoteControl.appliedKeys"
-    private let originalPrefix = "beans.remoteControl.original."
+    private let appliedKeysKey = "co.remoteControl.appliedKeys"
+    private let originalPrefix = "co.remoteControl.original."
     private var isLoading = false
     private var lastRefresh = Date.distantPast
 
@@ -29,10 +29,10 @@ final class RemoteControlStore: ObservableObject {
             request.setValue("Co/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0.3")", forHTTPHeaderField: "User-Agent")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
-            let payload = try JSONDecoder.beansSnakeCase.decode(RemoteConfig.self, from: data)
+            let payload = try JSONDecoder.coSnakeCase.decode(RemoteConfig.self, from: data)
             apply(payload)
         } catch {
-            BeansLogger.shared.log("远程配置同步失败：\(error.localizedDescription)", level: .debug)
+            CoLogger.shared.log("远程配置同步失败：\(error.localizedDescription)", level: .debug)
         }
     }
 
@@ -47,13 +47,13 @@ final class RemoteControlStore: ObservableObject {
 
         let hasAnnouncementContent = !config.announcement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !(config.announcementMediaURL ?? config.announcementImageURL ?? "").isEmpty
-        defaults.set(config.announcementEnabled && hasAnnouncementContent, forKey: "beans.remoteAnnouncement.enabled")
-        defaults.set(config.announcement, forKey: "beans.remoteAnnouncement.text")
-        defaults.set(config.announcementImageURL ?? "", forKey: "beans.remoteAnnouncement.imageURL")
-        defaults.set(config.announcementMediaURL ?? config.announcementImageURL ?? "", forKey: "beans.remoteAnnouncement.mediaURL")
-        defaults.set(config.announcementMediaType ?? "image", forKey: "beans.remoteAnnouncement.mediaType")
-        defaults.set(config.announcementTextColor ?? "", forKey: "beans.remoteAnnouncement.textColor")
-        defaults.set(config.updatedAt ?? "", forKey: "beans.remoteAnnouncement.updatedAt")
+        defaults.set(config.announcementEnabled && hasAnnouncementContent, forKey: "co.remoteAnnouncement.enabled")
+        defaults.set(config.announcement, forKey: "co.remoteAnnouncement.text")
+        defaults.set(config.announcementImageURL ?? "", forKey: "co.remoteAnnouncement.imageURL")
+        defaults.set(config.announcementMediaURL ?? config.announcementImageURL ?? "", forKey: "co.remoteAnnouncement.mediaURL")
+        defaults.set(config.announcementMediaType ?? "image", forKey: "co.remoteAnnouncement.mediaType")
+        defaults.set(config.announcementTextColor ?? "", forKey: "co.remoteAnnouncement.textColor")
+        defaults.set(config.updatedAt ?? "", forKey: "co.remoteAnnouncement.updatedAt")
 
         defaults.synchronize()
     }

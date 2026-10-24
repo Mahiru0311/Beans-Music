@@ -28,7 +28,7 @@ final class DiscoverCache {
     /// 每日推荐缓存时长（秒，推荐内容按天更新）
     let dailyTTL: TimeInterval = 6 * 3600
 
-    private let storageKey = "beans.discover.cache.v2"
+    private let storageKey = "co.discover.cache.v2"
     private var store: [String: Snapshot] = [:]
 
     private init() {

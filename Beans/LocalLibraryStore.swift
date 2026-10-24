@@ -48,7 +48,7 @@ final class LocalLibraryStore: ObservableObject {
     }
 
     private let defaults = UserDefaults.standard
-    private let key = "beans.localLibrary.playlists"
+    private let key = "co.localLibrary.playlists"
 
     private init() {
         if let data = defaults.data(forKey: key),

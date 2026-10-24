@@ -16,10 +16,10 @@ final class SyncedPlaylistCache {
     }
 
     private let defaults = UserDefaults.standard
-    private let playlistsKey = "beans.syncedPlaylistCache.playlists.v1"
-    private let songsKey = "beans.syncedPlaylistCache.songs.v1"
+    private let playlistsKey = "co.syncedPlaylistCache.playlists.v1"
+    private let songsKey = "co.syncedPlaylistCache.songs.v1"
     private let lock = NSLock()
-    private let persistenceQueue = DispatchQueue(label: "Beans.SyncedPlaylistCache.persistence", qos: .utility)
+    private let persistenceQueue = DispatchQueue(label: "Co.SyncedPlaylistCache.persistence", qos: .utility)
     private var playlistEntries: [String: PlaylistEntry]
     private var songEntries: [String: SongEntry]
 

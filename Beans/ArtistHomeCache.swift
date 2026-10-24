@@ -12,7 +12,7 @@ final class ArtistHomeCache {
     }
 
     private let defaults = UserDefaults.standard
-    private let storageKey = "beans.artistHomeCache.v1"
+    private let storageKey = "co.artistHomeCache.v1"
     private let lock = NSLock()
     private var entries: [String: Entry]
 

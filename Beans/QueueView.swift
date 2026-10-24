@@ -4,11 +4,11 @@ import SwiftUI
 struct QueueView: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
-    @AppStorage("beans.queueOverlayPresented") private var queueOverlayPresented = false
+    @AppStorage("co.queueOverlayPresented") private var queueOverlayPresented = false
 
     var body: some View {
         let _ = theme.accent
-        BeansNavigationStack {
+        CoNavigationStack {
             Group {
                 if player.queue.isEmpty {
                     EmptyStateView(icon: "music.note.list", text: "播放队列为空")
@@ -17,8 +17,8 @@ struct QueueView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             Text("接下来 (\(songs.count) 首)")
-                                .font(BeansFont.appFont(13, .semibold))
-                                .foregroundStyle(Color.beansComment)
+                                .font(CoFont.appFont(13, .semibold))
+                                .foregroundStyle(Color.coComment)
                                 .padding(.horizontal, 16)
                                 .padding(.top, 10)
                                 .padding(.bottom, 4)
@@ -40,8 +40,8 @@ struct QueueView: View {
                         }
                         .padding(.bottom, 20)
                     }
-                    .beansScrollContentBackgroundHidden()
-                    .background(LinearGradient.beansBackdrop)
+                    .coScrollContentBackgroundHidden()
+                    .background(LinearGradient.coBackdrop)
                 }
             }
             .navigationTitle("播放队列")
@@ -74,13 +74,13 @@ struct QueueView: View {
                 CoverImage(url: song.coverURL, song: song, size: 42, cornerRadius: 9)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(song.name)
-                        .font(BeansFont.appFont(15, isCurrent ? .semibold : .regular))
-                        .foregroundStyle(isCurrent ? Color.beansAmber : Color.beansLabel)
+                        .font(CoFont.appFont(15, isCurrent ? .semibold : .regular))
+                        .foregroundStyle(isCurrent ? Color.coAmber : Color.coLabel)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Text(song.artists)
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -92,12 +92,12 @@ struct QueueView: View {
                     } else {
                         Image(systemName: "pause.fill")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                     }
                 } else {
                     Text(song.formattedDuration)
-                        .font(BeansFont.appFont(12, .regular, .default))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12, .regular, .default))
+                        .foregroundStyle(Color.coComment)
                 }
             }
             .padding(.horizontal, 12)
@@ -130,7 +130,7 @@ struct QueueReorderHandle: View {
     var body: some View {
         Image(systemName: "line.3.horizontal")
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.beansComment.opacity(0.78))
+            .foregroundStyle(Color.coComment.opacity(0.78))
             .frame(width: 38, height: 44)
             .contentShape(Rectangle())
             .accessibilityLabel("长按并拖动调整顺序")
@@ -147,7 +147,7 @@ struct QueueReorderHandle: View {
                     originPosition = position
                     lastPosition = position
                     isDragging = true
-                    BeansHaptics.medium()
+                    CoHaptics.medium()
                 case .second(true, let drag?):
                     guard let origin = originPosition, let last = lastPosition else { return }
                     let rawOffset = drag.translation.height / rowStep
@@ -172,7 +172,7 @@ struct QueueReorderHandle: View {
                         onMove(last, next)
                     }
                     lastPosition = next
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                 default:
                     break
                 }

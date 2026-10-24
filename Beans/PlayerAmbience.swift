@@ -8,7 +8,7 @@ struct AmbientGlowView: View {
     let accent: Color
     let secondary: Color
     let isPlaying: Bool
-    let dustMode: BeansPlayerDustMode
+    let dustMode: CoPlayerDustMode
     let dustDensity: Double
     let dustSize: Double
     /// 呼吸光晕强度 0~1（0 关闭光晕，1 满强度）

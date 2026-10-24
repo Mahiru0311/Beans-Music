@@ -131,12 +131,12 @@ struct CoDetailSearchRow: View {
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text(prompt)
-                        .font(BeansFont.appFont(16))
+                        .font(CoFont.appFont(16))
                         .foregroundStyle(.white.opacity(0.6))
                         .allowsHitTesting(false)
                 }
                 TextField("", text: $text)
-                    .font(BeansFont.appFont(16))
+                    .font(CoFont.appFont(16))
                     .foregroundStyle(.white)
                     .autocorrectionDisabled()
             }
@@ -258,11 +258,11 @@ struct CoUnifiedDetailCoverLayers: View {
     private func refreshBlurImage() {
         let url = CustomSongCoverStore.shared.resolvedURL(for: coverURL) ?? coverURL
         guard let url else { setBlurImage(nil); return }
-        if let image = BeansCoverImageStore.memoryImage(for: url) {
+        if let image = CoCoverImageStore.memoryImage(for: url) {
             setBlurImage(image)
             return
         }
-        BeansCoverImageStore.loadCachedImage(for: url) { image in
+        CoCoverImageStore.loadCachedImage(for: url) { image in
             if let image {
                 setBlurImage(image)
             } else if !blurRetried {
@@ -277,18 +277,18 @@ struct CoUnifiedDetailCoverLayers: View {
 struct CoDetailPlayCapsule: View {
     let title: String
     let action: () -> Void
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
 
     var body: some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             action()
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "play.fill")
                 Text(title)
             }
-            .font(BeansFont.appFont(18, .semibold))
+            .font(CoFont.appFont(18, .semibold))
             .foregroundStyle(.black)
             .frame(width: 168, height: 50)
             .background {

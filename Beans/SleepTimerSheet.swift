@@ -12,9 +12,9 @@ struct SleepTimerSheet: View {
     var body: some View {
         let _ = theme.accent
         ZStack {
-            BeansLiquidSheetBackground()
+            CoLiquidSheetBackground()
 
-            BeansNavigationStack {
+            CoNavigationStack {
                 List {
                     if player.sleepTimerRemaining > 0 {
                         Section("当前定时") {
@@ -22,7 +22,7 @@ struct SleepTimerSheet: View {
                                 Text(String(format: NSLocalizedString("剩余 %@", comment: ""), player.sleepTimerFormatted ?? "0:00"))
                             } icon: {
                                 Image(systemName: "moon.zzz.fill")
-                                    .foregroundStyle(Color.beansAmber)
+                                    .foregroundStyle(Color.coAmber)
                             }
                             .listRowBackground(Color.clear)
                         }
@@ -35,11 +35,11 @@ struct SleepTimerSheet: View {
                             } label: {
                                 HStack {
                                     Text(String(format: NSLocalizedString("%d 分钟后关闭", comment: ""), minutes))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .foregroundStyle(Color.coLabel)
                                     Spacer()
                                     if isActive(minutes) {
                                         Image(systemName: "checkmark")
-                                            .foregroundStyle(Color.beansAmber)
+                                            .foregroundStyle(Color.coAmber)
                                     }
                                 }
                             }
@@ -59,11 +59,11 @@ struct SleepTimerSheet: View {
                         } label: {
                             HStack {
                                 Label("当前歌曲播放结束后停止", systemImage: "stop.circle")
-                                    .foregroundStyle(Color.beansLabel)
+                                    .foregroundStyle(Color.coLabel)
                                 Spacer()
                                 if player.stopAfterCurrentSong {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.beansAmber)
+                                        .foregroundStyle(Color.coAmber)
                                 }
                             }
                         }
@@ -72,7 +72,7 @@ struct SleepTimerSheet: View {
                     Section("自定义时长") {
                         HStack {
                             Text("分钟")
-                                .foregroundStyle(Color.beansLabel)
+                                .foregroundStyle(Color.coLabel)
                             Spacer()
                             TextField("分钟", text: $customMinutesText)
                                 .keyboardType(.numberPad)
@@ -87,13 +87,13 @@ struct SleepTimerSheet: View {
                             dismiss()
                         } label: {
                             Label("开始自定义定时", systemImage: "timer")
-                                .foregroundStyle(Color.beansLabel)
+                                .foregroundStyle(Color.coLabel)
                         }
                         .listRowBackground(Color.clear)
                     }
                 }
                 .listStyle(.insetGrouped)
-                .beansScrollContentBackgroundHidden()
+                .coScrollContentBackgroundHidden()
                 .background(Color.clear)
                 .navigationTitle("睡眠定时")
                 .navigationBarTitleDisplayMode(.inline)
@@ -104,7 +104,7 @@ struct SleepTimerSheet: View {
                 }
             }
         }
-        .background(BeansSheetPresentationSurfaceClearer())
+        .background(CoSheetPresentationSurfaceClearer())
     }
 
     private func isActive(_ minutes: Int) -> Bool {

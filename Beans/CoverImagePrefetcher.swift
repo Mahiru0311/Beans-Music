@@ -21,7 +21,7 @@ final class CoverImagePrefetcher {
         guard !pending.isEmpty else { return }
         scheduledURLs.formUnion(pending)
         Task.detached(priority: .utility) {
-            await BeansCoverImageStore.prefetch(urls: pending)
+            await CoCoverImageStore.prefetch(urls: pending)
         }
     }
 

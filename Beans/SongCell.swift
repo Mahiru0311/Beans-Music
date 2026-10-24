@@ -5,8 +5,8 @@ struct SongCell: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
 
     let song: Song
     var showCover = true
@@ -35,7 +35,7 @@ struct SongCell: View {
     }
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     private var rowContent: some View {
@@ -45,8 +45,8 @@ struct SongCell: View {
                 // here as well as at the trailing edge made album/detail rows
                 // jump between two different leading layouts on older iOS.
                 Text("\(leadingIndex)")
-                    .font(BeansFont.appFont(12, .regular, .default))
-                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
+                    .font(CoFont.appFont(12, .regular, .default))
+                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.coComment)
                     .monospacedDigit()
                 .frame(width: 28, alignment: .trailing)
             }
@@ -56,8 +56,8 @@ struct SongCell: View {
             VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(song.name)
-                            .font(BeansFont.appFont(15, isCurrent ? .semibold : .regular))
-                            .foregroundStyle(isCurrent ? Color.beansAmber : (forceDarkText ? .white : Color.beansLabel))
+                            .font(CoFont.appFont(15, isCurrent ? .semibold : .regular))
+                            .foregroundStyle(isCurrent ? Color.coAmber : (forceDarkText ? .white : Color.coLabel))
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(1)
@@ -67,8 +67,8 @@ struct SongCell: View {
                     }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 Text(song.artists.isEmpty ? "未知歌手" : song.artists)
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.coComment)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -79,8 +79,8 @@ struct SongCell: View {
                 NowPlayingIndicator()
             } else {
                 Text(song.formattedDuration)
-                    .font(BeansFont.appFont(12, .regular, .default))
-                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
+                    .font(CoFont.appFont(12, .regular, .default))
+                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.coComment)
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -131,7 +131,7 @@ struct SongCell: View {
                 rowContent
                     .padding(.horizontal, 10)
                     .background {
-                                            BeansGlass(shape: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                            CoGlass(shape: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
             } else {
                 rowContent

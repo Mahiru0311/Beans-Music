@@ -17,12 +17,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 func beansLocalized(_ chinese: String, _ english: String) -> String {
-    UserDefaults.standard.string(forKey: "beans.language") == AppLanguage.english.rawValue ? english : chinese
+    UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue ? english : chinese
 }
 
 
 func beansChartName(_ name: String) -> String {
-    guard UserDefaults.standard.string(forKey: "beans.language") == AppLanguage.english.rawValue else { return name }
+    guard UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue else { return name }
     let replacements: [(String, String)] = [
         ("巅峰榜·流行指数", "Peak Chart · Popularity"),
         ("巅峰榜·网络歌曲", "Peak Chart · Online Songs"),
@@ -101,7 +101,7 @@ func beansChartName(_ name: String) -> String {
 
 func beansChartSubtitle(_ subtitle: String) -> String {
     guard !subtitle.isEmpty else { return subtitle }
-    guard UserDefaults.standard.string(forKey: "beans.language") == AppLanguage.english.rawValue else { return subtitle }
+    guard UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue else { return subtitle }
     let replacements: [(String, String)] = [
         ("周五凌晨更新周榜", "Weekly, updated early Friday"),
         ("周四更新", "Updated Thursday"),
@@ -127,7 +127,7 @@ func beansChartSubtitle(_ subtitle: String) -> String {
 }
 
 func beansLocalizedSettingValue(_ value: String) -> String {
-    guard UserDefaults.standard.string(forKey: "beans.language") == AppLanguage.english.rawValue else { return value }
+    guard UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue else { return value }
     switch value {
     case "关闭": return "Off"
     case "开启": return "On"

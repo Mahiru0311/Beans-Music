@@ -1,7 +1,7 @@
 import Foundation
 import Network
 
-enum BeansNetworkConnectionKind: Equatable {
+enum CoNetworkConnectionKind: Equatable {
     case wifi
     case cellular
     case other
@@ -9,13 +9,13 @@ enum BeansNetworkConnectionKind: Equatable {
 }
 
 /// Shared reachability state used by page caches to avoid refreshing while offline.
-final class BeansNetworkStatus {
-    static let shared = BeansNetworkStatus()
+final class CoNetworkStatus {
+    static let shared = CoNetworkStatus()
 
     private let monitor = NWPathMonitor()
     private let lock = NSLock()
     private var reachable = true
-    private var currentConnectionKind: BeansNetworkConnectionKind = .other
+    private var currentConnectionKind: CoNetworkConnectionKind = .other
 
     var isReachable: Bool {
         lock.lock()
@@ -23,7 +23,7 @@ final class BeansNetworkStatus {
         return reachable
     }
 
-    var connectionKind: BeansNetworkConnectionKind {
+    var connectionKind: CoNetworkConnectionKind {
         lock.lock()
         defer { lock.unlock() }
         return currentConnectionKind
@@ -45,6 +45,6 @@ final class BeansNetworkStatus {
             }
             self.lock.unlock()
         }
-        monitor.start(queue: DispatchQueue(label: "Beans.NetworkStatus"))
+        monitor.start(queue: DispatchQueue(label: "Co.NetworkStatus"))
     }
 }

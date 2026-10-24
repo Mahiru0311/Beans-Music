@@ -37,16 +37,16 @@ struct ReferencePlaybackView: View {
     // 注意：不要在这里加左上角收起键——用户已明确不要下拉图标，
     // 播放页收起只走下拉手势（RootView 的本地下拉手势）。
 
-    @AppStorage("beans.lyricOffset") private var lyricOffset = 0.0
-    @AppStorage("beans.appleMusic.showVolume") private var showVolumeControl = false
-    @AppStorage("beans.appleMusic.primaryHex") private var primaryHex = ""
-    @AppStorage("beans.appleMusic.secondaryHex") private var secondaryHex = ""
-    @AppStorage("beans.appleMusic.accentHex") private var accentHex = ""
-    @AppStorage("beans.appleMusic.volumeHex") private var volumeHex = ""
-    @AppStorage("beans.appleMusic.syncWallpaper") private var syncWallpaper = false
-    @AppStorage("beans.appleMusic.wallpaperBlur") private var wallpaperBlur = 14.0
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage("beans.appleMusic.showLyricPreview") private var showLyricPreview = true
+    @AppStorage("co.lyricOffset") private var lyricOffset = 0.0
+    @AppStorage("co.appleMusic.showVolume") private var showVolumeControl = false
+    @AppStorage("co.appleMusic.primaryHex") private var primaryHex = ""
+    @AppStorage("co.appleMusic.secondaryHex") private var secondaryHex = ""
+    @AppStorage("co.appleMusic.accentHex") private var accentHex = ""
+    @AppStorage("co.appleMusic.volumeHex") private var volumeHex = ""
+    @AppStorage("co.appleMusic.syncWallpaper") private var syncWallpaper = false
+    @AppStorage("co.appleMusic.wallpaperBlur") private var wallpaperBlur = 14.0
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.appleMusic.showLyricPreview") private var showLyricPreview = true
     @State private var lyricCenters: [UUID: CGFloat] = [:]
     @State private var focusedLyricID: UUID?
     @State private var selectedLyricID: UUID?
@@ -150,7 +150,7 @@ struct ReferencePlaybackView: View {
             )
         }
         .sheet(isPresented: $showSoftwareVolume) {
-            BeansSoftwareVolumeSheetHost()
+            CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
         }
     }
@@ -210,7 +210,7 @@ struct ReferencePlaybackView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = true
                 }
@@ -220,7 +220,7 @@ struct ReferencePlaybackView: View {
             VStack(spacing: 5) {
                 HStack(spacing: 9) {
                 Text(song?.name ?? "未在播放")
-                    .font(BeansFont.appFont(22, .bold))
+                    .font(CoFont.appFont(22, .bold))
                     .foregroundStyle(primaryColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -231,15 +231,15 @@ struct ReferencePlaybackView: View {
                     }
                     if showSongVIPBadge, song?.isVIP == true {
                         Text("VIP")
-                            .font(BeansFont.appFont(9, .bold))
+                            .font(CoFont.appFont(9, .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Color.beansThemeRed, in: Capsule())
+                            .background(Color.coThemeRed, in: Capsule())
                     }
                 }
                 Text(subtitle)
-                    .font(BeansFont.appFont(13.5, .medium))
+                    .font(CoFont.appFont(13.5, .medium))
                     .foregroundStyle(secondaryColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -251,7 +251,7 @@ struct ReferencePlaybackView: View {
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 showLyrics = true
             }
             .padding(.top, 18)
@@ -270,7 +270,7 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(song?.name ?? "未在播放")
-                    .font(BeansFont.appFont(16, .semibold))
+                    .font(CoFont.appFont(16, .semibold))
                     .foregroundStyle(primaryColor)
                     .lineLimit(1)
                     .contextMenu {
@@ -279,7 +279,7 @@ struct ReferencePlaybackView: View {
                         }
                     }
                 Text(subtitle)
-                    .font(BeansFont.appFont(12, .medium))
+                    .font(CoFont.appFont(12, .medium))
                     .foregroundStyle(secondaryColor)
                     .lineLimit(1)
                     .contentShape(Rectangle())
@@ -398,7 +398,7 @@ struct ReferencePlaybackView: View {
     private var lyricsHeader: some View {
         HStack(spacing: 12) {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = false
                 }
@@ -412,7 +412,7 @@ struct ReferencePlaybackView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 7) {
                     Text(song?.name ?? "未在播放")
-                        .font(BeansFont.appFont(15, .semibold))
+                        .font(CoFont.appFont(15, .semibold))
                         .foregroundStyle(primaryColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -423,7 +423,7 @@ struct ReferencePlaybackView: View {
                         }
                 }
                 Text(subtitle)
-                    .font(BeansFont.appFont(12, .medium))
+                    .font(CoFont.appFont(12, .medium))
                     .foregroundStyle(secondaryColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -509,7 +509,7 @@ struct ReferencePlaybackView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(song?.name ?? "未在播放")
-                    .font(BeansFont.appFont(16, .bold))
+                    .font(CoFont.appFont(16, .bold))
                     .foregroundStyle(primaryColor)
                     .lineLimit(1)
                     .contextMenu {
@@ -518,7 +518,7 @@ struct ReferencePlaybackView: View {
                         }
                     }
                 Text(song?.artists ?? "")
-                    .font(BeansFont.appFont(12, .medium))
+                    .font(CoFont.appFont(12, .medium))
                     .foregroundStyle(secondaryColor)
                     .lineLimit(1)
                     .contentShape(Rectangle())
@@ -596,17 +596,17 @@ struct ReferencePlaybackView: View {
                 .font(.system(size: 34, weight: .light))
                 .foregroundStyle(.white.opacity(0.42))
             Text("暂无歌词")
-                .font(BeansFont.appFont(15, .semibold))
+                .font(CoFont.appFont(15, .semibold))
                 .foregroundStyle(.white.opacity(0.86))
             Text("点击封面区域返回歌曲页面")
-                .font(BeansFont.appFont(12))
+                .font(CoFont.appFont(12))
                 .foregroundStyle(.white.opacity(0.46))
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             showLyrics = false
         }
     }
@@ -656,7 +656,7 @@ struct ReferencePlaybackView: View {
         guard let title = song?.name.trimmingCharacters(in: .whitespacesAndNewlines),
               !title.isEmpty else { return }
         UIPasteboard.general.string = title
-        BeansHaptics.success()
+        CoHaptics.success()
         ToastCenter.shared.show("歌名已复制")
     }
 
@@ -666,13 +666,13 @@ struct ReferencePlaybackView: View {
         return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(line.text.isEmpty ? " " : line.text)
-                    .font(BeansFont.appFont(visualFocus ? 27 : 23, visualFocus ? .bold : .semibold))
+                    .font(CoFont.appFont(visualFocus ? 27 : 23, visualFocus ? .bold : .semibold))
                     .foregroundStyle(primaryColor.opacity(visualFocus ? 1 : 0.36))
                     .fixedSize(horizontal: false, vertical: true)
                 if isSelected {
                     Spacer(minLength: 8)
                     Text(beansTimeString(line.time))
-                        .font(BeansFont.appFont(11, .semibold, .default))
+                        .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondaryColor.opacity(0.82))
                     Button {
                         lyricTapTask?.cancel()
@@ -689,7 +689,7 @@ struct ReferencePlaybackView: View {
             }
             if visualFocus, let translation = line.translation, !translation.isEmpty {
                 Text(translation)
-                    .font(BeansFont.appFont(15, .medium))
+                    .font(CoFont.appFont(15, .medium))
                     .foregroundStyle(secondaryColor.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -721,7 +721,7 @@ struct ReferencePlaybackView: View {
                 isDraggingLyrics = true
             }
             scheduleLyricResume(proxy: proxy)
-            BeansHaptics.tap()
+            CoHaptics.tap()
         }
     }
 
@@ -730,7 +730,7 @@ struct ReferencePlaybackView: View {
         resumeTask?.cancel()
         isDraggingLyrics = false
         focusedLyricID = nil
-        BeansHaptics.tap()
+        CoHaptics.tap()
         player.seek(to: LyricTiming.seekTime(for: line, userOffset: lyricOffset))
         withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.3)) {
             proxy.scrollTo(line.id, anchor: .center)
@@ -803,7 +803,7 @@ struct ReferencePlaybackView: View {
 
     private var accentColor: Color {
         if accentHex.hasPrefix("#"), let color = Color(hex: accentHex) { return color }
-        return Color.beansAppleMusicAccentFallback
+        return Color.coAppleMusicAccentFallback
     }
 
     private var volumeColor: Color {
@@ -813,7 +813,7 @@ struct ReferencePlaybackView: View {
 
     private func favoriteActionButton() -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             onFavorite()
         } label: {
             FavoriteHeartView(
@@ -874,7 +874,7 @@ struct AppleMusicPlaybackControls: View {
             VStack(spacing: 15) {
                 HStack(spacing: 28) {
                     Button {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         player.previous()
                     } label: {
                         Image(systemName: "backward.fill")
@@ -886,7 +886,7 @@ struct AppleMusicPlaybackControls: View {
                     .modifier(AppleMusicLayoutTransform(entry: layout.previous))
 
                     Button {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         player.togglePlayPause()
                     } label: {
                         PlayPauseMorphIcon(isPlaying: player.isPlaying, size: 24)
@@ -898,7 +898,7 @@ struct AppleMusicPlaybackControls: View {
                     .modifier(AppleMusicLayoutTransform(entry: layout.play))
 
                     Button {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         player.next()
                     } label: {
                         Image(systemName: "forward.fill")
@@ -940,14 +940,14 @@ struct AppleMusicPlaybackControls: View {
         action: @escaping () -> Void
     ) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             action()
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(active ? accent : primary.opacity(0.78))
                 .frame(width: 58, height: 58)
-                .background { BeansGlass(shape: Circle(), forceLiquid: true) }
+                .background { CoGlass(shape: Circle(), forceLiquid: true) }
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -990,11 +990,11 @@ struct AppleMusicCompactQueueContent: View {
 
             HStack(alignment: .firstTextBaseline) {
                 Text("继续播放")
-                    .font(BeansFont.appFont(20, .bold))
+                    .font(CoFont.appFont(20, .bold))
                     .foregroundStyle(.white)
                 Spacer()
                 Text("\(player.upcomingQueue.count) 首")
-                    .font(BeansFont.appFont(12, .regular, .default))
+                    .font(CoFont.appFont(12, .regular, .default))
                     .foregroundStyle(.white.opacity(0.46))
             }
 
@@ -1003,7 +1003,7 @@ struct AppleMusicCompactQueueContent: View {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 28, weight: .light))
                     Text("播放队列是空的")
-                        .font(BeansFont.appFont(14, .semibold))
+                        .font(CoFont.appFont(14, .semibold))
                 }
                 .foregroundStyle(.white.opacity(0.5))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1063,7 +1063,7 @@ struct AppleMusicCompactQueueContent: View {
     }
 
     private func activate(_ mode: PlayMode) {
-        BeansHaptics.tap()
+        CoHaptics.tap()
         player.setPlayMode(mode)
     }
 }
@@ -1082,7 +1082,7 @@ private struct AppleMusicCompactQueueRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 player.playQueueIndex(index)
             } label: {
                 HStack(spacing: 11) {
@@ -1090,11 +1090,11 @@ private struct AppleMusicCompactQueueRow: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(song.name)
-                            .font(BeansFont.appFont(14, .semibold))
+                            .font(CoFont.appFont(14, .semibold))
                             .foregroundStyle(.white.opacity(0.9))
                             .lineLimit(1)
                         Text(song.artists)
-                            .font(BeansFont.appFont(12))
+                            .font(CoFont.appFont(12))
                             .foregroundStyle(.white.opacity(0.48))
                             .lineLimit(1)
                     }
@@ -1102,7 +1102,7 @@ private struct AppleMusicCompactQueueRow: View {
                     Spacer(minLength: 4)
 
                     Text(song.formattedDuration)
-                        .font(BeansFont.appFont(11, .regular, .default))
+                        .font(CoFont.appFont(11, .regular, .default))
                         .foregroundStyle(.white.opacity(0.36))
                 }
                 .padding(.vertical, 4)
@@ -1161,7 +1161,7 @@ struct ReferenceScrubber: View {
                         .onChanged { value in
                             if !scrubbing {
                                 scrubValue = clock.progress
-                                BeansHaptics.medium()
+                                CoHaptics.medium()
                             }
                             scrubbing = true
                             scrubValue = min(max(value.location.x / max(width, 1), 0), 1) * total
@@ -1169,13 +1169,13 @@ struct ReferenceScrubber: View {
                         .onEnded { _ in
                             player.seek(to: scrubValue)
                             scrubbing = false
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                         }
                 )
                 .overlay(alignment: .topLeading) {
                     if scrubbing {
                         Text(beansTimeString(scrubValue))
-                            .font(BeansFont.appFont(11, .semibold, .default))
+                            .font(CoFont.appFont(11, .semibold, .default))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 5)
@@ -1192,7 +1192,7 @@ struct ReferenceScrubber: View {
                 Spacer()
                 Text(beansTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
             }
-            .font(BeansFont.appFont(11, .regular, .default))
+            .font(CoFont.appFont(11, .regular, .default))
             .foregroundStyle(.white.opacity(0.52))
         }
         .frame(maxWidth: 420)
@@ -1203,7 +1203,7 @@ struct ReferenceScrubber: View {
 struct AppleMusicLyricsSection: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var clock: PlaybackClock
-    @AppStorage("beans.lyricKaraokeEnabled") private var karaokeEnabled = true
+    @AppStorage("co.lyricKaraokeEnabled") private var karaokeEnabled = true
 
     let lyrics: [LyricLine]
     let primary: Color
@@ -1255,7 +1255,7 @@ struct AppleMusicLyricsSection: View {
                         .font(.system(size: 34, weight: .light))
                         .foregroundStyle(secondary.opacity(0.5))
                     Text("暂无歌词")
-                        .font(BeansFont.appFont(15, .semibold))
+                        .font(CoFont.appFont(15, .semibold))
                         .foregroundStyle(primary.opacity(0.86))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1358,7 +1358,7 @@ struct AppleMusicLyricsSection: View {
                     isPlaying: player.isPlaying,
                     isActive: isActive,
                     enabled: karaokeEnabled,
-                    font: BeansFont.appFont(visualFocus ? 27 : 23, visualFocus ? .bold : .semibold),
+                    font: CoFont.appFont(visualFocus ? 27 : 23, visualFocus ? .bold : .semibold),
                     style: primary,
                     fallbackOpacity: visualFocus ? 1 : 0.36
                 )
@@ -1366,7 +1366,7 @@ struct AppleMusicLyricsSection: View {
                 if isSelected {
                     Spacer(minLength: 8)
                     Text(beansTimeString(line.time))
-                        .font(BeansFont.appFont(11, .semibold, .default))
+                        .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondary.opacity(0.82))
                     Button {
                         lyricTapTask?.cancel()
@@ -1383,7 +1383,7 @@ struct AppleMusicLyricsSection: View {
             }
             if visualFocus, let translation = line.translation, !translation.isEmpty {
                 Text(translation)
-                    .font(BeansFont.appFont(15, .medium))
+                    .font(CoFont.appFont(15, .medium))
                     .foregroundStyle(secondary.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1415,7 +1415,7 @@ struct AppleMusicLyricsSection: View {
                 isDraggingLyrics = true
             }
             scheduleLyricResume(proxy: proxy)
-            BeansHaptics.tap()
+            CoHaptics.tap()
         }
     }
 
@@ -1424,7 +1424,7 @@ struct AppleMusicLyricsSection: View {
         resumeTask?.cancel()
         isDraggingLyrics = false
         focusedLyricID = nil
-        BeansHaptics.tap()
+        CoHaptics.tap()
         onTapLine(line)
         withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.3)) {
             proxy.scrollTo(line.id, anchor: .center)
@@ -1506,34 +1506,34 @@ struct ReferenceVolumeControl: View {
     }
 }
 
-struct BeansSoftwareVolumeSheet: View {
+struct CoSoftwareVolumeSheet: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
-            BeansLiquidSheetBackground()
+            CoLiquidSheetBackground()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
                         Label("软件音量", systemImage: "speaker.wave.2.fill")
-                            .font(BeansFont.appFont(20, .bold))
+                            .font(CoFont.appFont(20, .bold))
                         Spacer()
                         Text("\(Int((player.softwareVolume * 100).rounded()))%")
                             .font(.system(size: 15, weight: .semibold, design: .default))
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                     }
 
                     Text("只调整 Co 的播放音量，不改变系统音量。适合和其他音频同时播放时降低背景音。")
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(13))
+                        .foregroundStyle(Color.coComment)
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 12) {
                         Image(systemName: "speaker.fill")
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                         Slider(
                             value: Binding(
                                 get: { player.softwareVolume },
@@ -1541,9 +1541,9 @@ struct BeansSoftwareVolumeSheet: View {
                             ),
                             in: 0...1
                         )
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                         Image(systemName: "speaker.wave.3.fill")
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                     }
 
                     HStack {
@@ -1561,18 +1561,18 @@ struct BeansSoftwareVolumeSheet: View {
                 .padding(24)
             }
         }
-        .background(BeansSheetPresentationSurfaceClearer())
-        .beansScrollIndicatorsHidden()
+        .background(CoSheetPresentationSurfaceClearer())
+        .coScrollIndicatorsHidden()
     }
 }
 
-struct BeansSoftwareVolumeSheetHost: View {
+struct CoSoftwareVolumeSheetHost: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var theme: ThemeStore
 
     @ViewBuilder
     var body: some View {
-        let content = BeansSoftwareVolumeSheet()
+        let content = CoSoftwareVolumeSheet()
             .environmentObject(player)
             .environmentObject(theme)
 
@@ -1635,12 +1635,12 @@ private struct MiniLyricsPreview: View {
             VStack(spacing: 8) {
                 if lines.isEmpty {
                     Text("暂无歌词")
-                        .font(BeansFont.appFont(15, .semibold))
+                        .font(CoFont.appFont(15, .semibold))
                         .foregroundStyle(secondary.opacity(0.54))
                 } else {
                     ForEach(Array(lines.enumerated()), id: \.element.id) { index, line in
                         Text(line.text.isEmpty ? " " : line.text)
-                            .font(BeansFont.appFont(index == 1 ? 17 : 15, index == 1 ? .semibold : .medium))
+                            .font(CoFont.appFont(index == 1 ? 17 : 15, index == 1 ? .semibold : .medium))
                             .foregroundStyle((index == 1 ? primary : secondary).opacity(index == 1 ? 0.86 : 0.5))
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)

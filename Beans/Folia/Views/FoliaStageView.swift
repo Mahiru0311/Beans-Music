@@ -50,7 +50,7 @@ struct FoliaStageView: View {
     }
 
     private func refreshDocument() {
-        document = FoliaBeansLyricBridge.document(trackIdentity: song?.identityKey ?? "empty", lyrics: lyrics,
+        document = FoliaCoLyricBridge.document(trackIdentity: song?.identityKey ?? "empty", lyrics: lyrics,
                                                  duration: clock.duration > 0 ? clock.duration : song?.duration ?? 0)
     }
 }
@@ -81,6 +81,6 @@ private struct FoliaStageTransport: View {
                 Button { player.togglePlayMode() } label: { Image(systemName: player.playMode.icon).frame(width: 44, height: 44) }
             }.font(.title3)
         }
-        .padding(12).background { BeansGlass(shape: RoundedRectangle(cornerRadius: 24)) }
+        .padding(12).background { CoGlass(shape: RoundedRectangle(cornerRadius: 24)) }
     }
 }

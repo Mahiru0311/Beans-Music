@@ -6,8 +6,8 @@ import UIKit
 /// Supplies the local animated cover that iOS can use on the Lock Screen.
 /// Beans 2.0.3 exposes a lease and a video directory; this implementation preserves
 /// a private copy of each movie and uses a stable artwork identifier.
-final class BeansLockScreenArtwork {
-    static let enabledKey = "beans.lockScreenImmersiveArtwork.enabled"
+final class CoLockScreenArtwork {
+    static let enabledKey = "co.lockScreenImmersiveArtwork.enabled"
 
     private var entries: [String: [String: MPMediaItemAnimatedArtwork]] = [:]
     private var pending = Set<String>()

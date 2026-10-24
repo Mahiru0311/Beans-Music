@@ -3,14 +3,14 @@ import UIKit
 import CryptoKit
 import ObjectiveC
 
-private struct BeansSharedRootBackdropKey: EnvironmentKey {
+private struct CoSharedRootBackdropKey: EnvironmentKey {
     static let defaultValue = false
 }
 
 extension EnvironmentValues {
     var beansUsesSharedRootBackdrop: Bool {
-        get { self[BeansSharedRootBackdropKey.self] }
-        set { self[BeansSharedRootBackdropKey.self] = newValue }
+        get { self[CoSharedRootBackdropKey.self] }
+        set { self[CoSharedRootBackdropKey.self] = newValue }
     }
 }
 
@@ -38,7 +38,7 @@ import CoreImage.CIFilterBuiltins
 extension View {
     /// 在紧凑宽度保持手机排版，在规则宽度适当放宽内容区域。
     func beansAdaptiveContentWidth(compact: CGFloat = 860, regular: CGFloat = 1100) -> some View {
-        modifier(BeansAdaptiveContentWidthModifier(compact: compact, regular: regular))
+        modifier(CoAdaptiveContentWidthModifier(compact: compact, regular: regular))
     }
 
     /// 横向卡片列表的滚动裁剪：卡片自然延伸。
@@ -48,7 +48,7 @@ extension View {
     }
 }
 
-private struct BeansAdaptiveContentWidthModifier: ViewModifier {
+private struct CoAdaptiveContentWidthModifier: ViewModifier {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     let compact: CGFloat
@@ -78,8 +78,8 @@ func beansTimeString(_ seconds: Double) -> String {
 
 // MARK: - 触感反馈（复用生成器实例，避免每次点击创建新对象造成额外开销/发热）
 
-enum BeansHaptics {
-    static let enabledKey = "beans.haptics.enabled"
+enum CoHaptics {
+    static let enabledKey = "co.haptics.enabled"
 
     private static let lightImpact = UIImpactFeedbackGenerator(style: .light)
     private static let mediumImpact = UIImpactFeedbackGenerator(style: .medium)
@@ -160,7 +160,7 @@ struct GlassBackdrop: View {
             : [.black.opacity(0.08), .black.opacity(0.18)]
     }
 
-    private var uiStyle: BeansUIStyle {
+    private var uiStyle: CoUIStyle {
         theme.uiStyle
     }
 
@@ -189,16 +189,16 @@ struct GlassBackdrop: View {
                     startPoint: .top, endPoint: .bottom
                 )
             } else {
-                LinearGradient.beansBackdrop
+                LinearGradient.coBackdrop
             }
             if uiStyle != .nativeClean, !isDynamicWallpaperActive {
                 Circle()
-                    .fill(Color.beansAmber.opacity(0.14))
+                    .fill(Color.coAmber.opacity(0.14))
                     .frame(width: 340, height: 340)
                     .blur(radius: 100)
                     .offset(x: 150, y: -300)
                 Circle()
-                    .fill(Color.beansSage.opacity(0.12))
+                    .fill(Color.coSage.opacity(0.12))
                     .frame(width: 300, height: 300)
                     .blur(radius: 110)
                     .offset(x: -160, y: 340)
@@ -215,17 +215,17 @@ struct GlassBackdrop: View {
 struct GlobalFloatingEffectView: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("beans.globalFloatingEffect") private var effectRaw = BeansGlobalFloatingEffect.off.rawValue
-    @AppStorage("beans.globalFloatingDensity") private var density = 1.0
-    @AppStorage("beans.globalFloatingSize") private var size = 1.0
-    @AppStorage("beans.globalFloatingSpeed") private var speed = 1.0
-    @AppStorage("beans.globalFloatingText") private var floatingText = "❄️"
-    @AppStorage("beans.globalFloatingRotation") private var rotation = 0.0
-    @AppStorage("beans.globalFloatingSkew") private var skew = 0.0
-    @AppStorage("beans.globalFloatingImageData") private var floatingImageData = ""
+    @AppStorage("co.globalFloatingEffect") private var effectRaw = CoGlobalFloatingEffect.off.rawValue
+    @AppStorage("co.globalFloatingDensity") private var density = 1.0
+    @AppStorage("co.globalFloatingSize") private var size = 1.0
+    @AppStorage("co.globalFloatingSpeed") private var speed = 1.0
+    @AppStorage("co.globalFloatingText") private var floatingText = "❄️"
+    @AppStorage("co.globalFloatingRotation") private var rotation = 0.0
+    @AppStorage("co.globalFloatingSkew") private var skew = 0.0
+    @AppStorage("co.globalFloatingImageData") private var floatingImageData = ""
 
-    private var effect: BeansGlobalFloatingEffect {
-        BeansGlobalFloatingEffect(rawValue: effectRaw) ?? .off
+    private var effect: CoGlobalFloatingEffect {
+        CoGlobalFloatingEffect(rawValue: effectRaw) ?? .off
     }
 
     private var floatingImage: UIImage? {
@@ -237,7 +237,7 @@ struct GlobalFloatingEffectView: View {
             if effect != .off {
             TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                 let time = timeline.date.timeIntervalSinceReferenceDate * max(0.25, min(speed, 2.0))
-                let accent = theme.customAccent ?? (colorScheme == .dark ? Color.beansAmber : Color.beansHighlight)
+                let accent = theme.customAccent ?? (colorScheme == .dark ? Color.coAmber : Color.coHighlight)
                 let count = max(8, min(64, Int((18 * density).rounded())))
                 ZStack {
                     Canvas { context, canvasSize in
@@ -346,15 +346,15 @@ struct WallpaperImage: View {
 
 // MARK: - 全局容器（跟随全局 UI 样式）
 
-struct BeansGlass<S: Shape>: View {
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
+struct CoGlass<S: Shape>: View {
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
     @ObservedObject private var theme = ThemeStore.shared
     @Environment(\.colorScheme) private var colorScheme
 
     let shape: S
     var forceLiquid = false
 
-    private var uiStyle: BeansUIStyle {
+    private var uiStyle: CoUIStyle {
         // ThemeStore is the single source of truth. Reading UserDefaults
         // directly here could leave a sheet-created view on the old liquid
         // branch for one render after the style picker changes.
@@ -376,7 +376,7 @@ struct BeansGlass<S: Shape>: View {
                 // Disabling liquid glass must not fall back to a live blur.
                 // A stable opaque fill is cheaper to composite while scrolling.
                 shape
-                    .fill(Color.beansGlassFill.opacity(0.94))
+                    .fill(Color.coGlassFill.opacity(0.94))
             } else if isLiquid {
                 GlassEffectContainer {
                     ZStack {
@@ -397,10 +397,10 @@ struct BeansGlass<S: Shape>: View {
                         .fill(.ultraThinMaterial)
                 case .compact:
                     shape
-                        .fill(Color.beansGlassFill.opacity(0.74))
+                        .fill(Color.coGlassFill.opacity(0.74))
                 case .nativeClean:
                     shape
-                        .fill(Color.beansGlassFill.opacity(0.62))
+                        .fill(Color.coGlassFill.opacity(0.62))
                 }
             }
         }
@@ -415,26 +415,26 @@ struct BeansGlass<S: Shape>: View {
 
 /// Shared translucent sheet background. Keep the sheet host transparent so
 /// the page below remains visible through the same liquid surface as comments.
-struct BeansLiquidSheetBackground: View {
+struct CoLiquidSheetBackground: View {
     @EnvironmentObject private var theme: ThemeStore
 
     var body: some View {
         ZStack {
             GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-            BeansGlass(shape: Rectangle(), forceLiquid: true)
+            CoGlass(shape: Rectangle(), forceLiquid: true)
         }
-        .background(BeansSheetPresentationSurfaceClearer())
+        .background(CoSheetPresentationSurfaceClearer())
         .ignoresSafeArea()
     }
 }
 
 /// 统一表面容器：Apple 简洁样式使用低存在感的平面底色，
 /// 其他样式继续沿用原有的玻璃材质，避免页面局部出现不同质感。
-struct BeansSurface<S: Shape>: View {
+struct CoSurface<S: Shape>: View {
     let shape: S
 
     var body: some View {
-        BeansGlass(shape: shape)
+        CoGlass(shape: shape)
     }
 }
 
@@ -473,33 +473,33 @@ struct PlayPauseMorphIcon: View {
 
 // MARK: - Native navigation
 
-struct BeansNavigationStack<Content: View>: View {
+struct CoNavigationStack<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         NavigationStack {
             content()
-                .background(BeansNavigationSurfaceClearer())
+                .background(CoNavigationSurfaceClearer())
         }
     }
 }
 
 /// 带可编程路径的导航堆栈，用于从卡片点击进入统一的详情页。
-struct BeansNavigationStackWithPath<Route: Hashable, Content: View>: View {
+struct CoNavigationStackWithPath<Route: Hashable, Content: View>: View {
     @Binding var path: [Route]
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         NavigationStack(path: $path) {
             content()
-                .background(BeansNavigationSurfaceClearer())
+                .background(CoNavigationSurfaceClearer())
         }
     }
 }
 
 private var beansScrollFadeObserverAssociationKey: UInt8 = 0
 
-private final class BeansScrollFadeObserver: NSObject {
+private final class CoScrollFadeObserver: NSObject {
     private weak var scrollView: UIScrollView?
     private var observations: [NSKeyValueObservation] = []
     private var updateScheduled = false
@@ -559,7 +559,7 @@ private final class BeansScrollFadeObserver: NSObject {
     }
 }
 
-private enum BeansScrollFadeInstaller {
+private enum CoScrollFadeInstaller {
     private static var lastScanByWindow: [ObjectIdentifier: TimeInterval] = [:]
     private static var isScanning = false
 
@@ -574,10 +574,10 @@ private enum BeansScrollFadeInstaller {
 
         func visit(_ view: UIView) {
             if let scrollView = view as? UIScrollView {
-                if let observer = objc_getAssociatedObject(scrollView, &beansScrollFadeObserverAssociationKey) as? BeansScrollFadeObserver {
+                if let observer = objc_getAssociatedObject(scrollView, &beansScrollFadeObserverAssociationKey) as? CoScrollFadeObserver {
                     observer.refresh()
                 } else {
-                    let observer = BeansScrollFadeObserver(scrollView: scrollView)
+                    let observer = CoScrollFadeObserver(scrollView: scrollView)
                     objc_setAssociatedObject(
                         scrollView,
                         &beansScrollFadeObserverAssociationKey,
@@ -593,36 +593,36 @@ private enum BeansScrollFadeInstaller {
     }
 }
 
-private final class BeansScrollFadeProbeController: UIViewController {
+private final class CoScrollFadeProbeController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        BeansScrollFadeInstaller.scan(window: view.window)
+        CoScrollFadeInstaller.scan(window: view.window)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        BeansScrollFadeInstaller.scan(window: view.window, force: true)
+        CoScrollFadeInstaller.scan(window: view.window, force: true)
     }
 }
 
-struct BeansScrollFadeProbe: UIViewControllerRepresentable {
+struct CoScrollFadeProbe: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        let controller = BeansScrollFadeProbeController()
+        let controller = CoScrollFadeProbeController()
         controller.view.backgroundColor = .clear
         controller.view.isUserInteractionEnabled = false
         return controller
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        BeansScrollFadeInstaller.scan(window: uiViewController.view.window)
+        CoScrollFadeInstaller.scan(window: uiViewController.view.window)
     }
 }
 
 /// SwiftUI 的 NavigationStack 会在透明内容后方保留系统默认底色。
 /// 将导航容器和承载控制器设为透明后，iPad 横屏页面才能透出根层唯一的主页壁纸。
-private struct BeansNavigationSurfaceClearer: UIViewControllerRepresentable {
+private struct CoNavigationSurfaceClearer: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        let controller = BeansScrollFadeProbeController()
+        let controller = CoScrollFadeProbeController()
         controller.view.backgroundColor = .clear
         controller.view.isUserInteractionEnabled = false
         return controller
@@ -640,7 +640,7 @@ private struct BeansNavigationSurfaceClearer: UIViewControllerRepresentable {
                 }
                 current = controller.parent
             }
-            BeansScrollFadeInstaller.scan(window: uiViewController.view.window)
+            CoScrollFadeInstaller.scan(window: uiViewController.view.window)
         }
     }
 }
@@ -656,7 +656,7 @@ extension View {
 }
 
 /// 弹窗尺寸（自定义枚举）
-enum BeansDetent {
+enum CoDetent {
     case medium
     case large
     case fraction(CGFloat)
@@ -664,11 +664,11 @@ enum BeansDetent {
 }
 
 /// 弹窗尺寸与拖拽指示条
-struct BeansSheetModifier: ViewModifier {
-    let detents: [BeansDetent]
+struct CoSheetModifier: ViewModifier {
+    let detents: [CoDetent]
     var dragIndicator: Bool?
 
-    private static func makeDetents(_ detents: [BeansDetent]) -> Set<PresentationDetent> {
+    private static func makeDetents(_ detents: [CoDetent]) -> Set<PresentationDetent> {
         var result: Set<PresentationDetent> = []
         for detent in detents {
             switch detent {
@@ -698,7 +698,7 @@ struct BeansSheetModifier: ViewModifier {
 /// SwiftUI's clear presentation background does not clear every intermediate
 /// host on older system builds, which can leave a solid white surface behind
 /// an otherwise transparent liquid sheet.
-struct BeansSheetPresentationSurfaceClearer: UIViewControllerRepresentable {
+struct CoSheetPresentationSurfaceClearer: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         let controller = UIViewController()
         controller.view.backgroundColor = .clear
@@ -759,7 +759,7 @@ extension View {
 // 每条存 "id|name"（恢复入口靠名字展示，靠 id 恢复），换号后各号的隐藏互不串。
 struct CoHiddenPlaylists {
     static func key(userId: String) -> String {
-        "beans.hiddenPlaylists.\(userId.isEmpty ? "local" : userId)"
+        "co.hiddenPlaylists.\(userId.isEmpty ? "local" : userId)"
     }
     static func load(userId: String) -> [(id: Int, name: String)] {
         let raw = UserDefaults.standard.stringArray(forKey: key(userId: userId)) ?? []
@@ -773,9 +773,9 @@ struct CoHiddenPlaylists {
     }
     static func allAccounts() -> [(userId: String, entries: [(id: Int, name: String)])] {
         UserDefaults.standard.dictionaryRepresentation().keys
-            .filter { $0.hasPrefix("beans.hiddenPlaylists.") }
+            .filter { $0.hasPrefix("co.hiddenPlaylists.") }
             .sorted()
-            .map { (userId: String($0.dropFirst("beans.hiddenPlaylists.".count)), entries: load(userId: String($0.dropFirst("beans.hiddenPlaylists.".count)))) }
+            .map { (userId: String($0.dropFirst("co.hiddenPlaylists.".count)), entries: load(userId: String($0.dropFirst("co.hiddenPlaylists.".count)))) }
             .filter { !$0.entries.isEmpty }
     }
 }
@@ -796,7 +796,7 @@ final class CoPlaylistOverrides: ObservableObject {
         var hasCover: Bool
     }
 
-    private static let defaultsKey = "beans.playlistOverrides.v1"
+    private static let defaultsKey = "co.playlistOverrides.v1"
     private var entries: [String: Entry] = [:]
 
     private init() { load() }
@@ -914,7 +914,7 @@ enum CoPlaylistCoverFiles {
 // MARK: - 封面图
 
 /// 固定尺寸的扫光骨架，占位期间不改变父布局尺寸。
-struct BeansShimmerSkeleton: View {
+struct CoShimmerSkeleton: View {
     var cornerRadius: CGFloat = 12
     var baseOpacity: Double = 0.12
 
@@ -983,7 +983,7 @@ struct CoverImage: View {
     var emptyHint: String? = nil
     var playsCoverVideoAudio = false
 
-    @StateObject private var imageLoader = BeansCoverImageLoader()
+    @StateObject private var imageLoader = CoCoverImageLoader()
     @ObservedObject private var customCovers = CustomSongCoverStore.shared
 
     // 布局尺寸完全由外层固定容器决定；AsyncImage 只放在 overlay 中渲染，
@@ -998,9 +998,9 @@ struct CoverImage: View {
         // loader. This avoids a skeleton/white frame when a cached detail page
         // is reopened or scrolled back into view.
         let cachedImage = imageLoader.image(for: resolvedURL)
-            ?? BeansCoverImageStore.memoryImage(for: resolvedURL)
+            ?? CoCoverImageStore.memoryImage(for: resolvedURL)
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(Color.beansGlassFill)
+            .fill(Color.coGlassFill)
             .frame(width: size * max(aspectRatio, 0.1), height: size)
             .overlay {
                 Group {
@@ -1024,7 +1024,7 @@ struct CoverImage: View {
                         // shimmer was the source of the one-frame flash seen
                         // across detail pages and the Discover screen.
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(Color.beansGlassFill.opacity(0.72))
+                            .fill(Color.coGlassFill.opacity(0.72))
                     }
                 }
                 .frame(width: size * max(aspectRatio, 0.1), height: size)
@@ -1054,11 +1054,11 @@ struct CoverImage: View {
     private var placeholderIcon: some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color.beansGlassFill)
+                .fill(Color.coGlassFill)
             if let emptyHint {
                 Text(emptyHint)
-                    .font(BeansFont.appFont(max(11, min(size * 0.09, 15)), .medium))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(max(11, min(size * 0.09, 15)), .medium))
+                    .foregroundStyle(Color.coComment)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .padding(.horizontal, 8)
@@ -1066,7 +1066,7 @@ struct CoverImage: View {
                 // 中性等待图标（不再使用音乐音符）
                 Image(systemName: "waveform")
                     .font(.system(size: size * 0.28, weight: .medium))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(Color.coComment)
             }
         }
             .frame(width: size * max(aspectRatio, 0.1), height: size)
@@ -1076,13 +1076,13 @@ struct CoverImage: View {
 /// 所有歌曲封面共用的内存与 URLCache 缓存，避免详情页每次进入都重新下载封面。
 /// 封面图片共享缓存：内存缓存负责当前页面快速显示，URLCache 负责跨页面和重启后的磁盘缓存。
 /// 预加载器与 CoverImage 使用同一个 URLSession，避免启动时预加载的图片无法被页面复用。
-final class BeansCoverImageStore {
+final class CoCoverImageStore {
     static let memoryCache = NSCache<NSURL, UIImage>()
     private static let diskCacheLimit = 300 * 1024 * 1024
     private static let diskQueue = DispatchQueue(label: "com.beans.music.cover-image-cache", qos: .utility)
     private static let diskCacheDirectory: URL = {
         let root = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        let directory = root.appendingPathComponent("BeansCoverImageFiles", isDirectory: true)
+        let directory = root.appendingPathComponent("CoCoverImageFiles", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }()
@@ -1092,7 +1092,7 @@ final class BeansCoverImageStore {
         configuration.urlCache = URLCache(
             memoryCapacity: 50 * 1024 * 1024,
             diskCapacity: 200 * 1024 * 1024,
-            diskPath: "BeansCoverImageCache"
+            diskPath: "CoCoverImageCache"
         )
         return URLSession(configuration: configuration)
     }()
@@ -1269,7 +1269,7 @@ final class BeansCoverImageStore {
 }
 
 @MainActor
-private final class BeansCoverImageLoader: ObservableObject {
+private final class CoCoverImageLoader: ObservableObject {
 
     @Published private(set) var image: UIImage?
     @Published private(set) var didFail = false
@@ -1304,13 +1304,13 @@ private final class BeansCoverImageLoader: ObservableObject {
             return
         }
 
-        if let cachedImage = BeansCoverImageStore.memoryImage(for: url) {
+        if let cachedImage = CoCoverImageStore.memoryImage(for: url) {
             image = cachedImage
             return
         }
 
         cacheLookupURL = url
-        BeansCoverImageStore.loadCachedImage(for: url) { [weak self] cachedImage in
+        CoCoverImageStore.loadCachedImage(for: url) { [weak self] cachedImage in
             guard let self, self.loadedURL == url else { return }
             self.cacheLookupURL = nil
             if let cachedImage {
@@ -1325,7 +1325,7 @@ private final class BeansCoverImageLoader: ObservableObject {
                 do {
                     var request = URLRequest(url: url)
                     request.cachePolicy = .returnCacheDataElseLoad
-                    let (data, response) = try await BeansCoverImageStore.session.data(for: request)
+                    let (data, response) = try await CoCoverImageStore.session.data(for: request)
                     guard !Task.isCancelled, let self, self.loadedURL == url else { return }
                     guard let http = response as? HTTPURLResponse,
                           200..<300 ~= http.statusCode,
@@ -1333,12 +1333,12 @@ private final class BeansCoverImageLoader: ObservableObject {
                         self.didFail = true
                         return
                     }
-                    BeansCoverImageStore.session.configuration.urlCache?.storeCachedResponse(
+                    CoCoverImageStore.session.configuration.urlCache?.storeCachedResponse(
                         CachedURLResponse(response: response, data: data),
                         for: request
                     )
-                    BeansCoverImageStore.persist(data: data, for: url)
-                    BeansCoverImageStore.memoryCache.setObject(image, forKey: url as NSURL)
+                    CoCoverImageStore.persist(data: data, for: url)
+                    CoCoverImageStore.memoryCache.setObject(image, forKey: url as NSURL)
                     self.image = image
                     self.task = nil
                 } catch {
@@ -1360,11 +1360,11 @@ struct VIPBadgeView: View {
 
     var body: some View {
         Text(text)
-            .font(BeansFont.appFont(9, .bold))
+            .font(CoFont.appFont(9, .bold))
             .foregroundStyle(.white)
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
-            .background(Capsule().fill(text == "SVIP" ? Color(red: 0.85, green: 0.62, blue: 0.18) : Color.beansThemeRed))
+            .background(Capsule().fill(text == "SVIP" ? Color(red: 0.85, green: 0.62, blue: 0.18) : Color.coThemeRed))
     }
 }
 
@@ -1372,7 +1372,7 @@ struct VIPBadgeView: View {
 
 struct GlassIconButton: View {
     @EnvironmentObject private var theme: ThemeStore
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     let systemName: String
     var size: CGFloat = 44
     var active = false
@@ -1380,7 +1380,7 @@ struct GlassIconButton: View {
     let action: () -> Void
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     var body: some View {
@@ -1388,13 +1388,13 @@ struct GlassIconButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: size * (isNativeClean ? 0.42 : 0.38), weight: .semibold))
-                .foregroundStyle(active ? Color.beansAmber : (isNativeClean ? Color.primary : Color.beansLabel))
+                .foregroundStyle(active ? Color.coAmber : (isNativeClean ? Color.primary : Color.coLabel))
                 .frame(width: size, height: size)
                 .background {
                     if isNativeClean && !forceLiquid {
-                        Circle().fill(active ? Color.beansAmber.opacity(0.12) : .clear)
+                        Circle().fill(active ? Color.coAmber.opacity(0.12) : .clear)
                     } else {
-                        BeansGlass(shape: Circle())
+                        CoGlass(shape: Circle())
                     }
                 }
                 .clipShape(Circle())
@@ -1408,7 +1408,7 @@ struct GlassIconButton: View {
 
 struct GlassButton: View {
     @EnvironmentObject private var theme: ThemeStore
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     let title: String
     var systemName: String?
     var prominent = false
@@ -1417,7 +1417,7 @@ struct GlassButton: View {
     let action: () -> Void
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     var body: some View {
@@ -1429,19 +1429,19 @@ struct GlassButton: View {
                 }
                 Text(LocalizedStringKey(title))
             }
-            .font(BeansFont.appFont(15, .semibold))
-            .foregroundStyle(prominent ? Color.white : Color.beansLabel)
+            .font(CoFont.appFont(15, .semibold))
+            .foregroundStyle(prominent ? Color.white : Color.coLabel)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .frame(maxWidth: expandsHorizontally ? .infinity : nil)
             .background {
                 if prominent {
                     ZStack {
-                        BeansGlass(shape: Capsule(), forceLiquid: true)
-                        Capsule().fill(Color.beansAmber.opacity(0.78))
+                        CoGlass(shape: Capsule(), forceLiquid: true)
+                        Capsule().fill(Color.coAmber.opacity(0.78))
                     }
                 } else if forceLiquid {
-                    BeansGlass(shape: Capsule(), forceLiquid: true)
+                    CoGlass(shape: Capsule(), forceLiquid: true)
                 } else if isNativeClean {
                     Capsule().fill(Color.primary.opacity(0.055))
                 } else {
@@ -1462,21 +1462,21 @@ struct GlassButton: View {
 // MARK: - 区块标题
 
 struct SectionHeader: View {
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     let title: String
     var trailing: String?
-    var titleColor: Color = Color.beansLabel
-    var trailingColor: Color = Color.beansComment
+    var titleColor: Color = Color.coLabel
+    var trailingColor: Color = Color.coComment
     var onTrailingTap: (() -> Void)?
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(LocalizedStringKey(title))
-                .font(BeansFont.appFont(isNativeClean ? 26 : 21, .bold))
+                .font(CoFont.appFont(isNativeClean ? 26 : 21, .bold))
                 .foregroundStyle(titleColor)
             Spacer()
             if let trailing {
@@ -1485,7 +1485,7 @@ struct SectionHeader: View {
                 } label: {
                     HStack(spacing: 3) {
                         Text(LocalizedStringKey(trailing))
-                            .font(BeansFont.appFont(13, .medium))
+                            .font(CoFont.appFont(13, .medium))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
                     }
@@ -1507,10 +1507,10 @@ struct EmptyStateView: View {
         VStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 44, weight: .light))
-                .foregroundStyle(Color.beansComment)
+                .foregroundStyle(Color.coComment)
             Text(LocalizedStringKey(text))
-                .font(BeansFont.appFont(14))
-                .foregroundStyle(Color.beansComment)
+                .font(CoFont.appFont(14))
+                .foregroundStyle(Color.coComment)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -1528,10 +1528,10 @@ struct ErrorStateView: View {
         VStack(spacing: 14) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 40, weight: .light))
-                .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
+                .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.coComment)
             Text(message)
-                .font(BeansFont.appFont(14))
-                .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
+                .font(CoFont.appFont(14))
+                .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.coComment)
                 .multilineTextAlignment(.center)
             GlassButton(title: "重试", systemName: "arrow.clockwise", action: retry)
         }
@@ -1547,20 +1547,20 @@ struct LoadingStateView: View {
         let _ = theme.accent
         VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 12) {
-                BeansShimmerSkeleton(cornerRadius: 8)
+                CoShimmerSkeleton(cornerRadius: 8)
                     .frame(width: 128, height: 22)
                 Spacer(minLength: 0)
-                BeansShimmerSkeleton(cornerRadius: 8)
+                CoShimmerSkeleton(cornerRadius: 8)
                     .frame(width: 72, height: 22)
             }
 
             HStack(spacing: 14) {
                 ForEach(0..<3, id: \.self) { index in
                     VStack(alignment: .leading, spacing: 8) {
-                        BeansShimmerSkeleton(cornerRadius: 14)
+                        CoShimmerSkeleton(cornerRadius: 14)
                             .aspectRatio(1, contentMode: .fit)
                             .frame(maxWidth: .infinity)
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(height: 12)
                             .frame(maxWidth: index == 2 ? 74 : 116, alignment: .leading)
                     }
@@ -1569,13 +1569,13 @@ struct LoadingStateView: View {
 
             ForEach(0..<3, id: \.self) { index in
                 HStack(spacing: 12) {
-                    BeansShimmerSkeleton(cornerRadius: 10)
+                    CoShimmerSkeleton(cornerRadius: 10)
                         .frame(width: 54, height: 54)
                     VStack(alignment: .leading, spacing: 8) {
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(height: 12)
                             .frame(maxWidth: index == 1 ? 170 : 230, alignment: .leading)
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(width: 112, height: 10)
                     }
                     Spacer(minLength: 0)
@@ -1587,7 +1587,7 @@ struct LoadingStateView: View {
     }
 }
 
-struct BeansSongRowsLoadingState: View {
+struct CoSongRowsLoadingState: View {
     var rowCount = 8
     var coverSize: CGFloat = 46
     var showsRank = false
@@ -1598,16 +1598,16 @@ struct BeansSongRowsLoadingState: View {
             ForEach(0..<rowCount, id: \.self) { index in
                 HStack(spacing: 12) {
                     if showsRank {
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(width: 24, height: 18)
                     }
-                    BeansShimmerSkeleton(cornerRadius: coverSize / 5)
+                    CoShimmerSkeleton(cornerRadius: coverSize / 5)
                         .frame(width: coverSize, height: coverSize)
                     VStack(alignment: .leading, spacing: 8) {
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(height: 13)
                             .frame(maxWidth: index.isMultiple(of: 3) ? 210 : 150, alignment: .leading)
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(width: index.isMultiple(of: 2) ? 128 : 86, height: 10)
                     }
                     Spacer(minLength: 0)
@@ -1620,7 +1620,7 @@ struct BeansSongRowsLoadingState: View {
     }
 }
 
-struct BeansDetailSongsLoadingState: View {
+struct CoDetailSongsLoadingState: View {
     var coverSize: CGFloat = 92
     var rowCount = 9
     var showsRank = false
@@ -1629,15 +1629,15 @@ struct BeansDetailSongsLoadingState: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
-                    BeansShimmerSkeleton(cornerRadius: 16)
+                    CoShimmerSkeleton(cornerRadius: 16)
                         .frame(width: coverSize, height: coverSize)
                     VStack(alignment: .leading, spacing: 9) {
-                        BeansShimmerSkeleton(cornerRadius: 6)
+                        CoShimmerSkeleton(cornerRadius: 6)
                             .frame(height: 18)
                             .frame(maxWidth: 220, alignment: .leading)
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(width: 130, height: 12)
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(width: 84, height: 11)
                     }
                     Spacer(minLength: 0)
@@ -1646,39 +1646,39 @@ struct BeansDetailSongsLoadingState: View {
                 .padding(.horizontal, 16)
 
                 HStack(spacing: 12) {
-                    BeansShimmerSkeleton(cornerRadius: 16)
+                    CoShimmerSkeleton(cornerRadius: 16)
                         .frame(height: 42)
-                    BeansShimmerSkeleton(cornerRadius: 16)
+                    CoShimmerSkeleton(cornerRadius: 16)
                         .frame(height: 42)
                 }
                 .padding(.horizontal, 16)
 
-                BeansSongRowsLoadingState(rowCount: rowCount, coverSize: 46, showsRank: showsRank, horizontalPadding: 16)
+                CoSongRowsLoadingState(rowCount: rowCount, coverSize: 46, showsRank: showsRank, horizontalPadding: 16)
             }
             .padding(.top, 8)
             .padding(.bottom, 170)
         }
-        .beansScrollIndicatorsHidden()
+        .coScrollIndicatorsHidden()
     }
 }
 
-struct BeansLongDescriptionSheet: View {
+struct CoLongDescriptionSheet: View {
     let title: String
     let text: String
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ScrollView {
                 Text(text)
-                    .font(BeansFont.appFont(15))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(15))
+                    .foregroundStyle(Color.coLabel)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 18)
             }
-            .beansScrollIndicatorsHidden()
+            .coScrollIndicatorsHidden()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1686,7 +1686,7 @@ struct BeansLongDescriptionSheet: View {
                     Button("完成") {
                         dismiss()
                     }
-                    .font(BeansFont.appFont(15, .semibold))
+                    .font(CoFont.appFont(15, .semibold))
                 }
             }
         }
@@ -1736,7 +1736,7 @@ struct NowPlayingIndicator: View {
         HStack(alignment: .bottom, spacing: 2) {
             ForEach(0..<3, id: \.self) { index in
                 Capsule()
-                    .fill(Color.beansAmber)
+                    .fill(Color.coAmber)
                     // Keep the layout box fixed. Animating the frame height
                     // made legacy SwiftUI re-layout a detail row while it was
                     // being reused, which looked like a floating waveform.
@@ -1816,8 +1816,8 @@ struct ToastView: View {
         Group {
             if let message = center.message {
                 Text(message)
-                    .font(BeansFont.appFont(14, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(14, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 18)

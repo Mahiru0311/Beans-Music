@@ -25,7 +25,7 @@ struct VersionLog: Identifiable {
 }
 
 enum ChangelogStore {
-    static let lastSeenKey = "beans.lastSeenVersion"
+    static let lastSeenKey = "co.lastSeenVersion"
 
     static var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -181,7 +181,7 @@ struct WhatsNewSheet: View {
     @State private var isLoading = true
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: ThemeStore.shared.backgroundSyncAll ? ThemeStore.shared.customBackground : nil)
                 ScrollView {
@@ -190,14 +190,14 @@ struct WhatsNewSheet: View {
                             .padding(16)
                     } else if isLoading {
                         ProgressView()
-                            .tint(Color.beansAmber)
+                            .tint(Color.coAmber)
                             .frame(maxWidth: .infinity, minHeight: 160)
                     } else if let log = ChangelogStore.latest {
                         VersionLogCard(log: log)
                             .padding(16)
                     }
                 }
-                .beansScrollIndicatorsHidden()
+                .coScrollIndicatorsHidden()
             }
             .navigationTitle("更新说明")
             .navigationBarTitleDisplayMode(.inline)
@@ -207,12 +207,12 @@ struct WhatsNewSheet: View {
                         ChangelogStore.markSeen()
                         dismiss()
                     }
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(Color.beansAmber)
+                    .font(CoFont.appFont(14, .semibold))
+                    .foregroundStyle(Color.coAmber)
                 }
             }
         }
-        .modifier(BeansSheetModifier(detents: [.medium, .large]))
+        .modifier(CoSheetModifier(detents: [.medium, .large]))
         .task {
             remoteLog = await ChangelogStore.fetchRemoteLatest()
             isLoading = false
@@ -230,13 +230,13 @@ struct ChangelogListView: View {
 
     var body: some View {
         let remoteVersions = Set(remoteLogs.map(\.version))
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: ThemeStore.shared.backgroundSyncAll ? ThemeStore.shared.customBackground : nil)
                 ScrollView {
                     if isLoading {
                         ProgressView()
-                            .tint(Color.beansAmber)
+                            .tint(Color.coAmber)
                             .frame(maxWidth: .infinity, minHeight: 160)
                     } else {
                         VStack(alignment: .leading, spacing: 14) {
@@ -252,7 +252,7 @@ struct ChangelogListView: View {
                         .padding(16)
                     }
                 }
-                .beansScrollIndicatorsHidden()
+                .coScrollIndicatorsHidden()
             }
             .navigationTitle("更新日志")
             .navigationBarTitleDisplayMode(.inline)
@@ -262,7 +262,7 @@ struct ChangelogListView: View {
                 }
             }
         }
-        .modifier(BeansSheetModifier(detents: [.medium, .large]))
+        .modifier(CoSheetModifier(detents: [.medium, .large]))
         .task {
             remoteLogs = await ChangelogStore.fetchRemoteHistory()
             isLoading = false
@@ -277,10 +277,10 @@ private struct VersionLogCard: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("v\(log.version)")
-                    .font(BeansFont.appFont(16, .bold))
-                    .foregroundStyle(Color.beansAmber)
+                    .font(CoFont.appFont(16, .bold))
+                    .foregroundStyle(Color.coAmber)
                 Text(log.title)
-                    .font(BeansFont.appFont(14, .semibold))
+                    .font(CoFont.appFont(14, .semibold))
                     .foregroundStyle(textColor)
             }
             if let imageURL = log.imageURL {
@@ -305,7 +305,7 @@ private struct VersionLogCard: View {
                                 .foregroundStyle(.white)
                                 .padding(.top, 1)
                             Text(notice)
-                                .font(BeansFont.appFont(13, .semibold))
+                                .font(CoFont.appFont(13, .semibold))
                                 .foregroundStyle(.white)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -326,31 +326,31 @@ private struct VersionLogCard: View {
                 logSection(title: "新增功能", icon: "plus.circle.fill", items: log.features)
             }
             if !log.fixes.isEmpty {
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
                 logSection(title: "问题修复", icon: "checkmark.circle.fill", items: log.fixes)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
-        .beansCardShadow(radius: 9, y: 3)
+        .coCardShadow(radius: 9, y: 3)
     }
 
     private func logSection(title: String, icon: String, items: [String]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStringKey(title))
-                .font(BeansFont.appFont(14, .bold))
-                .foregroundStyle(Color.beansAmber)
+                .font(CoFont.appFont(14, .bold))
+                .foregroundStyle(Color.coAmber)
             ForEach(items, id: \.self) { item in
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: icon)
                         .font(.system(size: 12))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .padding(.top, 2)
                     Text(LocalizedStringKey(item))
-                        .font(BeansFont.appFont(13))
+                        .font(CoFont.appFont(13))
                         .foregroundStyle(textColor)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -360,6 +360,6 @@ private struct VersionLogCard: View {
 
     private var textColor: Color {
         if let raw = log.textColorHex, let color = Color(hex: raw) { return color }
-        return Color.beansLabel
+        return Color.coLabel
     }
 }

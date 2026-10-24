@@ -27,7 +27,7 @@ struct LibraryView: View {
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var favorites: FavoritesStore
-    @Environment(\.beansUsesSharedRootBackdrop) private var usesSharedRootBackdrop
+    @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
@@ -42,11 +42,11 @@ struct LibraryView: View {
     @State private var newPlaylistName = ""
     @State private var pendingDelete: Playlist?
     @State private var showDeleteConfirm = false
-    @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
+    @AppStorage("co.homeHeaderHideSort") private var hideSortButton = false
     @State private var kugouPlaylists: [Playlist] = []
     @State private var kugouLoading = false
     @State private var kugouSavedAt = Date.distantPast
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     private var source: LibraryProvider { .kugou }
 
     private var orderedKugouPlaylists: [Playlist] {
@@ -68,12 +68,12 @@ struct LibraryView: View {
     }
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     var body: some View {
         let _ = theme.accent
-        BeansNavigationStackWithPath(path: $navigationPath) {
+        CoNavigationStackWithPath(path: $navigationPath) {
         ZStack {
             if !usesSharedRootBackdrop {
                 // 页面背景：同步开启时显示壁纸/背景色，否则默认氛围渐变
@@ -105,14 +105,14 @@ struct LibraryView: View {
                 .padding(.horizontal, isNativeClean ? 24 : 16)
                 .padding(.top, isNativeClean ? 20 : 8)
                 .padding(.bottom, 190)
-                .beansAdaptiveContentWidth()
+                .coAdaptiveContentWidth()
             }
-            .beansScrollIndicatorsHidden()
+            .coScrollIndicatorsHidden()
         }
         .task(id: source) {
             await refreshCurrentSource(force: false)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .beansKugouLoginDidUpdate)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .coKugouLoginDidUpdate)) { _ in
             Task { await loadKugouPlaylists(force: true) }
         }
         .sheet(isPresented: $showAccountHub) {
@@ -157,7 +157,7 @@ struct LibraryView: View {
             Button("删除", role: .destructive) { confirmDeletePlaylist() }
             Button("取消", role: .cancel) {}
         }
-        .beansNavigationDestination(for: LibraryRoute.self) { route in
+        .coNavigationDestination(for: LibraryRoute.self) { route in
             libraryDestination(route)
         }
     }
@@ -184,18 +184,18 @@ struct LibraryView: View {
                     VStack(alignment: .leading, spacing: 4) {
                     libraryTitleButton
                     Text(librarySubtitle)
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(13))
+                        .foregroundStyle(Color.coComment)
                 }
                 Spacer()
                 HStack(spacing: 10) {
                 if !hideSortButton {
                     GlassIconButton(systemName: "arrow.up.arrow.down", forceLiquid: isNativeClean) {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         showSectionSort = true
                     }
                     GlassIconButton(systemName: "list.number", forceLiquid: isNativeClean) {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         showSyncedPlaylistSort = true
                     }
                 }
@@ -212,21 +212,21 @@ struct LibraryView: View {
                 Spacer(minLength: 12)
                 if !hideSortButton {
                     GlassIconButton(systemName: "arrow.up.arrow.down", forceLiquid: isNativeClean) {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         showSectionSort = true
                     }
                     GlassIconButton(systemName: "list.number", forceLiquid: isNativeClean) {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         showSyncedPlaylistSort = true
                     }
                 }
             }
             Text(librarySubtitle)
-                .font(BeansFont.appFont(12, .medium))
-                .foregroundStyle(Color.beansComment)
+                .font(CoFont.appFont(12, .medium))
+                .foregroundStyle(Color.coComment)
                 .lineLimit(1)
             Rectangle()
-                .fill(Color.beansLabel.opacity(0.10))
+                .fill(Color.coLabel.opacity(0.10))
                 .frame(height: 1)
         }
         .padding(.top, 4)
@@ -238,14 +238,14 @@ struct LibraryView: View {
 
     private var libraryTitleButton: some View {
         Text("音乐库")
-            .font(BeansFont.appFont(isNativeClean ? 34 : 30, .bold))
-            .foregroundStyle(Color.beansLabel)
+            .font(CoFont.appFont(isNativeClean ? 34 : 30, .bold))
+            .foregroundStyle(Color.coLabel)
             .contentShape(Rectangle())
     }
 
     private var createPlaylistCard: some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             newPlaylistName = ""
             showCreatePlaylist = true
         } label: {
@@ -253,20 +253,20 @@ struct LibraryView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                        .foregroundStyle(Color.beansComment.opacity(0.45))
+                        .foregroundStyle(Color.coComment.opacity(0.45))
                         .frame(width: 160, height: 160)
                     Image(systemName: "plus")
                         .font(.system(size: 26, weight: .medium))
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                 }
                 Text("新建歌单")
-                    .font(BeansFont.appFont(12, .medium))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(12, .medium))
+                    .foregroundStyle(Color.coComment)
             }
             .padding(8)
             .frame(maxWidth: .infinity)
             .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
         }
         .buttonStyle(.plain)
@@ -285,15 +285,15 @@ struct LibraryView: View {
                         SongCell(song: song, suppressNativeCleanRowGlass: isNativeClean) {
                             playFromHistory(song)
                         }
-                        Divider().overlay(Color.beansComment.opacity(0.15))
+                        Divider().overlay(Color.coComment.opacity(0.15))
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
                 .background {
-                                        BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                        CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
-                .beansCardShadow(radius: 8, y: 3)
+                .coCardShadow(radius: 8, y: 3)
             }
         }
     }
@@ -314,7 +314,7 @@ struct LibraryView: View {
             SectionHeader(title: "我的酷狗歌单", trailing: kugouAuth.isLoggedIn ? "\(kugouPlaylists.count) 个" : nil)
             if !kugouAuth.isLoggedIn {
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showAccountHub = true
                 } label: {
                     EmptyStateView(icon: "music.note.list", text: "登录酷狗音乐后即可同步云端歌单")
@@ -334,32 +334,32 @@ struct LibraryView: View {
                                 CoverImage(url: playlist.coverURL, size: 56, cornerRadius: 12)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(playlist.name)
-                                        .font(BeansFont.appFont(15, .medium))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .font(CoFont.appFont(15, .medium))
+                                        .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                     Text(beansSongCountText(playlist.trackCount))
-                                        .font(BeansFont.appFont(12))
-                                        .foregroundStyle(Color.beansComment)
+                                        .font(CoFont.appFont(12))
+                                        .foregroundStyle(Color.coComment)
                                 }
                                 Spacer(minLength: 8)
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.beansComment.opacity(0.6))
+                                    .foregroundStyle(Color.coComment.opacity(0.6))
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        Divider().overlay(Color.beansComment.opacity(0.12))
+                        Divider().overlay(Color.coComment.opacity(0.12))
                     }
                 }
                 .padding(.vertical, 6)
                 .background {
-                    BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .beansCardShadow(radius: 8, y: 3)
+                .coCardShadow(radius: 8, y: 3)
             }
         }
     }
@@ -388,7 +388,7 @@ struct LibraryView: View {
                 cache.savePlaylists(list, source: .kugou, accountID: kugouCacheAccountID)
             }
         } catch {
-            BeansLogger.shared.log("酷狗歌单同步失败：\(error.localizedDescription)", level: .error)
+            CoLogger.shared.log("酷狗歌单同步失败：\(error.localizedDescription)", level: .error)
             if kugouPlaylists.isEmpty { kugouPlaylists = [] }
         }
         kugouLoading = false

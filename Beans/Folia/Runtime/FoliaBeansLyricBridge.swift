@@ -1,7 +1,7 @@
 import Foundation
 
 // Adapts the existing Beans parser output; no second player or invented word timestamps.
-enum FoliaBeansLyricBridge {
+enum FoliaCoLyricBridge {
     static func document(trackIdentity: String, lyrics: [LyricLine], duration: Double) -> FoliaLyricDocument {
         let sorted = lyrics.enumerated().sorted {
             $0.element.time == $1.element.time ? $0.offset < $1.offset : $0.element.time < $1.element.time

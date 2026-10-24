@@ -11,11 +11,11 @@ import Foundation
 /// 正确修法是停掉 Co 这一路，只留系统正在播放。
 ///
 /// update() 因此只做一件事：把旧版本已发出的活动清掉，永不新发。
-/// 扩展目标 BeansLiveActivity 本身不动（删目标要改工程配置，收益为零），
+/// 扩展目标 CoLiveActivity 本身不动（删目标要改工程配置，收益为零），
 /// 没有活动请求时它永远不会被系统拉起。
 @MainActor
-final class BeansNowPlayingLiveActivity {
-    static let shared = BeansNowPlayingLiveActivity()
+final class CoNowPlayingLiveActivity {
+    static let shared = CoNowPlayingLiveActivity()
     private var staleCleanupDone = false
 
     func update(song: Song?, isPlaying: Bool) {
@@ -24,7 +24,7 @@ final class BeansNowPlayingLiveActivity {
         guard !staleCleanupDone else { return }
         staleCleanupDone = true
         Task {
-            for activity in Activity<BeansNowPlayingAttributes>.activities {
+            for activity in Activity<CoNowPlayingAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }

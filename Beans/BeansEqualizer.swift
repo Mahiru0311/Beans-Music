@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import MediaToolbox
 
-enum BeansEqualizerPreset: String, CaseIterable, Identifiable {
+enum CoEqualizerPreset: String, CaseIterable, Identifiable {
     case flat
     case bass
     case vocal
@@ -45,7 +45,7 @@ enum BeansEqualizerPreset: String, CaseIterable, Identifiable {
     }
 }
 
-struct BeansEqualizerCustomPreset: Identifiable, Codable, Hashable {
+struct CoEqualizerCustomPreset: Identifiable, Codable, Hashable {
     let id: String
     var name: String
     var gains: [Double]
@@ -61,19 +61,19 @@ struct BeansEqualizerCustomPreset: Identifiable, Codable, Hashable {
 
 /// AVPlayerItem uses an audio-processing tap for the equalizer, so it keeps the
 /// existing AVPlayer playback, queue, remote command, and background behavior.
-final class BeansEqualizer: ObservableObject {
-    static let shared = BeansEqualizer()
-    static let settingsDidChange = Notification.Name("beans.equalizer.settingsDidChange")
+final class CoEqualizer: ObservableObject {
+    static let shared = CoEqualizer()
+    static let settingsDidChange = Notification.Name("co.equalizer.settingsDidChange")
 
     static let bandFrequencies: [Double] = [31, 62, 125, 250, 500, 1_000, 2_000, 4_000, 8_000, 16_000]
     static let maximumGain: Double = 12
 
     @Published private(set) var isEnabled: Bool
     @Published private(set) var bandGains: [Double]
-    @Published private(set) var selectedPreset: BeansEqualizerPreset
+    @Published private(set) var selectedPreset: CoEqualizerPreset
     @Published private(set) var selectedCustomPresetName: String?
     @Published private(set) var preampGain: Double
-    @Published private(set) var customPresets: [BeansEqualizerCustomPreset]
+    @Published private(set) var customPresets: [CoEqualizerCustomPreset]
 
     private let defaults = UserDefaults.standard
     private let configurationLock = NSLock()
@@ -86,12 +86,12 @@ final class BeansEqualizer: ObservableObject {
     private var filterStates: [BiquadState] = Array(repeating: .zero, count: 80)
     private var pendingPersistWorkItem: DispatchWorkItem?
 
-    private static let enabledKey = "beans.equalizer.enabled"
-    private static let gainsKey = "beans.equalizer.bandGains"
-    private static let presetKey = "beans.equalizer.preset"
-    private static let customPresetNameKey = "beans.equalizer.customPresetName"
-    private static let customPresetsKey = "beans.equalizer.customPresets"
-    private static let preampKey = "beans.equalizer.preampGain"
+    private static let enabledKey = "co.equalizer.enabled"
+    private static let gainsKey = "co.equalizer.bandGains"
+    private static let presetKey = "co.equalizer.preset"
+    private static let customPresetNameKey = "co.equalizer.customPresetName"
+    private static let customPresetsKey = "co.equalizer.customPresets"
+    private static let preampKey = "co.equalizer.preampGain"
     private static let maximumChannels = 8
 
     private init() {
@@ -99,13 +99,13 @@ final class BeansEqualizer: ObservableObject {
             .compactMap { ($0 as? NSNumber)?.doubleValue }
         let normalizedGains = Self.normalizedGains(storedGains)
         let storedPreset = defaults.string(forKey: Self.presetKey)
-            .flatMap(BeansEqualizerPreset.init(rawValue:)) ?? .flat
+            .flatMap(CoEqualizerPreset.init(rawValue:)) ?? .flat
         let storedCustomPresets = defaults.data(forKey: Self.customPresetsKey)
-            .flatMap { try? JSONDecoder().decode([BeansEqualizerCustomPreset].self, from: $0) } ?? []
-        let normalizedCustomPresets = storedCustomPresets.compactMap { preset -> BeansEqualizerCustomPreset? in
+            .flatMap { try? JSONDecoder().decode([CoEqualizerCustomPreset].self, from: $0) } ?? []
+        let normalizedCustomPresets = storedCustomPresets.compactMap { preset -> CoEqualizerCustomPreset? in
             let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !name.isEmpty else { return nil }
-            return BeansEqualizerCustomPreset(
+            return CoEqualizerCustomPreset(
                 id: preset.id,
                 name: name,
                 gains: Self.normalizedGains(preset.gains),
@@ -165,7 +165,7 @@ final class BeansEqualizer: ObservableObject {
         notifySettingsChanged()
     }
 
-    func applyPreset(_ preset: BeansEqualizerPreset) {
+    func applyPreset(_ preset: CoEqualizerPreset) {
         guard let gains = preset.gains else { return }
         let normalized = Self.normalizedGains(gains)
         bandGains = normalized
@@ -181,7 +181,7 @@ final class BeansEqualizer: ObservableObject {
         notifySettingsChanged()
     }
 
-    func applyCustomPreset(_ preset: BeansEqualizerCustomPreset) {
+    func applyCustomPreset(_ preset: CoEqualizerCustomPreset) {
         let normalized = Self.normalizedGains(preset.gains)
         let normalizedPreamp = Self.normalizedGain(preset.preampGain)
         bandGains = normalized
@@ -201,7 +201,7 @@ final class BeansEqualizer: ObservableObject {
     func saveCustomPreset(name: String) -> Bool {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return false }
-        let current = BeansEqualizerCustomPreset(
+        let current = CoEqualizerCustomPreset(
             name: trimmedName,
             gains: bandGains,
             preampGain: preampGain
@@ -209,7 +209,7 @@ final class BeansEqualizer: ObservableObject {
         if let index = customPresets.firstIndex(where: {
             $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame
         }) {
-            customPresets[index] = BeansEqualizerCustomPreset(
+            customPresets[index] = CoEqualizerCustomPreset(
                 id: customPresets[index].id,
                 name: trimmedName,
                 gains: current.gains,
@@ -224,7 +224,7 @@ final class BeansEqualizer: ObservableObject {
         return true
     }
 
-    func deleteCustomPreset(_ preset: BeansEqualizerCustomPreset) {
+    func deleteCustomPreset(_ preset: CoEqualizerCustomPreset) {
         customPresets.removeAll { $0.id == preset.id }
         if selectedCustomPresetName == preset.name {
             selectedCustomPresetName = nil
@@ -261,7 +261,7 @@ final class BeansEqualizer: ObservableObject {
             &tap
         )
         guard status == noErr, let tap else {
-            BeansLogger.shared.log("均衡器音频处理器创建失败：\(status)", level: .error)
+            CoLogger.shared.log("均衡器音频处理器创建失败：\(status)", level: .error)
             return nil
         }
 
@@ -405,7 +405,7 @@ private func equalizerTapPrepare(
     processingFormat: UnsafePointer<AudioStreamBasicDescription>
 ) {
     let storage = MTAudioProcessingTapGetStorage(tap)
-    let equalizer = Unmanaged<BeansEqualizer>.fromOpaque(storage).takeUnretainedValue()
+    let equalizer = Unmanaged<CoEqualizer>.fromOpaque(storage).takeUnretainedValue()
     equalizer.prepare(with: processingFormat.pointee)
 }
 
@@ -439,7 +439,7 @@ private func equalizerTapProcess(
     numberFramesOut.pointee = sourceFrames
     flagsOut.pointee = sourceFlags
     let storage = MTAudioProcessingTapGetStorage(tap)
-    let equalizer = Unmanaged<BeansEqualizer>.fromOpaque(storage).takeUnretainedValue()
+    let equalizer = Unmanaged<CoEqualizer>.fromOpaque(storage).takeUnretainedValue()
     equalizer.process(bufferList: bufferListInOut, frameCount: Int(sourceFrames))
 }
 

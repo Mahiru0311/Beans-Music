@@ -15,7 +15,7 @@ struct LocalMusicSection: View {
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var theme: ThemeStore
-    @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
+    @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
 
     @State private var showCreate = false
     @State private var showPlaylistOrder = false
@@ -35,8 +35,8 @@ struct LocalMusicSection: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("本地音乐库")
-                    .font(BeansFont.appFont(21, .bold))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(21, .bold))
+                    .foregroundStyle(Color.coLabel)
                 Spacer(minLength: 8)
                 Button {
                     newName = ""
@@ -44,7 +44,7 @@ struct LocalMusicSection: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("新建本地歌单")
@@ -54,7 +54,7 @@ struct LocalMusicSection: View {
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("排序本地歌单")
@@ -70,13 +70,13 @@ struct LocalMusicSection: View {
                 }
                 .disabled(syncing)
                 Text(languageRaw == AppLanguage.english.rawValue ? "Sync your Kugou liked songs to a local playlist" : "同步酷狗喜欢歌曲到本地歌单")
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(11))
+                    .foregroundStyle(Color.coComment)
             }
             if !syncMessage.isEmpty {
                 Text(syncMessage)
-                    .font(BeansFont.appFont(12, .medium))
-                    .foregroundStyle(Color.beansSage)
+                    .font(CoFont.appFont(12, .medium))
+                    .foregroundStyle(Color.coSage)
             }
             if store.playlists.isEmpty {
                 VStack(spacing: 12) {
@@ -97,7 +97,7 @@ struct LocalMusicSection: View {
                                         CoverImage(url: coverURL, size: 56, cornerRadius: 12)
                                     } else {
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .fill(LinearGradient(colors: [Color.beansAmber.opacity(0.75), Color.beansAmber.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                            .fill(LinearGradient(colors: [Color.coAmber.opacity(0.75), Color.coAmber.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing))
                                             .frame(width: 56, height: 56)
                                         Image(systemName: "music.note.list")
                                             .font(.system(size: 20, weight: .semibold))
@@ -106,20 +106,20 @@ struct LocalMusicSection: View {
                                 }
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(playlist.name)
-                                        .font(BeansFont.appFont(15, .medium))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .font(CoFont.appFont(15, .medium))
+                                        .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                     Text([
                                         beansLocalSongCountText(playlist.songs.count),
                                         playlist.sourceName
                                     ].compactMap { $0 }.joined(separator: " · "))
-                                        .font(BeansFont.appFont(12))
-                                        .foregroundStyle(Color.beansComment)
+                                        .font(CoFont.appFont(12))
+                                        .foregroundStyle(Color.coComment)
                                 }
                                 Spacer(minLength: 8)
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.beansComment.opacity(0.6))
+                                    .foregroundStyle(Color.coComment.opacity(0.6))
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -138,20 +138,20 @@ struct LocalMusicSection: View {
                                 Label("移到后面", systemImage: "arrow.down")
                             }
                             Button(role: .destructive) {
-                                BeansHaptics.tap()
+                                CoHaptics.tap()
                                 store.deletePlaylist(id: playlist.id)
                                 ToastCenter.shared.show("已删除本地歌单")
                             } label: {
                                 Label("删除歌单", systemImage: "trash")
                             }
                         }
-                        Divider().overlay(Color.beansComment.opacity(0.12))
+                        Divider().overlay(Color.coComment.opacity(0.12))
                     }
                 }
                 .padding(.vertical, 6)
-                .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
+                .background { CoSurface(shape: RoundedRectangle(cornerRadius: 22, style: .continuous)) }
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .beansCardShadow(radius: 8, y: 3)
+                .coCardShadow(radius: 8, y: 3)
             }
         }
         .alert("新建本地歌单", isPresented: $showCreate) {
@@ -187,7 +187,7 @@ struct LocalMusicSection: View {
         if targets.contains(.kugou), KugouMusicAuth.shared.isLoggedIn {
             do {
                 let lists = try await KugouMusicAPI.shared.userPlaylists()
-                BeansLogger.shared.log("酷狗歌单 \(lists.map(\.name).joined(separator: "|"))", level: .info)
+                CoLogger.shared.log("酷狗歌单 \(lists.map(\.name).joined(separator: "|"))", level: .info)
                 let liked = lists.first { list in
                     let name = list.name.replacingOccurrences(of: " ", with: "")
                     return name.contains("喜欢") || name.contains("收藏") || name.contains("红心")
@@ -200,7 +200,7 @@ struct LocalMusicSection: View {
                     details.append(NSLocalizedString("酷狗音乐未找到喜欢歌单", comment: ""))
                 }
             } catch {
-                BeansLogger.shared.log("酷狗同步失败 \(error.localizedDescription)", level: .error)
+                CoLogger.shared.log("酷狗同步失败 \(error.localizedDescription)", level: .error)
                 details.append(NSLocalizedString("酷狗音乐请求失败", comment: ""))
             }
         } else if targets.contains(.kugou) {
@@ -231,18 +231,18 @@ private struct LocalPlaylistOrderSheet: View {
     @State private var editMode: EditMode = .active
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             List {
                 ForEach(store.playlists) { playlist in
                     HStack(spacing: 12) {
                         Image(systemName: "music.note.list")
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                         Text(playlist.name)
-                            .foregroundStyle(Color.beansLabel)
+                            .foregroundStyle(Color.coLabel)
                         Spacer()
                         Text(beansLocalSongCountText(playlist.songs.count))
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
+                            .font(CoFont.appFont(12))
+                            .foregroundStyle(Color.coComment)
                     }
                 }
                 .onMove { offsets, destination in
@@ -251,7 +251,7 @@ private struct LocalPlaylistOrderSheet: View {
             }
             .environment(\.editMode, $editMode)
             .listStyle(.plain)
-            .beansScrollContentBackgroundHidden()
+            .coScrollContentBackgroundHidden()
             .navigationTitle("歌单排序")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -295,7 +295,7 @@ struct LocalPlaylistDetailSheet: View {
             HStack(spacing: 10) {
                 Image(systemName: selectedSongKeys.contains(song.identityKey) ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(selectedSongKeys.contains(song.identityKey) ? Color.beansAmber : Color.beansComment)
+                    .foregroundStyle(selectedSongKeys.contains(song.identityKey) ? Color.coAmber : Color.coComment)
                 SongCell(song: song, glassRow: true) {
                     toggleSelection(song)
                 }
@@ -314,7 +314,7 @@ struct LocalPlaylistDetailSheet: View {
             .listRowSeparator(.hidden)
             .swipeActions(edge: .trailing) {
                 Button(role: .destructive) {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     store.removeSong(playlistID: playlistID, songIdentity: song.identityKey)
                 } label: {
                     Label("移除", systemImage: "trash")
@@ -336,7 +336,7 @@ struct LocalPlaylistDetailSheet: View {
     }
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
                 Group {
@@ -380,13 +380,13 @@ struct LocalPlaylistDetailSheet: View {
                                 .listRowSeparator(.hidden)
                             VStack(spacing: 4) {
                                 Text(playlist.name)
-                                    .font(BeansFont.appFont(28, .bold))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(28, .bold))
+                                    .foregroundStyle(Color.coLabel)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
                                 Text(beansSongCountText(playlist.songs.count))
-                                    .font(BeansFont.appFont(14))
-                                    .foregroundStyle(Color.beansComment)
+                                    .font(CoFont.appFont(14))
+                                    .foregroundStyle(Color.coComment)
                             }
                             .frame(maxWidth: .infinity, alignment: .center)
                             .listRowBackground(Color.clear)
@@ -398,17 +398,17 @@ struct LocalPlaylistDetailSheet: View {
                                     player.play(songs: songs, startAt: 0)
                                 }
                                 Button {
-                                    BeansHaptics.tap()
+                                    CoHaptics.tap()
                                     let songs = visibleSongs.map(\.element)
                                     guard !songs.isEmpty else { return }
                                     player.play(songs: songs.shuffled(), startAt: 0)
                                 } label: {
                                     Image(systemName: "shuffle")
                                         .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .foregroundStyle(Color.coLabel)
                                         .frame(width: 48, height: 48)
                                         .background {
-                                            BeansGlass(shape: Circle(), forceLiquid: true)
+                                            CoGlass(shape: Circle(), forceLiquid: true)
                                         }
                                 }
                                 .buttonStyle(.plain)
@@ -424,24 +424,24 @@ struct LocalPlaylistDetailSheet: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color.beansComment)
+                                    .foregroundStyle(Color.coComment)
                                 ZStack(alignment: .leading) {
                                     if playlistSearchText.isEmpty {
                                         Text("搜索本地歌单歌曲")
-                                            .font(BeansFont.appFont(16))
-                                            .foregroundStyle(Color.beansComment)
+                                            .font(CoFont.appFont(16))
+                                            .foregroundStyle(Color.coComment)
                                             .allowsHitTesting(false)
                                     }
                                     TextField("", text: $playlistSearchText)
-                                        .font(BeansFont.appFont(16))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .font(CoFont.appFont(16))
+                                        .foregroundStyle(Color.coLabel)
                                         .autocorrectionDisabled()
                                 }
                                 if !playlistSearchText.isEmpty {
                                     Button { playlistSearchText = "" } label: {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.system(size: 14))
-                                            .foregroundStyle(Color.beansComment)
+                                            .foregroundStyle(Color.coComment)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -463,7 +463,7 @@ struct LocalPlaylistDetailSheet: View {
                             }
                         }
                     }
-                    .beansScrollContentBackgroundHidden()
+                    .coScrollContentBackgroundHidden()
                     .listStyle(.plain)
                 } else {
                     EmptyStateView(icon: "music.note.list", text: "歌单不存在或已删除")
@@ -513,7 +513,7 @@ struct LocalPlaylistDetailSheet: View {
                         Button {
                             if let song = player.currentSong {
                                 store.addSong(song, to: playlistID)
-                                BeansHaptics.success()
+                                CoHaptics.success()
                                 ToastCenter.shared.show("已加入本地歌单")
                             } else {
                                 ToastCenter.shared.show("当前没有播放中的歌曲")
@@ -554,7 +554,7 @@ struct LocalPlaylistDetailSheet: View {
                 onPicked: { image in
                     if let url = CoPlaylistCoverFiles.save(image: image, fileName: "local-\(playlistID.uuidString).jpg") {
                         store.setCoverURL(id: playlistID, url: url)
-                        BeansHaptics.success()
+                        CoHaptics.success()
                         ToastCenter.shared.show("已更换封面")
                     } else {
                         showCoverFormatError = true
@@ -592,7 +592,7 @@ struct LocalPlaylistDetailSheet: View {
         } message: {
             Text("已选歌曲会复制到目标歌单，当前歌单中的歌曲不会被移除。")
         }
-        .modifier(BeansSheetModifier(detents: [.medium, .large], dragIndicator: true))
+        .modifier(CoSheetModifier(detents: [.medium, .large], dragIndicator: true))
     }
 
     private var hasOtherPlaylist: Bool {
@@ -604,7 +604,7 @@ struct LocalPlaylistDetailSheet: View {
     }
 
     private func toggleSelection(_ song: Song) {
-        BeansHaptics.select()
+        CoHaptics.select()
         if selectedSongKeys.contains(song.identityKey) {
             selectedSongKeys.remove(song.identityKey)
         } else {
@@ -620,7 +620,7 @@ struct LocalPlaylistDetailSheet: View {
         }
         selectedSongKeys.removeAll()
         multiSelectMode = false
-        BeansHaptics.success()
+        CoHaptics.success()
         ToastCenter.shared.show("已移除 \(count) 首歌曲")
     }
 
@@ -630,7 +630,7 @@ struct LocalPlaylistDetailSheet: View {
         let added = store.addSongs(songs, to: destinationID)
         selectedSongKeys.removeAll()
         multiSelectMode = false
-        BeansHaptics.success()
+        CoHaptics.success()
         let targetName = store.playlists.first(where: { $0.id == destinationID })?.name ?? "目标歌单"
         ToastCenter.shared.show(added == songs.count
             ? "已添加 \(added) 首到「\(targetName)」"
@@ -643,7 +643,7 @@ struct LocalPlaylistDetailSheet: View {
             return
         }
         UIPasteboard.general.string = playlist.songs.map(\.name).joined(separator: "\n")
-        BeansHaptics.success()
+        CoHaptics.success()
         ToastCenter.shared.show("已复制全部歌名")
     }
 
@@ -703,7 +703,7 @@ struct LocalSearchAddSheet: View {
     @State private var task: Task<Void, Never>?
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             VStack(spacing: 0) {
                 NativeSearchBar(
                     text: $keyword,
@@ -714,20 +714,20 @@ struct LocalSearchAddSheet: View {
                 .padding(12)
                 if searching {
                     Spacer()
-                    ProgressView().tint(Color.beansAmber)
+                    ProgressView().tint(Color.coAmber)
                     Spacer()
                 } else if results.isEmpty {
                     Spacer()
                     Text("输入歌名搜索，点击结果加入本地歌单")
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(13))
+                        .foregroundStyle(Color.coComment)
                     Spacer()
                 } else {
                     List {
                         ForEach(Array(results.enumerated()), id: \.element.identityKey) { index, song in
                             SongCell(song: song, glassRow: true) {
                                 store.addSong(song, to: playlistID)
-                                BeansHaptics.success()
+                                CoHaptics.success()
                                 ToastCenter.shared.show("已加入本地歌单")
                             }
                             .listRowBackground(Color.clear)
@@ -745,7 +745,7 @@ struct LocalSearchAddSheet: View {
                 }
             }
         }
-        .modifier(BeansSheetModifier(detents: [.medium, .large], dragIndicator: true))
+        .modifier(CoSheetModifier(detents: [.medium, .large], dragIndicator: true))
     }
 
     private func runSearch() {
@@ -787,17 +787,17 @@ struct AddToLocalPlaylistSheet: View {
 
     var body: some View {
         let _ = theme.accent
-        BeansNavigationStack {
+        CoNavigationStack {
             List {
                 if store.playlists.isEmpty {
                     Text("还没有本地歌单，先创建一个吧")
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                 } else {
                     Section("选择本地歌单") {
                         ForEach(store.playlists) { playlist in
                             Button {
                                 store.addSong(song, to: playlist.id)
-                                BeansHaptics.success()
+                                CoHaptics.success()
                                 ToastCenter.shared.show("已加入「\(playlist.name)」")
                                 onAdded?()
                                 dismiss()
@@ -805,7 +805,7 @@ struct AddToLocalPlaylistSheet: View {
                                 HStack(spacing: 12) {
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                            .fill(LinearGradient(colors: [Color.beansAmber.opacity(0.75), Color.beansAmber.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                            .fill(LinearGradient(colors: [Color.coAmber.opacity(0.75), Color.coAmber.opacity(0.35)], startPoint: .topLeading, endPoint: .bottomTrailing))
                                             .frame(width: 40, height: 40)
                                         Image(systemName: "music.note.list")
                                             .font(.system(size: 15, weight: .semibold))
@@ -813,17 +813,17 @@ struct AddToLocalPlaylistSheet: View {
                                     }
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(playlist.name)
-                                            .font(BeansFont.appFont(15, .medium))
-                                            .foregroundStyle(Color.beansLabel)
+                                            .font(CoFont.appFont(15, .medium))
+                                            .foregroundStyle(Color.coLabel)
                                             .lineLimit(1)
                                         Text(beansLocalSongCountText(playlist.songs.count))
-                                            .font(BeansFont.appFont(11))
-                                            .foregroundStyle(Color.beansComment)
+                                            .font(CoFont.appFont(11))
+                                            .foregroundStyle(Color.coComment)
                                     }
                                     Spacer()
                                     Image(systemName: "plus.circle.fill")
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color.beansAmber)
+                                        .foregroundStyle(Color.coAmber)
                                 }
                             }
                         }
@@ -838,8 +838,8 @@ struct AddToLocalPlaylistSheet: View {
                             createAndAdd()
                         } label: {
                             Text("创建并加入")
-                                .font(BeansFont.appFont(15, .semibold))
-                                .foregroundStyle(Color.beansAmber)
+                                .font(CoFont.appFont(15, .semibold))
+                                .foregroundStyle(Color.coAmber)
                         }
                     }
                 } else {
@@ -855,8 +855,8 @@ struct AddToLocalPlaylistSheet: View {
                 if let message {
                     Section {
                         Text(message)
-                            .font(BeansFont.appFont(13))
-                            .foregroundStyle(Color.beansSage)
+                            .font(CoFont.appFont(13))
+                            .foregroundStyle(Color.coSage)
                     }
                 }
             }
@@ -868,11 +868,11 @@ struct AddToLocalPlaylistSheet: View {
                 }
             }
         }
-        .modifier(BeansSheetModifier(detents: [.medium, .large], dragIndicator: true))
+        .modifier(CoSheetModifier(detents: [.medium, .large], dragIndicator: true))
         .onAppear {
             if store.playlists.isEmpty {
                 ToastCenter.shared.show(store.addToDefaultFavorites(song))
-                BeansHaptics.success()
+                CoHaptics.success()
                 onAdded?()
                 dismiss()
             }
@@ -884,7 +884,7 @@ struct AddToLocalPlaylistSheet: View {
         guard !name.isEmpty else { return }
         let playlist = store.createPlaylist(name: name)
         store.addSong(song, to: playlist.id)
-        BeansHaptics.success()
+        CoHaptics.success()
         ToastCenter.shared.show("已创建「\(name)」并加入")
         onAdded?()
         dismiss()

@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - 日志级别
 
-enum BeansLogLevel: String, CaseIterable {
+enum CoLogLevel: String, CaseIterable {
     case debug = "DEBUG"
     case info = "INFO"
     case warn = "WARN"
@@ -23,26 +23,26 @@ enum BeansLogLevel: String, CaseIterable {
 
 // MARK: - 单条日志
 
-struct BeansLogEntry: Identifiable, Equatable {
+struct CoLogEntry: Identifiable, Equatable {
     let id = UUID()
     let date: Date
-    let level: BeansLogLevel
+    let level: CoLogLevel
     let message: String
 }
 
 // MARK: - 全局日志中心
 
-/// 全局日志中心：内存环形缓存（供 App 内查看）+ 文件持久化（Documents/BeansLogs/beans-日期.log，可导出分享）。
+/// 全局日志中心：内存环形缓存（供 App 内查看）+ 文件持久化（Documents/CoLogs/co-日期.log，可导出分享）。
 /// 任意线程可调用 log()，界面更新自动切回主线程。
-final class BeansLogger: ObservableObject {
-    static let shared = BeansLogger()
+final class CoLogger: ObservableObject {
+    static let shared = CoLogger()
 
-    @Published private(set) var entries: [BeansLogEntry] = []
+    @Published private(set) var entries: [CoLogEntry] = []
 
     private let maxEntries = 5000
     private let maxLogFileBytes = 10 * 1024 * 1024
     private let lock = NSLock()
-    private var recentEntries: [BeansLogEntry] = []
+    private var recentEntries: [CoLogEntry] = []
 
     private static let lineFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -68,8 +68,8 @@ final class BeansLogger: ObservableObject {
     }
 
     /// 记录一条日志（任意线程可调用）
-    func log(_ message: String, level: BeansLogLevel = .debug) {
-        let entry = BeansLogEntry(date: Date(), level: level, message: message)
+    func log(_ message: String, level: CoLogLevel = .debug) {
+        let entry = CoLogEntry(date: Date(), level: level, message: message)
         lock.lock()
         recentEntries.append(entry)
         if recentEntries.count > maxEntries {
@@ -107,13 +107,13 @@ final class BeansLogger: ObservableObject {
 
     private var logDirectory: URL {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("BeansLogs", isDirectory: true)
+            .appendingPathComponent("CoLogs", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
 
     private var currentFileURL: URL {
-        logDirectory.appendingPathComponent("beans-\(Self.fileStampFormatter.string(from: Date())).log")
+        logDirectory.appendingPathComponent("co-\(Self.fileStampFormatter.string(from: Date())).log")
     }
 
     /// 导出日志文件（不存在则先生成一份完整日志）
@@ -145,9 +145,9 @@ final class BeansLogger: ObservableObject {
     }
 }
 
-extension BeansLogEntry {
+extension CoLogEntry {
     var line: String {
-        "[\(BeansLogger.dateString(date))] [\(level.rawValue)] \(message)"
+        "[\(CoLogger.dateString(date))] [\(level.rawValue)] \(message)"
     }
 }
 

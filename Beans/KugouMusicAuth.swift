@@ -11,7 +11,7 @@ final class KugouMusicAuth: ObservableObject {
     @Published private(set) var vipBadge: String?
 
     private let defaults = UserDefaults.standard
-    private let key = "beans.kugou.auth.v2"
+    private let key = "co.kugou.auth.v2"
     private var auth: [String: String] = [:]
 
     private init() {
@@ -87,7 +87,7 @@ final class KugouMusicAuth: ObservableObject {
             self.nickname = ""
             self.avatarURL = nil
             self.vipBadge = nil
-            NotificationCenter.default.post(name: .beansKugouLoginDidUpdate, object: nil)
+            NotificationCenter.default.post(name: .coKugouLoginDidUpdate, object: nil)
         }
     }
 
@@ -96,7 +96,7 @@ final class KugouMusicAuth: ObservableObject {
         defaults.set(value, forKey: key)
         apply(value)
         updatePublishedState {
-            NotificationCenter.default.post(name: .beansKugouLoginDidUpdate, object: nil)
+            NotificationCenter.default.post(name: .coKugouLoginDidUpdate, object: nil)
         }
     }
 

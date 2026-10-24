@@ -149,7 +149,7 @@ final class KugouMusicAPI {
                 return playlist
             }
             result.append(contentsOf: pageItems)
-            BeansLogger.shared.log("酷狗歌单同步分页：page=\(page) raw=\(raw.count) new=\(pageItems.count) total=\(result.count)", level: .debug)
+            CoLogger.shared.log("酷狗歌单同步分页：page=\(page) raw=\(raw.count) new=\(pageItems.count) total=\(result.count)", level: .debug)
             if raw.count < pageSize || pageItems.isEmpty { break }
         }
         return result
@@ -314,7 +314,7 @@ final class KugouMusicAPI {
             if batch.isEmpty {
                 let code = Self.deepInt(response.json, names: ["code", "status", "error_code", "errcode"])
                 let message = Self.deepString(response.json, names: ["msg", "message", "error_msg", "error_message"])
-                BeansLogger.shared.log("酷狗私人漫游接口无歌曲：code=\(code) message=\(message.isEmpty ? "无" : message)", level: .debug)
+                CoLogger.shared.log("酷狗私人漫游接口无歌曲：code=\(code) message=\(message.isEmpty ? "无" : message)", level: .debug)
                 break
             }
             for song in batch where seen.insert(song.identityKey).inserted {
@@ -331,10 +331,10 @@ final class KugouMusicAPI {
         if songs.isEmpty,
            let fallback = try? await everydayRecommend(limit: target),
            !fallback.isEmpty {
-            BeansLogger.shared.log("酷狗私人漫游无个性化结果，使用每日推荐兜底：返回 \(fallback.count) 首", level: .debug)
+            CoLogger.shared.log("酷狗私人漫游无个性化结果，使用每日推荐兜底：返回 \(fallback.count) 首", level: .debug)
             return Array(fallback.prefix(target))
         }
-        BeansLogger.shared.log("酷狗私人漫游：返回 \(songs.count) 首", level: songs.isEmpty ? .warn : .info)
+        CoLogger.shared.log("酷狗私人漫游：返回 \(songs.count) 首", level: songs.isEmpty ? .warn : .info)
         return songs
     }
 
@@ -385,7 +385,7 @@ final class KugouMusicAPI {
                 if artists.count >= target { return artists }
             }
         }
-        BeansLogger.shared.log("酷狗音乐人兜底搜索仍为空", level: .debug)
+        CoLogger.shared.log("酷狗音乐人兜底搜索仍为空", level: .debug)
         return artists
     }
 
@@ -409,7 +409,7 @@ final class KugouMusicAPI {
                 .replacingOccurrences(of: "{size}", with: "400"))
             return Album(id: id, name: name, artistName: artist, coverURL: URL(string: cover), source: .kugou, trackCount: Self.int(item["songcount"] ?? item["song_count"]))
         }
-        BeansLogger.shared.log("酷狗独立新碟列表：返回 \(albums.count) 个", level: .debug)
+        CoLogger.shared.log("酷狗独立新碟列表：返回 \(albums.count) 个", level: .debug)
         return Array(albums.prefix(limit))
     }
 
@@ -430,7 +430,7 @@ final class KugouMusicAPI {
             let cover = Self.normalizeURL(Self.string(item["avatar"] ?? item["imgurl"] ?? item["img_url"] ?? item["pic"]).replacingOccurrences(of: "{size}", with: "400"))
             return Artist(id: id, name: name, coverURL: URL(string: cover), source: .kugou)
         }
-        BeansLogger.shared.log("酷狗独立歌手列表：返回 \(artists.count) 个", level: .debug)
+        CoLogger.shared.log("酷狗独立歌手列表：返回 \(artists.count) 个", level: .debug)
         return Array(artists.prefix(limit))
     }
 
@@ -453,11 +453,11 @@ final class KugouMusicAPI {
     /// 优先使用 KuGouMusicApi 的 v3/search/song，现有综合搜索和网页接口作为兜底。
     func searchSongs(keyword: String, limit: Int = 30) async throws -> [Song] {
         if let upstream = try? await upstreamSearchSongs(keyword: keyword, limit: limit), !upstream.isEmpty {
-            BeansLogger.shared.log("酷狗 v3 搜索完成：\(keyword) 结果=\(upstream.count)", level: .info)
+            CoLogger.shared.log("酷狗 v3 搜索完成：\(keyword) 结果=\(upstream.count)", level: .info)
             return upstream
         }
         if let complete = try? await searchSongsComplete(keyword: keyword, limit: limit), !complete.isEmpty {
-            BeansLogger.shared.log("酷狗综合搜索完成：\(keyword) 结果=\(complete.count)", level: .info)
+            CoLogger.shared.log("酷狗综合搜索完成：\(keyword) 结果=\(complete.count)", level: .info)
             return complete
         }
 
@@ -473,7 +473,7 @@ final class KugouMusicAPI {
         let json = try await getJSON(url, ua: Self.browserUA)
         let raw = Self.deepArrays(json, names: ["info", "songs", "song", "list", "data"])
         let songs = raw.compactMap(Self.mapTrack)
-        BeansLogger.shared.log("酷狗搜索完成：\(keyword) 结果=\(songs.count)", level: .info)
+        CoLogger.shared.log("酷狗搜索完成：\(keyword) 结果=\(songs.count)", level: .info)
         return songs
     }
 
@@ -659,7 +659,7 @@ final class KugouMusicAPI {
     /// 基于酷狗官方歌曲搜索结果聚合歌手，保留官方歌手名与封面。
     func searchArtists(keyword: String, limit: Int = 40) async throws -> [Artist] {
         if let artists = try? await upstreamSearchArtists(keyword: keyword, limit: limit), !artists.isEmpty {
-            BeansLogger.shared.log("酷狗歌手搜索完成：\(keyword) 结果=\(artists.count)", level: .info)
+            CoLogger.shared.log("酷狗歌手搜索完成：\(keyword) 结果=\(artists.count)", level: .info)
             return artists
         }
         let songs = try await searchSongs(keyword: keyword, limit: limit)
@@ -709,7 +709,7 @@ final class KugouMusicAPI {
             }
         }
 
-        BeansLogger.shared.log("酷狗歌手歌曲：author=\(authorID) page=\(page) 返回 \(songs.count) 首", level: .debug)
+        CoLogger.shared.log("酷狗歌手歌曲：author=\(authorID) page=\(page) 返回 \(songs.count) 首", level: .debug)
         return Array(songs.prefix(target))
     }
 
@@ -760,7 +760,7 @@ final class KugouMusicAPI {
         let rows = Self.deepArrays(json, names: ["info", "songs", "songlist", "list", "data"])
         let songs = rows.compactMap(Self.mapCompleteTrack)
         if !songs.isEmpty {
-            BeansLogger.shared.log("酷狗 singer/song：author=\(authorID) page=\(page) 返回 \(songs.count) 首", level: .debug)
+            CoLogger.shared.log("酷狗 singer/song：author=\(authorID) page=\(page) 返回 \(songs.count) 首", level: .debug)
         }
         return songs
     }
@@ -831,7 +831,7 @@ final class KugouMusicAPI {
     /// 酷狗官方排行榜列表（移动站点 JSON）。
     func topLists(limit: Int = 10) async throws -> [KugouTopInfo] {
         if let upstream = try? await upstreamTopLists(limit: limit), !upstream.isEmpty {
-            BeansLogger.shared.log("酷狗 v6 排行榜列表：返回 \(upstream.count) 个", level: .debug)
+            CoLogger.shared.log("酷狗 v6 排行榜列表：返回 \(upstream.count) 个", level: .debug)
             return upstream
         }
         if let lists = try? await officialWebTopLists(limit: limit), !lists.isEmpty {
@@ -959,7 +959,7 @@ final class KugouMusicAPI {
         let target = max(limit, 1)
         let upstream = (try? await upstreamRankSongs(rankID: rankID, limit: target)) ?? []
         if !upstream.isEmpty {
-            BeansLogger.shared.log("酷狗 KMR 排行榜歌曲：rankid=\(rankID) 返回 \(upstream.count) 首", level: .debug)
+            CoLogger.shared.log("酷狗 KMR 排行榜歌曲：rankid=\(rankID) 返回 \(upstream.count) 首", level: .debug)
         }
 
         // Keep the KMR order, but use the other official endpoints to fill a
@@ -970,14 +970,14 @@ final class KugouMusicAPI {
            let official = try? await officialWebRankSongs(rankID: rankID, limit: target),
            !official.isEmpty {
             merged = Self.mergeRankSongs(primary: merged, fallback: official, limit: target)
-            BeansLogger.shared.log("酷狗排行榜歌曲补齐：rankid=\(rankID) KMR=\(upstream.count) 官网=\(official.count) 当前=\(merged.count)", level: .debug)
+            CoLogger.shared.log("酷狗排行榜歌曲补齐：rankid=\(rankID) KMR=\(upstream.count) 官网=\(official.count) 当前=\(merged.count)", level: .debug)
         }
 
         if merged.count < target,
            let mobile = try? await mobileRankSongs(rankID: rankID, limit: target),
            !mobile.isEmpty {
             merged = Self.mergeRankSongs(primary: merged, fallback: mobile, limit: target)
-            BeansLogger.shared.log("酷狗排行榜歌曲补齐：rankid=\(rankID) 当前=\(merged.count) 移动端=\(mobile.count)", level: .debug)
+            CoLogger.shared.log("酷狗排行榜歌曲补齐：rankid=\(rankID) 当前=\(merged.count) 移动端=\(mobile.count)", level: .debug)
         }
 
         if merged.isEmpty {
@@ -1029,7 +1029,7 @@ final class KugouMusicAPI {
     /// 酷狗官方歌单广场（移动站点 JSON）。
     func recommendPlaylists(limit: Int = 12) async throws -> [Playlist] {
         if let upstream = try? await upstreamRecommendPlaylists(limit: limit), !upstream.isEmpty {
-            BeansLogger.shared.log("酷狗 special_recommend：返回 \(upstream.count) 个歌单", level: .debug)
+            CoLogger.shared.log("酷狗 special_recommend：返回 \(upstream.count) 个歌单", level: .debug)
             return upstream
         }
         if let playlists = try? await officialWebPlaylists(limit: limit), !playlists.isEmpty {
@@ -1150,7 +1150,7 @@ final class KugouMusicAPI {
                 coverURL: URL(string: cover)
             )
         }
-        BeansLogger.shared.log("酷狗官网热门榜单：返回 \(rows.count) 个", level: .debug)
+        CoLogger.shared.log("酷狗官网热门榜单：返回 \(rows.count) 个", level: .debug)
         return Array(rows.prefix(limit))
     }
 
@@ -1163,7 +1163,7 @@ final class KugouMusicAPI {
             throw CoError.decoding("酷狗官网排行榜歌曲格式异常")
         }
         let songs = rows.prefix(limit).compactMap(Self.mapCompleteTrack)
-        BeansLogger.shared.log("酷狗官网排行榜歌曲：rankid=\(rankID) 返回 \(songs.count) 首", level: .debug)
+        CoLogger.shared.log("酷狗官网排行榜歌曲：rankid=\(rankID) 返回 \(songs.count) 首", level: .debug)
         return songs
     }
 
@@ -1187,7 +1187,7 @@ final class KugouMusicAPI {
                 source: .kugou
             )
         }
-        BeansLogger.shared.log("酷狗官网歌单广场：返回 \(rows.count) 个", level: .debug)
+        CoLogger.shared.log("酷狗官网歌单广场：返回 \(rows.count) 个", level: .debug)
         return Array(rows.prefix(limit))
     }
 
@@ -1200,7 +1200,7 @@ final class KugouMusicAPI {
             throw CoError.decoding("酷狗官网歌单歌曲格式异常")
         }
         let songs = rows.compactMap(Self.mapCompleteTrack)
-        BeansLogger.shared.log("酷狗官网歌单歌曲：specialid=\(listID) 返回 \(songs.count) 首", level: .debug)
+        CoLogger.shared.log("酷狗官网歌单歌曲：specialid=\(listID) 返回 \(songs.count) 首", level: .debug)
         return songs
     }
 
@@ -1256,7 +1256,7 @@ final class KugouMusicAPI {
             ]
             let json = try await cloudlistRequest("/v4/get_list_all_file", params: ["listid": pid, "page": "\(page)", "pagesize": "200"], data: body)
             let pageTracks = Self.deepArrays(json, names: ["songs", "songlist", "list", "info", "files", "data"])
-            BeansLogger.shared.log("酷狗歌单歌曲：listid=\(pid) page=\(page) 返回 \(pageTracks.count) 首", level: .debug)
+            CoLogger.shared.log("酷狗歌单歌曲：listid=\(pid) page=\(page) 返回 \(pageTracks.count) 首", level: .debug)
             all.append(contentsOf: pageTracks)
             if all.count >= maxSongs { break }
             if pageTracks.count < pageSize { break }
@@ -1265,7 +1265,7 @@ final class KugouMusicAPI {
         if all.count > maxSongs {
             all = Array(all.prefix(maxSongs))
         }
-        BeansLogger.shared.log("酷狗歌单歌曲：listid=\(pid) 最终最多加载 \(all.count) 首", level: .debug)
+        CoLogger.shared.log("酷狗歌单歌曲：listid=\(pid) 最终最多加载 \(all.count) 首", level: .debug)
         return all
             .sorted { (Self.int($0["fsort"] ?? $0["sort"] ?? $0["position"]) ) < (Self.int($1["fsort"] ?? $1["sort"] ?? $1["position"])) }
             .compactMap(Self.mapTrack)
@@ -1300,7 +1300,7 @@ final class KugouMusicAPI {
                 names: ["songs", "song", "songlist", "list", "files", "file", "data", "info", "records"]
             )
             let batch = raw.compactMap(Self.mapCompleteTrack)
-            BeansLogger.shared.log(
+            CoLogger.shared.log(
                 "酷狗新版歌单歌曲：globalID=\(globalCollectionID) page=\(page) 返回 \(batch.count) 首",
                 level: .debug
             )
@@ -1312,14 +1312,14 @@ final class KugouMusicAPI {
             page += 1
         } while page <= maxSongs / pageSize
 
-        BeansLogger.shared.log(
+        CoLogger.shared.log(
             "酷狗新版歌单歌曲：globalID=\(globalCollectionID) 最终返回 \(result.count) 首",
             level: .debug
         )
         return result
     }
 
-    func songURL(song: Song, quality: BeansAudioQuality? = nil) async throws -> String? {
+    func songURL(song: Song, quality: CoAudioQuality? = nil) async throws -> String? {
         try await songURLWithActual(song: song, quality: quality).url
     }
 
@@ -1327,7 +1327,7 @@ final class KugouMusicAPI {
     ///（hires/lossless/exhigh/standard），主 hash 或网页兜底命中时为 nil，
     /// 调用方此时诚实显示偏好名，不编档位。降级链、vipType 探测、
     /// 服务端裁决与原 songURL 完全一致，只是多回传一个键。
-    func songURLWithActual(song: Song, quality: BeansAudioQuality? = nil) async throws -> (url: String?, actualKey: String?) {
+    func songURLWithActual(song: Song, quality: CoAudioQuality? = nil) async throws -> (url: String?, actualKey: String?) {
         await refreshMembershipStatusIfNeeded()
         let requestedQuality = quality ?? NetworkAudioQuality.officialPreferred
         var primary = song.kugouHash
@@ -1340,7 +1340,7 @@ final class KugouMusicAPI {
             qualityHashes = completed.kugouQualityHashes ?? qualityHashes
             albumAudioId = completed.kugouAlbumAudioId ?? albumAudioId
             albumId = completed.kugouAlbumId ?? albumId
-            BeansLogger.shared.log("酷狗播放元数据补齐：\(song.name) hash=\((primary ?? "").isEmpty ? "无" : "有") albumAudioId=\(albumId ?? "")", level: .debug)
+            CoLogger.shared.log("酷狗播放元数据补齐：\(song.name) hash=\((primary ?? "").isEmpty ? "无" : "有") albumAudioId=\(albumId ?? "")", level: .debug)
         }
         let candidates = Self.qualityHashCandidatesWithKeys(primary: primary, qualityHashes: qualityHashes, quality: requestedQuality)
         guard !candidates.isEmpty else { return (nil, nil) }
@@ -1351,7 +1351,7 @@ final class KugouMusicAPI {
         try await songURL(candidates: [(nil, hash)], albumAudioId: albumAudioId, albumId: albumId, quality: NetworkAudioQuality.officialPreferred).url
     }
 
-    private func songURL(candidates: [(key: String?, hash: String)], albumAudioId: String?, albumId: String?, quality: BeansAudioQuality) async throws -> (url: String?, actualKey: String?) {
+    private func songURL(candidates: [(key: String?, hash: String)], albumAudioId: String?, albumId: String?, quality: CoAudioQuality) async throws -> (url: String?, actualKey: String?) {
         let auth = KugouMusicAuth.shared
         let vipTypes = Self.vipTypeCandidates(auth.vipType, loggedIn: auth.isLoggedIn)
         var lastCode = 0
@@ -1364,7 +1364,7 @@ final class KugouMusicAPI {
                 albumId: albumId,
                 quality: quality
             ), let url = latest.url, !url.isEmpty {
-                BeansLogger.shared.log("酷狗 KuGouMusicApi 播放地址命中：hash=\(hash.prefix(8))", level: .debug)
+                CoLogger.shared.log("酷狗 KuGouMusicApi 播放地址命中：hash=\(hash.prefix(8))", level: .debug)
                 return (url, candidate.key)
             }
             for vipType in vipTypes {
@@ -1375,7 +1375,7 @@ final class KugouMusicAPI {
                 lastStatus = result.status
                 if let url = result.url, !url.isEmpty {
                     if vipType != auth.vipType {
-                        BeansLogger.shared.log("酷狗播放地址命中：hash=\(hash.prefix(8)) vipType=\(vipType)", level: .debug)
+                        CoLogger.shared.log("酷狗播放地址命中：hash=\(hash.prefix(8)) vipType=\(vipType)", level: .debug)
                     }
                     return (url, candidate.key)
                 }
@@ -1390,7 +1390,7 @@ final class KugouMusicAPI {
                 lastStatus = v5.status
                 if let url = v5.url, !url.isEmpty {
                     if vipType != auth.vipType {
-                        BeansLogger.shared.log("酷狗 v5 播放地址命中：hash=\(hash.prefix(8)) vipType=\(vipType)", level: .debug)
+                        CoLogger.shared.log("酷狗 v5 播放地址命中：hash=\(hash.prefix(8)) vipType=\(vipType)", level: .debug)
                     }
                     return (url, candidate.key)
                 }
@@ -1401,7 +1401,7 @@ final class KugouMusicAPI {
             if let url = web.url, !url.isEmpty { return (url, candidate.key) }
         }
         let vipTypeText = vipTypes.map(String.init).joined(separator: "/")
-        BeansLogger.shared.log("酷狗播放地址为空：hash候选=\(candidates.count) vipType=\(vipTypeText) 已登录=\(auth.isLoggedIn ? "是" : "否") token=\(auth.token.isEmpty ? "无" : "有") dfid=\(auth.dfid.isEmpty ? "无" : "有") status=\(lastStatus) code=\(lastCode)", level: .debug)
+        CoLogger.shared.log("酷狗播放地址为空：hash候选=\(candidates.count) vipType=\(vipTypeText) 已登录=\(auth.isLoggedIn ? "是" : "否") token=\(auth.token.isEmpty ? "无" : "有") dfid=\(auth.dfid.isEmpty ? "无" : "有") status=\(lastStatus) code=\(lastCode)", level: .debug)
         return (nil, nil)
     }
 
@@ -1410,7 +1410,7 @@ final class KugouMusicAPI {
         hash: String,
         albumAudioId: String?,
         albumId: String?,
-        quality requestedQuality: BeansAudioQuality
+        quality requestedQuality: CoAudioQuality
     ) async throws -> (url: String?, status: Int, code: Int) {
         let auth = KugouMusicAuth.shared
         auth.prepareDevice()
@@ -1470,7 +1470,7 @@ final class KugouMusicAPI {
     }
 
     /// 酷狗官方新版播放地址接口，参数结构与酷狗客户端的 v5/url 通道一致。
-    private func songURLV5Once(hash: String, albumAudioId: String?, albumId: String?, vipType: Int, quality requestedQuality: BeansAudioQuality) async throws -> (url: String?, status: Int, code: Int) {
+    private func songURLV5Once(hash: String, albumAudioId: String?, albumId: String?, vipType: Int, quality requestedQuality: CoAudioQuality) async throws -> (url: String?, status: Int, code: Int) {
         let auth = KugouMusicAuth.shared
         var components = URLComponents(string: "\(gateway)/v5/url")!
         let quality: String
@@ -1640,12 +1640,12 @@ final class KugouMusicAPI {
                 let probe = try await songURLOnce(hash: hash, albumAudioId: song.kugouAlbumAudioId, albumId: song.kugouAlbumId, vipType: 1)
                 if let url = probe.url, !url.isEmpty {
                     KugouMusicAuth.shared.updateVIPType(1)
-                    BeansLogger.shared.log("酷狗会员状态补齐：播放探测成功 listid=\(listID) vipType=1", level: .debug)
+                    CoLogger.shared.log("酷狗会员状态补齐：播放探测成功 listid=\(listID) vipType=1", level: .debug)
                     return
                 }
-                BeansLogger.shared.log("酷狗会员状态探测未命中：listid=\(listID) status=\(probe.status) code=\(probe.code)", level: .debug)
+                CoLogger.shared.log("酷狗会员状态探测未命中：listid=\(listID) status=\(probe.status) code=\(probe.code)", level: .debug)
             } catch {
-                BeansLogger.shared.log("酷狗会员状态探测失败：listid=\(listID) \(error.localizedDescription)", level: .debug)
+                CoLogger.shared.log("酷狗会员状态探测失败：listid=\(listID) \(error.localizedDescription)", level: .debug)
             }
         }
     }
@@ -1774,11 +1774,11 @@ final class KugouMusicAPI {
             )
             json = response.json
         } catch {
-            BeansLogger.shared.log("酷狗评论 POST 失败：\(error.localizedDescription)，尝试 GET 兜底", level: .debug)
+            CoLogger.shared.log("酷狗评论 POST 失败：\(error.localizedDescription)，尝试 GET 兜底", level: .debug)
             do {
                 json = try await gatewayCommentJSON(params: params)
             } catch {
-                BeansLogger.shared.log("酷狗评论 gateway 全部失败：\(error.localizedDescription)，尝试旧版评论接口", level: .debug)
+                CoLogger.shared.log("酷狗评论 gateway 全部失败：\(error.localizedDescription)，尝试旧版评论接口", level: .debug)
                 json = try await legacyCommentJSON(childrenID: commentID, page: page, limit: limit)
             }
         }
@@ -1847,7 +1847,7 @@ final class KugouMusicAPI {
             )
             return response.json
         } catch {
-            BeansLogger.shared.log("酷狗评论 GET 失败：\(error.localizedDescription)，尝试备用路由", level: .debug)
+            CoLogger.shared.log("酷狗评论 GET 失败：\(error.localizedDescription)，尝试备用路由", level: .debug)
             let response = try await gatewayRequest(
                 "/m.comment.service/v1/cmtlist",
                 baseURL: gateway,
@@ -1945,7 +1945,7 @@ final class KugouMusicAPI {
         let hotComments = hotRows.compactMap { parse($0, isHot: true) }
         let comments = regularRows.compactMap { parse($0, isHot: false) }
         let total = Self.deepInt(json, names: ["total", "commenttotal", "comment_total", "count"])
-        BeansLogger.shared.log("酷狗评论：mixsongid=\(songName) page=\(page) 返回 \(hotComments.count + comments.count) 条", level: .debug)
+        CoLogger.shared.log("酷狗评论：mixsongid=\(songName) page=\(page) 返回 \(hotComments.count + comments.count) 条", level: .debug)
         return KugouCommentPage(hotComments: hotComments, comments: comments, total: total)
     }
 
@@ -1996,9 +1996,9 @@ final class KugouMusicAPI {
             }
             let dfid = Self.deepString(json ?? [:], names: ["dfid"])
             if !dfid.isEmpty { KugouMusicAuth.shared.saveDeviceDFID(dfid) }
-            BeansLogger.shared.log("酷狗设备注册：dfid=\(dfid.isEmpty ? "未返回" : "已获取")", level: .debug)
+            CoLogger.shared.log("酷狗设备注册：dfid=\(dfid.isEmpty ? "未返回" : "已获取")", level: .debug)
         } catch {
-            BeansLogger.shared.log("酷狗设备注册失败：\(error.localizedDescription)", level: .debug)
+            CoLogger.shared.log("酷狗设备注册失败：\(error.localizedDescription)", level: .debug)
         }
     }
 
@@ -2443,7 +2443,7 @@ final class KugouMusicAPI {
         return result
     }
 
-    private static func qualityHashCandidates(primary: String?, qualityHashes: [String: String]?, quality requestedQuality: BeansAudioQuality? = nil) -> [String] {
+    private static func qualityHashCandidates(primary: String?, qualityHashes: [String: String]?, quality requestedQuality: CoAudioQuality? = nil) -> [String] {
         let requested = requestedQuality ?? NetworkAudioQuality.officialPreferred
         let order: [String]
         switch requested {
@@ -2472,7 +2472,7 @@ final class KugouMusicAPI {
 
     /// 带档位键的 hash 候选：顺序与 qualityHashCandidates 完全一致，
     /// 只是多保留 key（hires/lossless/exhigh/standard），主 hash 的 key 为 nil。
-    private static func qualityHashCandidatesWithKeys(primary: String?, qualityHashes: [String: String]?, quality requestedQuality: BeansAudioQuality? = nil) -> [(key: String?, hash: String)] {
+    private static func qualityHashCandidatesWithKeys(primary: String?, qualityHashes: [String: String]?, quality requestedQuality: CoAudioQuality? = nil) -> [(key: String?, hash: String)] {
         let requested = requestedQuality ?? NetworkAudioQuality.officialPreferred
         let order: [String]
         switch requested {

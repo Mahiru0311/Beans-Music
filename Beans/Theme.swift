@@ -24,7 +24,7 @@ extension UIColor {
         dark: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1)
     )
     static var beansLabel: UIColor {
-        if let raw = UserDefaults.standard.string(forKey: "beans.labelColorHex"),
+        if let raw = UserDefaults.standard.string(forKey: "co.labelColorHex"),
            let custom = UIColor(hex: raw) {
             return custom
         }
@@ -55,21 +55,21 @@ extension UIColor {
 }
 
 extension Color {
-    static let beansBackground = Color(uiColor: .beansBackground)
-    static let beansCard = Color(uiColor: .beansCard)
-    static var beansLabel: Color { Color(uiColor: .beansLabel) }
-    static let beansSecondary = Color(uiColor: .beansSecondary)
+    static let beansBackground = Color(uiColor: .coBackground)
+    static let beansCard = Color(uiColor: .coCard)
+    static var beansLabel: Color { Color(uiColor: .coLabel) }
+    static let beansSecondary = Color(uiColor: .coSecondary)
 
     /// 全局说明文字（注释）颜色：可在「我的 → 外观」中自定义；默认跟随次要文字色
     static var beansComment: Color {
-        if let raw = UserDefaults.standard.string(forKey: "beans.commentColorHex"),
+        if let raw = UserDefaults.standard.string(forKey: "co.commentColorHex"),
            let c = Color(hex: raw) { return c }
-        return .beansSecondary
+        return .coSecondary
     }
     /// 全局着色：跟随当前配色主题即时变化（所有页面统一生效）
-    static var beansAmber: Color { Color(uiColor: .beansAmber) }
-    static let beansSage = Color(uiColor: .beansSage)
-    static let beansGlassFill = Color(uiColor: .beansGlassFill)
+    static var beansAmber: Color { Color(uiColor: .coAmber) }
+    static let beansSage = Color(uiColor: .coSage)
+    static let beansGlassFill = Color(uiColor: .coGlassFill)
     static let beansThemeRed = Color(red: 0.93, green: 0.25, blue: 0.22)
     static let beansAppleMusicAccentFallback = Color(red: 1.0, green: 0.28, blue: 0.36)
     /// 当前配色主题的高亮色（播放器进度点 / 光斑 / 歌词高亮等）
@@ -80,7 +80,7 @@ extension Color {
 
 // MARK: - 主题偏好
 
-enum BeansThemeMode: String, CaseIterable, Identifiable {
+enum CoThemeMode: String, CaseIterable, Identifiable {
     case system
     case light
     case dark
@@ -106,7 +106,7 @@ enum BeansThemeMode: String, CaseIterable, Identifiable {
 
 // MARK: - 配色主题（多套配色，可在「我的 → 外观」中切换；全局统一生效）
 
-enum BeansAccent: String, CaseIterable, Identifiable {
+enum CoAccent: String, CaseIterable, Identifiable {
     case red = "经典红"
     case amber = "琥珀暖金"
     case mint = "青碧湖绿"
@@ -186,7 +186,7 @@ enum BeansAccent: String, CaseIterable, Identifiable {
 
 // MARK: - 全局 UI 风格
 
-enum BeansUIStyle: String, CaseIterable {
+enum CoUIStyle: String, CaseIterable {
     case liquid = "liquid"
     case clear = "clear"
     case compact = "compact"
@@ -202,7 +202,7 @@ enum BeansUIStyle: String, CaseIterable {
     }
 }
 
-enum BeansTabIconStyle: String, CaseIterable, Identifiable {
+enum CoTabIconStyle: String, CaseIterable, Identifiable {
     case appleMusic
     /// 保留已选“其他样式”用户的偏好值，展示名称改为 SF Symbols。
     case sfSymbols = "other"
@@ -221,7 +221,7 @@ enum BeansTabIconStyle: String, CaseIterable, Identifiable {
 
 // MARK: - 播放器按钮样式
 
-enum BeansPlayerButtonStyle: String, CaseIterable, Identifiable {
+enum CoPlayerButtonStyle: String, CaseIterable, Identifiable {
     case glass
     case appleMusic
 
@@ -251,7 +251,7 @@ enum BeansPlayerButtonStyle: String, CaseIterable, Identifiable {
 
 // MARK: - 播放器浮尘样式
 
-enum BeansPlayerDustMode: String, CaseIterable, Identifiable {
+enum CoPlayerDustMode: String, CaseIterable, Identifiable {
     case off
     case snow
 
@@ -274,7 +274,7 @@ enum BeansPlayerDustMode: String, CaseIterable, Identifiable {
 
 // MARK: - 全局漂浮效果
 
-enum BeansGlobalFloatingEffect: String, CaseIterable, Identifiable {
+enum CoGlobalFloatingEffect: String, CaseIterable, Identifiable {
     case off
     case snow
     case customText
@@ -300,7 +300,7 @@ enum BeansGlobalFloatingEffect: String, CaseIterable, Identifiable {
 
 // MARK: - 播放器封面页样式
 
-enum BeansCoverPlayerStyle: String, CaseIterable, Identifiable {
+enum CoCoverPlayerStyle: String, CaseIterable, Identifiable {
     case appleMusic
     case vinyl
     case record
@@ -332,20 +332,20 @@ enum BeansCoverPlayerStyle: String, CaseIterable, Identifiable {
     }
 
     /// 播放器设置中显示全部可用的封面样式。
-    static var availableCases: [BeansCoverPlayerStyle] {
+    static var availableCases: [CoCoverPlayerStyle] {
         allCases.filter { $0 != .vinyl }
     }
 
-    static func resolved(rawValue: String) -> BeansCoverPlayerStyle {
+    static func resolved(rawValue: String) -> CoCoverPlayerStyle {
         // 旧版本保存的黑胶样式统一迁移到现在的唱片模式；
         // 经典样式已删除（2026-10-24 用户定），旧存储值统一回落到 Apple Music。
         if rawValue == "classic" {
             return .appleMusic
         }
-        if rawValue == BeansCoverPlayerStyle.vinyl.rawValue {
+        if rawValue == CoCoverPlayerStyle.vinyl.rawValue {
             return .record
         }
-        let stored = BeansCoverPlayerStyle(rawValue: rawValue) ?? .appleMusic
+        let stored = CoCoverPlayerStyle(rawValue: rawValue) ?? .appleMusic
         return availableCases.contains(stored) ? stored : .appleMusic
     }
 }
@@ -356,7 +356,7 @@ final class ThemeStore: ObservableObject {
     static let shared = ThemeStore()
 
     /// 当前配色主题（@Published：切换后所有观察视图立即重绘）
-    @Published var accent: BeansAccent
+    @Published var accent: CoAccent
     /// 自定义全局强调色（色盘任选，nil 表示使用预设主题）
     @Published var customAccentHex: String?
     /// 自定义 Beans 液态容器的着色。系统原生 `.glassEffect` 本身不读取此值。
@@ -376,25 +376,25 @@ final class ThemeStore: ObservableObject {
     /// 壁纸库：所有已上传壁纸的文件路径
     @Published var wallpaperPaths: [String] = []
     /// 全局 UI 风格：影响玻璃容器、卡片透明度与边框质感
-    @Published var uiStyle: BeansUIStyle = .liquid
+    @Published var uiStyle: CoUIStyle = .liquid
 
-    private let customAccentKey = "beans.accent.custom"
-    private let liquidGlassColorKey = "beans.glass.customColor"
-    private let backgroundKey = "beans.background.custom"
-    private let backgroundLightKey = "beans.background.custom.light"
-    private let backgroundDarkKey = "beans.background.custom.dark"
-    private let syncAllKey = "beans.background.syncAll"
-    private let backgroundImageKey = "beans.background.image"
-    private let backgroundImageLightKey = "beans.background.image.light"
-    private let backgroundImageDarkKey = "beans.background.image.dark"
-    private let wallpaperListKey = "beans.wallpapers.list"
-    private let wallpaperDataKey = "beans.wallpapers.data"
-    private let deletedKey = "beans.wallpapers.deleted"
-    private let uiStyleKey = "beans.uiStyle"
+    private let customAccentKey = "co.accent.custom"
+    private let liquidGlassColorKey = "co.glass.customColor"
+    private let backgroundKey = "co.background.custom"
+    private let backgroundLightKey = "co.background.custom.light"
+    private let backgroundDarkKey = "co.background.custom.dark"
+    private let syncAllKey = "co.background.syncAll"
+    private let backgroundImageKey = "co.background.image"
+    private let backgroundImageLightKey = "co.background.image.light"
+    private let backgroundImageDarkKey = "co.background.image.dark"
+    private let wallpaperListKey = "co.wallpapers.list"
+    private let wallpaperDataKey = "co.wallpapers.data"
+    private let deletedKey = "co.wallpapers.deleted"
+    private let uiStyleKey = "co.uiStyle"
     private var wallpapersRestored = false
 
     private init() {
-        accent = BeansAccent(rawValue: UserDefaults.standard.string(forKey: AccentTheme.key) ?? "") ?? .red
+        accent = CoAccent(rawValue: UserDefaults.standard.string(forKey: AccentTheme.key) ?? "") ?? .red
         let savedAccent = UserDefaults.standard.string(forKey: customAccentKey)
         customAccentHex = (savedAccent?.isEmpty ?? true) ? nil : savedAccent
         let savedGlassColor = UserDefaults.standard.string(forKey: liquidGlassColorKey)
@@ -429,10 +429,10 @@ final class ThemeStore: ObservableObject {
         wallpaperPaths = UserDefaults.standard.stringArray(forKey: wallpaperListKey) ?? []
         let savedUIStyle = UserDefaults.standard.string(forKey: uiStyleKey) ?? ""
         if savedUIStyle.isEmpty {
-            UserDefaults.standard.set(BeansUIStyle.nativeClean.rawValue, forKey: uiStyleKey)
+            UserDefaults.standard.set(CoUIStyle.nativeClean.rawValue, forKey: uiStyleKey)
             uiStyle = .nativeClean
         } else {
-            uiStyle = savedUIStyle == "outline" ? .clear : (BeansUIStyle(rawValue: savedUIStyle) ?? .liquid)
+            uiStyle = savedUIStyle == "outline" ? .clear : (CoUIStyle(rawValue: savedUIStyle) ?? .liquid)
         }
     }
 
@@ -509,13 +509,13 @@ final class ThemeStore: ObservableObject {
         UserDefaults.standard.set(backup, forKey: wallpaperDataKey)
     }
 
-    func setUIStyle(_ style: BeansUIStyle) {
+    func setUIStyle(_ style: CoUIStyle) {
         guard uiStyle != style else { return }
         uiStyle = style
         UserDefaults.standard.set(style.rawValue, forKey: uiStyleKey)
     }
 
-    func set(_ newAccent: BeansAccent) {
+    func set(_ newAccent: CoAccent) {
         guard accent != newAccent else { return }
         accent = newAccent
         UserDefaults.standard.set(newAccent.rawValue, forKey: AccentTheme.key)
@@ -628,7 +628,7 @@ final class ThemeStore: ObservableObject {
         let path = backgroundImagePath(for: colorScheme)
         guard !path.isEmpty else { return nil }
         if let cached = cachedBackgroundImage, cachedBackgroundImagePath == path { return cached }
-        let image = BeansImageFileCache.image(at: path)
+        let image = CoImageFileCache.image(at: path)
         cachedBackgroundImage = image
         cachedBackgroundImagePath = path
         return image
@@ -665,7 +665,7 @@ final class ThemeStore: ObservableObject {
             setBackgroundImagePath(url.path, for: .dark)
             saveWallpaperBackup(url.path, data: imageData)
             invalidateBackgroundCache()
-            BeansImageFileCache.remove(url.path)
+            CoImageFileCache.remove(url.path)
         } catch {
             // 保存失败：静默保留当前壁纸
         }
@@ -694,7 +694,7 @@ final class ThemeStore: ObservableObject {
             setBackgroundImagePath(url.path, for: colorScheme)
             saveWallpaperBackup(url.path, data: imageData)
             invalidateBackgroundCache()
-            BeansImageFileCache.remove(url.path)
+            CoImageFileCache.remove(url.path)
         } catch {
             // 保存失败：静默保留当前壁纸
         }
@@ -722,7 +722,7 @@ final class ThemeStore: ObservableObject {
             URL(fileURLWithPath: $0).lastPathComponent == fileName
         } ?? path
         try? FileManager.default.removeItem(atPath: resolvedPath)
-        BeansImageFileCache.remove(resolvedPath)
+        CoImageFileCache.remove(resolvedPath)
         wallpaperPaths.removeAll {
             $0 == path || $0 == resolvedPath
                 || URL(fileURLWithPath: $0).lastPathComponent == fileName
@@ -807,15 +807,15 @@ final class ThemeStore: ObservableObject {
     }
 
     private static var currentColorScheme: ColorScheme {
-        let mode = UserDefaults.standard.string(forKey: "beans.themeMode") ?? BeansThemeMode.system.rawValue
-        if mode == BeansThemeMode.dark.rawValue { return .dark }
-        if mode == BeansThemeMode.light.rawValue { return .light }
+        let mode = UserDefaults.standard.string(forKey: "co.themeMode") ?? CoThemeMode.system.rawValue
+        if mode == CoThemeMode.dark.rawValue { return .dark }
+        if mode == CoThemeMode.light.rawValue { return .light }
         return UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
     }
 
     private static func wallpaperDirectory() -> URL {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("BeansWallpapers", isDirectory: true)
+            .appendingPathComponent("CoWallpapers", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -887,13 +887,13 @@ final class ThemeStore: ObservableObject {
 
 /// 当前配色读取 / 写入（持久化到 UserDefaults，统一走 ThemeStore）
 enum AccentTheme {
-    static let key = "beans.accent"
+    static let key = "co.accent"
 
-    static var current: BeansAccent {
+    static var current: CoAccent {
         ThemeStore.shared.accent
     }
 
-    static func set(_ accent: BeansAccent) {
+    static func set(_ accent: CoAccent) {
         ThemeStore.shared.set(accent)
     }
 }
@@ -904,8 +904,8 @@ extension LinearGradient {
     /// 暖调咖啡色系背景
     static let beansBackdrop = LinearGradient(
         colors: [
-            Color(uiColor: .beansBackground),
-            Color(uiColor: .beansBackground).opacity(0.72),
+            Color(uiColor: .coBackground),
+            Color(uiColor: .coBackground).opacity(0.72),
         ],
         startPoint: .top,
         endPoint: .bottom
@@ -923,7 +923,7 @@ extension LinearGradient {
 
 // MARK: - 浅色立体阴影（卡片分层质感）
 
-struct BeansCardShadowModifier: ViewModifier {
+struct CoCardShadowModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     var radius: CGFloat
     var y: CGFloat
@@ -940,13 +940,13 @@ struct BeansCardShadowModifier: ViewModifier {
 extension View {
     /// 卡片阴影：浅色模式柔和阴影提升层次，深色模式轻微阴影保持立体
     func beansCardShadow(radius: CGFloat = 9, y: CGFloat = 3) -> some View {
-        modifier(BeansCardShadowModifier(radius: radius, y: y))
+        modifier(CoCardShadowModifier(radius: radius, y: y))
     }
 }
 
 // MARK: - 主题模式 ↔ 系统外观
 
-extension BeansThemeMode {
+extension CoThemeMode {
     var colorScheme: ColorScheme? {
         switch self {
         case .system: return nil

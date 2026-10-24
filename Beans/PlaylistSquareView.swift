@@ -3,8 +3,8 @@ import SwiftUI
 /// 酷狗专版精选页：只用酷狗歌单广场接口，无平台切换。
 struct PlaylistSquareView: View {
     @EnvironmentObject private var theme: ThemeStore
-    @Environment(\.beansUsesSharedRootBackdrop) private var usesSharedRootBackdrop
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     @State private var playlists: [Playlist] = []
     @State private var selectedCategory = PlaylistSquareCategory.all.id
     @State private var categories: [PlaylistSquareCategory] = [.all]
@@ -13,7 +13,7 @@ struct PlaylistSquareView: View {
     @State private var expanded = false
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     private var visiblePlaylists: [Playlist] {
@@ -28,10 +28,10 @@ struct PlaylistSquareView: View {
         let _ = theme.accent
         ZStack {
             if !usesSharedRootBackdrop {
-                Color.beansBackground
+                Color.coBackground
                     .ignoresSafeArea()
             }
-            BeansNavigationStack {
+            CoNavigationStack {
                 ZStack {
                     if !usesSharedRootBackdrop {
                         GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
@@ -63,7 +63,7 @@ struct PlaylistSquareView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 2)
                         }
-                        .beansScrollIndicatorsHidden()
+                        .coScrollIndicatorsHidden()
                         .background(Color.clear)
                     }
                 }
@@ -76,7 +76,7 @@ struct PlaylistSquareView: View {
                 .navigationTitle(beansLocalized("精选", "Curated"))
                 .navigationBarTitleDisplayMode(.inline)
             }
-            .beansHomeNavigationBarTransparent()
+            .coHomeNavigationBarTransparent()
             .background(Color.clear)
         }
         .background(Color.clear)
@@ -95,21 +95,21 @@ struct PlaylistSquareView: View {
                 ForEach(categories) { category in
                     Button {
                         guard selectedCategory != category.id else { return }
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         selectedCategory = category.id
                         playlists = []
                         expanded = false
                     } label: {
                         Text(LocalizedStringKey(category.name))
-                            .font(BeansFont.appFont(12, .medium))
-                            .foregroundStyle(selectedCategory == category.id ? Color.white : Color.beansComment)
+                            .font(CoFont.appFont(12, .medium))
+                            .foregroundStyle(selectedCategory == category.id ? Color.white : Color.coComment)
                             .padding(.horizontal, 13)
                             .padding(.vertical, 7)
                             .background {
                                 ZStack {
-                                    BeansGlass(shape: Capsule(), forceLiquid: true)
+                                    CoGlass(shape: Capsule(), forceLiquid: true)
                                     if selectedCategory == category.id {
-                                        Capsule().fill(Color.beansAmber.opacity(0.78))
+                                        Capsule().fill(Color.coAmber.opacity(0.78))
                                     }
                                 }
                             }
@@ -144,10 +144,10 @@ struct PlaylistSquareView: View {
         VStack(spacing: 12) {
             ProgressView()
                 .controlSize(.regular)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
             Text(beansLocalized("正在加载歌单", "Loading playlists"))
-                .font(BeansFont.appFont(12))
-                .foregroundStyle(Color.beansComment)
+                .font(CoFont.appFont(12))
+                .foregroundStyle(Color.coComment)
         }
         .frame(maxWidth: .infinity, minHeight: 220)
     }
@@ -156,8 +156,8 @@ struct PlaylistSquareView: View {
         VStack(alignment: .leading, spacing: 7) {
             CoverImage(url: playlist.coverURL, size: 150, cornerRadius: 11)
             Text(playlist.name)
-                .font(BeansFont.appFont(13, .medium))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(13, .medium))
+                .foregroundStyle(Color.coLabel)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
             HStack(spacing: 5) {
@@ -174,8 +174,8 @@ struct PlaylistSquareView: View {
                         .lineLimit(1)
                 }
             }
-            .font(BeansFont.appFont(10.5))
-            .foregroundStyle(Color.beansComment)
+            .font(CoFont.appFont(10.5))
+            .foregroundStyle(Color.coComment)
             .opacity(playlist.trackCount > 0 || !playlist.creatorName.isEmpty ? 1 : 0)
             .frame(height: 14, alignment: .leading)
         }
@@ -183,7 +183,7 @@ struct PlaylistSquareView: View {
         .padding(isNativeClean ? 0 : 8)
         .background {
             if showsContainer, !isNativeClean {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                CoGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -194,13 +194,13 @@ struct PlaylistSquareView: View {
             VStack(spacing: 8) {
                 CoverImage(url: playlist.coverURL, size: proxy.size.width, cornerRadius: 11)
                 Text(playlist.name)
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(14, .semibold))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .center)
                 Text(playlist.creatorName)
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(Color.coComment)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -218,7 +218,7 @@ struct PlaylistSquareView: View {
 
     private var expandButton: some View {
         Button {
-            BeansHaptics.select()
+            CoHaptics.select()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                 expanded.toggle()
             }
@@ -229,15 +229,15 @@ struct PlaylistSquareView: View {
                      : beansLocalized("展开全部（\(playlists.count)）", "Show all (\(playlists.count))"))
                 Image(systemName: expanded ? "chevron.up" : "chevron.down")
             }
-            .font(BeansFont.appFont(13, .semibold))
-            .foregroundStyle(Color.beansAmber)
+            .font(CoFont.appFont(13, .semibold))
+            .foregroundStyle(Color.coAmber)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 11)
             .background {
                 if isNativeClean {
                     Capsule().fill(Color.primary.opacity(0.045))
                 } else {
-                    BeansGlass(shape: Capsule())
+                    CoGlass(shape: Capsule())
                 }
             }
         }

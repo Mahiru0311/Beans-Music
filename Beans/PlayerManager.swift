@@ -172,14 +172,14 @@ final class PlayerManager: NSObject, ObservableObject {
     private var lastListeningPublishUptime = 0.0
     /// Encode and persist playback snapshots away from the main thread.
     private let playbackPersistenceQueue = DispatchQueue(
-        label: "Beans.PlayerManager.playback-persistence",
+        label: "Co.PlayerManager.playback-persistence",
         qos: .utility
     )
     private var lastNowPlayingArtworkKey: String?
     private var nowPlayingSongKey: String?
     private var nowPlayingInfo: [String: Any] = [:]
-    private lazy var lockScreenArtwork: BeansLockScreenArtwork = {
-        let artwork = BeansLockScreenArtwork()
+    private lazy var lockScreenArtwork: CoLockScreenArtwork = {
+        let artwork = CoLockScreenArtwork()
         artwork.onReady = { [weak self] in self?.updateNowPlaying() }
         return artwork
     }()
@@ -206,21 +206,21 @@ final class PlayerManager: NSObject, ObservableObject {
     private var thirdPartyPrefetchTask: Task<Void, Never>?
     private static let nowPlayingArtworkCache = NSCache<NSURL, UIImage>()
 
-    private let historyKey = "beans.history"
-    private let countsKey = "beans.playcounts"
-    private let countedSongsKey = "beans.playcounts.songs.v1"
-    private let playbackStateKey = "beans.player.playbackState.v1"
-    private let audioMixKey = "beans.audio.mixothers.v1"
-    private let nowPlayingEnabledKey = "beans.nowPlaying.enabled.v1"
-    private let playModeKey = "beans.player.playMode"
-    private let softwareVolumeKey = "beans.player.softwareVolume.v1"
-    private let autoSkipOnFailureKey = "beans.playback.autoSkipOnFailure"
-    static let autoCrossPlatformFallbackKey = "beans.playback.autoCrossPlatformFallback"
+    private let historyKey = "co.history"
+    private let countsKey = "co.playcounts"
+    private let countedSongsKey = "co.playcounts.songs.v1"
+    private let playbackStateKey = "co.player.playbackState.v1"
+    private let audioMixKey = "co.audio.mixothers.v1"
+    private let nowPlayingEnabledKey = "co.nowPlaying.enabled.v1"
+    private let playModeKey = "co.player.playMode"
+    private let softwareVolumeKey = "co.player.softwareVolume.v1"
+    private let autoSkipOnFailureKey = "co.playback.autoSkipOnFailure"
+    static let autoCrossPlatformFallbackKey = "co.playback.autoCrossPlatformFallback"
     static let playbackSourcePreferenceKey = PlaybackSourcePreference.storageKey
-    static let listeningDurationKey = "beans.playback.listeningDuration.v1"
-    private static let listeningPlayCountOffsetKey = "beans.playback.listeningPlayCountOffset.v1"
-    private let autoResumeLastPlaybackKey = "beans.playback.autoResumeLast"
-    private let thirdPartyVIPNoticeKey = "beans.showThirdPartyVIPNotice"
+    static let listeningDurationKey = "co.playback.listeningDuration.v1"
+    private static let listeningPlayCountOffsetKey = "co.playback.listeningPlayCountOffset.v1"
+    private let autoResumeLastPlaybackKey = "co.playback.autoResumeLast"
+    private let thirdPartyVIPNoticeKey = "co.showThirdPartyVIPNotice"
     private let defaults = UserDefaults.standard
     private var didAttemptAutoResume = false
     /// 当前故障恢复链已尝试的平台，避免不同平台间反复切换同一首歌曲。
@@ -237,7 +237,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private static var storedLocalPlayCount: Int {
-        guard let data = UserDefaults.standard.data(forKey: "beans.playcounts"),
+        guard let data = UserDefaults.standard.data(forKey: "co.playcounts"),
               let counts = try? JSONDecoder().decode([String: Int].self, from: data) else {
             return 0
         }
@@ -344,14 +344,14 @@ final class PlayerManager: NSObject, ObservableObject {
         // 播放队列恢复已移到上面（loadPlayCounts 之后），这里不再重复恢复，
         // 避免同一份持久化状态读两遍。
         equalizerSettingsObserver = NotificationCenter.default.addObserver(
-            forName: BeansEqualizer.settingsDidChange,
-            object: BeansEqualizer.shared,
+            forName: CoEqualizer.settingsDidChange,
+            object: CoEqualizer.shared,
             queue: .main
         ) { [weak self] _ in
             self?.applyEqualizerToCurrentItem()
         }
         customCoverObserver = NotificationCenter.default.addObserver(
-            forName: .beansCustomSongCoverDidChange,
+            forName: .coCustomSongCoverDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -852,7 +852,7 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         Task {
             var urlString: String?
-            let quality = forceKugouStandard ? BeansAudioQuality.standard : NetworkAudioQuality.officialPreferred
+            let quality = forceKugouStandard ? CoAudioQuality.standard : NetworkAudioQuality.officialPreferred
             for attempt in 0..<3 {
                 if attempt > 0 {
                     try? await Task.sleep(nanoseconds: 800_000_000)
@@ -1309,7 +1309,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func ensurePlaybackAllowed() -> Bool {
-        guard !defaults.bool(forKey: BeansBackendSettings.blockedKey) else {
+        guard !defaults.bool(forKey: CoBackendSettings.blockedKey) else {
             stopPlaybackIfBackendBlocked(showToast: true)
             return false
         }
@@ -1318,7 +1318,7 @@ final class PlayerManager: NSObject, ObservableObject {
 
     /// 统一按当前歌曲平台重新解析第三方地址，失败重试时不跨平台匹配同名歌曲。
     private func stopPlaybackIfBackendBlocked(showToast: Bool = false) {
-        guard defaults.bool(forKey: BeansBackendSettings.blockedKey) else { return }
+        guard defaults.bool(forKey: CoBackendSettings.blockedKey) else { return }
         clearAudioRecoveryIntent()
         loadGeneration += 1
         playbackLoadTask?.cancel()
@@ -1434,7 +1434,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func configureEqualizer(for item: AVPlayerItem) {
-        guard BeansEqualizer.shared.isEnabled else {
+        guard CoEqualizer.shared.isEnabled else {
             item.audioMix = nil
             return
         }
@@ -1445,14 +1445,14 @@ final class PlayerManager: NSObject, ObservableObject {
             var error: NSError?
             guard asset.statusOfValue(forKey: "tracks", error: &error) == .loaded,
                   let track = asset.tracks(withMediaType: .audio).first,
-                  let mix = BeansEqualizer.shared.makeAudioMix(for: track) else {
+                  let mix = CoEqualizer.shared.makeAudioMix(for: track) else {
                 return
             }
             self.performOnMain { [weak self, weak item] in
                 guard let self,
                       let item,
                       self.player?.currentItem === item,
-                      BeansEqualizer.shared.isEnabled else { return }
+                      CoEqualizer.shared.isEnabled else { return }
                 item.audioMix = mix
             }
         }
@@ -2083,7 +2083,7 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
         MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
-        Task { @MainActor in BeansNowPlayingLiveActivity.shared.update(song: self.currentSong, isPlaying: self.isPlaying) }
+        Task { @MainActor in CoNowPlayingLiveActivity.shared.update(song: self.currentSong, isPlaying: self.isPlaying) }
     }
 
     private func clearNowPlayingInfo() {
@@ -2092,7 +2092,7 @@ final class PlayerManager: NSObject, ObservableObject {
         nowPlayingInfo = [:]
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         MPNowPlayingInfoCenter.default().playbackState = .stopped
-        Task { @MainActor in BeansNowPlayingLiveActivity.shared.update(song: nil, isPlaying: false) }
+        Task { @MainActor in CoNowPlayingLiveActivity.shared.update(song: nil, isPlaying: false) }
     }
 
     func refreshLockScreenArtwork() { updateNowPlaying() }

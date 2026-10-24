@@ -107,8 +107,8 @@ struct PlayerLayoutEntry: Codable, Equatable {
 
 /// 播放器底部布局调整存储（UserDefaults JSON，持久化）
 enum PlayerLayoutStore {
-    static let modeKey = "beans.playerLayoutMode"
-    static let dataKey = "beans.playerLayoutData"
+    static let modeKey = "co.playerLayoutMode"
+    static let dataKey = "co.playerLayoutData"
     private static var pendingSave: DispatchWorkItem?
 
     static func load() -> [String: PlayerLayoutEntry] {
@@ -203,7 +203,7 @@ enum PlayerLayoutStore {
 
 /// 黑胶播放器使用独立存储，避免经典播放器的偏移影响唱盘布局。
 enum VinylPlayerLayoutStore {
-    private static let dataKey = "beans.vinylPlayer.layoutData"
+    private static let dataKey = "co.vinylPlayer.layoutData"
     private static var pendingSave: DispatchWorkItem?
 
     static func load() -> [String: PlayerLayoutEntry] {
@@ -276,7 +276,7 @@ enum IPadLandscapeLayoutPart: String, CaseIterable, Identifiable {
 enum IPadLandscapeLayoutStore {
     typealias LayoutData = [String: [String: PlayerLayoutEntry]]
 
-    private static let dataKey = "beans.player.iPadLandscapeLayoutData"
+    private static let dataKey = "co.player.iPadLandscapeLayoutData"
     private static var pendingSave: DispatchWorkItem?
 
     static func load() -> LayoutData {
@@ -302,7 +302,7 @@ enum IPadLandscapeLayoutStore {
 
     static func entry(
         for part: IPadLandscapeLayoutPart,
-        style: BeansCoverPlayerStyle,
+        style: CoCoverPlayerStyle,
         in layouts: LayoutData
     ) -> PlayerLayoutEntry {
         layouts[style.rawValue]?[part.rawValue] ?? PlayerLayoutEntry()
@@ -310,7 +310,7 @@ enum IPadLandscapeLayoutStore {
 
     static func displayEntry(
         for part: IPadLandscapeLayoutPart,
-        style: BeansCoverPlayerStyle,
+        style: CoCoverPlayerStyle,
         in layouts: LayoutData
     ) -> PlayerLayoutEntry {
         let entry = entry(for: part, style: style, in: layouts)
@@ -333,7 +333,7 @@ enum IPadLandscapeLayoutStore {
 final class AppleMusicLayoutStore: ObservableObject {
     static let shared = AppleMusicLayoutStore()
 
-    private static let dataKey = "beans.appleMusic.layoutData"
+    private static let dataKey = "co.appleMusic.layoutData"
     private let defaults = UserDefaults.standard
 
     @Published var entries: [String: PlayerLayoutEntry] {
@@ -411,25 +411,25 @@ final class AppleMusicLayoutStore: ObservableObject {
         }
 
         migrated[AppleMusicLayoutPart.top.rawValue] = PlayerLayoutEntry(
-            y: legacyDouble("beans.appleMusic.topY", defaultValue: -63)
+            y: legacyDouble("co.appleMusic.topY", defaultValue: -63)
         )
         migrated[AppleMusicLayoutPart.cover.rawValue] = PlayerLayoutEntry(
-            scale: legacyDouble("beans.appleMusic.coverScale", defaultValue: 1)
+            scale: legacyDouble("co.appleMusic.coverScale", defaultValue: 1)
         )
         migrated[AppleMusicLayoutPart.title.rawValue] = PlayerLayoutEntry(
-            y: legacyDouble("beans.appleMusic.titleY", defaultValue: 0)
+            y: legacyDouble("co.appleMusic.titleY", defaultValue: 0)
         )
         migrated[AppleMusicLayoutPart.previewLyric.rawValue] = PlayerLayoutEntry(
-            y: legacyDouble("beans.appleMusic.lyricY", defaultValue: 0)
+            y: legacyDouble("co.appleMusic.lyricY", defaultValue: 0)
         )
         let legacyControls = PlayerLayoutEntry(
-            y: legacyDouble("beans.appleMusic.controlsY", defaultValue: 0)
+            y: legacyDouble("co.appleMusic.controlsY", defaultValue: 0)
         )
         migrated[AppleMusicLayoutPart.previous.rawValue] = legacyControls
         migrated[AppleMusicLayoutPart.play.rawValue] = legacyControls
         migrated[AppleMusicLayoutPart.next.rawValue] = legacyControls
         migrated[AppleMusicLayoutPart.actions.rawValue] = PlayerLayoutEntry(
-            y: legacyDouble("beans.appleMusic.actionsY", defaultValue: 0)
+            y: legacyDouble("co.appleMusic.actionsY", defaultValue: 0)
         )
         return migrated
     }
@@ -503,14 +503,14 @@ struct Layoutable: ViewModifier {
 /// iPad 横屏组件的位置与大小调整，位置通过设置页滑块调整。
 struct IPadLandscapeLayoutable: ViewModifier {
     let part: IPadLandscapeLayoutPart
-    let style: BeansCoverPlayerStyle
+    let style: CoCoverPlayerStyle
     let enabled: Bool
     @Binding var data: IPadLandscapeLayoutStore.LayoutData
     let appliesTransform: Bool
 
     init(
         part: IPadLandscapeLayoutPart,
-        style: BeansCoverPlayerStyle,
+        style: CoCoverPlayerStyle,
         enabled: Bool,
         data: Binding<IPadLandscapeLayoutStore.LayoutData>,
         appliesTransform: Bool = true

@@ -21,7 +21,7 @@ enum RootTab: String, CaseIterable, Identifiable {
         }
     }
 
-    func icon(for style: BeansTabIconStyle) -> String {
+    func icon(for style: CoTabIconStyle) -> String {
         if style == .appleMusic {
             switch self {
             case .discover: return "house.fill"
@@ -49,7 +49,7 @@ enum RootTab: String, CaseIterable, Identifiable {
         }
     }
 
-    func assetName(for style: BeansTabIconStyle) -> String? {
+    func assetName(for style: CoTabIconStyle) -> String? {
         guard style == .appleMusic else { return nil }
         switch self {
         case .discover: return "BottomHome"
@@ -62,7 +62,7 @@ enum RootTab: String, CaseIterable, Identifiable {
     static let bottomTabs: [RootTab] = [.discover, .playlists, .library, .profile, .search]
 }
 
-enum BeansHeaderAccessoryMode: String, CaseIterable, Identifiable {
+enum CoHeaderAccessoryMode: String, CaseIterable, Identifiable {
     case avatar
     case themeToggle
     case hidden
@@ -78,12 +78,12 @@ enum BeansHeaderAccessoryMode: String, CaseIterable, Identifiable {
     }
 }
 
-struct BeansThemeToggleRequest {
+struct CoThemeToggleRequest {
     let location: CGPoint
 }
 
 extension Notification.Name {
-    static let beansThemeToggleRequested = Notification.Name("beans.themeToggleRequested")
+    static let beansThemeToggleRequested = Notification.Name("co.themeToggleRequested")
 }
 
 private struct SidebarPlaylistGroup: Identifiable {
@@ -94,8 +94,8 @@ private struct SidebarPlaylistGroup: Identifiable {
 
 /// Keeps the legacy tab hierarchy tied to one stable state value instead of
 /// rebuilding it from several AppStorage bindings during a presentation.
-struct BeansTabVisibility: Equatable {
-    static let didChangeNotification = Notification.Name("beans.tabVisibilityDidChange")
+struct CoTabVisibility: Equatable {
+    static let didChangeNotification = Notification.Name("co.tabVisibilityDidChange")
 
     var discover = true
     var playlists = true
@@ -105,11 +105,11 @@ struct BeansTabVisibility: Equatable {
 
     static func load(defaults: UserDefaults = .standard) -> Self {
         Self(
-            discover: value(for: "beans.tab.discover.visible", defaults: defaults),
-            playlists: value(for: "beans.tab.playlists.visible", defaults: defaults),
-            library: value(for: "beans.tab.library.visible", defaults: defaults),
-            profile: value(for: "beans.tab.profile.visible", defaults: defaults),
-            search: value(for: "beans.tab.search.visible", defaults: defaults)
+            discover: value(for: "co.tab.discover.visible", defaults: defaults),
+            playlists: value(for: "co.tab.playlists.visible", defaults: defaults),
+            library: value(for: "co.tab.library.visible", defaults: defaults),
+            profile: value(for: "co.tab.profile.visible", defaults: defaults),
+            search: value(for: "co.tab.search.visible", defaults: defaults)
         )
     }
 
@@ -134,11 +134,11 @@ struct BeansTabVisibility: Equatable {
     }
 
     func save(defaults: UserDefaults = .standard) {
-        defaults.set(discover, forKey: "beans.tab.discover.visible")
-        defaults.set(playlists, forKey: "beans.tab.playlists.visible")
-        defaults.set(library, forKey: "beans.tab.library.visible")
-        defaults.set(profile, forKey: "beans.tab.profile.visible")
-        defaults.set(search, forKey: "beans.tab.search.visible")
+        defaults.set(discover, forKey: "co.tab.discover.visible")
+        defaults.set(playlists, forKey: "co.tab.playlists.visible")
+        defaults.set(library, forKey: "co.tab.library.visible")
+        defaults.set(profile, forKey: "co.tab.profile.visible")
+        defaults.set(search, forKey: "co.tab.search.visible")
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
 
@@ -158,7 +158,7 @@ struct RootView: View {
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @ObservedObject private var localLibrary = LocalLibraryStore.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
-    @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
+    @AppStorage("co.themeMode") private var themeModeRaw = CoThemeMode.system.rawValue
 
     @State private var selection: RootTab = .discover
     @State private var unoccludedWindowSize: CGSize = {
@@ -167,15 +167,15 @@ struct RootView: View {
     }()
     @State private var showPlayer = false
     @Namespace private var nowPlayingTransition
-    @AppStorage("beans.disclaimerAccepted") private var disclaimerAccepted = false
+    @AppStorage("co.disclaimerAccepted") private var disclaimerAccepted = false
     /// 底栏是否显示文字（关闭后只显示图标）
-    @AppStorage("beans.tabLabelsVisible") private var tabLabelsVisible = true
-    @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = BeansTabIconStyle.sfSymbols.rawValue
-    @State private var tabVisibility = BeansTabVisibility.load()
-    @AppStorage("beans.queueOverlayPresented") private var queueOverlayPresented = false
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
-    @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
+    @AppStorage("co.tabLabelsVisible") private var tabLabelsVisible = true
+    @AppStorage("co.tabIconStyle") private var tabIconStyleRaw = CoTabIconStyle.sfSymbols.rawValue
+    @State private var tabVisibility = CoTabVisibility.load()
+    @AppStorage("co.queueOverlayPresented") private var queueOverlayPresented = false
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
+    @AppStorage("co.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
     @State private var showWhatsNew = false
     @State private var sidebarRemotePlaylists: [Playlist] = []
     @State private var sidebarLocalPlaylist: LocalPlaylist?
@@ -188,11 +188,11 @@ struct RootView: View {
     @State private var rootLayoutSettled = false
 
     private var isUITestSmoke: Bool {
-        ProcessInfo.processInfo.arguments.contains("--beans-ui-smoke")
+        ProcessInfo.processInfo.arguments.contains("--co-ui-smoke")
     }
 
-    private var tabIconStyle: BeansTabIconStyle {
-        BeansTabIconStyle(rawValue: tabIconStyleRaw) ?? .sfSymbols
+    private var tabIconStyle: CoTabIconStyle {
+        CoTabIconStyle(rawValue: tabIconStyleRaw) ?? .sfSymbols
     }
 
     private var visibleTabs: [RootTab] {
@@ -218,7 +218,7 @@ struct RootView: View {
 
     private func normalizeTabSelection() {
         guard !visibleTabs.isEmpty else {
-            tabVisibility = BeansTabVisibility()
+            tabVisibility = CoTabVisibility()
             tabVisibility.save()
             selection = .discover
             return
@@ -230,15 +230,15 @@ struct RootView: View {
     @State private var sidebarPlaylist: Playlist?
     @State private var showSidebarQueue = false
     @State private var sidebarPlaylistsExpanded = true
-    private var themeMode: BeansThemeMode {
-        BeansThemeMode(rawValue: themeModeRaw) ?? .system
+    private var themeMode: CoThemeMode {
+        CoThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
 
 
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     private var usesPadSidebar: Bool {
@@ -248,7 +248,7 @@ struct RootView: View {
     var body: some View {
         let _ = theme.accent
         GeometryReader { proxy in
-            let isPadLandscape = BeansWindowLayoutPolicy.usesSidebar(
+            let isPadLandscape = CoWindowLayoutPolicy.usesSidebar(
                 isPad: usesPadSidebar, window: unoccludedWindowSize, proposed: proxy.size
             )
 
@@ -269,7 +269,7 @@ struct RootView: View {
                 }
 
                 if let themeRevealSnapshot {
-                    BeansThemeRevealOverlay(
+                    CoThemeRevealOverlay(
                         snapshot: themeRevealSnapshot,
                         origin: themeRevealOrigin,
                         progress: themeRevealProgress
@@ -317,12 +317,12 @@ struct RootView: View {
                 showWhatsNew = true
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: BeansTabVisibility.didChangeNotification)) { _ in
-            tabVisibility = BeansTabVisibility.load()
+        .onReceive(NotificationCenter.default.publisher(for: CoTabVisibility.didChangeNotification)) { _ in
+            tabVisibility = CoTabVisibility.load()
             normalizeTabSelection()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .beansThemeToggleRequested)) { notification in
-            let request = notification.object as? BeansThemeToggleRequest
+        .onReceive(NotificationCenter.default.publisher(for: .coThemeToggleRequested)) { notification in
+            let request = notification.object as? CoThemeToggleRequest
             beginThemeReveal(from: request?.location)
         }
         .sheet(isPresented: $showWhatsNew) {
@@ -359,7 +359,7 @@ struct RootView: View {
         // 旧版能下拉收起，靠的就是 zoom 过渡带来的系统交互收起；不恢复 zoom
         // （用户已判它僵硬），改用本地下拉手势收起：从顶部区域下拉超过阈值
         // 即关闭，打开仍是系统底部滑入。
-        BeansNowPlayingPresentation(
+        CoNowPlayingPresentation(
             isPresented: $showPlayer,
             usesSystemInteractiveDismissal: false
         ) {
@@ -431,7 +431,7 @@ struct RootView: View {
             }
 
         }
-        .tint(Color.beansAmber)
+        .tint(Color.coAmber)
         .tabBarMinimizeBehavior(isPadLandscape || player.currentSong == nil ? .never : .onScrollDown)
         .toolbarBackground(.hidden, for: .tabBar)
         .background(Color.clear)
@@ -516,7 +516,7 @@ struct RootView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("音乐")
-                    .font(BeansFont.appFont(30, .bold))
+                    .font(CoFont.appFont(30, .bold))
                     .foregroundStyle(Color.primary)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 6)
@@ -555,7 +555,7 @@ struct RootView: View {
 
                     if localLibrary.playlists.isEmpty && sidebarRemotePlaylistGroups.isEmpty {
                         Text("暂无已同步歌单")
-                            .font(BeansFont.appFont(12))
+                            .font(CoFont.appFont(12))
                             .foregroundStyle(Color.primary.opacity(0.48))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
@@ -568,7 +568,7 @@ struct RootView: View {
 
                 sidebarSectionHeader("播放列表", isExpanded: .constant(true), showsToggle: false)
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showSidebarQueue = true
                 } label: {
                     sidebarSystemRow(title: "所有播放列表", systemName: "list.number")
@@ -619,20 +619,20 @@ struct RootView: View {
     ) -> some View {
         Button {
             guard showsToggle else { return }
-            BeansHaptics.select()
+            CoHaptics.select()
             withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
                 isExpanded.wrappedValue.toggle()
             }
         } label: {
             HStack(spacing: 8) {
                 Text(title)
-                    .font(BeansFont.appFont(19, .bold))
+                    .font(CoFont.appFont(19, .bold))
                     .foregroundStyle(Color.primary)
                 Spacer(minLength: 0)
                 if showsToggle {
                     Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                 }
             }
             .padding(.horizontal, 14)
@@ -644,7 +644,7 @@ struct RootView: View {
 
     private func sidebarSubheading(_ title: String) -> some View {
         Text(title)
-            .font(BeansFont.appFont(11, .semibold))
+            .font(CoFont.appFont(11, .semibold))
             .foregroundStyle(Color.primary.opacity(0.48))
             .padding(.leading, 14)
             .padding(.top, 7)
@@ -655,10 +655,10 @@ struct RootView: View {
         HStack(spacing: 12) {
             Image(systemName: systemName)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color.beansAmber)
+                .foregroundStyle(Color.coAmber)
                 .frame(width: 26, height: 26)
             Text(title)
-                .font(BeansFont.appFont(14, .medium))
+                .font(CoFont.appFont(14, .medium))
                 .foregroundStyle(Color.primary)
                 .lineLimit(1)
             Spacer(minLength: 0)
@@ -670,23 +670,23 @@ struct RootView: View {
 
     private func sidebarLocalPlaylistRow(_ playlist: LocalPlaylist) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             selectSidebarTab(.library)
             sidebarLocalPlaylist = playlist
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "music.note.list")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                     .frame(width: 26, height: 26)
-                    .background(Color.beansAmber.opacity(0.12), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .background(Color.coAmber.opacity(0.12), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(playlist.name)
-                        .font(BeansFont.appFont(13, .medium))
+                        .font(CoFont.appFont(13, .medium))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     Text(beansSongCountText(playlist.songs.count))
-                        .font(BeansFont.appFont(10))
+                        .font(CoFont.appFont(10))
                         .foregroundStyle(Color.primary.opacity(0.48))
                 }
                 Spacer(minLength: 0)
@@ -700,7 +700,7 @@ struct RootView: View {
 
     private func sidebarRemotePlaylistRow(_ playlist: Playlist) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             selectSidebarTab(.library)
             sidebarPlaylist = playlist
         } label: {
@@ -708,11 +708,11 @@ struct RootView: View {
                 CoverImage(url: playlist.coverURL, size: 30, cornerRadius: 7)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(playlist.name)
-                        .font(BeansFont.appFont(13, .medium))
+                        .font(CoFont.appFont(13, .medium))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     Text(beansSongCountText(playlist.trackCount))
-                        .font(BeansFont.appFont(10))
+                        .font(CoFont.appFont(10))
                         .foregroundStyle(Color.primary.opacity(0.48))
                 }
                 Spacer(minLength: 0)
@@ -739,7 +739,7 @@ struct RootView: View {
             let accountID = kugouAuth.userId
             if let cached = SyncedPlaylistCache.shared.cachedPlaylists(source: .kugou, accountID: accountID) {
                 loaded.append(contentsOf: cached.playlists)
-                if BeansNetworkStatus.shared.isReachable,
+                if CoNetworkStatus.shared.isReachable,
                    let list = try? await KugouMusicAPI.shared.userPlaylists(), !list.isEmpty {
                     loaded = loaded.filter { $0.source != .kugou }
                     loaded.append(contentsOf: list)
@@ -759,7 +759,7 @@ struct RootView: View {
         let isSelected = selection == tab
         return Button {
             guard selection != tab else { return }
-            BeansHaptics.select()
+            CoHaptics.select()
             withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
                 selection = tab
             }
@@ -779,18 +779,18 @@ struct RootView: View {
 
                 if tabLabelsVisible {
                     Text(LocalizedStringKey(tab.title))
-                        .font(BeansFont.appFont(15, .semibold))
+                        .font(CoFont.appFont(15, .semibold))
                         .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(isSelected ? Color.beansAmber : Color.primary.opacity(0.72))
+            .foregroundStyle(isSelected ? Color.coAmber : Color.primary.opacity(0.72))
             .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
             .padding(.horizontal, 14)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Color.beansAmber.opacity(0.14) : .clear)
+                    .fill(isSelected ? Color.coAmber.opacity(0.14) : .clear)
             }
             .contentShape(Rectangle())
         }
@@ -798,7 +798,7 @@ struct RootView: View {
         .accessibilityLabel(LocalizedStringKey(tab.title))
     }
 
-    private var resolvedThemeToggleTarget: BeansThemeMode {
+    private var resolvedThemeToggleTarget: CoThemeMode {
         if themeMode == .dark { return .light }
         if themeMode == .light { return .dark }
         return colorScheme == .dark ? .light : .dark
@@ -886,11 +886,11 @@ struct RootView: View {
                 ProfileView()
             }
         }
-        .environment(\.beansUsesSharedRootBackdrop, usesSharedRootBackdrop)
+        .environment(\.coUsesSharedRootBackdrop, usesSharedRootBackdrop)
     }
 }
 
-private struct BeansThemeRevealOverlay: View {
+private struct CoThemeRevealOverlay: View {
     let snapshot: UIImage
     let origin: CGPoint
     let progress: CGFloat
@@ -908,7 +908,7 @@ private struct BeansThemeRevealOverlay: View {
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipped()
                 .mask {
-                    BeansThemeRevealMask(
+                    CoThemeRevealMask(
                         origin: origin,
                         diameter: fullDiameter,
                         progress: progress
@@ -923,7 +923,7 @@ private struct BeansThemeRevealOverlay: View {
 
 /// A lightweight inverse circle mask. The animated element only scales, which
 /// avoids recalculating a growing view hierarchy for every reveal frame.
-private struct BeansThemeRevealMask: View {
+private struct CoThemeRevealMask: View {
     let origin: CGPoint
     let diameter: CGFloat
     let progress: CGFloat
@@ -943,7 +943,7 @@ private struct BeansThemeRevealMask: View {
     }
 }
 
-private enum BeansNowPlayingPresentationMetrics {
+private enum CoNowPlayingPresentationMetrics {
     static let indicatorTopSpacing: CGFloat = 6
     static let indicatorWidth: CGFloat = 52
     static let indicatorHeight: CGFloat = 5
@@ -961,7 +961,7 @@ private enum BeansNowPlayingPresentationMetrics {
     )
 }
 
-struct BeansNowPlayingPresentation<Content: View>: View {
+struct CoNowPlayingPresentation<Content: View>: View {
     @Binding var isPresented: Bool
     let usesSystemInteractiveDismissal: Bool
     let content: Content
@@ -1004,7 +1004,7 @@ struct BeansNowPlayingPresentation<Content: View>: View {
         .onAppear { dragOffset = 0 }
         .background {
             if !usesSystemInteractiveDismissal {
-                BeansPresentedSurfaceClearer()
+                CoPresentedSurfaceClearer()
                     .frame(width: 0, height: 0)
                     .allowsHitTesting(false)
             }
@@ -1020,14 +1020,14 @@ struct BeansNowPlayingPresentation<Content: View>: View {
                 // handle so the player uses a clean full-screen surface.
                 .fill(.clear)
                 .frame(
-                    width: BeansNowPlayingPresentationMetrics.indicatorWidth,
-                    height: BeansNowPlayingPresentationMetrics.indicatorHeight
+                    width: CoNowPlayingPresentationMetrics.indicatorWidth,
+                    height: CoNowPlayingPresentationMetrics.indicatorHeight
                 )
-                .padding(.top, BeansNowPlayingPresentationMetrics.indicatorTopSpacing)
+                .padding(.top, CoNowPlayingPresentationMetrics.indicatorTopSpacing)
         }
         .frame(
-            width: BeansNowPlayingPresentationMetrics.indicatorHitWidth,
-            height: BeansNowPlayingPresentationMetrics.indicatorHitHeight
+            width: CoNowPlayingPresentationMetrics.indicatorHitWidth,
+            height: CoNowPlayingPresentationMetrics.indicatorHitHeight
         )
         .modifier(AppleMusicLayoutTransform(entry: appleLayout.entry(for: .top)))
         .contentShape(Rectangle())
@@ -1049,7 +1049,7 @@ struct BeansNowPlayingPresentation<Content: View>: View {
                 let isDownwardSwipe = vertical > 0 && vertical > abs(horizontal) * 1.25
                 // 旧系统只响应顶部开始的明确下拉。播放器内禁用左侧右滑返回，
                 // 避免进度条及其他横向控件触发播放器关闭。
-                if value.startLocation.y <= BeansNowPlayingPresentationMetrics.verticalStartZone,
+                if value.startLocation.y <= CoNowPlayingPresentationMetrics.verticalStartZone,
                    isDownwardSwipe {
                     dragOffset = max(vertical, 0)
                 } else {
@@ -1059,16 +1059,16 @@ struct BeansNowPlayingPresentation<Content: View>: View {
             .onEnded { value in
                 let horizontal = value.translation.width
                 let vertical = value.translation.height
-                let isTopSwipe = value.startLocation.y <= BeansNowPlayingPresentationMetrics.verticalStartZone
+                let isTopSwipe = value.startLocation.y <= CoNowPlayingPresentationMetrics.verticalStartZone
                     && vertical > 0
                     && vertical > abs(horizontal) * 1.25
                 let translation = isTopSwipe ? max(vertical, 0) : 0
                 let predictedVertical = value.predictedEndTranslation.height
                 let prediction = isTopSwipe ? max(predictedVertical, 0) : 0
-                if translation > BeansNowPlayingPresentationMetrics.dismissDistance
-                    || prediction > BeansNowPlayingPresentationMetrics.dismissPrediction {
-                    BeansHaptics.medium()
-                    withAnimation(BeansNowPlayingPresentationMetrics.dismissAnimation) {
+                if translation > CoNowPlayingPresentationMetrics.dismissDistance
+                    || prediction > CoNowPlayingPresentationMetrics.dismissPrediction {
+                    CoHaptics.medium()
+                    withAnimation(CoNowPlayingPresentationMetrics.dismissAnimation) {
                         isPresented = false
                     }
                 } else {
@@ -1083,7 +1083,7 @@ struct BeansNowPlayingPresentation<Content: View>: View {
 /// On pre-iOS-26 full-screen covers, SwiftUI leaves an opaque white host view
 /// behind a manually dragged player. Clear that host so the root page remains
 /// visible through the exposed area during the interactive dismissal.
-private struct BeansPresentedSurfaceClearer: UIViewControllerRepresentable {
+private struct CoPresentedSurfaceClearer: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         let controller = UIViewController()
         controller.view.backgroundColor = .clear
@@ -1212,7 +1212,7 @@ struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
         appearance.shadowColor = .clear
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
-        tabBar.tintColor = UIColor.beansAmber
+        tabBar.tintColor = UIColor.coAmber
         tabBar.isTranslucent = true
     }
 
@@ -1237,7 +1237,7 @@ struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
     }
 
     final class Coordinator: NSObject {
-        static let gestureName = "beans.homePlatformLongPress"
+        static let gestureName = "co.homePlatformLongPress"
         var onHomeLongPress: (() -> Void)?
 
         init(onHomeLongPress: (() -> Void)?) {
@@ -1246,7 +1246,7 @@ struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
 
         @objc func handleHomeLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began else { return }
-            BeansHaptics.select()
+            CoHaptics.select()
             onHomeLongPress?()
         }
     }

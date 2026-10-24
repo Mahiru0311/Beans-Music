@@ -78,14 +78,14 @@ struct CoverPalette {
 
     /// 无封面 / 提取失败时回退到全局主题色，保证任何场景都有可读配色
     static func fallback(colorScheme: ColorScheme) -> CoverPalette {
-        let accent = Color.beansHighlight
+        let accent = Color.coHighlight
         return CoverPalette(
-            backgroundTop: Color(uiColor: .beansBackground),
-            backgroundBottom: Color(uiColor: .beansBackground).opacity(0.86),
+            backgroundTop: Color(uiColor: .coBackground),
+            backgroundBottom: Color(uiColor: .coBackground).opacity(0.86),
             accent: accent,
             accentSoft: accent.opacity(0.28),
-            text: Color(uiColor: .beansLabel),
-            secondary: Color(uiColor: .beansSecondary),
+            text: Color(uiColor: .coLabel),
+            secondary: Color(uiColor: .coSecondary),
             glassTint: accent
         )
     }

@@ -27,7 +27,7 @@ enum DeviceIdentity {
         // Prefer the app's current persisted value during this install.
         // Keychain can retain an older value if an update races or fails; using
         // it first made some devices keep showing the previous ID indefinitely.
-        if let value = UserDefaults.standard.string(forKey: "beans.stablePublicID"),
+        if let value = UserDefaults.standard.string(forKey: "co.stablePublicID"),
            isValidPublicID(value) {
             // This property is read while rendering profile rows. Do not do
             // synchronous Keychain writes on every SwiftUI body evaluation.
@@ -38,13 +38,13 @@ enum DeviceIdentity {
             if loadFromKeychain(account: originalPublicIDAccount) == nil {
                 saveToKeychain(value, account: originalPublicIDAccount)
             }
-            UserDefaults.standard.set(value, forKey: "beans.stablePublicID")
+            UserDefaults.standard.set(value, forKey: "co.stablePublicID")
             return value
         }
         let generated = isDeveloperInstallation ? "5201314" : String(Int.random(in: 100000...500000))
         saveToKeychain(generated, account: publicIDAccount)
         saveToKeychain(generated, account: originalPublicIDAccount)
-        UserDefaults.standard.set(generated, forKey: "beans.stablePublicID")
+        UserDefaults.standard.set(generated, forKey: "co.stablePublicID")
         return generated
     }
 

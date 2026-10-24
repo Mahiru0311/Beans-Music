@@ -8,20 +8,20 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         _ scene: CPTemplateApplicationScene,
         didConnect interfaceController: CPInterfaceController
     ) {
-        BeansCarPlayCoordinator.shared.didConnect(interfaceController: interfaceController)
+        CoCarPlayCoordinator.shared.didConnect(interfaceController: interfaceController)
     }
 
     func templateApplicationScene(
         _ scene: CPTemplateApplicationScene,
         didDisconnect interfaceController: CPInterfaceController
     ) {
-        BeansCarPlayCoordinator.shared.didDisconnect()
+        CoCarPlayCoordinator.shared.didDisconnect()
     }
 }
 
 @MainActor
-final class BeansCarPlayCoordinator: NSObject {
-    static let shared = BeansCarPlayCoordinator()
+final class CoCarPlayCoordinator: NSObject {
+    static let shared = CoCarPlayCoordinator()
 
     private weak var player: PlayerManager?
     private weak var interfaceController: CPInterfaceController?

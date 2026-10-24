@@ -22,7 +22,7 @@ final class AuthStore: ObservableObject {
     @Published var playlists: [Playlist] = []
 
     private let defaults = UserDefaults.standard
-    private let userKey = "beans.user"
+    private let userKey = "co.user"
 
     init() {
         syncFromKugou()
@@ -80,7 +80,7 @@ final class AuthStore: ObservableObject {
         let accountID = KugouMusicAuth.shared.userId
         if let cached = SyncedPlaylistCache.shared.cachedPlaylists(source: .kugou, accountID: accountID) {
             playlists = cached.playlists.filter { $0.name != "我喜欢的音乐" }
-            if !force, SyncedPlaylistCache.shared.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
+            if !force, SyncedPlaylistCache.shared.isFresh(cached), !CoNetworkStatus.shared.isReachable {
                 return
             }
         }

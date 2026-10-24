@@ -2,13 +2,13 @@ import Foundation
 import UIKit
 
 enum LyricBackgroundStore {
-    static let pathKey = "beans.lyricBackground.image"
-    static let dataKey = "beans.lyricBackground.data"
-    static let blurKey = "beans.lyricBackground.blur"
+    static let pathKey = "co.lyricBackground.image"
+    static let dataKey = "co.lyricBackground.data"
+    static let blurKey = "co.lyricBackground.blur"
 
     private static var directory: URL {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("BeansLyricBackground", isDirectory: true)
+            .appendingPathComponent("CoLyricBackground", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -19,7 +19,7 @@ enum LyricBackgroundStore {
         let imageData = normalizedJPEG(from: data) ?? data
         let url = directory.appendingPathComponent("lyric-background.jpg")
         do {
-            BeansImageFileCache.remove(url.path)
+            CoImageFileCache.remove(url.path)
             try imageData.write(to: url, options: .atomic)
             UserDefaults.standard.set(url.path, forKey: pathKey)
             UserDefaults.standard.set(imageData.base64EncodedString(), forKey: dataKey)
@@ -32,7 +32,7 @@ enum LyricBackgroundStore {
     static func clear() {
         if let path = UserDefaults.standard.string(forKey: pathKey), !path.isEmpty {
             try? FileManager.default.removeItem(atPath: path)
-            BeansImageFileCache.remove(path)
+            CoImageFileCache.remove(path)
         }
         UserDefaults.standard.removeObject(forKey: pathKey)
         UserDefaults.standard.removeObject(forKey: dataKey)
@@ -54,7 +54,7 @@ enum LyricBackgroundStore {
             return savedPath
         }
         let url = directory.appendingPathComponent("lyric-background.jpg")
-        BeansImageFileCache.remove(url.path)
+        CoImageFileCache.remove(url.path)
         if (try? data.write(to: url, options: .atomic)) != nil {
             UserDefaults.standard.set(url.path, forKey: pathKey)
             return url.path

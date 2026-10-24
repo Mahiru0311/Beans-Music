@@ -5,7 +5,7 @@ import Combine
 final class PlatformPreferenceStore: ObservableObject {
     static let shared = PlatformPreferenceStore()
 
-    private static let orderKey = "beans.platformOrder.v1"
+    private static let orderKey = "co.platformOrder.v1"
 
     @Published private(set) var selectedRaw: Set<String>
     @Published var orderedRaw: [String]

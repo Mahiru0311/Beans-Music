@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// Folia preferences use the same BeansGlass component and original liquid preference keys.
+// Folia preferences use the same CoGlass component and original liquid preference keys.
 struct FoliaSettingsView: View {
     @EnvironmentObject private var theme: ThemeStore
     @AppStorage(FoliaPreferences.enabledKey) private var enabled = false
@@ -18,7 +18,7 @@ struct FoliaSettingsView: View {
     @AppStorage(FoliaPreferences.classicBreathingKey) private var breathing = 1.0
     @AppStorage(FoliaPreferences.classicLegacyLayoutKey) private var legacy = false
     @AppStorage(FoliaPreferences.classicSpacingKey) private var wordSpacing = 0.7
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
 
     var body: some View {
         ScrollView {
@@ -62,7 +62,7 @@ struct FoliaSettingsView: View {
                 card("Co 液态外观") {
                     Toggle("关闭液态模式", isOn: $disableLiquidGlass)
                     Picker("全局 UI 风格", selection: Binding(get: { theme.uiStyle }, set: { theme.setUIStyle($0) })) {
-                        ForEach(BeansUIStyle.allCases, id: \.self) { style in
+                        ForEach(CoUIStyle.allCases, id: \.self) { style in
                             Text(style.title).tag(style)
                         }
                     }
@@ -87,7 +87,7 @@ struct FoliaSettingsView: View {
             Text(title).font(.headline)
             content()
         }
-        .padding(16).background { BeansGlass(shape: RoundedRectangle(cornerRadius: 18)) }
+        .padding(16).background { CoGlass(shape: RoundedRectangle(cornerRadius: 18)) }
     }
 
     private func colorBinding(_ hex: Binding<String>) -> Binding<Color> {

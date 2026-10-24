@@ -5,14 +5,14 @@ import UniformTypeIdentifiers
 
 /// 主页和“我的”共用的自定义头像，图片只保存在本机沙盒内。
 @MainActor
-final class BeansAvatarStore: ObservableObject {
-    static let shared = BeansAvatarStore()
+final class CoAvatarStore: ObservableObject {
+    static let shared = CoAvatarStore()
 
     @Published private(set) var path: String
     @Published private(set) var revision = 0
-    private let defaultsKey = "beans.profile.customAvatarPath"
-    private let dataKey = "beans.profile.customAvatarData"
-    private let filenameKey = "beans.profile.customAvatarFilename"
+    private let defaultsKey = "co.profile.customAvatarPath"
+    private let dataKey = "co.profile.customAvatarData"
+    private let filenameKey = "co.profile.customAvatarFilename"
 
     private static var storageDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -39,7 +39,7 @@ final class BeansAvatarStore: ObservableObject {
                   let image = UIImage(data: data),
                   let jpeg = image.jpegData(compressionQuality: 0.88) {
             let fileURL = Self.storageDirectory
-                .appendingPathComponent("BeansProfileAvatar.jpg")
+                .appendingPathComponent("CoProfileAvatar.jpg")
             do {
                 try FileManager.default.createDirectory(
                     at: fileURL.deletingLastPathComponent(),
@@ -65,7 +65,7 @@ final class BeansAvatarStore: ObservableObject {
 
     func save(data: Data) {
         let fileURL = Self.storageDirectory
-            .appendingPathComponent("BeansProfileAvatar.jpg")
+            .appendingPathComponent("CoProfileAvatar.jpg")
         do {
             try FileManager.default.createDirectory(
                 at: fileURL.deletingLastPathComponent(),
@@ -75,29 +75,29 @@ final class BeansAvatarStore: ObservableObject {
                   let jpeg = image.jpegData(compressionQuality: 0.88) else { return }
             if !path.isEmpty, path != fileURL.path {
                 try? FileManager.default.removeItem(atPath: path)
-                BeansImageFileCache.remove(path)
+                CoImageFileCache.remove(path)
             }
             try jpeg.write(to: fileURL, options: .atomic)
             path = fileURL.path
             UserDefaults.standard.set(path, forKey: defaultsKey)
             UserDefaults.standard.set(jpeg.base64EncodedString(), forKey: dataKey)
             UserDefaults.standard.set(fileURL.lastPathComponent, forKey: filenameKey)
-            BeansImageFileCache.remove(path)
+            CoImageFileCache.remove(path)
             revision &+= 1
         } catch {
-            BeansLogger.shared.log("自定义头像保存失败：\(error.localizedDescription)", level: .warn)
+            CoLogger.shared.log("自定义头像保存失败：\(error.localizedDescription)", level: .warn)
         }
     }
 
     func saveVideo(data: Data, fileExtension: String) {
         let ext = fileExtension.isEmpty ? "mov" : fileExtension.lowercased()
         let directory = Self.storageDirectory
-        let fileURL = directory.appendingPathComponent("BeansProfileAvatar").appendingPathExtension(ext)
+        let fileURL = directory.appendingPathComponent("CoProfileAvatar").appendingPathExtension(ext)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             if !path.isEmpty, path != fileURL.path {
                 try? FileManager.default.removeItem(atPath: path)
-                BeansImageFileCache.remove(path)
+                CoImageFileCache.remove(path)
             }
             try data.write(to: fileURL, options: .atomic)
             path = fileURL.path
@@ -106,14 +106,14 @@ final class BeansAvatarStore: ObservableObject {
             UserDefaults.standard.set(fileURL.lastPathComponent, forKey: filenameKey)
             revision &+= 1
         } catch {
-            BeansLogger.shared.log("自定义视频头像保存失败：\(error.localizedDescription)", level: .warn)
+            CoLogger.shared.log("自定义视频头像保存失败：\(error.localizedDescription)", level: .warn)
         }
     }
 
     func clear() {
         if !path.isEmpty {
             try? FileManager.default.removeItem(atPath: path)
-            BeansImageFileCache.remove(path)
+            CoImageFileCache.remove(path)
         }
         path = ""
         UserDefaults.standard.removeObject(forKey: defaultsKey)
@@ -125,14 +125,14 @@ final class BeansAvatarStore: ObservableObject {
 
 /// 本地“我的”昵称区域背景，独立于主页壁纸，支持图片、GIF 和视频并在覆盖安装后保留。
 @MainActor
-final class BeansProfileNameBackgroundStore: ObservableObject {
-    static let shared = BeansProfileNameBackgroundStore()
+final class CoProfileNameBackgroundStore: ObservableObject {
+    static let shared = CoProfileNameBackgroundStore()
 
     @Published private(set) var path: String
     @Published private(set) var revision = 0
 
-    private let pathKey = "beans.profile.nameBackgroundPath"
-    private let filenameKey = "beans.profile.nameBackgroundFilename"
+    private let pathKey = "co.profile.nameBackgroundPath"
+    private let filenameKey = "co.profile.nameBackgroundFilename"
 
     private static var storageDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -170,7 +170,7 @@ final class BeansProfileNameBackgroundStore: ObservableObject {
         let fileURL = Self.storageDirectory
             // Give every replacement a new URL so AVPlayer and SwiftUI cannot
             // reuse a cached video when two uploads share the same extension.
-            .appendingPathComponent("BeansProfileNameBackground-\(UUID().uuidString)")
+            .appendingPathComponent("CoProfileNameBackground-\(UUID().uuidString)")
             .appendingPathExtension(ext)
         do {
             try FileManager.default.createDirectory(
@@ -179,23 +179,23 @@ final class BeansProfileNameBackgroundStore: ObservableObject {
             )
             if !path.isEmpty, path != fileURL.path {
                 try? FileManager.default.removeItem(atPath: path)
-                BeansImageFileCache.remove(path)
+                CoImageFileCache.remove(path)
             }
             try data.write(to: fileURL, options: .atomic)
             path = fileURL.path
             UserDefaults.standard.set(path, forKey: pathKey)
             UserDefaults.standard.set(fileURL.lastPathComponent, forKey: filenameKey)
-            BeansImageFileCache.remove(path)
+            CoImageFileCache.remove(path)
             revision &+= 1
         } catch {
-            BeansLogger.shared.log("昵称背景保存失败：\(error.localizedDescription)", level: .warn)
+            CoLogger.shared.log("昵称背景保存失败：\(error.localizedDescription)", level: .warn)
         }
     }
 
     func clear() {
         if !path.isEmpty {
             try? FileManager.default.removeItem(atPath: path)
-            BeansImageFileCache.remove(path)
+            CoImageFileCache.remove(path)
         }
         path = ""
         UserDefaults.standard.removeObject(forKey: pathKey)
@@ -205,19 +205,19 @@ final class BeansProfileNameBackgroundStore: ObservableObject {
 }
 
 
-struct BeansAvatarView: View {
+struct CoAvatarView: View {
     let remoteURL: URL?
     var size: CGFloat = 40
     var useCustom: Bool = false
 
-    @ObservedObject private var store = BeansAvatarStore.shared
+    @ObservedObject private var store = CoAvatarStore.shared
 
     var body: some View {
         Group {
             if useCustom, store.isVideo {
                 CustomCoverMediaView(url: URL(fileURLWithPath: store.path), isMuted: true)
                     .id(store.revision)
-            } else if useCustom, let custom = BeansImageFileCache.image(at: store.path) {
+            } else if useCustom, let custom = CoImageFileCache.image(at: store.path) {
                 Image(uiImage: custom)
                     .resizable()
                     .scaledToFill()
@@ -226,9 +226,9 @@ struct BeansAvatarView: View {
             } else {
                 Image(systemName: "person.fill")
                     .font(.system(size: size * 0.42, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(Color.coComment)
                     .frame(width: size, height: size)
-                    .background(Color.beansGlassFill)
+                    .background(Color.coGlassFill)
             }
         }
         .frame(width: size, height: size)
@@ -237,7 +237,7 @@ struct BeansAvatarView: View {
 }
 
 /// 各主页面共用的“我的”快捷入口，始终优先显示用户选择的本地头像。
-struct BeansProfileShortcutButton: View {
+struct CoProfileShortcutButton: View {
     @EnvironmentObject private var auth: AuthStore
     // 主页头像直接读与我的页同一个源（KugouMusicAuth.shared，@ObservedObject 监听）：
     // AuthStore 只在 init / finishLogin / refreshAccount / loadLibrary 时从酷狗同步一次快照，
@@ -247,15 +247,15 @@ struct BeansProfileShortcutButton: View {
     // auth 仍保留在环境里（其他调用点与环境注入不动），头像本身不再读它。
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("beans.headerAccessoryMode") private var accessoryModeRaw = BeansHeaderAccessoryMode.avatar.rawValue
+    @AppStorage("co.headerAccessoryMode") private var accessoryModeRaw = CoHeaderAccessoryMode.avatar.rawValue
     var action: () -> Void
 
     var body: some View {
         Group {
-            switch BeansHeaderAccessoryMode(rawValue: accessoryModeRaw) ?? .avatar {
+            switch CoHeaderAccessoryMode(rawValue: accessoryModeRaw) ?? .avatar {
             case .avatar:
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     action()
                 } label: {
                     avatarLabel
@@ -265,7 +265,7 @@ struct BeansProfileShortcutButton: View {
                 .fixedSize()
                 .accessibilityLabel(beansLocalized("我的", "Profile"))
             case .themeToggle:
-                BeansThemeToggleButton(colorScheme: colorScheme)
+                CoThemeToggleButton(colorScheme: colorScheme)
             case .hidden:
                 EmptyView()
             }
@@ -273,15 +273,15 @@ struct BeansProfileShortcutButton: View {
     }
 
     private var avatarLabel: some View {
-        // 与我的页同源：酷狗头像（本地自定义头像优先逻辑在 BeansAvatarView 的 useCustom 里，不动）。
-        BeansAvatarView(remoteURL: kugouAuth.avatarURL, size: 38, useCustom: true)
+        // 与我的页同源：酷狗头像（本地自定义头像优先逻辑在 CoAvatarView 的 useCustom 里，不动）。
+        CoAvatarView(remoteURL: kugouAuth.avatarURL, size: 38, useCustom: true)
             .frame(width: 38, height: 38)
             .overlay {
                 Circle().strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)
             }
             .padding(4)
             .background {
-                BeansGlass(shape: Circle(), forceLiquid: true)
+                CoGlass(shape: Circle(), forceLiquid: true)
             }
             .clipShape(Circle())
             .contentShape(Circle())
@@ -290,7 +290,7 @@ struct BeansProfileShortcutButton: View {
     }
 }
 
-struct BeansThemeToggleButton: View {
+struct CoThemeToggleButton: View {
     let colorScheme: ColorScheme
     var usesGlassContainer = true
     var onToggle: (() -> Void)? = nil
@@ -299,11 +299,11 @@ struct BeansThemeToggleButton: View {
         ZStack {
             Image(systemName: colorScheme == .dark ? "sun.max.fill" : "moon.stars.fill")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Color.beansLabel)
+                .foregroundStyle(Color.coLabel)
                 .frame(width: 38, height: 38)
                 .background {
                     if usesGlassContainer {
-                        BeansGlass(shape: Circle(), forceLiquid: true)
+                        CoGlass(shape: Circle(), forceLiquid: true)
                     }
                 }
                 .contentShape(Circle())
@@ -312,13 +312,13 @@ struct BeansThemeToggleButton: View {
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .global)
                 .onEnded { value in
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     if let onToggle {
                         onToggle()
                     } else {
                         NotificationCenter.default.post(
-                            name: .beansThemeToggleRequested,
-                            object: BeansThemeToggleRequest(location: value.location)
+                            name: .coThemeToggleRequested,
+                            object: CoThemeToggleRequest(location: value.location)
                         )
                     }
                 }
@@ -326,13 +326,13 @@ struct BeansThemeToggleButton: View {
         .accessibilityLabel(beansLocalized("切换浅深色模式", "Toggle light and dark mode"))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             if let onToggle {
                 onToggle()
             } else {
                 NotificationCenter.default.post(
-                    name: .beansThemeToggleRequested,
-                    object: BeansThemeToggleRequest(
+                    name: .coThemeToggleRequested,
+                    object: CoThemeToggleRequest(
                         location: CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
                     )
                 )
@@ -342,7 +342,7 @@ struct BeansThemeToggleButton: View {
 }
 
 /// 复用本地图片解码结果，避免设置页/歌词页滚动时反复从磁盘解码大图。
-enum BeansImageFileCache {
+enum CoImageFileCache {
     private static let cache = NSCache<NSString, UIImage>()
 
     static func image(at path: String) -> UIImage? {

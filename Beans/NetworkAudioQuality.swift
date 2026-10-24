@@ -3,17 +3,17 @@ import Foundation
 /// 酷狗选档只读统一键 beans.audioQuality；分网络逻辑已由一次性迁移接管，
 /// 不再参与选档。Downloads keep their existing independent quality setting.
 enum NetworkAudioQuality {
-    static let connectionAwareKey = "beans.audioQuality.connectionAware"
-    static let wifiOfficialKey = "beans.audioQuality.wifi"
-    static let cellularOfficialKey = "beans.audioQuality.cellular"
-    static let wifiThirdPartyKey = "beans.thirdPartyAudioQuality.wifi"
-    static let cellularThirdPartyKey = "beans.thirdPartyAudioQuality.cellular"
+    static let connectionAwareKey = "co.audioQuality.connectionAware"
+    static let wifiOfficialKey = "co.audioQuality.wifi"
+    static let cellularOfficialKey = "co.audioQuality.cellular"
+    static let wifiThirdPartyKey = "co.thirdPartyAudioQuality.wifi"
+    static let cellularThirdPartyKey = "co.thirdPartyAudioQuality.cellular"
 
     /// 统一音质键是唯一写入/读取路径（2026-10-24 音质移播放页后）：
     /// 不再按 Wi-Fi/蜂窝分键选档，旧的分网络逻辑只在迁移里用一次。
-    static var officialPreferred: BeansAudioQuality {
-        let raw = UserDefaults.standard.string(forKey: "beans.audioQuality") ?? BeansAudioQuality.hires.rawValue
-        return BeansAudioQuality(rawValue: raw) ?? .hires
+    static var officialPreferred: CoAudioQuality {
+        let raw = UserDefaults.standard.string(forKey: "co.audioQuality") ?? CoAudioQuality.hires.rawValue
+        return CoAudioQuality(rawValue: raw) ?? .hires
     }
 
     /// 一次性迁移：已开按网络选择的用户，统一键取他原来的 Wi-Fi 档位，
@@ -23,8 +23,8 @@ enum NetworkAudioQuality {
         let defaults = UserDefaults.standard
         guard defaults.bool(forKey: connectionAwareKey) else { return }
         if let wifiRaw = defaults.string(forKey: wifiOfficialKey),
-           BeansAudioQuality(rawValue: wifiRaw) != nil {
-            defaults.set(wifiRaw, forKey: "beans.audioQuality")
+           CoAudioQuality(rawValue: wifiRaw) != nil {
+            defaults.set(wifiRaw, forKey: "co.audioQuality")
         }
         defaults.set(false, forKey: connectionAwareKey)
     }
@@ -46,7 +46,7 @@ enum NetworkAudioQuality {
             return defaults.string(forKey: fallbackKey)
         }
 
-        switch BeansNetworkStatus.shared.connectionKind {
+        switch CoNetworkStatus.shared.connectionKind {
         case .wifi:
             return defaults.string(forKey: wifiKey) ?? defaults.string(forKey: fallbackKey)
         case .cellular:

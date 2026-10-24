@@ -87,7 +87,7 @@ private enum SearchCatalogProvider: String, CaseIterable, Identifiable, Hashable
 }
 
 /// 底部搜索控件在新系统使用可交互的原生液态玻璃，旧系统保留材质回退。
-struct BeansUnifiedSearchField: View {
+struct CoUnifiedSearchField: View {
     @Binding var text: String
     var controller: SearchFieldController? = nil
     @State private var fallbackController = SearchFieldController()
@@ -101,7 +101,7 @@ struct BeansUnifiedSearchField: View {
         fieldContent
             .frame(minHeight: 56)
             .background {
-                BeansGlass(shape: Capsule(), forceLiquid: true)
+                CoGlass(shape: Capsule(), forceLiquid: true)
             }
             .clipShape(Capsule())
     }
@@ -110,12 +110,12 @@ struct BeansUnifiedSearchField: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Color.beansComment)
+                .foregroundStyle(Color.coComment)
             SearchTextField(
                 text: $text,
                 controller: controller ?? fallbackController,
                 placeholder: placeholder,
-                textColor: UIColor.beansLabel,
+                textColor: UIColor.coLabel,
                 onSubmit: onSubmit
             )
             .frame(height: 32)
@@ -123,7 +123,7 @@ struct BeansUnifiedSearchField: View {
             ZStack {
                 ProgressView()
                     .controlSize(.small)
-                    .tint(Color.beansAmber)
+                    .tint(Color.coAmber)
                     .opacity(isSearching ? 1 : 0)
             }
             .frame(width: 20, height: 22)
@@ -135,7 +135,7 @@ struct BeansUnifiedSearchField: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 15))
-                        .foregroundStyle(Color.beansComment.opacity(0.85))
+                        .foregroundStyle(Color.coComment.opacity(0.85))
                 }
                 .buttonStyle(.plain)
                 .opacity(text.isEmpty ? 0 : 1)
@@ -165,13 +165,13 @@ struct SearchView: View {
     @EnvironmentObject private var auth: AuthStore
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.beansUsesSharedRootBackdrop) private var usesSharedRootBackdrop
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
+    @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
 
     @State private var keyword = ""
     @State private var provider: SearchCatalogProvider = .kugou
     /// 搜索固定为酷狗，不再有平台选择 UI；provider 只是搜索逻辑的常量。
-    @State private var homeSourceSnapshot = UserDefaults.standard.string(forKey: "beans.homeSource") ?? SearchProvider.kugou.rawValue
+    @State private var homeSourceSnapshot = UserDefaults.standard.string(forKey: "co.homeSource") ?? SearchProvider.kugou.rawValue
     /// 已加载热门搜索的 provider（避免切 tab 反复加载）
     @State private var hotLoadedProvider: SearchCatalogProvider?
     @State private var resultType: SearchResultType = .all
@@ -199,7 +199,7 @@ struct SearchView: View {
     @State private var searchController = SearchFieldController()
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     private var usesTabletHotSearchLayout: Bool {
@@ -211,7 +211,7 @@ struct SearchView: View {
     }
 
     private var musicSearchBody: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             pageContent
                 .navigationTitle(keyword.isEmpty ? "搜索" : keyword)
         }
@@ -275,7 +275,7 @@ struct SearchView: View {
         .onChange(of: resultType) { _ in
             let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
-            BeansHaptics.tap()
+            CoHaptics.tap()
             debounceTask?.cancel()
             Task {
                 if resultType == .playlist {
@@ -286,7 +286,7 @@ struct SearchView: View {
             }
         }
         .onAppear {
-            homeSourceSnapshot = UserDefaults.standard.string(forKey: "beans.homeSource")
+            homeSourceSnapshot = UserDefaults.standard.string(forKey: "co.homeSource")
                 ?? SearchProvider.kugou.rawValue
         }
         .sheet(item: $showAddToPlaylist) { song in
@@ -302,7 +302,7 @@ struct SearchView: View {
                 .environmentObject(theme)
         }
         .sheet(item: $selectedPlaylist) { playlist in
-            BeansNavigationStack {
+            CoNavigationStack {
                 PlaylistView(playlist: playlist)
                     .environmentObject(player)
                     .environmentObject(auth)
@@ -334,8 +334,8 @@ struct SearchView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .top)
             }
-            .beansScrollIndicatorsHidden()
-            .beansScrollDismissesKeyboard()
+            .coScrollIndicatorsHidden()
+            .coScrollDismissesKeyboard()
         }
     }
 
@@ -357,7 +357,7 @@ struct SearchView: View {
     // MARK: - 搜索框
 
     private var searchField: some View {
-        BeansUnifiedSearchField(
+        CoUnifiedSearchField(
             text: $keyword,
             controller: searchController,
             placeholder: provider == .bilibili ? "搜索视频、UP主或合集" : beansLocalized("搜索歌曲、歌手、专辑", "Search songs, artists, or albums"),
@@ -395,8 +395,8 @@ struct SearchView: View {
     }
 
     private func restoreHomeSourceSnapshot() {
-        guard UserDefaults.standard.string(forKey: "beans.homeSource") != homeSourceSnapshot else { return }
-        UserDefaults.standard.set(homeSourceSnapshot, forKey: "beans.homeSource")
+        guard UserDefaults.standard.string(forKey: "co.homeSource") != homeSourceSnapshot else { return }
+        UserDefaults.standard.set(homeSourceSnapshot, forKey: "co.homeSource")
     }
 
     // MARK: - 分类选择（歌曲 / 歌手 / 专辑）
@@ -407,21 +407,21 @@ struct SearchView: View {
                 ForEach(SearchResultType.allCases) { type in
                     Button {
                         guard resultType != type else { return }
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         resultType = type
                     } label: {
                         Text(LocalizedStringKey(type.rawValue))
-                            .font(BeansFont.appFont(13, .semibold))
-                            .foregroundStyle(resultType == type ? Color.beansAmber : Color.beansLabel)
+                            .font(CoFont.appFont(13, .semibold))
+                            .foregroundStyle(resultType == type ? Color.coAmber : Color.coLabel)
                             .frame(minWidth: 58, minHeight: 40)
                             .padding(.horizontal, 7)
                             .background {
-                                BeansGlass(shape: Capsule(), forceLiquid: true)
+                                CoGlass(shape: Capsule(), forceLiquid: true)
                             }
                             .overlay {
                                 Capsule()
                                     .strokeBorder(
-                                        resultType == type ? Color.beansAmber.opacity(0.72) : Color.beansLabel.opacity(0.08),
+                                        resultType == type ? Color.coAmber.opacity(0.72) : Color.coLabel.opacity(0.08),
                                         lineWidth: resultType == type ? 1.1 : 0.6
                                     )
                             }
@@ -442,14 +442,14 @@ struct SearchView: View {
             VStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 48, weight: .light))
-                    .foregroundStyle(Color.beansComment.opacity(0.72))
+                    .foregroundStyle(Color.coComment.opacity(0.72))
                     .padding(.top, 44)
                 Text("搜索歌曲、歌手、专辑或歌单")
-                    .font(BeansFont.appFont(18, .semibold))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(18, .semibold))
+                    .foregroundStyle(Color.coLabel)
                 Text("使用搜索框开始。")
-                    .font(BeansFont.appFont(13))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(13))
+                    .foregroundStyle(Color.coComment)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
@@ -457,8 +457,8 @@ struct SearchView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Label("热门搜索", systemImage: "flame.fill")
-                        .font(BeansFont.appFont(16, .bold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(16, .bold))
+                        .foregroundStyle(Color.coLabel)
                     Spacer(minLength: 0)
                 }
 
@@ -477,15 +477,15 @@ struct SearchView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Label("搜索历史", systemImage: "clock.arrow.circlepath")
-                            .font(BeansFont.appFont(16, .bold))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(16, .bold))
+                            .foregroundStyle(Color.coLabel)
                         Spacer(minLength: 0)
                         Button("清空") {
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                             historyStore.clear()
                         }
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(13))
+                        .foregroundStyle(Color.coComment)
                         .buttonStyle(.plain)
                     }
 
@@ -496,27 +496,27 @@ struct SearchView: View {
                                     performSearch(word)
                                 } label: {
                                     Text(word)
-                                        .font(BeansFont.appFont(13, .medium))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .font(CoFont.appFont(13, .medium))
+                                        .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 .buttonStyle(.plain)
 
                                 Button {
-                                    BeansHaptics.tap()
+                                    CoHaptics.tap()
                                     historyStore.remove(word)
                                 } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(Color.beansComment)
+                                        .foregroundStyle(Color.coComment)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("删除搜索记录")
                             }
                             .padding(.horizontal, 12)
                             .frame(minHeight: 44)
-                            .background { BeansGlass(shape: Capsule(), forceLiquid: true) }
+                            .background { CoGlass(shape: Capsule(), forceLiquid: true) }
                         }
                     }
                 }
@@ -536,22 +536,22 @@ struct SearchView: View {
 
     private func searchTag(_ word: String, icon: String) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             performSearch(word)
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                 Text(word)
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(13, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
-            .background { BeansGlass(shape: Capsule(), forceLiquid: true) }
+            .background { CoGlass(shape: Capsule(), forceLiquid: true) }
         }
         .buttonStyle(.plain)
     }
@@ -559,7 +559,7 @@ struct SearchView: View {
     private var hotSearchLoadingState: some View {
         LazyVGrid(columns: hotSearchColumns, alignment: .leading, spacing: 10) {
                 ForEach(0..<6, id: \.self) { _ in
-                BeansShimmerSkeleton(cornerRadius: 22)
+                CoShimmerSkeleton(cornerRadius: 22)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
         }
@@ -583,7 +583,7 @@ struct SearchView: View {
     private var searchResultsLoadingState: some View {
         ProgressView()
             .controlSize(.regular)
-            .tint(Color.beansAmber)
+            .tint(Color.coAmber)
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .top)
             .padding(.top, 20)
             .padding(.bottom, 120)
@@ -615,15 +615,15 @@ struct SearchView: View {
                             searchSectionHeader("单曲") { resultType = .song }
                             HStack {
                                 Text("\(min(songResults.count, 6)) 首歌曲")
-                                    .font(BeansFont.appFont(14, .medium))
-                                    .foregroundStyle(Color.beansComment)
+                                    .font(CoFont.appFont(14, .medium))
+                                    .foregroundStyle(Color.coComment)
                                 Spacer(minLength: 8)
                             }
                             ForEach(Array(songResults.prefix(6).enumerated()), id: \.element.identityKey) { index, song in
-                                BeansSearchSongRow(
+                                CoSearchSongRow(
                                     song: song,
                                     onTap: {
-                                        BeansHaptics.tap()
+                                        CoHaptics.tap()
                                         player.play(songs: songResults, startAt: index)
                                     },
                                     onPlayNext: {
@@ -664,7 +664,7 @@ struct SearchView: View {
                 .overlay(alignment: .top) {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                         .padding(.top, 6)
                         .opacity(searching ? 1 : 0)
                 }
@@ -677,11 +677,11 @@ struct SearchView: View {
             Button(action: action) {
                 HStack(spacing: 5) {
                     Text(title)
-                        .font(BeansFont.appFont(27, .bold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(27, .bold))
+                        .foregroundStyle(Color.coLabel)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                 }
             }
             .buttonStyle(.plain)
@@ -702,14 +702,14 @@ struct SearchView: View {
                     .padding(.vertical, 2)
                     .padding(.trailing, 20)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             .padding(.trailing, -20)
         }
     }
 
     private func artistCard(_ artist: Artist) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             searchController.dismissKeyboard()
             openArtist(artist)
         } label: {
@@ -717,8 +717,8 @@ struct SearchView: View {
                 CoverImage(url: artist.coverURL ?? artistCoverCache[artist.id], size: 124, cornerRadius: 62)
                     .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 1))
                 Text(artist.name)
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(13, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
             }
             .frame(width: 132)
@@ -729,19 +729,19 @@ struct SearchView: View {
 
     private func albumCard(_ album: Album) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             searchController.dismissKeyboard()
             selectedAlbum = album
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 CoverImage(url: album.coverURL, size: 132, cornerRadius: 12)
                 Text(album.name)
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(13, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
                 Text(album.artistName.isEmpty ? "未知歌手" : album.artistName)
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(Color.coComment)
                     .lineLimit(1)
             }
             .frame(width: 132, alignment: .leading)
@@ -752,22 +752,22 @@ struct SearchView: View {
 
     private func playlistCard(_ playlist: Playlist) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             searchController.dismissKeyboard()
             selectedPlaylist = playlist
         } label: {
             VStack(spacing: 7) {
                 CoverImage(url: playlist.coverURL, size: 132, cornerRadius: 12)
                 Text(playlist.name)
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(13, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .center)
                 Text([sourceDisplayName(playlist.source), playlist.creatorName]
                     .filter { !$0.isEmpty }
                     .joined(separator: " · "))
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(Color.coComment)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -779,7 +779,7 @@ struct SearchView: View {
 
     private func largePlaylistCard(_ playlist: Playlist) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             searchController.dismissKeyboard()
             selectedPlaylist = playlist
         } label: {
@@ -787,15 +787,15 @@ struct SearchView: View {
                 VStack(spacing: 8) {
                     CoverImage(url: playlist.coverURL, size: proxy.size.width, cornerRadius: 14)
                     Text(playlist.name)
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                        .foregroundStyle(Color.coLabel)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .center)
                     Text([sourceDisplayName(playlist.source), playlist.creatorName]
                         .filter { !$0.isEmpty }
                         .joined(separator: " · "))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
@@ -820,23 +820,23 @@ struct SearchView: View {
                     LazyVStack(spacing: 8) {
                         HStack(spacing: 8) {
                             Text(beansLocalized("找到 \(songResults.count) 首 · \(provider.rawValue)", "Found \(songResults.count) songs · \(provider.englishName)"))
-                                .font(BeansFont.appFont(12))
-                                .foregroundStyle(Color.beansComment)
+                                .font(CoFont.appFont(12))
+                                .foregroundStyle(Color.coComment)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.72)
                                 .truncationMode(.tail)
                                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                                 .layoutPriority(1)
                             Button {
-                                BeansHaptics.tap()
+                                CoHaptics.tap()
                                 player.play(songs: songResults, startAt: 0)
                             } label: {
                                 Label("播放全部", systemImage: "play.fill")
-                                    .font(BeansFont.appFont(12, .semibold))
-                                    .foregroundStyle(Color.beansAmber)
+                                    .font(CoFont.appFont(12, .semibold))
+                                    .foregroundStyle(Color.coAmber)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
-                            .background { BeansSurface(shape: Capsule()) }
+                            .background { CoSurface(shape: Capsule()) }
                             }
                             .buttonStyle(.plain)
                             .fixedSize(horizontal: true, vertical: false)
@@ -844,10 +844,10 @@ struct SearchView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
                         ForEach(Array(songResults.enumerated()), id: \.element.identityKey) { index, song in
-                            BeansSearchSongRow(
+                            CoSearchSongRow(
                                 song: song,
                                 onTap: {
-                                    BeansHaptics.tap()
+                                    CoHaptics.tap()
                                     player.play(songs: songResults, startAt: index)
                                 },
                                 onPlayNext: {
@@ -866,7 +866,7 @@ struct SearchView: View {
                 .overlay(alignment: .top) {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                         .padding(.top, 10)
                         .opacity(searching ? 1 : 0)
                 }
@@ -885,8 +885,8 @@ struct SearchView: View {
             } else {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(beansLocalized("找到 \(artistResults.count) 位 · \(provider.rawValue)", "Found \(artistResults.count) artists · \(provider.englishName)"))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                         .truncationMode(.tail)
@@ -908,7 +908,7 @@ struct SearchView: View {
                 .overlay(alignment: .top) {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                         .padding(.top, 10)
                         .opacity(searching ? 1 : 0)
                 }
@@ -927,8 +927,8 @@ struct SearchView: View {
             } else {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(beansLocalized("找到 \(albumResults.count) 张 · \(provider.rawValue)", "Found \(albumResults.count) albums · \(provider.englishName)"))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                         .truncationMode(.tail)
@@ -950,7 +950,7 @@ struct SearchView: View {
                 .overlay(alignment: .top) {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                         .padding(.top, 10)
                         .opacity(searching ? 1 : 0)
                 }
@@ -1085,7 +1085,7 @@ struct SearchView: View {
                             albums: albums,
                             playlists: playlists
                         )
-                        if !songs.isEmpty || !playlists.isEmpty { BeansHaptics.success() }
+                        if !songs.isEmpty || !playlists.isEmpty { CoHaptics.success() }
                     }
                 case .song:
                     let songs: [Song]
@@ -1115,7 +1115,7 @@ struct SearchView: View {
                             albums: [],
                             playlists: []
                         )
-                        if !completedSongs.isEmpty { BeansHaptics.success() }
+                        if !completedSongs.isEmpty { CoHaptics.success() }
                     }
                 case .artist:
                     let artists = await catalogArtists(keyword: trimmed, provider: selectedProvider, limit: 100)
@@ -1229,7 +1229,7 @@ struct SearchView: View {
                     )
                 }
                 searching = false
-                if !playlists.isEmpty { BeansHaptics.success() }
+                if !playlists.isEmpty { CoHaptics.success() }
             }
         }
         await playlistSearchTask?.value
@@ -1248,21 +1248,21 @@ struct SearchView: View {
 
     private func artistSearchResultCard(_ artist: Artist) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             searchController.dismissKeyboard()
             openArtist(artist)
         } label: {
             VStack(spacing: 10) {
                 ZStack {
-                    BeansGlass(shape: Circle(), forceLiquid: true)
+                    CoGlass(shape: Circle(), forceLiquid: true)
                     CoverImage(url: artist.coverURL, size: 120, cornerRadius: 60)
                         .clipShape(Circle())
                 }
                 .frame(width: 132, height: 132)
                 .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 1))
                 Text(artist.name)
-                    .font(BeansFont.appFont(14, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(14, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
             }
@@ -1278,7 +1278,7 @@ struct SearchView: View {
 
     private func albumSearchResultCard(_ album: Album) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             searchController.dismissKeyboard()
             selectedAlbum = album
         } label: {
@@ -1286,12 +1286,12 @@ struct SearchView: View {
                 CoverImage(url: album.coverURL, size: 148, cornerRadius: 16)
                     .frame(maxWidth: .infinity, alignment: .center)
                 Text(album.name)
-                    .font(BeansFont.appFont(14, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(14, .medium))
+                    .foregroundStyle(Color.coLabel)
                     .lineLimit(1)
                 Text(album.artistName.isEmpty ? "未知歌手" : album.artistName)
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(Color.coComment)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1320,7 +1320,7 @@ struct SearchView: View {
                 .overlay(alignment: .top) {
                     ProgressView()
                         .controlSize(.small)
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                         .padding(.top, 4)
                         .opacity(searching ? 1 : 0)
                 }
@@ -1414,12 +1414,12 @@ struct SearchView: View {
     }
 }
 
-private struct BeansSearchSongRow: View {
+private struct CoSearchSongRow: View {
     let song: Song
     let onTap: () -> Void
     let onPlayNext: () -> Void
     let onAddToPlaylist: () -> Void
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
 
     private var sourceName: String {
         switch song.source {
@@ -1441,13 +1441,13 @@ private struct BeansSearchSongRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
                         Text(song.name)
-                            .font(BeansFont.appFont(17, .semibold))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(17, .semibold))
+                            .foregroundStyle(Color.coLabel)
                             .lineLimit(1)
                             .truncationMode(.tail)
                         if showSongVIPBadge, song.isVIP {
                             Text("VIP")
-                                .font(BeansFont.appFont(10, .bold))
+                                .font(CoFont.appFont(10, .bold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -1455,19 +1455,19 @@ private struct BeansSearchSongRow: View {
                         }
                     }
                     Text(song.artists.isEmpty ? song.album : song.artists)
-                        .font(BeansFont.appFont(14))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(14))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Text("来源：\(sourceName)")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment.opacity(0.72))
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment.opacity(0.72))
                         .lineLimit(1)
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 Text(song.formattedDuration)
-                    .font(BeansFont.appFont(14, .regular, .default))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(14, .regular, .default))
+                    .foregroundStyle(Color.coComment)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
@@ -1476,13 +1476,13 @@ private struct BeansSearchSongRow: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 onPlayNext()
             } label: {
                 Label("下一首播放", systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 onAddToPlaylist()
             } label: {
                 Label("添加到歌单", systemImage: "text.badge.plus")
@@ -1537,7 +1537,7 @@ struct AlbumDetailView: View {
             if embeddedInNavigation {
                 albumPage
             } else {
-                BeansNavigationStack { albumPage }
+                CoNavigationStack { albumPage }
             }
         }
         .task { await load() }
@@ -1580,12 +1580,12 @@ struct AlbumDetailView: View {
                             }
                             if let description = resolvedAlbumDescription {
                                 Button {
-                                    BeansHaptics.tap()
+                                    CoHaptics.tap()
                                     showAlbumDescription = true
                                 } label: {
                                     HStack(alignment: .top, spacing: 6) {
                                         Text(description.replacingOccurrences(of: "\n", with: " "))
-                                            .font(BeansFont.appFont(15))
+                                            .font(CoFont.appFont(15))
                                             .foregroundStyle(.white.opacity(0.85))
                                             .lineLimit(2)
                                             .multilineTextAlignment(.leading)
@@ -1609,7 +1609,7 @@ struct AlbumDetailView: View {
                             }
                             if displayedAlbumTracks.isEmpty, !albumSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 Text("未找到相关歌曲")
-                                    .font(BeansFont.appFont(13))
+                                    .font(CoFont.appFont(13))
                                     .foregroundStyle(.white.opacity(0.6))
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.vertical, 12)
@@ -1639,7 +1639,7 @@ struct AlbumDetailView: View {
                         }
                         .padding(.bottom, 118)
                     }
-                    .beansScrollIndicatorsHidden()
+                    .coScrollIndicatorsHidden()
                     .ignoresSafeArea(edges: .top)
                     .coDetailScroll(detailScroll)
                 }
@@ -1654,7 +1654,7 @@ struct AlbumDetailView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showAlbumDescription) {
-            BeansLongDescriptionSheet(title: "专辑简介", text: resolvedAlbumDescription ?? "")
+            CoLongDescriptionSheet(title: "专辑简介", text: resolvedAlbumDescription ?? "")
         }
     }
 
@@ -1663,22 +1663,22 @@ struct AlbumDetailView: View {
     private var albumTitleBlock: some View {
         VStack(spacing: 4) {
             Text(album.name)
-                .font(BeansFont.appFont(28, .bold))
+                .font(CoFont.appFont(28, .bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .padding(.horizontal, 24)
             if album.artistName.isEmpty {
                 Text("未知歌手")
-                    .font(BeansFont.appFont(16, .medium))
+                    .font(CoFont.appFont(16, .medium))
                     .foregroundStyle(.white.opacity(0.85))
             } else {
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showArtistHome = true
                 } label: {
                     Text(album.artistName)
-                        .font(BeansFont.appFont(16, .medium))
+                        .font(CoFont.appFont(16, .medium))
                         .foregroundStyle(.white.opacity(0.85))
                         .lineLimit(1)
                 }
@@ -1688,7 +1688,7 @@ struct AlbumDetailView: View {
             Text([beansSongCountText(tracks.count), album.releaseCaption]
                 .filter { !$0.isEmpty }
                 .joined(separator: " · "))
-                .font(BeansFont.appFont(14))
+                .font(CoFont.appFont(14))
                 .foregroundStyle(.white.opacity(0.6))
         }
     }
@@ -1712,7 +1712,7 @@ struct AlbumDetailView: View {
     private var otherAlbumsShelf: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("该歌手的其他专辑")
-                .font(BeansFont.appFont(17, .bold))
+                .font(CoFont.appFont(17, .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
 
@@ -1720,19 +1720,19 @@ struct AlbumDetailView: View {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(otherAlbums) { item in
                         Button {
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                             selectedOtherAlbum = item
                         } label: {
                             VStack(alignment: .leading, spacing: 8) {
                                 CoverImage(url: item.coverURL, size: 160, cornerRadius: 12)
                                 Text(item.name)
-                                    .font(BeansFont.appFont(13, .medium))
+                                    .font(CoFont.appFont(13, .medium))
                                     .foregroundStyle(.white)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                     .frame(width: 160, alignment: .leading)
                                 Text(item.releaseCaption)
-                                    .font(BeansFont.appFont(11))
+                                    .font(CoFont.appFont(11))
                                     .foregroundStyle(.white.opacity(0.6))
                                     .lineLimit(1)
                                     .frame(width: 160, alignment: .leading)
@@ -1751,7 +1751,7 @@ struct AlbumDetailView: View {
     private var otherAlbumsLoadingShelf: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("该歌手的其他专辑")
-                .font(BeansFont.appFont(17, .bold))
+                .font(CoFont.appFont(17, .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
 
@@ -1759,11 +1759,11 @@ struct AlbumDetailView: View {
                 LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(0..<4, id: \.self) { _ in
                         VStack(alignment: .leading, spacing: 8) {
-                            BeansShimmerSkeleton(cornerRadius: 12)
+                            CoShimmerSkeleton(cornerRadius: 12)
                                 .frame(width: 160, height: 160)
-                            BeansShimmerSkeleton(cornerRadius: 5)
+                            CoShimmerSkeleton(cornerRadius: 5)
                                 .frame(width: 140, height: 13)
-                            BeansShimmerSkeleton(cornerRadius: 4)
+                            CoShimmerSkeleton(cornerRadius: 4)
                                 .frame(width: 86, height: 11)
                         }
                     }
@@ -1795,7 +1795,7 @@ struct AlbumDetailView: View {
                 isLoading = false
                 errorMessage = nil
             }
-            if cache.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
+            if cache.isFresh(cached), !CoNetworkStatus.shared.isReachable {
                 return
             }
         }
@@ -1846,7 +1846,7 @@ struct AlbumDetailView: View {
                 if tracks.isEmpty {
                     errorMessage = error.localizedDescription
                 } else {
-                    BeansLogger.shared.log(
+                    CoLogger.shared.log(
                         "专辑详情后台刷新失败，继续使用缓存 album=\(album.id) error=\(error.localizedDescription)",
                         level: .warn
                     )
@@ -1858,7 +1858,7 @@ struct AlbumDetailView: View {
     }
 
     private var albumDetailLoadingState: some View {
-        BeansDetailSongsLoadingState(coverSize: 92, rowCount: 9)
+        CoDetailSongsLoadingState(coverSize: 92, rowCount: 9)
     }
 
     private var albumSearchQuery: String {
@@ -1886,7 +1886,7 @@ struct AlbumDetailView: View {
         search: (String) async -> [Song]
     ) async -> [Song] {
         guard !normalizedArtist(album.artistName).isEmpty else {
-            BeansLogger.shared.log(
+            CoLogger.shared.log(
                 "专辑详情筛选跳过：缺少目标歌手，平台=\(album.source.rawValue) 专辑=\(album.name)",
                 level: .debug
             )
@@ -1898,7 +1898,7 @@ struct AlbumDetailView: View {
             guard !trimmed.isEmpty, tried.insert(trimmed).inserted else { continue }
             let songs = await search(trimmed)
             let matches = songs.filter(albumSongMatches)
-            BeansLogger.shared.log(
+            CoLogger.shared.log(
                 "专辑详情筛选：平台=\(album.source.rawValue) 查询=\(trimmed) 原始=\(songs.count) 专辑歌手匹配=\(matches.count)",
                 level: .debug
             )
@@ -2037,7 +2037,7 @@ struct NativeSearchBar: UIViewRepresentable {
         bar.returnKeyType = .search
         bar.delegate = context.coordinator
         bar.text = text
-        bar.searchTextField.font = BeansFont.appUIFont(15)
+        bar.searchTextField.font = CoFont.appUIFont(15)
         controller?.searchBar = bar
         return bar
     }
@@ -2048,7 +2048,7 @@ struct NativeSearchBar: UIViewRepresentable {
             uiView.text = text
         }
         uiView.placeholder = NSLocalizedString(placeholder, comment: "")
-        uiView.searchTextField.font = BeansFont.appUIFont(15)
+        uiView.searchTextField.font = CoFont.appUIFont(15)
         controller?.searchBar = uiView
     }
 
@@ -2092,7 +2092,7 @@ struct SearchTextField: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextField {
         let field = UITextField()
         field.placeholder = NSLocalizedString(placeholder, comment: "")
-        field.font = BeansFont.appUIFont(15)
+        field.font = CoFont.appUIFont(15)
         field.textColor = textColor
         field.autocorrectionType = .no
         field.autocapitalizationType = .none
@@ -2116,7 +2116,7 @@ struct SearchTextField: UIViewRepresentable {
         }
         controller.textField = uiView
         uiView.placeholder = NSLocalizedString(placeholder, comment: "")
-        uiView.font = BeansFont.appUIFont(15)
+        uiView.font = CoFont.appUIFont(15)
         uiView.textColor = textColor
         uiView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         uiView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

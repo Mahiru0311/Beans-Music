@@ -3,8 +3,8 @@ import SwiftUI
 import UIKit
 
 /// Rebuilt from the 2.0.3 reflected header fields. Exact timing and layout require device comparison.
-struct BeansImmersiveDetailHeader: View {
-    static let enabledKey = "beans.immersiveDetail.enabled"
+struct CoImmersiveDetailHeader: View {
+    static let enabledKey = "co.immersiveDetail.enabled"
     let coverURL: URL?
     let title: String
     var subtitle = ""
@@ -14,7 +14,7 @@ struct BeansImmersiveDetailHeader: View {
     var onSubtitle: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expanded = false
-    @State private var palette = Color.beansAmber
+    @State private var palette = Color.coAmber
 
     var body: some View {
         VStack(spacing: 16) {
@@ -25,17 +25,17 @@ struct BeansImmersiveDetailHeader: View {
                     .frame(maxWidth: .infinity)
                     .shadow(color: palette.opacity(0.32), radius: 24, y: 12)
             }.frame(height: 240)
-            Text(title).font(BeansFont.appFont(28, .bold)).multilineTextAlignment(.center)
-                .accessibilityIdentifier("beans.immersive.title")
+            Text(title).font(CoFont.appFont(28, .bold)).multilineTextAlignment(.center)
+                .accessibilityIdentifier("co.immersive.title")
             if !subtitle.isEmpty {
                 Button { onSubtitle?() } label: {
-                    Text(subtitle).font(BeansFont.appFont(15, .medium)).foregroundStyle(palette)
+                    Text(subtitle).font(CoFont.appFont(15, .medium)).foregroundStyle(palette)
                 }.buttonStyle(.plain).disabled(onSubtitle == nil)
-                    .accessibilityIdentifier("beans.immersive.subtitle")
+                    .accessibilityIdentifier("co.immersive.subtitle")
             }
             if !metadata.isEmpty {
-                Text(metadata).font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
-                    .accessibilityIdentifier("beans.immersive.metadata")
+                Text(metadata).font(CoFont.appFont(12)).foregroundStyle(Color.coComment)
+                    .accessibilityIdentifier("co.immersive.metadata")
             }
             if let descriptionText, !descriptionText.isEmpty {
                 Button {
@@ -44,8 +44,8 @@ struct BeansImmersiveDetailHeader: View {
                     VStack(spacing: 6) {
                         Text(descriptionText).lineLimit(expanded ? nil : 3).multilineTextAlignment(.leading)
                         Text(expanded ? "收起简介" : "展开简介").font(.caption.weight(.semibold))
-                    }.foregroundStyle(Color.beansComment)
-                }.buttonStyle(.plain).accessibilityIdentifier("beans.immersive.description-more")
+                    }.foregroundStyle(Color.coComment)
+                }.buttonStyle(.plain).accessibilityIdentifier("co.immersive.description-more")
             }
         }
         .padding(24)
@@ -53,7 +53,7 @@ struct BeansImmersiveDetailHeader: View {
         .background {
             LinearGradient(colors: [palette.opacity(0.25), palette.opacity(0.02)], startPoint: .top, endPoint: .bottom)
         }
-        .accessibilityIdentifier("beans.immersive.header")
+        .accessibilityIdentifier("co.immersive.header")
         .task(id: coverURL) { await loadPalette() }
     }
 

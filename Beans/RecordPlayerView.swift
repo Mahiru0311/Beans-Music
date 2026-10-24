@@ -28,7 +28,7 @@ struct RecordPlayerView: View {
     @State private var showQueue = false
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
-    @AppStorage("beans.audioQuality") private var playbackQualityRaw = BeansAudioQuality.hires.rawValue
+    @AppStorage("co.audioQuality") private var playbackQualityRaw = CoAudioQuality.hires.rawValue
 
     init(
         song: Song?,
@@ -97,7 +97,7 @@ struct RecordPlayerView: View {
             )
         }
         .sheet(isPresented: $showSoftwareVolume) {
-            BeansSoftwareVolumeSheetHost()
+            CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
         }
         .overlay(alignment: .top) {
@@ -341,7 +341,7 @@ struct RecordPlayerView: View {
     private var trackMetadata: some View {
         VStack(spacing: 5) {
             Text(song?.name ?? "")
-                .font(BeansFont.appFont(21, .bold))
+                .font(CoFont.appFont(21, .bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .contextMenu {
@@ -350,21 +350,21 @@ struct RecordPlayerView: View {
                     }
                 }
             Text(song.map { "\($0.artists) — \($0.album)" } ?? "")
-                .font(BeansFont.appFont(13.5))
+                .font(CoFont.appFont(13.5))
                 .foregroundStyle(.white.opacity(0.65))
                 .lineLimit(1)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onArtist)
             Text("来源：\(sourceName)")
-                .font(BeansFont.appFont(11))
+                .font(CoFont.appFont(11))
                 .foregroundStyle(.white.opacity(0.5))
             HStack(spacing: 8) {
                 Menu {
                     CoAudioQualityMenu()
                         .environmentObject(player)
                 } label: {
-                    Label("音质：\(BeansAudioQuality(rawValue: playbackQualityRaw)?.displayName ?? BeansAudioQuality.hires.displayName)", systemImage: "waveform")
-                        .font(BeansFont.appFont(12, .semibold))
+                    Label("音质：\(CoAudioQuality(rawValue: playbackQualityRaw)?.displayName ?? CoAudioQuality.hires.displayName)", systemImage: "waveform")
+                        .font(CoFont.appFont(12, .semibold))
                         .foregroundStyle(.white.opacity(0.9))
                         .padding(.horizontal, 12)
                         .frame(minHeight: 44)
@@ -379,7 +379,7 @@ struct RecordPlayerView: View {
     private func metadataButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
-                .font(BeansFont.appFont(12, .semibold))
+                .font(CoFont.appFont(12, .semibold))
                 .foregroundStyle(.white.opacity(0.9))
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)
@@ -493,7 +493,7 @@ struct RecordPlayerView: View {
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(song?.name ?? "未在播放")
-                        .font(BeansFont.appFont(16, .bold))
+                        .font(CoFont.appFont(16, .bold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .contextMenu {
@@ -502,7 +502,7 @@ struct RecordPlayerView: View {
                             }
                         }
                     Text(song?.artists ?? "")
-                        .font(BeansFont.appFont(12, .medium))
+                        .font(CoFont.appFont(12, .medium))
                         .foregroundStyle(.white.opacity(0.62))
                         .lineLimit(1)
                         .contentShape(Rectangle())
@@ -539,7 +539,7 @@ struct RecordPlayerView: View {
             Spacer()
             if showLyrics {
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     withAnimation(.easeInOut(duration: 0.22)) {
                         showLyrics = false
                     }
@@ -617,7 +617,7 @@ struct RecordPlayerView: View {
         guard let title = song?.name.trimmingCharacters(in: .whitespacesAndNewlines),
               !title.isEmpty else { return }
         UIPasteboard.general.string = title
-        BeansHaptics.success()
+        CoHaptics.success()
         ToastCenter.shared.show("歌名已复制")
     }
 
@@ -639,9 +639,9 @@ struct RecordPlayerView: View {
 /// 灰字显示“实际：X”，拿不到时不显示、不编档位（只看勾选的偏好）。
 struct CoAudioQualityMenu: View {
     @EnvironmentObject private var player: PlayerManager
-    @AppStorage("beans.audioQuality") private var selectedRaw = BeansAudioQuality.hires.rawValue
+    @AppStorage("co.audioQuality") private var selectedRaw = CoAudioQuality.hires.rawValue
 
-    static func normalized(_ quality: BeansAudioQuality) -> BeansAudioQuality {
+    static func normalized(_ quality: CoAudioQuality) -> CoAudioQuality {
         switch quality {
         case .higher: return .exhigh
         case .master: return .hires
@@ -659,12 +659,12 @@ struct CoAudioQualityMenu: View {
         }
     }
 
-    private var tiers: [(quality: BeansAudioQuality, note: String)] {
+    private var tiers: [(quality: CoAudioQuality, note: String)] {
         [(.standard, "128"), (.exhigh, "320"), (.lossless, "FLAC"), (.hires, "Hi-Res")]
     }
 
-    private var selectedTier: BeansAudioQuality {
-        Self.normalized(BeansAudioQuality(rawValue: selectedRaw) ?? .hires)
+    private var selectedTier: CoAudioQuality {
+        Self.normalized(CoAudioQuality(rawValue: selectedRaw) ?? .hires)
     }
 
     var body: some View {
@@ -748,7 +748,7 @@ private struct RecordModeMiniLyrics: View {
 
     private func line(_ line: LyricLine?, emphasized: Bool) -> some View {
         Text(line?.text.isEmpty == false ? line!.text : " ")
-            .font(BeansFont.appFont(emphasized ? 17 : 14, emphasized ? .bold : .medium))
+            .font(CoFont.appFont(emphasized ? 17 : 14, emphasized ? .bold : .medium))
             .foregroundStyle(.white.opacity(emphasized ? 1 : 0.45))
             .lineLimit(1)
             .multilineTextAlignment(.center)
@@ -803,7 +803,7 @@ private struct RecordModeScrubber: View {
                 Spacer()
                 Text(beansTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
             }
-            .font(BeansFont.appFont(10.5, .regular, .default))
+            .font(CoFont.appFont(10.5, .regular, .default))
             .foregroundStyle(.white.opacity(0.55))
         }
     }
@@ -941,7 +941,7 @@ private final class SmoothRecordDiscUIView: UIView {
     private var renderedSize: CGFloat = -1
     private var renderedPlaysCoverVideoAudio = false
     private var renderedIsPlaying = false
-    private let rotationKey = "beans.recordDiscRotation"
+    private let rotationKey = "co.recordDiscRotation"
 
     override init(frame: CGRect) {
         super.init(frame: frame)

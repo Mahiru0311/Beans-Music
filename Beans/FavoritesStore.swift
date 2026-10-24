@@ -10,8 +10,8 @@ final class FavoritesStore: ObservableObject {
     @Published private(set) var kugouOfficialFavoriteSongs: [Song] = []
 
     private let defaults = UserDefaults.standard
-    private let kugouKey = "beans.fav.kugou.v1"
-    private let kugouOfficialKey = "beans.fav.kugou.official.v1"
+    private let kugouKey = "co.fav.kugou.v1"
+    private let kugouOfficialKey = "co.fav.kugou.official.v1"
 
     private init() {
         kugouFavoriteSongs = Self.loadSongs(kugouKey)
@@ -19,7 +19,7 @@ final class FavoritesStore: ObservableObject {
         // 一次性找回：旧版播放页爱心只写进了本地歌单库（“我的收藏歌单”），
         // 没写进这里，导致我的页“我喜欢”一直是空。只迁这一个默认收藏歌单，
         // 用户自建的其他本地歌单不迁，避免把“加入某歌单”误当成点爱心。
-        let migrationKey = "beans.fav.migratedLocalDefault.v1"
+        let migrationKey = "co.fav.migratedLocalDefault.v1"
         if !defaults.bool(forKey: migrationKey) {
             let localSongs = LocalLibraryStore.shared.playlists
                 .first(where: { $0.name == "我的收藏歌单" })?.songs ?? []

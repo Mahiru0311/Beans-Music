@@ -29,7 +29,7 @@ final class LyricsCache {
         }
     }
 
-    private let prefix = "beans.lyrics.cache.v1."
+    private let prefix = "co.lyrics.cache.v1."
     private let maxAge: TimeInterval = 14 * 24 * 60 * 60
 
     private init() {}

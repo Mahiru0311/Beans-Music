@@ -44,7 +44,7 @@ final class CoverBlurView: UIView {
     private var currentURL: URL?
     private var animationsEnabled = true
     private static let imageCache = NSCache<NSURL, UIImage>()
-    private static let blurQueue = DispatchQueue(label: "beans.coverblur", qos: .utility)
+    private static let blurQueue = DispatchQueue(label: "co.coverblur", qos: .utility)
     private static let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
     override init(frame: CGRect) {
@@ -85,9 +85,9 @@ final class CoverBlurView: UIView {
     private func startBackgroundAnimations() {
         guard animationsEnabled else { return }
         // 重新触发时先取消旧动画，避免堆叠
-        imageView.layer.removeAnimation(forKey: "beansBgBreathe")
-        gradientLayer.removeAnimation(forKey: "beansGradStart")
-        gradientLayer.removeAnimation(forKey: "beansGradEnd")
+        imageView.layer.removeAnimation(forKey: "coBgBreathe")
+        gradientLayer.removeAnimation(forKey: "coGradStart")
+        gradientLayer.removeAnimation(forKey: "coGradEnd")
         imageView.transform = .identity
 
         let scale = CABasicAnimation(keyPath: "transform.scale")
@@ -97,7 +97,7 @@ final class CoverBlurView: UIView {
         scale.autoreverses = true
         scale.repeatCount = .infinity
         scale.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        imageView.layer.add(scale, forKey: "beansBgBreathe")
+        imageView.layer.add(scale, forKey: "coBgBreathe")
 
         let start = CABasicAnimation(keyPath: "startPoint")
         start.fromValue = NSValue(cgPoint: CGPoint(x: 0.5, y: 0))
@@ -106,7 +106,7 @@ final class CoverBlurView: UIView {
         start.autoreverses = true
         start.repeatCount = .infinity
         start.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        gradientLayer.add(start, forKey: "beansGradStart")
+        gradientLayer.add(start, forKey: "coGradStart")
 
         let end = CABasicAnimation(keyPath: "endPoint")
         end.fromValue = NSValue(cgPoint: CGPoint(x: 0.5, y: 1))
@@ -115,7 +115,7 @@ final class CoverBlurView: UIView {
         end.autoreverses = true
         end.repeatCount = .infinity
         end.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        gradientLayer.add(end, forKey: "beansGradEnd")
+        gradientLayer.add(end, forKey: "coGradEnd")
     }
 
     func setAnimationsEnabled(_ enabled: Bool) {
@@ -124,9 +124,9 @@ final class CoverBlurView: UIView {
         if enabled {
             startBackgroundAnimations()
         } else {
-            imageView.layer.removeAnimation(forKey: "beansBgBreathe")
-            gradientLayer.removeAnimation(forKey: "beansGradStart")
-            gradientLayer.removeAnimation(forKey: "beansGradEnd")
+            imageView.layer.removeAnimation(forKey: "coBgBreathe")
+            gradientLayer.removeAnimation(forKey: "coGradStart")
+            gradientLayer.removeAnimation(forKey: "coGradEnd")
         }
     }
 

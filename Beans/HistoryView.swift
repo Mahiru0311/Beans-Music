@@ -6,7 +6,7 @@ struct HistoryView: View {
     @State private var showClearConfirm = false
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
                 if player.history.isEmpty {
@@ -22,7 +22,7 @@ struct HistoryView: View {
                             player.removeHistory(at: offsets)
                         }
                     }
-                    .beansScrollContentBackgroundHidden()
+                    .coScrollContentBackgroundHidden()
                     .listStyle(.plain)
                 }
             }

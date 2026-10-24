@@ -59,7 +59,7 @@ struct ArtistHomeSheet: View {
     @State private var detailPageTint = coDetailDarkBackground
     @State private var selectedAlbum: Album?
     @State private var loadTask: Task<Void, Never>?
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
 
     private var cacheKey: String {
         let identity = artistID?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -72,8 +72,8 @@ struct ArtistHomeSheet: View {
             if embeddedInNavigation {
                 artistPage
             } else {
-                BeansNavigationStack { artistPage }
-                    .modifier(BeansSheetModifier(detents: [.large], dragIndicator: true))
+                CoNavigationStack { artistPage }
+                    .modifier(CoSheetModifier(detents: [.large], dragIndicator: true))
             }
         }
         .onAppear {
@@ -130,7 +130,7 @@ struct ArtistHomeSheet: View {
                             }
                             .padding(.bottom, 16)
                         }
-                        .beansScrollIndicatorsHidden()
+                        .coScrollIndicatorsHidden()
                         .ignoresSafeArea(edges: .top)
                         .coDetailScroll(detailScroll)
                     }
@@ -152,13 +152,13 @@ struct ArtistHomeSheet: View {
     private var artistTitleBlock: some View {
         VStack(spacing: 4) {
             Text(artist?.name ?? artistName)
-                .font(BeansFont.appFont(28, .bold))
+                .font(CoFont.appFont(28, .bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .padding(.horizontal, 24)
             Text(beansLocalized("热门歌曲 \(hotSongs.count) 首 · 专辑 \(albums.count) 张", "Popular songs: \(hotSongs.count) · Albums: \(albums.count)"))
-                .font(BeansFont.appFont(14))
+                .font(CoFont.appFont(14))
                 .foregroundStyle(.white.opacity(0.6))
         }
     }
@@ -167,61 +167,61 @@ struct ArtistHomeSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
-                    BeansShimmerSkeleton(cornerRadius: 36)
+                    CoShimmerSkeleton(cornerRadius: 36)
                         .frame(width: 72, height: 72)
                     VStack(alignment: .leading, spacing: 9) {
-                        BeansShimmerSkeleton(cornerRadius: 6)
+                        CoShimmerSkeleton(cornerRadius: 6)
                             .frame(width: 150, height: 18)
-                        BeansShimmerSkeleton(cornerRadius: 5)
+                        CoShimmerSkeleton(cornerRadius: 5)
                             .frame(width: 180, height: 12)
                     }
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 16)
 
-                BeansShimmerSkeleton(cornerRadius: 7)
+                CoShimmerSkeleton(cornerRadius: 7)
                     .frame(width: 86, height: 18)
                     .padding(.horizontal, 16)
 
                 HStack(spacing: 10) {
-                    BeansShimmerSkeleton(cornerRadius: 16)
+                    CoShimmerSkeleton(cornerRadius: 16)
                         .frame(height: 38)
-                    BeansShimmerSkeleton(cornerRadius: 16)
+                    CoShimmerSkeleton(cornerRadius: 16)
                         .frame(height: 38)
                 }
                 .padding(.horizontal, 16)
 
-                BeansSongRowsLoadingState(rowCount: 8, coverSize: 40, showsRank: true, horizontalPadding: 16)
+                CoSongRowsLoadingState(rowCount: 8, coverSize: 40, showsRank: true, horizontalPadding: 16)
             }
             .padding(.top, 6)
             .padding(.bottom, 170)
         }
-        .beansScrollIndicatorsHidden()
+        .coScrollIndicatorsHidden()
     }
 
     private var hotSongsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("热门歌曲")
-                .font(BeansFont.appFont(17, .bold))
+                .font(CoFont.appFont(17, .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
             // 播放全部已移到标题下的新版控制排（168×50pt 胶囊），这里不再重复放一个按钮。
             if hotSongs.isEmpty {
                 Text("暂无歌曲")
-                    .font(BeansFont.appFont(13))
+                    .font(CoFont.appFont(13))
                     .foregroundStyle(.white.opacity(0.6))
                     .padding(.horizontal, 16)
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(displayedHotSongs.enumerated()), id: \.element.identityKey) { index, song in
                         Button {
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                             player.play(songs: displayedHotSongs, startAt: index)
                         } label: {
                             HStack(spacing: 12) {
                                 Text("\(index + 1)")
-                                    .font(BeansFont.appFont(13, .semibold, .default))
-                                    .foregroundStyle(index < 3 ? Color.beansAmber : .white.opacity(0.6))
+                                    .font(CoFont.appFont(13, .semibold, .default))
+                                    .foregroundStyle(index < 3 ? Color.coAmber : .white.opacity(0.6))
                                     .monospacedDigit()
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
@@ -230,7 +230,7 @@ struct ArtistHomeSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(spacing: 6) {
                                         Text(song.name)
-                                            .font(BeansFont.appFont(14, .medium))
+                                            .font(CoFont.appFont(14, .medium))
                                             .foregroundStyle(.white)
                                             .lineLimit(1)
                                             .truncationMode(.tail)
@@ -241,7 +241,7 @@ struct ArtistHomeSheet: View {
                                     }
                                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                                     Text(song.album)
-                                        .font(BeansFont.appFont(11))
+                                        .font(CoFont.appFont(11))
                                         .foregroundStyle(.white.opacity(0.6))
                                         .lineLimit(1)
                                         .truncationMode(.tail)
@@ -303,7 +303,7 @@ struct ArtistHomeSheet: View {
         if !albums.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(BeansFont.appFont(17, .bold))
+                    .font(CoFont.appFont(17, .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
 
@@ -316,13 +316,13 @@ struct ArtistHomeSheet: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     CoverImage(url: album.coverURL, size: 160, cornerRadius: 12)
                                     Text(album.name)
-                                        .font(BeansFont.appFont(13, .medium))
+                                        .font(CoFont.appFont(13, .medium))
                                         .foregroundStyle(.white)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
                                         .frame(width: 160, alignment: .leading)
                                     Text(album.releaseCaption)
-                                        .font(BeansFont.appFont(11))
+                                        .font(CoFont.appFont(11))
                                         .foregroundStyle(.white.opacity(0.6))
                                         .lineLimit(1)
                                         .frame(width: 160, alignment: .leading)
@@ -340,7 +340,7 @@ struct ArtistHomeSheet: View {
     }
 
     private func openAlbum(_ album: Album) {
-        BeansHaptics.tap()
+        CoHaptics.tap()
         selectedAlbum = album
     }
 
@@ -353,7 +353,7 @@ struct ArtistHomeSheet: View {
             albums = cached.albums
             loading = false
             errorMessage = nil
-            if cache.isFresh(cached), !BeansNetworkStatus.shared.isReachable {
+            if cache.isFresh(cached), !CoNetworkStatus.shared.isReachable {
                 return
             }
         } else {
@@ -471,7 +471,7 @@ struct ArtistHomeSheet: View {
         if !fetchedAlbums.isEmpty {
             albums = fetchedAlbums
         }
-        BeansLogger.shared.log("酷狗歌手主页完成：artist=\(artistName) songs=\(hotSongs.count)", level: .debug)
+        CoLogger.shared.log("酷狗歌手主页完成：artist=\(artistName) songs=\(hotSongs.count)", level: .debug)
         loading = false
     }
 

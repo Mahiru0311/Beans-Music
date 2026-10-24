@@ -13,11 +13,11 @@ struct AddToPlaylistSheet: View {
 
     var body: some View {
         let _ = theme.accent
-        BeansNavigationStack {
+        CoNavigationStack {
             List {
                 if auth.playlists.isEmpty {
                     Text("暂无歌单，请先创建一个")
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                 } else {
                     Section("选择歌单") {
                         ForEach(auth.playlists) { playlist in
@@ -28,12 +28,12 @@ struct AddToPlaylistSheet: View {
                                     CoverImage(url: playlist.coverURL, size: 38, cornerRadius: 8)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(playlist.name)
-                                            .font(BeansFont.appFont(15))
-                                            .foregroundStyle(Color.beansLabel)
+                                            .font(CoFont.appFont(15))
+                                            .foregroundStyle(Color.coLabel)
                                             .lineLimit(1)
                                         Text(beansSongCountText(playlist.trackCount))
-                                            .font(BeansFont.appFont(11))
-                                            .foregroundStyle(Color.beansComment)
+                                            .font(CoFont.appFont(11))
+                                            .foregroundStyle(Color.coComment)
                                     }
                                     Spacer()
                                 }
@@ -50,8 +50,8 @@ struct AddToPlaylistSheet: View {
                             Task { await createAndAdd() }
                         } label: {
                             Text("创建并添加")
-                                .font(BeansFont.appFont(15, .semibold))
-                                .foregroundStyle(Color.beansAmber)
+                                .font(CoFont.appFont(15, .semibold))
+                                .foregroundStyle(Color.coAmber)
                         }
                     }
                 } else {
@@ -65,8 +65,8 @@ struct AddToPlaylistSheet: View {
                 if let message {
                     Section {
                         Text(message)
-                            .font(BeansFont.appFont(13))
-                            .foregroundStyle(Color.beansSage)
+                            .font(CoFont.appFont(13))
+                            .foregroundStyle(Color.coSage)
                     }
                 }
             }

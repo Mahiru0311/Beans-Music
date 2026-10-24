@@ -8,7 +8,7 @@ struct OnboardingView: View {
     let onFinish: () -> Void
     @State private var page = 0
     @State private var typed = ""
-    @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
+    @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
     private let totalPages = 4
@@ -23,10 +23,10 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Color.beansBackground.ignoresSafeArea()
+            Color.coBackground.ignoresSafeArea()
             // 主题色光晕（跟随当前配色主题）
             LinearGradient(
-                colors: [Color.clear, Color.beansHighlight.opacity(0.12), Color.clear],
+                colors: [Color.clear, Color.coHighlight.opacity(0.12), Color.clear],
                 startPoint: .top, endPoint: .bottom
             )
             .ignoresSafeArea()
@@ -54,7 +54,7 @@ struct OnboardingView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .tint(Color.beansHighlight)
+                .tint(Color.coHighlight)
                 .padding(.top, 14)
                 .padding(.trailing, 18)
             }
@@ -69,7 +69,7 @@ struct OnboardingView: View {
             HStack(spacing: 8) {
                 ForEach(0..<totalPages, id: \.self) { i in
                     Capsule()
-                        .fill(i == page ? Color.beansHighlight : Color.beansLabel.opacity(0.22))
+                        .fill(i == page ? Color.coHighlight : Color.coLabel.opacity(0.22))
                         .frame(width: i == page ? 22 : 7, height: 7)
                         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: page)
                 }
@@ -81,30 +81,30 @@ struct OnboardingView: View {
                     withAnimation(.easeInOut(duration: 0.3)) { page += 1 }
                 } label: {
                     Text(nextText)
-                        .font(BeansFont.appFont(16, .bold))
+                        .font(CoFont.appFont(16, .bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(LinearGradient.beansAccent)
+                                .fill(LinearGradient.coAccent)
                         )
-                        .beansCardShadow(radius: 10, y: 4)
+                        .coCardShadow(radius: 10, y: 4)
                 }
 
                 Button {
                     withAnimation(.easeInOut(duration: 0.3)) { page = totalPages - 1 }
                 } label: {
                     Text(skipText)
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansSecondary)
+                        .font(CoFont.appFont(13))
+                        .foregroundStyle(Color.coSecondary)
                 }
             } else {
                 // 免责确认输入框（上方固定提示，输入时不会消失）
                 VStack(alignment: .leading, spacing: 8) {
                     Text(LocalizedStringKey("请输入："))
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansHighlight)
+                        .font(CoFont.appFont(13))
+                        .foregroundStyle(Color.coHighlight)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -112,9 +112,9 @@ struct OnboardingView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "lock.shield.fill")
                             .font(.system(size: 15))
-                            .foregroundStyle(LinearGradient.beansAccent)
+                            .foregroundStyle(LinearGradient.coAccent)
                         TextField(confirmText, text: $typed)
-                            .font(BeansFont.appFont(14))
+                            .font(CoFont.appFont(14))
                             .textFieldStyle(.plain)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
@@ -123,12 +123,12 @@ struct OnboardingView: View {
                                 withAnimation(.easeOut(duration: 0.2)) { typed = confirmText }
                             } label: {
                                 Text(isEnglish ? "Fill" : "一键填入")
-                                    .font(BeansFont.appFont(12, .semibold))
+                                    .font(CoFont.appFont(12, .semibold))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 12)
                                     .frame(height: 30)
                                     .background(
-                                        Capsule().fill(LinearGradient.beansAccent)
+                                        Capsule().fill(LinearGradient.coAccent)
                                     )
                             }
                             .buttonStyle(.plain)
@@ -138,12 +138,12 @@ struct OnboardingView: View {
                     .frame(height: 50)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.beansCard.opacity(0.85))
+                            .fill(Color.coCard.opacity(0.85))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(
-                                Color.beansHighlight.opacity(typed.isEmpty ? 0.3 : 0.75),
+                                Color.coHighlight.opacity(typed.isEmpty ? 0.3 : 0.75),
                                 lineWidth: 1.2
                             )
                     )
@@ -153,15 +153,15 @@ struct OnboardingView: View {
                     onFinish()
                 } label: {
                     Text(enterText)
-                        .font(BeansFont.appFont(16, .bold))
+                        .font(CoFont.appFont(16, .bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(typed == confirmText ? Color.beansHighlight : Color.beansHighlight.opacity(0.35))
+                                .fill(typed == confirmText ? Color.coHighlight : Color.coHighlight.opacity(0.35))
                         )
-                        .beansCardShadow(radius: 10, y: 4)
+                        .coCardShadow(radius: 10, y: 4)
                 }
                 .disabled(typed != confirmText)
                 .animation(.easeOut(duration: 0.2), value: typed == confirmText)
@@ -180,16 +180,16 @@ struct OnboardingView: View {
                 .scaledToFill()
                 .frame(width: 132, height: 132)
                 .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .shadow(color: Color.beansHighlight.opacity(0.45), radius: 24, y: 12)
+                .shadow(color: Color.coHighlight.opacity(0.45), radius: 24, y: 12)
                 .padding(.bottom, 6)
 
             Text(isEnglish ? "Welcome to Co" : "欢迎使用 Co")
-                .font(BeansFont.appFont(30, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(30, .bold))
+                .foregroundStyle(Color.coLabel)
 
             Text(isEnglish ? "Native Liquid Glass on iOS 26 · Kugou Music\nPure SwiftUI · Fully open source" : "iOS 26 原生液态玻璃 · 酷狗音乐\n纯 SwiftUI · 完全开源")
-                .font(BeansFont.appFont(15))
-                .foregroundStyle(Color.beansSecondary)
+                .font(CoFont.appFont(15))
+                .foregroundStyle(Color.coSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(6)
             Spacer()
@@ -205,21 +205,21 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: "paintpalette.fill")
                 .font(.system(size: 40))
-                .foregroundStyle(LinearGradient.beansAccent)
+                .foregroundStyle(LinearGradient.coAccent)
 
             Text(isEnglish ? "Your player, your rules" : "你的播放器，你做主")
-                .font(BeansFont.appFont(26, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(26, .bold))
+                .foregroundStyle(Color.coLabel)
 
             Text(isEnglish ? "Customize everything from the global theme to each player component" : "从全局主题到播放器每个组件，全部可以自定义")
-                .font(BeansFont.appFont(14))
-                .foregroundStyle(Color.beansSecondary)
+                .font(CoFont.appFont(14))
+                .foregroundStyle(Color.coSecondary)
 
             VStack(spacing: 12) {
-                diyRow(icon: "circle.hexagongrid.fill", tint: Color.beansHighlight,
+                diyRow(icon: "circle.hexagongrid.fill", tint: Color.coHighlight,
                        title: isEnglish ? "Global Theme Colors" : "全局主题色盘",
                        detail: isEnglish ? "Nine themes and custom colors across the app" : "9 套主题一键换肤，色盘任选颜色，全 App 跟随")
-                diyRow(icon: "photo.on.rectangle.angled", tint: .beansSage,
+                diyRow(icon: "photo.on.rectangle.angled", tint: .coSage,
                        title: isEnglish ? "Custom Wallpaper Library" : "自定义壁纸库",
                        detail: isEnglish ? "Switch wallpapers anytime with synchronized backgrounds" : "多张壁纸随时切换，深浅两套背景，全局同步")
                 diyRow(icon: "slider.horizontal.3", tint: Color(red: 0.39, green: 0.71, blue: 0.96),
@@ -248,11 +248,11 @@ struct OnboardingView: View {
                 )
             VStack(alignment: .leading, spacing: 3) {
                 Text(LocalizedStringKey(title))
-                    .font(BeansFont.appFont(15, .bold))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(15, .bold))
+                    .foregroundStyle(Color.coLabel)
                 Text(LocalizedStringKey(detail))
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansSecondary)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(Color.coSecondary)
                     .lineLimit(3)
                     .minimumScaleFactor(0.78)
                     .fixedSize(horizontal: false, vertical: true)
@@ -262,13 +262,13 @@ struct OnboardingView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.beansCard.opacity(0.75))
+                .fill(Color.coCard.opacity(0.75))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.beansLabel.opacity(0.08), lineWidth: 1)
+                .strokeBorder(Color.coLabel.opacity(0.08), lineWidth: 1)
         )
-        .beansCardShadow(radius: 8, y: 3)
+        .coCardShadow(radius: 8, y: 3)
     }
 
     // MARK: 第 3 页 · 酷狗音乐
@@ -278,15 +278,15 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: "arrow.left.arrow.right")
                 .font(.system(size: 40))
-                .foregroundStyle(LinearGradient.beansAccent)
+                .foregroundStyle(LinearGradient.coAccent)
 
             Text(isEnglish ? "Kugou Music, all in one app" : "酷狗音乐，一个 App 全听遍")
-                .font(BeansFont.appFont(26, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(26, .bold))
+                .foregroundStyle(Color.coLabel)
 
             Text(isEnglish ? "Kugou Music only." : "仅酷狗音乐")
-                .font(BeansFont.appFont(14))
-                .foregroundStyle(Color.beansSecondary)
+                .font(CoFont.appFont(14))
+                .foregroundStyle(Color.coSecondary)
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 12) {
@@ -304,7 +304,7 @@ struct OnboardingView: View {
     private func platformRow(provider: SearchProvider, imageName: String, tint: Color, title: String, detail: String) -> some View {
         let enabled = platformPrefs.isEnabled(provider)
         return Button {
-            BeansHaptics.select()
+            CoHaptics.select()
             platformPrefs.set(provider, enabled: !enabled)
         } label: {
             HStack(spacing: 14) {
@@ -319,28 +319,28 @@ struct OnboardingView: View {
                     )
                 VStack(alignment: .leading, spacing: 3) {
                     Text(LocalizedStringKey(title))
-                        .font(BeansFont.appFont(15, .bold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15, .bold))
+                        .foregroundStyle(Color.coLabel)
                     Text(LocalizedStringKey(detail))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansSecondary)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coSecondary)
                         .lineLimit(2)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: enabled ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(enabled ? tint : Color.beansComment)
+                    .foregroundStyle(enabled ? tint : Color.coComment)
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(enabled ? tint.opacity(0.12) : Color.beansCard.opacity(0.75))
+                    .fill(enabled ? tint.opacity(0.12) : Color.coCard.opacity(0.75))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(enabled ? tint.opacity(0.35) : Color.beansLabel.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(enabled ? tint.opacity(0.35) : Color.coLabel.opacity(0.08), lineWidth: 1)
             )
-            .beansCardShadow(radius: 8, y: 3)
+            .coCardShadow(radius: 8, y: 3)
         }
         .buttonStyle(.plain)
     }
@@ -352,34 +352,34 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: "shield.checkmark")
                 .font(.system(size: 40))
-                .foregroundStyle(LinearGradient.beansAccent)
+                .foregroundStyle(LinearGradient.coAccent)
 
             Text(isEnglish ? "Disclaimer" : "免责声明")
-                .font(BeansFont.appFont(24, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(24, .bold))
+                .foregroundStyle(Color.coLabel)
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(isEnglish ? "· Co is for personal learning and research only. Commercial and illegal use is prohibited." : "· Co 只用作个人学习研究，禁止用于商业及非法用途，如产生法律纠纷与本人无关。")
                 Text(isEnglish ? "· Music APIs come from open-source GitHub projects. This app does not store audio. Please support official music services." : "· 音乐 API 来自于 GitHub 开源项目（非官方版 API），本软件不提供任何音频存储服务，如需下载音频，请支持正版！")
                 Text(isEnglish ? "· Music copyrights belong to their respective platforms. Co assumes no related legal liability." : "· 音乐版权归各网站所有，本站不承担任何法律责任和连带责任。")
             }
-            .font(BeansFont.appFont(13))
-            .foregroundStyle(Color.beansSecondary)
+            .font(CoFont.appFont(13))
+            .foregroundStyle(Color.coSecondary)
             .lineSpacing(5)
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.beansCard.opacity(0.75))
+                    .fill(Color.coCard.opacity(0.75))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(Color.beansHighlight.opacity(0.25), lineWidth: 1)
+                    .strokeBorder(Color.coHighlight.opacity(0.25), lineWidth: 1)
             )
             .padding(.horizontal, 28)
 
             Text(isEnglish ? "Enter the exact text shown above to continue" : "请按输入框上方的提示，完整输入指定文字后进入软件")
-                .font(BeansFont.appFont(12))
-                .foregroundStyle(Color.beansSecondary.opacity(0.8))
+                .font(CoFont.appFont(12))
+                .foregroundStyle(Color.coSecondary.opacity(0.8))
 
             Spacer()
             Spacer()

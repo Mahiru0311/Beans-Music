@@ -14,7 +14,7 @@ struct DiscoverView: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var player: PlayerManager
-    @Environment(\.beansUsesSharedRootBackdrop) private var usesSharedRootBackdrop
+    @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
     @State private var topLists: [TopList] = []
@@ -34,42 +34,42 @@ struct DiscoverView: View {
     /// 主页只保留每日推荐和排行榜；歌单广场位于独立底栏页面。
     private var availableSections: [String] { SectionOrderStore.homeDefaults }
     /// 首页数据源：记住上次选择，下次打开仍保持该平台（默认哔哩哔哩）
-    @AppStorage("beans.homeSource") private var homeSourceRaw = SearchProvider.kugou.rawValue
+    @AppStorage("co.homeSource") private var homeSourceRaw = SearchProvider.kugou.rawValue
     /// 每日推荐的旧版横向歌曲卡样式，默认使用新版推荐卡片。
-    @AppStorage("beans.home.dailySongsListStyle") private var dailySongsListStyle = false
-    @AppStorage("beans.homeGreetingText") private var homeGreetingText = ""
-    @AppStorage("beans.homeGreetingSize") private var homeGreetingSize = 30.0
-    @AppStorage("beans.homeGreetingHeight") private var homeGreetingHeight = 0.0
-    @AppStorage("beans.homeGreetingColorHex") private var homeGreetingColorHex = ""
-    @AppStorage("beans.homeGreetingLine1Size") private var homeGreetingLine1Size = 0.0
-    @AppStorage("beans.homeGreetingLine2Size") private var homeGreetingLine2Size = 0.0
-    @AppStorage("beans.homeGreetingLine3Size") private var homeGreetingLine3Size = 0.0
-    @AppStorage("beans.homeGreetingLine1ColorHex") private var homeGreetingLine1ColorHex = ""
-    @AppStorage("beans.homeGreetingLine2ColorHex") private var homeGreetingLine2ColorHex = ""
-    @AppStorage("beans.homeGreetingLine3ColorHex") private var homeGreetingLine3ColorHex = ""
-    @AppStorage("beans.homeGreetingLine1OffsetY") private var homeGreetingLine1OffsetY = 0.0
-    @AppStorage("beans.homeGreetingLine2OffsetY") private var homeGreetingLine2OffsetY = 0.0
-    @AppStorage("beans.homeGreetingLine3OffsetY") private var homeGreetingLine3OffsetY = 0.0
-    @AppStorage("beans.homeGreetingLine1GradientStartHex") private var homeGreetingLine1GradientStartHex = ""
-    @AppStorage("beans.homeGreetingLine2GradientStartHex") private var homeGreetingLine2GradientStartHex = ""
-    @AppStorage("beans.homeGreetingLine3GradientStartHex") private var homeGreetingLine3GradientStartHex = ""
-    @AppStorage("beans.homeGreetingLine1GradientEndHex") private var homeGreetingLine1GradientEndHex = ""
-    @AppStorage("beans.homeGreetingLine2GradientEndHex") private var homeGreetingLine2GradientEndHex = ""
-    @AppStorage("beans.homeGreetingLine3GradientEndHex") private var homeGreetingLine3GradientEndHex = ""
-    @AppStorage("beans.homeGreetingGlowEnabled") private var homeGreetingGlowEnabled = false
-    @AppStorage("beans.homeGreetingGlowIntensity") private var homeGreetingGlowIntensity = 0.45
-    @AppStorage("beans.homeGreetingUnderline") private var homeGreetingUnderline = false
-    @AppStorage("beans.homeGreetingGradient") private var homeGreetingGradient = false
-    @AppStorage("beans.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
-    @AppStorage("beans.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
-    @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
-    @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
-    @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.home.dailySongsListStyle") private var dailySongsListStyle = false
+    @AppStorage("co.homeGreetingText") private var homeGreetingText = ""
+    @AppStorage("co.homeGreetingSize") private var homeGreetingSize = 30.0
+    @AppStorage("co.homeGreetingHeight") private var homeGreetingHeight = 0.0
+    @AppStorage("co.homeGreetingColorHex") private var homeGreetingColorHex = ""
+    @AppStorage("co.homeGreetingLine1Size") private var homeGreetingLine1Size = 0.0
+    @AppStorage("co.homeGreetingLine2Size") private var homeGreetingLine2Size = 0.0
+    @AppStorage("co.homeGreetingLine3Size") private var homeGreetingLine3Size = 0.0
+    @AppStorage("co.homeGreetingLine1ColorHex") private var homeGreetingLine1ColorHex = ""
+    @AppStorage("co.homeGreetingLine2ColorHex") private var homeGreetingLine2ColorHex = ""
+    @AppStorage("co.homeGreetingLine3ColorHex") private var homeGreetingLine3ColorHex = ""
+    @AppStorage("co.homeGreetingLine1OffsetY") private var homeGreetingLine1OffsetY = 0.0
+    @AppStorage("co.homeGreetingLine2OffsetY") private var homeGreetingLine2OffsetY = 0.0
+    @AppStorage("co.homeGreetingLine3OffsetY") private var homeGreetingLine3OffsetY = 0.0
+    @AppStorage("co.homeGreetingLine1GradientStartHex") private var homeGreetingLine1GradientStartHex = ""
+    @AppStorage("co.homeGreetingLine2GradientStartHex") private var homeGreetingLine2GradientStartHex = ""
+    @AppStorage("co.homeGreetingLine3GradientStartHex") private var homeGreetingLine3GradientStartHex = ""
+    @AppStorage("co.homeGreetingLine1GradientEndHex") private var homeGreetingLine1GradientEndHex = ""
+    @AppStorage("co.homeGreetingLine2GradientEndHex") private var homeGreetingLine2GradientEndHex = ""
+    @AppStorage("co.homeGreetingLine3GradientEndHex") private var homeGreetingLine3GradientEndHex = ""
+    @AppStorage("co.homeGreetingGlowEnabled") private var homeGreetingGlowEnabled = false
+    @AppStorage("co.homeGreetingGlowIntensity") private var homeGreetingGlowIntensity = 0.45
+    @AppStorage("co.homeGreetingUnderline") private var homeGreetingUnderline = false
+    @AppStorage("co.homeGreetingGradient") private var homeGreetingGradient = false
+    @AppStorage("co.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
+    @AppStorage("co.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
+    @AppStorage("co.pauseHomeRendering") private var homeRenderingPaused = false
+    @AppStorage("co.homeHeaderHideSort") private var homeHeaderHideSort = false
+    @AppStorage("co.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
     private var homeProviders: [SearchProvider] { [.kugou] }
     private var source: SearchProvider { .kugou }
-    private var isNativeClean: Bool { BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean }
+    private var isNativeClean: Bool { CoUIStyle(rawValue: uiStyleRaw) == .nativeClean }
 
     @State private var kugouTopLists: [KugouTopInfo] = []
     @State private var playlistCats: [String] = []
@@ -87,7 +87,7 @@ struct DiscoverView: View {
     @State private var forceHomeReload = false
     @State private var homeReloadToken = 0
     /// 首次启动免责声明：确认进入后若加载失败自动刷新
-    @AppStorage("beans.disclaimerAccepted") private var disclaimerAccepted = false
+    @AppStorage("co.disclaimerAccepted") private var disclaimerAccepted = false
     /// 网易云歌单广场当前分类（「全部」展示官方精品歌单）
     /// 官方歌单分类列表
     /// 网易云歌单广场搜索状态；搜索结果沿用现有歌单卡片和详情路由
@@ -98,7 +98,7 @@ struct DiscoverView: View {
     @State private var playlistSearchTask: Task<Void, Never>?
 
     init() {
-        let savedRaw = UserDefaults.standard.string(forKey: "beans.homeSource")
+        let savedRaw = UserDefaults.standard.string(forKey: "co.homeSource")
             ?? SearchProvider.kugou.rawValue
         let savedSource = SearchProvider(rawValue: savedRaw) ?? .kugou
         let snapshot = DiscoverCache.shared.cached(for: savedSource)
@@ -117,7 +117,7 @@ struct DiscoverView: View {
 
     private var musicHomeContent: some View {
         let _ = theme.accent
-        return BeansNavigationStackWithPath(path: $navigationPath) {
+        return CoNavigationStackWithPath(path: $navigationPath) {
         ZStack {
             if !usesSharedRootBackdrop {
                 // 主页背景：壁纸/背景色永远在发现页生效（homeMode），同步开启时其他页面也生效
@@ -166,11 +166,11 @@ struct DiscoverView: View {
                     .padding(.horizontal, isNativeClean ? 24 : 16)
                     .padding(.top, isNativeClean ? 32 : 8)
                     .padding(.bottom, 190)
-                    .beansAdaptiveContentWidth()
+                    .coAdaptiveContentWidth()
                     }
                 }
             }
-            .beansScrollIndicatorsHidden()
+            .coScrollIndicatorsHidden()
             .task(id: "\(source.rawValue)-\(homeRenderingPaused)-\(homeReloadToken)") {
                 guard !homeRenderingPaused else { return }
                 let force = forceHomeReload
@@ -192,7 +192,7 @@ struct DiscoverView: View {
                     Task { await load(force: true) }
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .beansKugouLoginDidUpdate)) { _ in
+            .onReceive(NotificationCenter.default.publisher(for: .coKugouLoginDidUpdate)) { _ in
                 guard !homeRenderingPaused else { return }
                 reloadAfterLoginUpdate(.kugou)
             }
@@ -211,10 +211,10 @@ struct DiscoverView: View {
             // 主页右上角头像进设置（2026-10-23 用户纠正）：直接导航推入设置界面，
             // 全页从右往左推入，不是 sheet 弹窗。上一轮的 sheet + detents 已拆掉。
         }
-            .beansNavigationDestination(for: DiscoverRoute.self) { route in
+            .coNavigationDestination(for: DiscoverRoute.self) { route in
                 discoverDestination(route)
             }
-            .beansHomeNavigationBarTransparent()
+            .coHomeNavigationBarTransparent()
         }
     }
 
@@ -274,7 +274,7 @@ struct DiscoverView: View {
                                     Text(verbatim: line)
                                 }
                             }
-                            .font(BeansFont.greetingFont(isNativeClean ? max(42, greetingLineSize(index)) : greetingLineSize(index), .bold))
+                            .font(CoFont.greetingFont(isNativeClean ? max(42, greetingLineSize(index)) : greetingLineSize(index), .bold))
                             .foregroundStyle(greetingLineStyle(index))
                                     .overlay(alignment: .bottomLeading) {
                                         if homeGreetingUnderline {
@@ -312,7 +312,7 @@ struct DiscoverView: View {
                     homeProfileButton
                     if !homeHeaderHideSort {
                         GlassIconButton(systemName: "arrow.up.arrow.down") {
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                             showSectionSort = true
                         }
                     }
@@ -326,7 +326,7 @@ struct DiscoverView: View {
     /// 主页右上角头像：导航推入设置（2026-10-23 用户纠正：是推入，不是弹窗），
     /// 复用我的页面头像并保持液态玻璃边框，头像圆图本身与点按手感不动。
     private var homeProfileButton: some View {
-        BeansProfileShortcutButton {
+        CoProfileShortcutButton {
             openRoute(.settings)
         }
     }
@@ -366,23 +366,23 @@ struct DiscoverView: View {
     private var loadingRecommendationSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             if !isNativeClean {
-                BeansShimmerSkeleton(cornerRadius: 8)
+                CoShimmerSkeleton(cornerRadius: 8)
                     .frame(width: 78, height: 24)
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
                     ForEach(0..<recommendationSkeletonCount, id: \.self) { index in
                         VStack(alignment: .leading, spacing: 0) {
-                            BeansShimmerSkeleton(cornerRadius: isNativeClean ? 16 : 18)
+                            CoShimmerSkeleton(cornerRadius: isNativeClean ? 16 : 18)
                                 .frame(
                                     width: recommendationSkeletonSize.width,
                                     height: recommendationSkeletonSize.height
                                 )
                             if index == 0 && dailySongsListStyle {
-                                BeansShimmerSkeleton(cornerRadius: 5)
+                                CoShimmerSkeleton(cornerRadius: 5)
                                     .frame(width: 108, height: 12)
                                     .padding(.top, 8)
-                                BeansShimmerSkeleton(cornerRadius: 5)
+                                CoShimmerSkeleton(cornerRadius: 5)
                                     .frame(width: 74, height: 10)
                                     .padding(.top, 8)
                             }
@@ -393,7 +393,7 @@ struct DiscoverView: View {
                 .padding(.vertical, 3)
                 .frame(height: recommendationSkeletonHeight)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
     }
@@ -419,17 +419,17 @@ struct DiscoverView: View {
 
     private func loadingHorizontalCoverSection(titleWidth: CGFloat, itemSize: CGFloat, itemCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            BeansShimmerSkeleton(cornerRadius: 8)
+            CoShimmerSkeleton(cornerRadius: 8)
                 .frame(width: titleWidth, height: isNativeClean ? 26 : 22)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
                     ForEach(0..<itemCount, id: \.self) { index in
                         VStack(alignment: .leading, spacing: 7) {
-                            BeansShimmerSkeleton(cornerRadius: 6)
+                            CoShimmerSkeleton(cornerRadius: 6)
                                 .frame(width: itemSize, height: itemSize)
-                            BeansShimmerSkeleton(cornerRadius: 5)
+                            CoShimmerSkeleton(cornerRadius: 5)
                                 .frame(width: index.isMultiple(of: 2) ? itemSize * 0.78 : itemSize * 0.58, height: 12)
-                            BeansShimmerSkeleton(cornerRadius: 5)
+                            CoShimmerSkeleton(cornerRadius: 5)
                                 .frame(width: itemSize * 0.48, height: 10)
                         }
                         .frame(width: itemSize, alignment: .leading)
@@ -439,23 +439,23 @@ struct DiscoverView: View {
                 .padding(.vertical, 2)
                 .frame(height: itemSize + 50)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
     }
 
     private var loadingArtistSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BeansShimmerSkeleton(cornerRadius: 8)
+            CoShimmerSkeleton(cornerRadius: 8)
                 .frame(width: 64, height: isNativeClean ? 26 : 22)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
                     ForEach(0..<5, id: \.self) { index in
                         let size = isNativeClean ? 136.0 : 116.0
                         VStack(spacing: 8) {
-                            BeansShimmerSkeleton(cornerRadius: size / 2)
+                            CoShimmerSkeleton(cornerRadius: size / 2)
                                 .frame(width: size, height: size)
-                            BeansShimmerSkeleton(cornerRadius: 5)
+                            CoShimmerSkeleton(cornerRadius: 5)
                                 .frame(width: index.isMultiple(of: 2) ? 72 : 54, height: 12)
                         }
                         .frame(width: size)
@@ -465,7 +465,7 @@ struct DiscoverView: View {
                 .padding(.vertical, 2)
                 .frame(height: isNativeClean ? 168 : 146)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
     }
@@ -476,26 +476,26 @@ struct DiscoverView: View {
             loadingHorizontalCoverSection(titleWidth: 78, itemSize: 148, itemCount: 4)
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                BeansShimmerSkeleton(cornerRadius: 8)
+                CoShimmerSkeleton(cornerRadius: 8)
                     .frame(width: 78, height: 22)
                 VStack(spacing: 0) {
                     ForEach(0..<3, id: \.self) { index in
                         HStack(spacing: 12) {
-                            BeansShimmerSkeleton(cornerRadius: 5)
+                            CoShimmerSkeleton(cornerRadius: 5)
                                 .frame(width: 24, height: 18)
-                            BeansShimmerSkeleton(cornerRadius: 6)
+                            CoShimmerSkeleton(cornerRadius: 6)
                                 .frame(width: 52, height: 52)
                             VStack(alignment: .leading, spacing: 8) {
-                                BeansShimmerSkeleton(cornerRadius: 5)
+                                CoShimmerSkeleton(cornerRadius: 5)
                                     .frame(width: index == 1 ? 132 : 168, height: 13)
-                                BeansShimmerSkeleton(cornerRadius: 5)
+                                CoShimmerSkeleton(cornerRadius: 5)
                                     .frame(width: 92, height: 10)
                             }
                             Spacer(minLength: 0)
                         }
                         .padding(.vertical, 8)
                         if index < 2 {
-                            Divider().overlay(Color.beansComment.opacity(0.12))
+                            Divider().overlay(Color.coComment.opacity(0.12))
                         }
                     }
                 }
@@ -505,7 +505,7 @@ struct DiscoverView: View {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(Color.black.opacity(0.06))
                         .background {
-                            BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -513,7 +513,7 @@ struct DiscoverView: View {
                         }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .beansCardShadow(radius: 9, y: 3)
+                .coCardShadow(radius: 9, y: 3)
             }
         }
     }
@@ -565,7 +565,7 @@ struct DiscoverView: View {
             VStack(spacing: 0) {
                 if ranksExpanded {
                     rankToggleButton(label: "收起", icon: "chevron.up")
-                    Divider().overlay(Color.beansComment.opacity(0.12))
+                    Divider().overlay(Color.coComment.opacity(0.12))
                 }
                 rankRowsContent
                 if !ranksExpanded, visibleRankCount > 3 {
@@ -578,7 +578,7 @@ struct DiscoverView: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(Color.black.opacity(0.06))
                     .background {
-                        BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -586,7 +586,7 @@ struct DiscoverView: View {
                     }
             }
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .beansCardShadow(radius: 9, y: 3)
+            .coCardShadow(radius: 9, y: 3)
             .id("rankTopSection")
         }
         }
@@ -607,7 +607,7 @@ struct DiscoverView: View {
                 .padding(.vertical, 2)
                 .frame(height: 202)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             // 保留首页左侧起始边距，右侧滚动时才延伸到屏幕边缘。
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
@@ -616,7 +616,7 @@ struct DiscoverView: View {
 
     private func nativeRankCard(index: Int, name: String, subtitle: String, coverURL: URL?, action: @escaping () -> Void) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             action()
         } label: {
             VStack(alignment: .leading, spacing: 10) {
@@ -626,12 +626,12 @@ struct DiscoverView: View {
                 .frame(width: 148, height: 148)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 Text(name)
-                    .font(BeansFont.appFont(15, .bold))
+                    .font(CoFont.appFont(15, .bold))
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
                     .frame(width: 148, alignment: .leading)
                 Text(subtitle)
-                    .font(BeansFont.appFont(12, .medium))
+                    .font(CoFont.appFont(12, .medium))
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)
             }
@@ -645,26 +645,26 @@ struct DiscoverView: View {
     private var rankRowsContent: some View {
         ForEach(Array(kugouTopLists.prefix(displayedRankCount).enumerated()), id: \.element.id) { index, info in
             rankRow(index: index, name: beansChartName(info.name), subtitle: beansChartSubtitle(info.updateFrequency), coverURL: info.coverURL) {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 openRoute(DiscoverRoute.kugouTopList(info))
             }
-            Divider().overlay(Color.beansComment.opacity(0.12))
+            Divider().overlay(Color.coComment.opacity(0.12))
         }
     }
 
     /// 展开 / 收起切换按钮
     private func rankToggleButton(label: String, icon: String) -> some View {
         Button {
-            BeansHaptics.select()
+            CoHaptics.select()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { ranksExpanded.toggle() }
         } label: {
             HStack(spacing: 6) {
                 Text(label)
-                    .font(BeansFont.appFont(13, .medium))
+                    .font(CoFont.appFont(13, .medium))
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .semibold))
             }
-            .foregroundStyle(Color.beansAmber)
+            .foregroundStyle(Color.coAmber)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 11)
             .contentShape(Rectangle())
@@ -678,24 +678,24 @@ struct DiscoverView: View {
         } label: {
             HStack(spacing: 12) {
                 Text("\(index + 1)")
-                    .font(BeansFont.appFont(16, .bold, .default))
-                    .foregroundStyle(index < 3 ? Color.beansAmber : Color.beansComment)
+                    .font(CoFont.appFont(16, .bold, .default))
+                    .foregroundStyle(index < 3 ? Color.coAmber : Color.coComment)
                     .frame(width: 24)
                 CoverImage(url: coverURL, size: 52, cornerRadius: 6)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15, .semibold))
+                        .foregroundStyle(Color.coLabel)
                         .lineLimit(1)
                     Text(subtitle)
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.beansComment.opacity(0.6))
+                    .foregroundStyle(Color.coComment.opacity(0.6))
             }
             .padding(.vertical, 8)
             .contentShape(Rectangle())
@@ -731,7 +731,7 @@ struct DiscoverView: View {
                         loadingKey: nil,
                         emphasized: true
                     ) {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         openRoute(DiscoverRoute.dailySongs(dailySongs))
                     }
 
@@ -751,7 +751,7 @@ struct DiscoverView: View {
                 .padding(.vertical, 3)
                 .frame(height: isNativeClean ? 178 : 166)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
     }
@@ -763,7 +763,7 @@ struct DiscoverView: View {
                 LazyHStack(spacing: 12) {
                     ForEach(Array(dailySongs.prefix(8).enumerated()), id: \.element.identityKey) { index, song in
                         Button {
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                             player.play(songs: dailySongs, startAt: index)
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
@@ -771,11 +771,11 @@ struct DiscoverView: View {
                                     .overlay(alignment: .topLeading) {
                                     if showSongVIPBadge, song.isVIP {
                                             Text("VIP")
-                                                .font(BeansFont.appFont(9, .bold))
+                                                .font(CoFont.appFont(9, .bold))
                                                 .foregroundStyle(.white)
                                                 .padding(.horizontal, 5)
                                                 .padding(.vertical, 1.5)
-                                                .background(Capsule().fill(Color.beansThemeRed))
+                                                .background(Capsule().fill(Color.coThemeRed))
                                                 .padding(6)
                                         }
                                     }
@@ -783,15 +783,15 @@ struct DiscoverView: View {
                                         dailyPlayStateBadge(for: song)
                                     }
                                 Text(song.name)
-                                    .font(BeansFont.appFont(isNativeClean ? 15 : 12, isNativeClean ? .bold : .medium))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(isNativeClean ? 15 : 12, isNativeClean ? .bold : .medium))
+                                    .foregroundStyle(Color.coLabel)
                                     .lineLimit(1)
                                     .frame(width: isNativeClean ? 156 : 108, alignment: .leading)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 5)
                                 Text(song.artists.isEmpty ? song.album : song.artists)
-                                    .font(BeansFont.appFont(10))
-                                    .foregroundStyle(Color.beansComment)
+                                    .font(CoFont.appFont(10))
+                                    .foregroundStyle(Color.coComment)
                                     .lineLimit(1)
                                     .frame(width: isNativeClean ? 156 : 108, alignment: .leading)
                             }
@@ -799,25 +799,25 @@ struct DiscoverView: View {
                         .buttonStyle(GlassPressButtonStyle(scale: 0.94))
                     }
                     Button {
-                        BeansHaptics.tap()
+                        CoHaptics.tap()
                         openRoute(DiscoverRoute.dailySongs(dailySongs))
                     } label: {
                         VStack(spacing: 5) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 15, weight: .semibold))
                             Text("查看更多")
-                                .font(BeansFont.appFont(11, .semibold))
+                                .font(CoFont.appFont(11, .semibold))
                         }
-                        .foregroundStyle(Color.beansLabel)
+                        .foregroundStyle(Color.coLabel)
                             .frame(width: isNativeClean ? 72 : 68, height: isNativeClean ? 132 : 96)
-                        .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+                        .background { CoGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
                     }
                     .buttonStyle(GlassPressButtonStyle(scale: 0.94))
                     Color.clear.frame(width: isNativeClean ? 0 : 8, height: 1)
                 }
                 .padding(.vertical, 2)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             // 保留首页左侧起始边距，右侧滚动时才延伸到屏幕边缘。
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
@@ -886,11 +886,11 @@ struct DiscoverView: View {
                     .foregroundStyle(.white.opacity(0.92))
                     Spacer(minLength: 0)
                     Text(LocalizedStringKey(title))
-                        .font(BeansFont.appFont(isNativeClean ? 20 : 18, .bold))
+                        .font(CoFont.appFont(isNativeClean ? 20 : 18, .bold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Text(subtitle)
-                        .font(BeansFont.appFont(12, .semibold))
+                        .font(CoFont.appFont(12, .semibold))
                         .foregroundStyle(.white.opacity(0.78))
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
@@ -927,7 +927,7 @@ struct DiscoverView: View {
                 }
             } catch {
                 await MainActor.run {
-                    BeansLogger.shared.log("酷狗私人漫游加载失败：\(error.localizedDescription)", level: .error)
+                    CoLogger.shared.log("酷狗私人漫游加载失败：\(error.localizedDescription)", level: .error)
                     ToastCenter.shared.show("私人漫游加载失败")
                 }
             }
@@ -948,7 +948,7 @@ struct DiscoverView: View {
             if playlistSearchLoading && visiblePersonalizedPlaylists.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 88)
-                    .tint(Color.beansAmber)
+                    .tint(Color.coAmber)
             } else if visiblePersonalizedPlaylists.isEmpty {
                 EmptyStateView(icon: "music.note.list", text: playlistEmptyText)
             } else if isNativeClean && !playlistsExpanded {
@@ -956,20 +956,20 @@ struct DiscoverView: View {
                     LazyHStack(spacing: 16) {
                         ForEach(visiblePersonalizedPlaylists, id: \.id) { (playlist: Playlist) in
                             Button {
-                                BeansHaptics.tap()
+                                CoHaptics.tap()
                                 openRoute(DiscoverRoute.playlist(playlist))
                             } label: {
                                 VStack(alignment: .leading, spacing: 8) {
                                     CoverImage(url: playlist.coverURL, size: 166, cornerRadius: 6)
                                     Text(playlist.name)
-                                        .font(BeansFont.appFont(15, .bold))
+                                        .font(CoFont.appFont(15, .bold))
                                         .foregroundStyle(Color.primary)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
                                         .frame(width: 166, alignment: .leading)
                                     if playlist.trackCount > 0 {
                                         Text(beansSongCountText(playlist.trackCount))
-                                            .font(BeansFont.appFont(12, .medium))
+                                            .font(CoFont.appFont(12, .medium))
                                             .foregroundStyle(Color.secondary)
                                             .lineLimit(1)
                                     }
@@ -982,7 +982,7 @@ struct DiscoverView: View {
                     }
                     .padding(.vertical, 2)
                     .frame(height: 238)
-                    .beansCompatScrollClipDisabled()
+                    .coCompatScrollClipDisabled()
                 }
             } else {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
@@ -994,8 +994,8 @@ struct DiscoverView: View {
                                 CoverImage(url: playlist.coverURL, size: 144, cornerRadius: 6)
                                     .frame(maxWidth: .infinity)
                                 Text(playlist.name)
-                                    .font(BeansFont.appFont(12, .medium))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(12, .medium))
+                                    .foregroundStyle(Color.coLabel)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                             }
@@ -1006,7 +1006,7 @@ struct DiscoverView: View {
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                                         .fill(Color.primary.opacity(0.04))
                                 } else {
-                                    BeansGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                    CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
                                 }
                             }
                         }
@@ -1016,7 +1016,7 @@ struct DiscoverView: View {
             }
             if playlistDisplayItems.count > collapsedPlaylistCount {
                 Button {
-                    BeansHaptics.select()
+                    CoHaptics.select()
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                         playlistsExpanded.toggle()
                     }
@@ -1025,18 +1025,18 @@ struct DiscoverView: View {
                         Text(playlistsExpanded
                              ? beansLocalized("收起歌单广场", "Collapse Playlist Square")
                              : beansLocalized("展开全部（\(playlistDisplayItems.count)）", "Show all (\(playlistDisplayItems.count))"))
-                            .font(BeansFont.appFont(13, .semibold))
+                            .font(CoFont.appFont(13, .semibold))
                         Image(systemName: playlistsExpanded ? "chevron.up" : "chevron.down")
                             .font(.system(size: 11, weight: .semibold))
                     }
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background {
                         if isNativeClean {
                             Capsule().fill(Color.primary.opacity(0.045))
                         } else {
-                            BeansGlass(shape: Capsule())
+                            CoGlass(shape: Capsule())
                         }
                     }
                     .contentShape(Rectangle())
@@ -1087,19 +1087,19 @@ struct DiscoverView: View {
                 LazyHStack(spacing: 14) {
                     ForEach(newAlbums) { album in
                         Button {
-                            BeansHaptics.tap()
+                            CoHaptics.tap()
                             openRoute(.album(album))
                         } label: {
                             VStack(alignment: .leading, spacing: 7) {
                                 CoverImage(url: album.coverURL, size: isNativeClean ? 148 : 124, cornerRadius: 6)
                                 Text(album.name)
-                                    .font(BeansFont.appFont(isNativeClean ? 14 : 12, .semibold))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(isNativeClean ? 14 : 12, .semibold))
+                                    .foregroundStyle(Color.coLabel)
                                     .lineLimit(1)
                                     .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
                                 Text(album.artistName.isEmpty ? beansLocalized("未知歌手", "Unknown artist") : album.artistName)
-                                    .font(BeansFont.appFont(11))
-                                    .foregroundStyle(Color.beansComment)
+                                    .font(CoFont.appFont(11))
+                                    .foregroundStyle(Color.coComment)
                                     .lineLimit(1)
                                     .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
                             }
@@ -1111,7 +1111,7 @@ struct DiscoverView: View {
                 .padding(.vertical, 2)
                 .frame(height: isNativeClean ? 198 : 170)
             }
-            .beansCompatScrollClipDisabled()
+            .coCompatScrollClipDisabled()
             .padding(.trailing, isNativeClean ? -24 : 0)
         }
     }
@@ -1121,8 +1121,8 @@ struct DiscoverView: View {
             SectionHeader(title: beansLocalized("歌手", "Artists"))
             if topArtists.isEmpty {
                 Text(beansLocalized("暂无音乐人", "No artists available"))
-                    .font(BeansFont.appFont(13))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(13))
+                    .foregroundStyle(Color.coComment)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 18)
             } else {
@@ -1130,14 +1130,14 @@ struct DiscoverView: View {
                     LazyHStack(spacing: 16) {
                         ForEach(topArtists) { artist in
                             Button {
-                                BeansHaptics.tap()
+                                CoHaptics.tap()
                                 openRoute(.artist(artist))
                             } label: {
                                 VStack(spacing: 8) {
                                     CoverImage(url: artist.coverURL, size: isNativeClean ? 136 : 116, cornerRadius: isNativeClean ? 68 : 58)
                                     Text(artist.name)
-                                        .font(BeansFont.appFont(isNativeClean ? 14 : 12, .semibold))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .font(CoFont.appFont(isNativeClean ? 14 : 12, .semibold))
+                                        .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                         .frame(width: isNativeClean ? 136 : 116)
                                 }
@@ -1149,7 +1149,7 @@ struct DiscoverView: View {
                     .padding(.vertical, 2)
                     .frame(height: isNativeClean ? 168 : 146)
                 }
-                .beansCompatScrollClipDisabled()
+                .coCompatScrollClipDisabled()
                 .padding(.trailing, isNativeClean ? -24 : 0)
             }
         }
@@ -1171,7 +1171,7 @@ struct DiscoverView: View {
             if playlistSearchLoading {
                 ProgressView()
                     .controlSize(.small)
-                    .tint(Color.beansAmber)
+                    .tint(Color.coAmber)
                     .padding(.trailing, 14)
                     .allowsHitTesting(false)
             }
@@ -1261,7 +1261,7 @@ struct DiscoverView: View {
             lastLoadedKey = loadKey
             lastLoadedAt = Date()
             if cache.isFresh(cached, source: requestedSource),
-               !BeansNetworkStatus.shared.isReachable { return }
+               !CoNetworkStatus.shared.isReachable { return }
             // 缓存过期：先用缓存展示，后台静默刷新
         } else {
             loading = true
@@ -1379,7 +1379,7 @@ struct DiscoverView: View {
 
     private var homeGreetingColor: Color {
         if let color = Color(hex: homeGreetingColorHex) { return color }
-        return Color.beansLabel
+        return Color.coLabel
     }
 
     private func fetchSnapshot(for source: SearchProvider, neteaseCat: String) async throws -> DiscoverCache.Snapshot {

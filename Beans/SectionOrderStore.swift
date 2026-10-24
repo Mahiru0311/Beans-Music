@@ -3,8 +3,8 @@ import SwiftUI
 // MARK: - 板块自定义排序（音乐库 / 主页等页面板块顺序可拖动调整并持久化）
 
 enum SectionOrderStore {
-    static let libraryKey = "beans.library.sectionOrder"
-    static let homeKey = "beans.home.sectionOrder"
+    static let libraryKey = "co.library.sectionOrder"
+    static let homeKey = "co.home.sectionOrder"
 
     /// 音乐库板块默认顺序
     static let libraryDefaults = ["我的歌单", "最近播放", "本地音乐库"]
@@ -58,17 +58,17 @@ struct SectionOrderSheet: View {
     }
 
     private var listView: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             List {
                 Section("页面板块") {
                     ForEach(order, id: \.self) { name in
                         HStack(spacing: 12) {
                             Image(systemName: "line.3.horizontal")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.beansComment.opacity(0.55))
+                                .foregroundStyle(Color.coComment.opacity(0.55))
                             Text(name)
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                         .padding(.vertical, 4)
                         .listRowBackground(Color.clear)
@@ -86,10 +86,10 @@ struct SectionOrderSheet: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "line.3.horizontal")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(Color.beansComment.opacity(0.55))
+                                    .foregroundStyle(Color.coComment.opacity(0.55))
                                 Text(LocalizedStringKey(rawValue))
-                                    .font(BeansFont.appFont(15))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(15))
+                                    .foregroundStyle(Color.coLabel)
                             }
                             .padding(.vertical, 4)
                             .listRowBackground(Color.clear)
@@ -102,7 +102,7 @@ struct SectionOrderSheet: View {
             }
             .environment(\.editMode, .constant(.active))
             .listStyle(.plain)
-            .beansScrollContentBackgroundHidden()
+            .coScrollContentBackgroundHidden()
             .background {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
             }

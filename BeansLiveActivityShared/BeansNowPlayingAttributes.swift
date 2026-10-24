@@ -1,6 +1,6 @@
 import ActivityKit
 
-struct BeansNowPlayingAttributes: ActivityAttributes {
+struct CoNowPlayingAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         let isPlaying: Bool
     }

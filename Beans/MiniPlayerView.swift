@@ -19,7 +19,7 @@ struct MiniPlayerView: View {
     var presentation: Presentation = .dock
     var transitionNamespace: Namespace.ID?
     @State private var miniLyrics: [LyricLine] = []
-    @AppStorage("beans.lyricOffset") private var lyricOffset = 0.0
+    @AppStorage("co.lyricOffset") private var lyricOffset = 0.0
 
     private var currentLyricLine: LyricLine? {
         guard !miniLyrics.isEmpty else { return nil }
@@ -53,7 +53,7 @@ struct MiniPlayerView: View {
         if presentation.drawsBackground {
             content
                 .background {
-                    BeansGlass(shape: Capsule(), forceLiquid: true)
+                    CoGlass(shape: Capsule(), forceLiquid: true)
                 }
                 .overlay {
                     Capsule()
@@ -113,7 +113,7 @@ struct MiniPlayerView: View {
                 size: presentation.isInline ? 28 : 32,
                 cornerRadius: 7
             )
-            .id(player.currentSong?.identityKey ?? "beans-mini-player-empty")
+            .id(player.currentSong?.identityKey ?? "co-mini-player-empty")
             .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
 
             VStack(alignment: .leading, spacing: presentation.isInline ? 2 : 3) {
@@ -154,7 +154,7 @@ struct MiniPlayerView: View {
     }
 
     private func showNowPlaying() {
-        BeansHaptics.tap()
+        CoHaptics.tap()
         showPlayer = true
     }
 
@@ -188,7 +188,7 @@ private struct PlayerTransportButton: View {
 
     var body: some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             action()
         } label: {
             Image(systemName: icon)
@@ -202,18 +202,18 @@ private struct PlayerTransportButton: View {
     }
 }
 
-enum BeansNowPlayingTransitionID {
-    static let surface = "beans-now-playing-surface"
+enum CoNowPlayingTransitionID {
+    static let surface = "co-now-playing-surface"
 }
 
-private struct BeansTransitionSourceModifier: ViewModifier {
+private struct CoTransitionSourceModifier: ViewModifier {
     let namespace: Namespace.ID?
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if let namespace {
             content.matchedTransitionSource(
-                id: BeansNowPlayingTransitionID.surface,
+                id: CoNowPlayingTransitionID.surface,
                 in: namespace
             )
         } else {
@@ -225,6 +225,6 @@ private struct BeansTransitionSourceModifier: ViewModifier {
 private extension View {
     @ViewBuilder
     func transitionSource(in namespace: Namespace.ID?) -> some View {
-        modifier(BeansTransitionSourceModifier(namespace: namespace))
+        modifier(CoTransitionSourceModifier(namespace: namespace))
     }
 }

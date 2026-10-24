@@ -94,14 +94,14 @@ final class CustomSongCoverStore: ObservableObject {
         let videoAudioEnabled: Bool?
     }
 
-    private let legacyDefaultsKey = "beans.player.customSongCovers.v1"
-    private let defaultsKey = "beans.player.customSongCovers.v2"
+    private let legacyDefaultsKey = "co.player.customSongCovers.v1"
+    private let defaultsKey = "co.player.customSongCovers.v2"
     private let directory: URL
     private var entries: [String: Entry]
 
     private init() {
         directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("BeansCustomSongCovers", isDirectory: true)
+            .appendingPathComponent("CoCustomSongCovers", isDirectory: true)
         entries = Self.loadEntries(defaultsKey: defaultsKey, legacyDefaultsKey: legacyDefaultsKey)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         pruneMissingFiles()
@@ -165,7 +165,7 @@ final class CustomSongCoverStore: ObservableObject {
         )
         persist()
         revision &+= 1
-        NotificationCenter.default.post(name: .beansCustomSongCoverDidChange, object: song.identityKey)
+        NotificationCenter.default.post(name: .coCustomSongCoverDidChange, object: song.identityKey)
     }
 
     func saveCover(from sourceURL: URL, for song: Song) throws {
@@ -207,22 +207,22 @@ final class CustomSongCoverStore: ObservableObject {
         if let previous = entries.updateValue(entry, forKey: song.identityKey), previous.filename != filename {
             let previousURL = directory.appendingPathComponent(previous.filename)
             try? FileManager.default.removeItem(at: previousURL)
-            BeansImageFileCache.remove(previousURL.path)
+            CoImageFileCache.remove(previousURL.path)
         }
         persist()
-        BeansImageFileCache.remove(destination.path)
+        CoImageFileCache.remove(destination.path)
         revision &+= 1
-        NotificationCenter.default.post(name: .beansCustomSongCoverDidChange, object: song.identityKey)
+        NotificationCenter.default.post(name: .coCustomSongCoverDidChange, object: song.identityKey)
     }
 
     func removeCover(for song: Song?) {
         guard let song, let entry = entries.removeValue(forKey: song.identityKey) else { return }
         let url = directory.appendingPathComponent(entry.filename)
         try? FileManager.default.removeItem(at: url)
-        BeansImageFileCache.remove(url.path)
+        CoImageFileCache.remove(url.path)
         persist()
         revision &+= 1
-        NotificationCenter.default.post(name: .beansCustomSongCoverDidChange, object: song.identityKey)
+        NotificationCenter.default.post(name: .coCustomSongCoverDidChange, object: song.identityKey)
     }
 
     private static func loadEntries(defaultsKey: String, legacyDefaultsKey: String) -> [String: Entry] {
@@ -302,7 +302,7 @@ enum CustomSongCoverError: LocalizedError {
 }
 
 extension Notification.Name {
-    static let beansCustomSongCoverDidChange = Notification.Name("beans.customSongCoverDidChange")
+    static let beansCustomSongCoverDidChange = Notification.Name("co.customSongCoverDidChange")
 }
 
 struct CustomSongCoverPicker: View {
@@ -373,7 +373,7 @@ private struct CustomSongCoverPhotoPicker: UIViewControllerRepresentable {
                 ? (type?.preferredFilenameExtension ?? "dat")
                 : sourceURL.pathExtension
             let destination = FileManager.default.temporaryDirectory
-                .appendingPathComponent("beans-cover-" + UUID().uuidString.lowercased())
+                .appendingPathComponent("co-cover-" + UUID().uuidString.lowercased())
                 .appendingPathExtension(ext)
             do {
                 try FileManager.default.copyItem(at: sourceURL, to: destination)

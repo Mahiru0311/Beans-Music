@@ -4,7 +4,7 @@ import PhotosUI
 import UniformTypeIdentifiers
 
 
-private struct BeansProfileGlobalFrameKey: PreferenceKey {
+private struct CoProfileGlobalFrameKey: PreferenceKey {
     static let defaultValue = CGRect.zero
 
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
@@ -14,7 +14,7 @@ private struct BeansProfileGlobalFrameKey: PreferenceKey {
 
 /// 白卡顶部在全局坐标里的位置：用来判断白卡是否已滑到状态栏区域，
 /// 以便在黑头在顶时用浅色状态栏文字、白卡滑到顶时切回深色文字。
-private struct BeansProfileCardTopKey: PreferenceKey {
+private struct CoProfileCardTopKey: PreferenceKey {
     static let defaultValue = CGFloat.greatestFiniteMagnitude
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -199,7 +199,7 @@ final class CoProfileHeaderWallpaper: ObservableObject {
     }
 }
 
-private struct BeansProfileThemeRevealOverlay: View {
+private struct CoProfileThemeRevealOverlay: View {
     let snapshot: UIImage
     let origin: CGPoint
     let progress: CGFloat
@@ -235,8 +235,8 @@ private struct BeansProfileThemeRevealOverlay: View {
     }
 }
 
-private struct BeansExclusiveIDBadgeSurface: View {
-    let style: BeansExclusiveIDBadgeStyle
+private struct CoExclusiveIDBadgeSurface: View {
+    let style: CoExclusiveIDBadgeStyle
 
     var body: some View {
         Group {
@@ -306,16 +306,16 @@ struct ProfileView: View {
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var favorites: FavoritesStore
-    @Environment(\.beansUsesSharedRootBackdrop) private var usesSharedRootBackdrop
+    @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
-    @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
-    @AppStorage(BeansBackendSettings.exclusiveIDKey) private var hasExclusiveID = false
-    @AppStorage(BeansBackendSettings.exclusiveIDBadgeStyleKey) private var exclusiveBadgeStyleRaw = BeansExclusiveIDBadgeStyle.blackPurpleGold.rawValue
-    @AppStorage(BeansBackendSettings.publicIDRevisionKey) private var publicIDRevision = 0
+    @AppStorage("co.themeMode") private var themeModeRaw = CoThemeMode.system.rawValue
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
+    @AppStorage("co.homeHeaderHideSort") private var homeHeaderHideSort = false
+    @AppStorage("co.pauseHomeRendering") private var homeRenderingPaused = false
+    @AppStorage(CoBackendSettings.exclusiveIDKey) private var hasExclusiveID = false
+    @AppStorage(CoBackendSettings.exclusiveIDBadgeStyleKey) private var exclusiveBadgeStyleRaw = CoExclusiveIDBadgeStyle.blackPurpleGold.rawValue
+    @AppStorage(CoBackendSettings.publicIDRevisionKey) private var publicIDRevision = 0
 
     @State private var showHistory = false
     @State private var showFavorites = false
@@ -341,35 +341,35 @@ struct ProfileView: View {
     @State private var didRefreshProfileAccount = false
     @State private var showAvatarPicker = false
     @State private var showProfileNameBackgroundPicker = false
-    @AppStorage("beans.profile.customNickname") private var customNickname = ""
-    @ObservedObject private var avatarStore = BeansAvatarStore.shared
+    @AppStorage("co.profile.customNickname") private var customNickname = ""
+    @ObservedObject private var avatarStore = CoAvatarStore.shared
     @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
-    @ObservedObject private var profileNameBackgroundStore = BeansProfileNameBackgroundStore.shared
+    @ObservedObject private var profileNameBackgroundStore = CoProfileNameBackgroundStore.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
-    @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
-    @AppStorage("beans.globalFloatingEffect") private var globalFloatingEffectRaw = BeansGlobalFloatingEffect.off.rawValue
-    @AppStorage("beans.globalFloatingDensity") private var globalFloatingDensity = 1.0
-    @AppStorage("beans.globalFloatingSize") private var globalFloatingSize = 1.0
-    @AppStorage("beans.globalFloatingSpeed") private var globalFloatingSpeed = 1.0
-    @AppStorage("beans.globalFloatingText") private var globalFloatingText = "❄️"
-    @AppStorage("beans.globalFloatingRotation") private var globalFloatingRotation = 0.0
-    @AppStorage("beans.globalFloatingSkew") private var globalFloatingSkew = 0.0
+    @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
+    @AppStorage("co.globalFloatingEffect") private var globalFloatingEffectRaw = CoGlobalFloatingEffect.off.rawValue
+    @AppStorage("co.globalFloatingDensity") private var globalFloatingDensity = 1.0
+    @AppStorage("co.globalFloatingSize") private var globalFloatingSize = 1.0
+    @AppStorage("co.globalFloatingSpeed") private var globalFloatingSpeed = 1.0
+    @AppStorage("co.globalFloatingText") private var globalFloatingText = "❄️"
+    @AppStorage("co.globalFloatingRotation") private var globalFloatingRotation = 0.0
+    @AppStorage("co.globalFloatingSkew") private var globalFloatingSkew = 0.0
 
-    private var themeMode: BeansThemeMode {
-        BeansThemeMode(rawValue: themeModeRaw) ?? .system
+    private var themeMode: CoThemeMode {
+        CoThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     private var usesExclusiveIDBadge: Bool {
         DeviceIdentity.isDeveloperInstallation || hasExclusiveID
     }
 
-    private var exclusiveBadgeStyle: BeansExclusiveIDBadgeStyle {
-        BeansExclusiveIDBadgeStyle(rawValue: exclusiveBadgeStyleRaw) ?? .blackPurpleGold
+    private var exclusiveBadgeStyle: CoExclusiveIDBadgeStyle {
+        CoExclusiveIDBadgeStyle(rawValue: exclusiveBadgeStyleRaw) ?? .blackPurpleGold
     }
 
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
@@ -510,7 +510,7 @@ struct ProfileView: View {
         DispatchQueue.main.async { apply() }
     }
 
-    private var resolvedThemeToggleTarget: BeansThemeMode {
+    private var resolvedThemeToggleTarget: CoThemeMode {
         if themeMode == .dark { return .light }
         if themeMode == .light { return .dark }
         return colorScheme == .dark ? .light : .dark
@@ -521,7 +521,7 @@ struct ProfileView: View {
         // 定稿分拆：黑白切换只在头像界面（forceHomeBackdrop）放，我的 tab 里不放。
         // 原代码是反过来的（只在 tab 显示、sheet 里藏起），本轮把条件翻转。
         if forceHomeBackdrop {
-            BeansThemeToggleButton(colorScheme: colorScheme)
+            CoThemeToggleButton(colorScheme: colorScheme)
         }
     }
 
@@ -530,7 +530,7 @@ struct ProfileView: View {
     /// finishes its update before the settings controller is created.
     private func openSettings() {
         guard !showSettings else { return }
-        BeansHaptics.tap()
+        CoHaptics.tap()
         homeRenderingPaused = true
         DispatchQueue.main.async {
             showSettings = true
@@ -550,7 +550,7 @@ struct ProfileView: View {
     var body: some View {
         let _ = theme.accent
         // 我的页自带导航栈：歌单行用 NavigationLink 直接推入原有歌单页，返回键是唯一关闭路径，不再经过 sheet +“完成”按钮。
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
             if forceHomeBackdrop || !usesSharedRootBackdrop {
                 // 头像入口作为主页延伸时始终沿用主页壁纸；常规“我的”页继续遵循同步开关。
@@ -592,9 +592,9 @@ struct ProfileView: View {
             // 底部留白返工：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；
             // 300pt → 240pt，仍比叠层高约 75pt 余量，最后一行能完整滑出；不收到 190pt 以下（上一轮 190pt 时底部行曾被盖过）。
             .padding(.bottom, 240)
-            .beansAdaptiveContentWidth()
+            .coAdaptiveContentWidth()
             }
-            .beansScrollIndicatorsHidden()
+            .coScrollIndicatorsHidden()
             // 拉动恢复：回弹改回始终可回弹（.always），不是按尺寸。
             // .basedOnSize 在我的页只有 1 条歌单、内容不满屏时直接关了
             // 回弹，是 zoom6“拉不动”的第二环：从白卡/歌单区下拉、
@@ -649,7 +649,7 @@ struct ProfileView: View {
             )
 
             if let themeRevealSnapshot {
-                BeansProfileThemeRevealOverlay(
+                CoProfileThemeRevealOverlay(
                     snapshot: themeRevealSnapshot,
                     origin: themeRevealOrigin,
                     progress: themeRevealProgress
@@ -659,12 +659,12 @@ struct ProfileView: View {
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(
-                    key: BeansProfileGlobalFrameKey.self,
+                    key: CoProfileGlobalFrameKey.self,
                     value: proxy.frame(in: .global)
                 )
             }
         }
-        .onPreferenceChange(BeansProfileGlobalFrameKey.self) { frame in
+        .onPreferenceChange(CoProfileGlobalFrameKey.self) { frame in
             profileGlobalFrame = frame
         }
         .task {
@@ -686,7 +686,7 @@ struct ProfileView: View {
         .onChange(of: isCardAtTop) { _ in updateProfileStatusBarStyle() }
         .onChange(of: profileHeaderFrame) { _ in updateProfileStatusBarStyle() }
         .onChange(of: profileHeaderWallpaper.topIsLight) { _ in updateProfileStatusBarStyle() }
-        .onPreferenceChange(BeansProfileCardTopKey.self) { minY in
+        .onPreferenceChange(CoProfileCardTopKey.self) { minY in
             isCardAtTop = minY <= 28
         }
         .onPreferenceChange(CoProfileHeaderFrameKey.self) { frame in
@@ -716,7 +716,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showSettings) {
             settingsScreen(SettingsView(onClose: { showSettings = false }))
-                .modifier(BeansSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
+                .modifier(CoSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
                 .modifier(SettingsLiquidSheetPresentation())
         }
         .sheet(isPresented: $showAccountHub) {
@@ -761,7 +761,7 @@ struct ProfileView: View {
         .task(id: kugouAuth.isLoggedIn) {
             await coLoadMyPlaylists()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .beansKugouLoginDidUpdate)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .coKugouLoginDidUpdate)) { _ in
             Task { await coLoadMyPlaylists(force: true) }
         }
         // 我的页本身不占导航栏：顶部黑色头部直接贴顶；推入的歌单页自带标题与返回键，不受本条影响。
@@ -782,16 +782,16 @@ struct ProfileView: View {
 
     private var coAccountCard: some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             showAccountHub = true
         } label: {
             HStack(spacing: 14) {
-                BeansAvatarView(remoteURL: kugouAuth.avatarURL, size: 64, useCustom: true)
+                CoAvatarView(remoteURL: kugouAuth.avatarURL, size: 64, useCustom: true)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(coDisplayName)
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(Color.beansLabel)
+                            .foregroundStyle(Color.coLabel)
                             .lineLimit(1)
                         if kugouAuth.isLoggedIn, let badge = kugouAuth.vipBadge {
                             VIPBadgeView(text: badge)
@@ -799,13 +799,13 @@ struct ProfileView: View {
                     }
                     Text(accountStatusLine)
                         .font(.system(size: 13))
-                        .foregroundStyle(Color.beansSecondary)
+                        .foregroundStyle(Color.coSecondary)
                         .lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.beansSecondary)
+                    .foregroundStyle(Color.coSecondary)
             }
             .padding(16)
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -826,7 +826,7 @@ struct ProfileView: View {
             }
             if !kugouAuth.isLoggedIn {
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showAccountHub = true
                 } label: {
                     Text("登录酷狗音乐后可同步云端歌单")
@@ -877,7 +877,7 @@ struct ProfileView: View {
                             }
                             .opacity(0)
                             Button {
-                                BeansHaptics.tap()
+                                CoHaptics.tap()
                                 navPlaylist = playlist
                             } label: {
                                 CoPlaylistRowLabel(playlist: playlist, label: coEffectiveLabel, secondary: coEffectiveSecondary)
@@ -973,11 +973,11 @@ struct ProfileView: View {
                 .padding(.top, 8)
             }
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 showAccountHub = true
             } label: {
                 VStack(spacing: 8) {
-                    BeansAvatarView(remoteURL: kugouAuth.avatarURL, size: 88, useCustom: true)
+                    CoAvatarView(remoteURL: kugouAuth.avatarURL, size: 88, useCustom: true)
                     HStack(spacing: 6) {
                         Text(coDisplayName)
                             .font(.system(size: 20, weight: .bold))
@@ -1052,7 +1052,7 @@ struct ProfileView: View {
 
     private func coNeteaseStatButton(title: String, value: String, action: @escaping () -> Void) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             action()
         } label: {
             VStack(spacing: 4) {
@@ -1109,9 +1109,9 @@ struct ProfileView: View {
                 .fill(coCardBackground)
         )
         .background {
-            // 上报白卡顶部全局位置，供状态栏浅/深色切换用（见 BeansProfileCardTopKey）。
+            // 上报白卡顶部全局位置，供状态栏浅/深色切换用（见 CoProfileCardTopKey）。
             GeometryReader { proxy in
-                Color.clear.preference(key: BeansProfileCardTopKey.self, value: proxy.frame(in: .global).minY)
+                Color.clear.preference(key: CoProfileCardTopKey.self, value: proxy.frame(in: .global).minY)
             }
         }
     }
@@ -1142,7 +1142,7 @@ struct ProfileView: View {
                 cache.savePlaylists(list, source: .kugou, accountID: kugouAuth.userId)
             }
         } catch {
-            BeansLogger.shared.log("酷狗歌单同步失败：\(error.localizedDescription)", level: .error)
+            CoLogger.shared.log("酷狗歌单同步失败：\(error.localizedDescription)", level: .error)
             if myPlaylists.isEmpty { myPlaylists = [] }
         }
         myPlaylistsLoading = false
@@ -1154,7 +1154,7 @@ struct ProfileView: View {
         let isExclusive = usesExclusiveIDBadge
         return Button {
             UIPasteboard.general.string = DeviceIdentity.publicID
-            BeansHaptics.tap()
+            CoHaptics.tap()
             ToastCenter.shared.show("用户 ID 已复制")
         } label: {
             HStack(spacing: 4) {
@@ -1172,7 +1172,7 @@ struct ProfileView: View {
             .padding(.vertical, 4)
             .background {
                 if isExclusive {
-                    BeansExclusiveIDBadgeSurface(style: exclusiveBadgeStyle)
+                    CoExclusiveIDBadgeSurface(style: exclusiveBadgeStyle)
                 } else {
                     Capsule()
                         .fill(
@@ -1195,34 +1195,34 @@ struct ProfileView: View {
     private var userCard: some View {
         VStack(spacing: 16) {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 // 统一账号面板：酷狗音乐登录
                 showAccountHub = true
             } label: {
                 HStack(spacing: 14) {
                     // 头像：主题渐变描边环
-                    BeansAvatarView(remoteURL: auth.user?.avatarURL, size: 64, useCustom: true)
-                    .background(Color.beansGlassFill, in: Circle())
+                    CoAvatarView(remoteURL: auth.user?.avatarURL, size: 64, useCustom: true)
+                    .background(Color.coGlassFill, in: Circle())
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
                             Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "Kugou Music Logged In" : "酷狗音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
-                                .font(BeansFont.appFont(20, .bold))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(20, .bold))
+                                .foregroundStyle(Color.coLabel)
                                 .lineLimit(1)
                             if auth.isLoggedIn, let badge = auth.user?.vipBadge {
                                 VIPBadgeView(text: badge)
                             }
                         }
                         Text(accountStatusLine)
-                            .font(BeansFont.appFont(12, .regular, .default))
-                            .foregroundStyle(Color.beansComment)
+                            .font(CoFont.appFont(12, .regular, .default))
+                            .foregroundStyle(Color.coComment)
                             .lineLimit(1)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.7))
+                        .foregroundStyle(Color.coComment.opacity(0.7))
                 }
                 .contentShape(Rectangle())
             }
@@ -1234,9 +1234,9 @@ struct ProfileView: View {
         }
         .padding(16)
         .background {
-                        BeansGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        CoGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        .beansCardShadow(radius: 10, y: 4)
+        .coCardShadow(radius: 10, y: 4)
     }
 
     /// 酷狗登录状态展示
@@ -1256,11 +1256,11 @@ struct ProfileView: View {
                 .scaledToFit()
                 .frame(width: 16, height: 16)
             Text(name)
-                .font(BeansFont.appFont(12, .semibold))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(12, .semibold))
+                .foregroundStyle(Color.coLabel)
             Text(status)
-                .font(BeansFont.appFont(11))
-                .foregroundStyle(Color.beansComment)
+                .font(CoFont.appFont(11))
+                .foregroundStyle(Color.coComment)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
             if let badge {
@@ -1269,7 +1269,7 @@ struct ProfileView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background { BeansSurface(shape: Capsule()) }
+        .background { CoSurface(shape: Capsule()) }
     }
 
 
@@ -1279,16 +1279,16 @@ struct ProfileView: View {
         let isActive = path == theme.backgroundImagePath
         return ZStack(alignment: .topTrailing) {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 theme.applyWallpaper(at: path)
             } label: {
                 Group {
-                    if let img = BeansImageFileCache.image(at: path) {
+                    if let img = CoImageFileCache.image(at: path) {
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
                     } else {
-                        Color.beansGlassFill
+                        Color.coGlassFill
                     }
                 }
                 .frame(height: 108)
@@ -1298,8 +1298,8 @@ struct ProfileView: View {
                     if isActive {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundStyle(Color.beansAmber)
-                            .background { BeansSurface(shape: Circle()) }
+                            .foregroundStyle(Color.coAmber)
+                            .background { CoSurface(shape: Circle()) }
                             .padding(5)
                     }
                 }
@@ -1307,14 +1307,14 @@ struct ProfileView: View {
             .buttonStyle(.plain)
 
             Button {
-                BeansHaptics.medium()
+                CoHaptics.medium()
                 theme.deleteWallpaper(at: path)
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(Color.coComment)
                     .frame(width: 28, height: 28)
-                    .background { BeansSurface(shape: Circle()) }
+                    .background { CoSurface(shape: Circle()) }
                     .clipShape(Circle())
                     .contentShape(Circle())
                     .padding(6)
@@ -1333,7 +1333,7 @@ struct ProfileView: View {
                     showHistory = true
                 }
                 featureCell(icon: hasVisibleAccountLogin ? "checkmark.seal.fill" : "globe", title: isEnglish ? "Accounts and Sign-in" : "账号与登录", subtitle: hasVisibleAccountLogin ? accountStatusLine : (isEnglish ? "Sign in to \(displayPlatformSummary)" : "登录 \(displayPlatformSummary)")) {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showAccountHub = true
                 }
             }
@@ -1342,24 +1342,24 @@ struct ProfileView: View {
 
     private func featureCell(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             action()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 15))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                     .frame(width: 34, height: 34)
-                    .background(Color.beansGlassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(Color.coGlassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LocalizedStringKey(title))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                        .foregroundStyle(Color.coLabel)
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
                     Text(subtitle)
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(11))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(2)
                         .minimumScaleFactor(0.78)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1368,7 +1368,7 @@ struct ProfileView: View {
             }
             .padding(12)
             .background {
-                                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .contentShape(Rectangle())
         }
@@ -1382,14 +1382,14 @@ private extension ProfileView {
         let isDeveloper = DeviceIdentity.isDeveloperInstallation
         return Button {
             UIPasteboard.general.string = DeviceIdentity.publicID
-            BeansHaptics.tap()
+            CoHaptics.tap()
             ToastCenter.shared.show("用户 ID 已复制")
         } label: {
             VStack(alignment: .leading, spacing: 11) {
                 HStack(spacing: 9) {
                     Image(systemName: isDeveloper ? "crown.fill" : "number.circle.fill")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isDeveloper ? Color.white : Color.beansAmber)
+                        .foregroundStyle(isDeveloper ? Color.white : Color.coAmber)
                         .frame(width: 30, height: 30)
                         .background {
                             if isDeveloper {
@@ -1401,21 +1401,21 @@ private extension ProfileView {
                                     )
                                 )
                             } else {
-                                Circle().fill(Color.beansGlassFill)
+                                Circle().fill(Color.coGlassFill)
                             }
                         }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(isDeveloper ? "Co Creator" : "用户 ID")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(14, .semibold))
+                            .foregroundStyle(Color.coLabel)
                         Text(isDeveloper ? "专属开发者铭牌" : "绑定当前设备，永久保留")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
+                            .font(CoFont.appFont(11))
+                            .foregroundStyle(Color.coComment)
                     }
                     Spacer(minLength: 8)
                     Image(systemName: "doc.on.doc")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isDeveloper ? Color.white.opacity(0.86) : Color.beansComment)
+                        .foregroundStyle(isDeveloper ? Color.white.opacity(0.86) : Color.coComment)
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -1433,13 +1433,13 @@ private extension ProfileView {
                     } else {
                         Text(DeviceIdentity.publicID)
                             .font(.system(size: 22, weight: .bold, design: .default))
-                            .foregroundStyle(Color.beansLabel)
+                            .foregroundStyle(Color.coLabel)
                             .monospacedDigit()
                     }
                     if isDeveloper {
                         Text("5201314")
-                            .font(BeansFont.appFont(10, .bold))
-                            .foregroundStyle(Color.beansLabel.opacity(0.7))
+                            .font(CoFont.appFont(10, .bold))
+                            .foregroundStyle(Color.coLabel.opacity(0.7))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
                             .background(Color.white.opacity(0.16), in: Capsule())
@@ -1451,7 +1451,7 @@ private extension ProfileView {
             .background {
                 if isDeveloper {
                     ZStack {
-                        BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous), forceLiquid: true)
+                        CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous), forceLiquid: true)
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(
                                 LinearGradient(
@@ -1474,7 +1474,7 @@ private extension ProfileView {
                             )
                     }
                 } else {
-                    BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -1490,7 +1490,7 @@ private extension ProfileView {
 
 /// 我的页“我喜欢 / 常听”共用歌曲列表：点行即播放并自动关闭，关 sheet 只靠下滑，不再另设“完成”按钮。
 /// 歌单列表弹窗（2026-10-24，只做歌单弹窗+新建，我的页其他地方不动）：
-/// 点数据行“歌单”格出本弹窗，款式同我喜欢/历史/常听的 sheet（自带 BeansNavigationStack、
+/// 点数据行“歌单”格出本弹窗，款式同我喜欢/历史/常听的 sheet（自带 CoNavigationStack、
 /// inline 标题、系统返回键）；列表口径是全部歌单（myPlaylists，不用隐藏逻辑，
 /// 歌单是几个就是几个，下方歌单区的隐藏逻辑与设置恢复不受影响）；每条行点按用
 /// NavigationLink 推入原有 PlaylistView，是真歌单页，
@@ -1535,10 +1535,10 @@ private struct CoPlaylistEmptyState: View {
         VStack(spacing: 8) {
             Image(systemName: "music.note.list")
                 .font(.system(size: 28))
-                .foregroundStyle(Color.beansSecondary)
+                .foregroundStyle(Color.coSecondary)
             Text(text)
                 .font(.system(size: 15))
-                .foregroundStyle(Color.beansSecondary)
+                .foregroundStyle(Color.coSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
@@ -1559,7 +1559,7 @@ struct CoPlaylistEditSheet: View {
     @State private var showSaveError = false
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 12) {
                     if let image = overrides.coverImage(for: playlistID) {
@@ -1570,24 +1570,24 @@ struct CoPlaylistEditSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     } else {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.beansGlassFill)
+                            .fill(Color.coGlassFill)
                             .frame(width: 64, height: 64)
                             .overlay {
                                 Image(systemName: "music.note.list")
-                                    .foregroundStyle(Color.beansComment)
+                                    .foregroundStyle(Color.coComment)
                             }
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Button("更换封面") { showCoverPicker = true }
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                         if overrides.hasCustomCover(for: playlistID) {
                             Button("恢复原封面") {
                                 overrides.clearCover(id: playlistID)
-                                BeansHaptics.select()
+                                CoHaptics.select()
                                 ToastCenter.shared.show("已恢复原封面")
                             }
-                            .font(BeansFont.appFont(13, .medium))
+                            .font(CoFont.appFont(13, .medium))
                             .foregroundStyle(.red)
                         }
                     }
@@ -1596,28 +1596,28 @@ struct CoPlaylistEditSheet: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text("歌单名字")
-                        .font(BeansFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(13, .semibold))
+                        .foregroundStyle(Color.coComment)
                     TextField("歌单名字", text: $nameText)
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
-                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
+                        .background { CoSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
                     if overrides.customName(for: playlistID) != nil {
                         Button("恢复原名（\(serverName)）") {
                             overrides.clearName(id: playlistID)
                             nameText = serverName
-                            BeansHaptics.select()
+                            CoHaptics.select()
                         }
-                        .font(BeansFont.appFont(13, .medium))
+                        .font(CoFont.appFont(13, .medium))
                         .foregroundStyle(.red)
                         .buttonStyle(.plain)
                     }
                 }
                 Text("改名、改封面只在 Co 里生效，不会同步到酷狗官方 App（酷狗接口没有这个接口）。")
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(12))
+                    .foregroundStyle(Color.coComment)
                 Spacer()
             }
             .padding(16)
@@ -1644,7 +1644,7 @@ struct CoPlaylistEditSheet: View {
                 WallpaperImagePicker(
                     onPicked: { image in
                         if overrides.setCover(id: playlistID, image: image) {
-                            BeansHaptics.success()
+                            CoHaptics.success()
                             ToastCenter.shared.show("已更换封面")
                         } else {
                             showSaveError = true
@@ -1682,14 +1682,14 @@ struct CoMyPlaylistsSheet: View {
     @State private var showCreateCoverPicker = false
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             Group {
                 if isLoading && displayed.isEmpty {
                     VStack(spacing: 12) {
                         ProgressView()
                         Text("正在同步歌单…")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansSecondary)
+                            .foregroundStyle(Color.coSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if !hasAnyPlaylists {
@@ -1701,7 +1701,7 @@ struct CoMyPlaylistsSheet: View {
                         VStack(spacing: 0) {
                             ForEach(displayed) { playlist in
                                 NavigationLink(destination: PlaylistView(playlist: playlist)) {
-                                    CoPlaylistRowLabel(playlist: playlist, label: Color.beansLabel, secondary: Color.beansSecondary)
+                                    CoPlaylistRowLabel(playlist: playlist, label: Color.coLabel, secondary: Color.coSecondary)
                                 }
                                 .buttonStyle(.plain)
                                 if playlist.id != displayed.last?.id {
@@ -1770,7 +1770,7 @@ struct CoMyPlaylistsSheet: View {
                         ProgressView()
                         Text("正在创建歌单…")
                             .font(.system(size: 13))
-                            .foregroundStyle(Color.beansSecondary)
+                            .foregroundStyle(Color.coSecondary)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -1834,16 +1834,16 @@ struct CoSongListSheet: View {
         let displaySubtitles = onClear == nil ? subtitles : Dictionary(uniqueKeysWithValues: player.topPlayed.map { ($0.song.identityKey, "\($0.count)次") })
         let displayTotal = onClear == nil ? totalPlayCount : player.playCounts.values.reduce(0, +)
         let displayOrphan = onClear == nil ? orphanPlayCount : player.orphanPlayCount
-        return BeansNavigationStack {
+        return CoNavigationStack {
             Group {
                 if displaySongs.isEmpty && displayOrphan == 0 {
                     VStack(spacing: 8) {
                         Image(systemName: "music.note")
                             .font(.system(size: 28))
-                            .foregroundStyle(Color.beansSecondary)
+                            .foregroundStyle(Color.coSecondary)
                         Text("这里还没有歌曲")
                             .font(.system(size: 15))
-                            .foregroundStyle(Color.beansSecondary)
+                            .foregroundStyle(Color.coSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if displaySongs.isEmpty {
@@ -1852,15 +1852,15 @@ struct CoSongListSheet: View {
                     VStack(spacing: 12) {
                         Image(systemName: "music.note")
                             .font(.system(size: 28))
-                            .foregroundStyle(Color.beansSecondary)
+                            .foregroundStyle(Color.coSecondary)
                         if let total = displayTotal {
                             Text("共 \(total) 次播放")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color.beansLabel)
+                                .foregroundStyle(Color.coLabel)
                         }
                         Text("其中 \(displayOrphan) 次的歌名记录已不在（历史被清空或旧记录无法对应），没有编一首假歌；新播放的歌会从这里开始出现。")
                             .font(.system(size: 13))
-                            .foregroundStyle(Color.beansSecondary)
+                            .foregroundStyle(Color.coSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
@@ -1879,11 +1879,11 @@ struct CoSongListSheet: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(song.name)
                                             .font(.system(size: 16))
-                                            .foregroundStyle(Color.beansLabel)
+                                            .foregroundStyle(Color.coLabel)
                                             .lineLimit(1)
                                         Text([song.artists, displaySubtitles[song.identityKey]].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
                                             .font(.system(size: 13))
-                                            .foregroundStyle(Color.beansSecondary)
+                                            .foregroundStyle(Color.coSecondary)
                                             .lineLimit(1)
                                     }
                                     Spacer(minLength: 8)
@@ -1899,16 +1899,16 @@ struct CoSongListSheet: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "music.note")
                                     .font(.system(size: 20))
-                                    .foregroundStyle(Color.beansSecondary)
+                                    .foregroundStyle(Color.coSecondary)
                                     .frame(width: 44, height: 44)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("其他已播放歌曲")
                                         .font(.system(size: 16))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                     Text("\(displayOrphan)次 · 歌名记录已不在")
                                         .font(.system(size: 13))
-                                        .foregroundStyle(Color.beansSecondary)
+                                        .foregroundStyle(Color.coSecondary)
                                         .lineLimit(1)
                                 }
                                 Spacer(minLength: 8)
@@ -1957,7 +1957,7 @@ struct AccountHubSheet: View {
     @EnvironmentObject private var auth: AuthStore
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
-    @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
+    @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
     @Environment(\.dismiss) private var dismiss
 
     @State private var showKugouLogin = false
@@ -1969,7 +1969,7 @@ struct AccountHubSheet: View {
     }
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
                 ScrollView {
@@ -1979,7 +1979,7 @@ struct AccountHubSheet: View {
                     }
                     .padding(16)
                 }
-                .beansScrollIndicatorsHidden()
+                .coScrollIndicatorsHidden()
             }
             .navigationTitle("账号登录")
             .navigationBarTitleDisplayMode(.inline)
@@ -2005,7 +2005,7 @@ struct AccountHubSheet: View {
 
     private var kugouCard: some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             if kugouAuth.isLoggedIn { confirmKugouLogout = true } else { showKugouLogin = true }
         } label: {
             HStack(spacing: 14) {
@@ -2017,8 +2017,8 @@ struct AccountHubSheet: View {
                     .shadow(color: Color(red: 0.08, green: 0.43, blue: 1.0).opacity(0.22), radius: 10, y: 4)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("酷狗音乐")
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15, .semibold))
+                        .foregroundStyle(Color.coLabel)
                     HStack(spacing: 6) {
                         Group {
                             if kugouAuth.isLoggedIn {
@@ -2027,8 +2027,8 @@ struct AccountHubSheet: View {
                                 Text(LocalizedStringKey("未登录 · App 扫码同步歌单"))
                             }
                         }
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                         if kugouAuth.isLoggedIn, let badge = kugouAuth.vipBadge {
@@ -2038,15 +2038,15 @@ struct AccountHubSheet: View {
                 }
                 Spacer()
                 Text(kugouAuth.isLoggedIn ? "退出" : "登录")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(kugouAuth.isLoggedIn ? Color.red : Color.beansAmber)
+                    .font(CoFont.appFont(13, .medium))
+                    .foregroundStyle(kugouAuth.isLoggedIn ? Color.red : Color.coAmber)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
+                    .background { CoSurface(shape: Capsule()) }
             }
             .padding(14)
             .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .contentShape(Rectangle())
         }
@@ -2063,59 +2063,59 @@ struct SettingsView: View {
     @EnvironmentObject private var auth: AuthStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
-    @AppStorage("beans.language") private var languageRaw = AppLanguage.chinese.rawValue
-    @AppStorage("beans.globalFloatingEffect") private var globalFloatingEffectRaw = BeansGlobalFloatingEffect.off.rawValue
-    @AppStorage("beans.globalFloatingDensity") private var globalFloatingDensity = 1.0
-    @AppStorage("beans.globalFloatingSize") private var globalFloatingSize = 1.0
-    @AppStorage("beans.globalFloatingSpeed") private var globalFloatingSpeed = 1.0
-    @AppStorage("beans.globalFloatingText") private var globalFloatingText = "❄️"
-    @AppStorage("beans.globalFloatingRotation") private var globalFloatingRotation = 0.0
-    @AppStorage("beans.globalFloatingSkew") private var globalFloatingSkew = 0.0
-    @AppStorage("beans.globalFloatingImageData") private var globalFloatingImageData = ""
-    @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
+    @AppStorage("co.themeMode") private var themeModeRaw = CoThemeMode.system.rawValue
+    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
+    @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
+    @AppStorage("co.globalFloatingEffect") private var globalFloatingEffectRaw = CoGlobalFloatingEffect.off.rawValue
+    @AppStorage("co.globalFloatingDensity") private var globalFloatingDensity = 1.0
+    @AppStorage("co.globalFloatingSize") private var globalFloatingSize = 1.0
+    @AppStorage("co.globalFloatingSpeed") private var globalFloatingSpeed = 1.0
+    @AppStorage("co.globalFloatingText") private var globalFloatingText = "❄️"
+    @AppStorage("co.globalFloatingRotation") private var globalFloatingRotation = 0.0
+    @AppStorage("co.globalFloatingSkew") private var globalFloatingSkew = 0.0
+    @AppStorage("co.globalFloatingImageData") private var globalFloatingImageData = ""
+    @AppStorage("co.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
     /// 底栏是否显示文字（关闭后只显示图标）
-    @AppStorage("beans.tabLabelsVisible") private var tabLabelsVisible = true
-    @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = BeansTabIconStyle.sfSymbols.rawValue
+    @AppStorage("co.tabLabelsVisible") private var tabLabelsVisible = true
+    @AppStorage("co.tabIconStyle") private var tabIconStyleRaw = CoTabIconStyle.sfSymbols.rawValue
     /// 第三方音源播放会员歌成功时提醒，默认开启
-    @AppStorage("beans.showThirdPartyVIPNotice") private var showThirdPartyVIPNotice = true
-    @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage("beans.audio.mixothers.v1") private var mixesWithOthers = false
-    @AppStorage("beans.nowPlaying.enabled.v1") private var nowPlayingEnabled = true
-    @AppStorage(BeansHaptics.enabledKey) private var hapticsEnabled = true
-    @AppStorage("beans.playback.autoResumeLast") private var autoResumeLastPlayback = false
-    @AppStorage("beans.labelColorHex") private var labelColorHex = ""
-    @AppStorage("beans.homeGreetingText") private var homeGreetingText = ""
-    @AppStorage("beans.homeGreetingSize") private var homeGreetingSize = 30.0
-    @AppStorage("beans.homeGreetingHeight") private var homeGreetingHeight = 0.0
-    @AppStorage("beans.homeGreetingColorHex") private var homeGreetingColorHex = ""
-    @AppStorage("beans.homeGreetingLine1Size") private var homeGreetingLine1Size = 0.0
-    @AppStorage("beans.homeGreetingLine2Size") private var homeGreetingLine2Size = 0.0
-    @AppStorage("beans.homeGreetingLine3Size") private var homeGreetingLine3Size = 0.0
-    @AppStorage("beans.homeGreetingLine1ColorHex") private var homeGreetingLine1ColorHex = ""
-    @AppStorage("beans.homeGreetingLine2ColorHex") private var homeGreetingLine2ColorHex = ""
-    @AppStorage("beans.homeGreetingLine3ColorHex") private var homeGreetingLine3ColorHex = ""
-    @AppStorage("beans.homeGreetingLine1OffsetY") private var homeGreetingLine1OffsetY = 0.0
-    @AppStorage("beans.homeGreetingLine2OffsetY") private var homeGreetingLine2OffsetY = 0.0
-    @AppStorage("beans.homeGreetingLine3OffsetY") private var homeGreetingLine3OffsetY = 0.0
-    @AppStorage("beans.homeGreetingLine1GradientStartHex") private var homeGreetingLine1GradientStartHex = ""
-    @AppStorage("beans.homeGreetingLine2GradientStartHex") private var homeGreetingLine2GradientStartHex = ""
-    @AppStorage("beans.homeGreetingLine3GradientStartHex") private var homeGreetingLine3GradientStartHex = ""
-    @AppStorage("beans.homeGreetingLine1GradientEndHex") private var homeGreetingLine1GradientEndHex = ""
-    @AppStorage("beans.homeGreetingLine2GradientEndHex") private var homeGreetingLine2GradientEndHex = ""
-    @AppStorage("beans.homeGreetingLine3GradientEndHex") private var homeGreetingLine3GradientEndHex = ""
-    @AppStorage("beans.homeGreetingGlowEnabled") private var homeGreetingGlowEnabled = false
-    @AppStorage("beans.homeGreetingGlowIntensity") private var homeGreetingGlowIntensity = 0.45
-    @AppStorage("beans.homeGreetingUnderline") private var homeGreetingUnderline = false
-    @AppStorage("beans.homeGreetingGradient") private var homeGreetingGradient = false
-    @AppStorage("beans.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
-    @AppStorage("beans.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
-    @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
-    @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
-    @AppStorage("beans.home.dailySongsListStyle") private var dailySongsListStyle = false
-    @ObservedObject private var equalizer = BeansEqualizer.shared
+    @AppStorage("co.showThirdPartyVIPNotice") private var showThirdPartyVIPNotice = true
+    @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("co.audio.mixothers.v1") private var mixesWithOthers = false
+    @AppStorage("co.nowPlaying.enabled.v1") private var nowPlayingEnabled = true
+    @AppStorage(CoHaptics.enabledKey) private var hapticsEnabled = true
+    @AppStorage("co.playback.autoResumeLast") private var autoResumeLastPlayback = false
+    @AppStorage("co.labelColorHex") private var labelColorHex = ""
+    @AppStorage("co.homeGreetingText") private var homeGreetingText = ""
+    @AppStorage("co.homeGreetingSize") private var homeGreetingSize = 30.0
+    @AppStorage("co.homeGreetingHeight") private var homeGreetingHeight = 0.0
+    @AppStorage("co.homeGreetingColorHex") private var homeGreetingColorHex = ""
+    @AppStorage("co.homeGreetingLine1Size") private var homeGreetingLine1Size = 0.0
+    @AppStorage("co.homeGreetingLine2Size") private var homeGreetingLine2Size = 0.0
+    @AppStorage("co.homeGreetingLine3Size") private var homeGreetingLine3Size = 0.0
+    @AppStorage("co.homeGreetingLine1ColorHex") private var homeGreetingLine1ColorHex = ""
+    @AppStorage("co.homeGreetingLine2ColorHex") private var homeGreetingLine2ColorHex = ""
+    @AppStorage("co.homeGreetingLine3ColorHex") private var homeGreetingLine3ColorHex = ""
+    @AppStorage("co.homeGreetingLine1OffsetY") private var homeGreetingLine1OffsetY = 0.0
+    @AppStorage("co.homeGreetingLine2OffsetY") private var homeGreetingLine2OffsetY = 0.0
+    @AppStorage("co.homeGreetingLine3OffsetY") private var homeGreetingLine3OffsetY = 0.0
+    @AppStorage("co.homeGreetingLine1GradientStartHex") private var homeGreetingLine1GradientStartHex = ""
+    @AppStorage("co.homeGreetingLine2GradientStartHex") private var homeGreetingLine2GradientStartHex = ""
+    @AppStorage("co.homeGreetingLine3GradientStartHex") private var homeGreetingLine3GradientStartHex = ""
+    @AppStorage("co.homeGreetingLine1GradientEndHex") private var homeGreetingLine1GradientEndHex = ""
+    @AppStorage("co.homeGreetingLine2GradientEndHex") private var homeGreetingLine2GradientEndHex = ""
+    @AppStorage("co.homeGreetingLine3GradientEndHex") private var homeGreetingLine3GradientEndHex = ""
+    @AppStorage("co.homeGreetingGlowEnabled") private var homeGreetingGlowEnabled = false
+    @AppStorage("co.homeGreetingGlowIntensity") private var homeGreetingGlowIntensity = 0.45
+    @AppStorage("co.homeGreetingUnderline") private var homeGreetingUnderline = false
+    @AppStorage("co.homeGreetingGradient") private var homeGreetingGradient = false
+    @AppStorage("co.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
+    @AppStorage("co.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
+    @AppStorage("co.pauseHomeRendering") private var homeRenderingPaused = false
+    @AppStorage("co.homeHeaderHideSort") private var homeHeaderHideSort = false
+    @AppStorage("co.home.dailySongsListStyle") private var dailySongsListStyle = false
+    @ObservedObject private var equalizer = CoEqualizer.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
 
@@ -2158,11 +2158,11 @@ struct SettingsView: View {
     @State private var settingsSearchText = ""
     @State private var settingsContentReady = false
     @State private var runtimeEnvironmentExpanded = false
-    @AppStorage(BeansLockScreenArtwork.enabledKey) private var lockScreenImmersiveArtworkEnabled = true
-    @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetailEnabled = true
+    @AppStorage(CoLockScreenArtwork.enabledKey) private var lockScreenImmersiveArtworkEnabled = true
+    @AppStorage(CoImmersiveDetailHeader.enabledKey) private var immersiveDetailEnabled = true
 
-    private var themeMode: BeansThemeMode {
-        BeansThemeMode(rawValue: themeModeRaw) ?? .system
+    private var themeMode: CoThemeMode {
+        CoThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
     /// 深色模式开关（2026-10-23 用户定：设置页外观区直达入口）：复用已有存储键
@@ -2170,7 +2170,7 @@ struct SettingsView: View {
     /// 三段选择（跟随系统/浅色/深色），开关只反映“当前是否显式深色”。
 
     private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
+        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
     private var usesCustomWallpaper: Bool {
@@ -2218,7 +2218,7 @@ struct SettingsView: View {
                 settingsScrollContent
             } else {
                 ProgressView()
-                    .tint(Color.beansAmber)
+                    .tint(Color.coAmber)
                     .controlSize(.regular)
             }
         }
@@ -2239,7 +2239,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showWallpaperPicker) {
             WallpaperPhotoPicker { data in
                 theme.addWallpaperForBothSchemes(data)
-                BeansHaptics.success()
+                CoHaptics.success()
             }
             .ignoresSafeArea()
         }
@@ -2350,8 +2350,8 @@ struct SettingsView: View {
                 AnyView(utilitySettingsGroup)
                 if !hasSettingsSearchResults {
                     Text("没有找到相关设置")
-                        .font(BeansFont.appFont(14))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(14))
+                        .foregroundStyle(Color.coComment)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 32)
                 }
@@ -2368,9 +2368,9 @@ struct SettingsView: View {
             // 底部留白：原 40pt 根本不够迷你播放器（约 50pt）+ 底栏（约 57pt）
             // + 安全区，最后一行会被盖住；按我的页同款 240pt 给足，不只加 10pt。
             .padding(.bottom, 240)
-            .beansAdaptiveContentWidth()
+            .coAdaptiveContentWidth()
         }
-        .beansScrollIndicatorsHidden()
+        .coScrollIndicatorsHidden()
     }
 
 
@@ -2385,18 +2385,18 @@ struct SettingsView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color.beansComment)
+                .foregroundStyle(Color.coComment)
             TextField("搜索设置", text: $settingsSearchText)
-                .font(BeansFont.appFont(16, .medium))
+                .font(CoFont.appFont(16, .medium))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             if !settingsSearchText.isEmpty {
                 Button {
                     settingsSearchText = ""
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Color.beansComment.opacity(0.7))
+                        .foregroundStyle(Color.coComment.opacity(0.7))
                 }
                 .buttonStyle(.plain)
             }
@@ -2404,11 +2404,11 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
         .frame(height: 48)
         .background {
-            BeansGlass(shape: Capsule())
+            CoGlass(shape: Capsule())
         }
         .overlay {
             Capsule()
-                .strokeBorder(Color.beansLabel.opacity(0.08), lineWidth: 1)
+                .strokeBorder(Color.coLabel.opacity(0.08), lineWidth: 1)
                 .allowsHitTesting(false)
         }
     }
@@ -2470,7 +2470,7 @@ struct SettingsView: View {
         }
         CoHiddenPlaylists.save(userId: kugouAuth.userId, entries: entries)
         settingsCurrentHidden = entries
-        BeansHaptics.select()
+        CoHaptics.select()
     }
 
     private var hiddenPlaylistsSettingsSection: some View {
@@ -2480,7 +2480,7 @@ struct SettingsView: View {
         // 改成和外观行一样的 Button 结构：只有一个上下箭头，图标位、内边距、字号全对齐。
         VStack(alignment: .leading, spacing: 12) {
             Button {
-                BeansHaptics.select()
+                CoHaptics.select()
                 refreshHiddenPlaylistsSettings()
                 withAnimation(.easeInOut(duration: 0.25)) {
                     hiddenPlaylistsExpanded.toggle()
@@ -2489,18 +2489,18 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "eye.slash.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     Text("隐藏的歌单")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     Text(settingsAllPlaylistRows.isEmpty ? "无" : "\(settingsHiddenIds.count) 条已隐藏 / 共 \(settingsAllPlaylistRows.count) 条")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                     Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                        .foregroundStyle(Color.coComment.opacity(0.6))
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 14)
@@ -2510,14 +2510,14 @@ struct SettingsView: View {
             if hiddenPlaylistsExpanded {
             VStack(alignment: .leading, spacing: 14) {
                 Button { refreshHiddenPlaylistsSettings() } label: {
-                    Text("刷新列表").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
+                    Text("刷新列表").font(CoFont.appFont(13, .medium)).foregroundStyle(Color.coAmber)
                         .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background { BeansSurface(shape: Capsule()) }
+                        .background { CoSurface(shape: Capsule()) }
                 }
                 .buttonStyle(.plain)
                 if settingsAllPlaylistRows.isEmpty {
                     Text("暂未同步到歌单，先打开“我的”页同步一次；同步后这里会显示全部歌单，点眼睛可隐藏或显示，隐藏只不在“我的”页显示，歌单本身不删除。")
-                        .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12)).foregroundStyle(Color.coComment)
                 } else {
                     ForEach(settingsAllPlaylistRows, id: \.id) { row in
                         let hidden = settingsHiddenIds.contains(row.id)
@@ -2526,36 +2526,36 @@ struct SettingsView: View {
                             Button { toggleSettingsPlaylistHidden(id: row.id, name: row.name) } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(playlistOverrides.customName(for: row.id) ?? row.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
+                                        Text(playlistOverrides.customName(for: row.id) ?? row.name).font(CoFont.appFont(14)).foregroundStyle(Color.coLabel).lineLimit(1)
                                         if let count = row.trackCount {
-                                            Text("\(count) 首").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                            Text("\(count) 首").font(CoFont.appFont(11)).foregroundStyle(Color.coComment)
                                         } else {
-                                            Text("歌单 ID \(row.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                            Text("歌单 ID \(row.id)").font(CoFont.appFont(11)).foregroundStyle(Color.coComment)
                                         }
                                     }
                                     Spacer()
-                                    Text(hidden ? "已隐藏" : "显示中").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                                    Text(hidden ? "已隐藏" : "显示中").font(CoFont.appFont(12)).foregroundStyle(Color.coComment)
                                 }
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             // 铅笔只占一个图标位：打开本地编辑页（改名、改封面，只在 Co 里生效）。
                             Button {
-                                BeansHaptics.select()
+                                CoHaptics.select()
                                 editingPlaylistID = row.id
                                 editingPlaylistName = row.name
                                 showPlaylistEditSheet = true
                             } label: {
                                 Image(systemName: "pencil")
                                     .font(.system(size: 16))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .foregroundStyle(Color.coLabel)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("编辑歌单")
                             Button { toggleSettingsPlaylistHidden(id: row.id, name: row.name) } label: {
                                 Image(systemName: hidden ? "eye.slash.fill" : "eye.fill")
                                     .font(.system(size: 16))
-                                    .foregroundStyle(hidden ? Color.beansAmber : Color.beansLabel)
+                                    .foregroundStyle(hidden ? Color.coAmber : Color.coLabel)
                             }
                             .buttonStyle(.plain)
                         }
@@ -2563,28 +2563,28 @@ struct SettingsView: View {
                 }
                 if !settingsOtherHidden.isEmpty {
                     Text("其他账号已隐藏的歌单")
-                        .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12, .semibold)).foregroundStyle(Color.coComment)
                     ForEach(settingsOtherHidden, id: \.userId) { account in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(account.userId == "local" ? "本地（未登录）" : "账号 \(account.userId)")
-                                .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansComment)
+                                .font(CoFont.appFont(12, .semibold)).foregroundStyle(Color.coComment)
                             ForEach(account.entries, id: \.id) { entry in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(entry.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
-                                        Text("歌单 ID \(entry.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                        Text(entry.name).font(CoFont.appFont(14)).foregroundStyle(Color.coLabel).lineLimit(1)
+                                        Text("歌单 ID \(entry.id)").font(CoFont.appFont(11)).foregroundStyle(Color.coComment)
                                     }
                                     Spacer()
                                     Button {
                                         let entries = account.entries.filter { $0.id != entry.id }
                                         CoHiddenPlaylists.save(userId: account.userId, entries: entries)
                                         refreshHiddenPlaylistsSettings()
-                                        BeansHaptics.select()
+                                        CoHaptics.select()
                                         ToastCenter.shared.show("已恢复显示")
                                     } label: {
-                                        Text("恢复显示").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
+                                        Text("恢复显示").font(CoFont.appFont(13, .medium)).foregroundStyle(Color.coAmber)
                                             .padding(.horizontal, 12).padding(.vertical, 6)
-                                            .background { BeansSurface(shape: Capsule()) }
+                                            .background { CoSurface(shape: Capsule()) }
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -2640,23 +2640,23 @@ struct SettingsView: View {
 
     private var accountSection: some View {
         Button {
-            BeansHaptics.tap()
+            CoHaptics.tap()
             showAccountHub = true
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "person.crop.circle.badge.checkmark")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(beansLocalized("账号登录", "Account sign-in"))
-                        .font(BeansFont.appFont(15, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15, .semibold))
+                        .foregroundStyle(Color.coLabel)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.beansComment.opacity(0.65))
+                    .foregroundStyle(Color.coComment.opacity(0.65))
             }
             .padding(.horizontal, 4)
             .padding(.vertical, 14)
@@ -2672,7 +2672,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             // 外观设置行：点击展开 / 收起全部外观设置
             Button {
-                BeansHaptics.select()
+                CoHaptics.select()
                 withAnimation(.easeInOut(duration: 0.25)) {
                     appearanceExpanded.toggle()
                 }
@@ -2680,15 +2680,15 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "paintpalette.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     Text("外观设置")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     Image(systemName: appearanceExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                        .foregroundStyle(Color.coComment.opacity(0.6))
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 14)
@@ -2701,28 +2701,28 @@ struct SettingsView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("我的页头部壁纸")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                         Text(profileHeaderWallpaper.image == nil ? "当前：默认黑色" : "当前：已应用壁纸")
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
+                            .font(CoFont.appFont(12))
+                            .foregroundStyle(Color.coComment)
                     }
                     Spacer()
                     if profileHeaderWallpaper.image != nil {
                         Button {
                             profileHeaderWallpaper.clear()
-                            BeansHaptics.select()
+                            CoHaptics.select()
                         } label: {
                             Text("恢复默认")
-                                .font(BeansFont.appFont(13, .medium))
+                                .font(CoFont.appFont(13, .medium))
                                 .foregroundStyle(.red)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background { BeansSurface(shape: Capsule()) }
+                                .background { CoSurface(shape: Capsule()) }
                         }
                         .buttonStyle(.plain)
                     }
@@ -2730,11 +2730,11 @@ struct SettingsView: View {
                         showProfileHeaderWallpaperPicker = true
                     } label: {
                         Text("更换")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background { BeansSurface(shape: Capsule()) }
+                            .background { CoSurface(shape: Capsule()) }
                     }
                     .buttonStyle(.plain)
                 }
@@ -2743,15 +2743,15 @@ struct SettingsView: View {
                 // 里的全屏弹窗 + 自定义顶部栏）。本轮把 sheet / 全屏弹窗移到
                 // SettingsView 根层级（见 body 处），这里只留“更换”按钮。
                 Picker("主题模式", selection: $themeModeRaw) {
-                    ForEach(BeansThemeMode.allCases) { mode in
+                    ForEach(CoThemeMode.allCases) { mode in
                         Text(LocalizedStringKey(mode.title)).tag(mode.rawValue)
                     }
                 }
                 .pickerStyle(.segmented)
                 Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
-                    .tint(Color.beansAmber)
+                    .tint(Color.coAmber)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("beans.settings.immersive-detail")
+                    .accessibilityIdentifier("co.settings.immersive-detail")
 
                 Picker("语言", selection: $languageRaw) {
                     ForEach(AppLanguage.allCases) { language in
@@ -2759,11 +2759,11 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
 
                 Toggle("关闭液态模式", isOn: $disableLiquidGlass)
-                    .font(BeansFont.appFont(15))
-                    .tint(Color.beansAmber)
+                    .font(CoFont.appFont(15))
+                    .tint(Color.coAmber)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 DisclosureGroup(isExpanded: $appearanceDetailsExpanded) {
@@ -2772,29 +2772,29 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("全局漂浮特效")
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                     }
                     Picker("全局漂浮特效", selection: $globalFloatingEffectRaw) {
-                        ForEach(BeansGlobalFloatingEffect.allCases) { effect in
+                        ForEach(CoGlobalFloatingEffect.allCases) { effect in
                             Label(effect.title, systemImage: effect.icon).tag(effect.rawValue)
                         }
                     }
                     .pickerStyle(.segmented)
-                    .tint(Color.beansAmber)
-                    if globalFloatingEffectRaw != BeansGlobalFloatingEffect.off.rawValue {
+                    .tint(Color.coAmber)
+                    if globalFloatingEffectRaw != CoGlobalFloatingEffect.off.rawValue {
                         layoutSettingSlider("特效密度", value: $globalFloatingDensity, range: 0.4...2.4, step: 0.1, format: "%.1fx")
                         layoutSettingSlider("粒子大小", value: $globalFloatingSize, range: 0.6...2.2, step: 0.1, format: "%.1fx")
                         layoutSettingSlider("动画速度", value: $globalFloatingSpeed, range: 0.4...1.8, step: 0.1, format: "%.1fx")
-                        if globalFloatingEffectRaw == BeansGlobalFloatingEffect.customText.rawValue {
+                        if globalFloatingEffectRaw == CoGlobalFloatingEffect.customText.rawValue {
                             TextField("文字或 Emoji", text: $globalFloatingText)
                                 .textFieldStyle(.roundedBorder)
-                                .font(BeansFont.appFont(14))
+                                .font(CoFont.appFont(14))
                             HStack(spacing: 12) {
                                 Button {
                                     showFloatingImagePicker = true
@@ -2803,16 +2803,16 @@ struct SettingsView: View {
                                         globalFloatingImageData.isEmpty ? "上传漂浮图片" : "更换漂浮图片",
                                         systemImage: "photo.badge.plus"
                                     )
-                                    .font(BeansFont.appFont(13, .medium))
-                                    .foregroundStyle(Color.beansAmber)
+                                    .font(CoFont.appFont(13, .medium))
+                                    .foregroundStyle(Color.coAmber)
                                 }
                                 .buttonStyle(.plain)
                                 if !globalFloatingImageData.isEmpty {
                                     Button("清除图片") {
                                         globalFloatingImageData = ""
                                     }
-                                    .font(BeansFont.appFont(12))
-                                    .foregroundStyle(Color.beansComment)
+                                    .font(CoFont.appFont(12))
+                                    .foregroundStyle(Color.coComment)
                                     .buttonStyle(.plain)
                                 }
                             }
@@ -2826,39 +2826,39 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "rectangle.3.group")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("底栏显示文字")
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
 
                 Button {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showTabVisibilitySettings = true
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "rectangle.3.group.bubble")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("底部栏显示")
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                             Text("选择要显示的主页入口")
-                                .font(BeansFont.appFont(12))
-                                .foregroundStyle(Color.beansComment)
+                                .font(CoFont.appFont(12))
+                                .foregroundStyle(Color.coComment)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                     }
                     .padding(.vertical, 8)
                     .contentShape(Rectangle())
@@ -2869,59 +2869,59 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "square.grid.2x2")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         Text("底栏图标样式")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                     }
                     Picker("底栏图标样式", selection: $tabIconStyleRaw) {
-                        ForEach(BeansTabIconStyle.allCases) { style in
+                        ForEach(CoTabIconStyle.allCases) { style in
                             Text(style.title).tag(style.rawValue)
                         }
                     }
                     .pickerStyle(.segmented)
-                    .tint(Color.beansAmber)
+                    .tint(Color.coAmber)
                 }
 
                 Toggle(isOn: $showSongVIPBadge) {
                     HStack(spacing: 12) {
                         Image(systemName: "crown.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("显示歌曲 VIP 图标")
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
 
                  VStack(alignment: .leading, spacing: 8) {
                      HStack {
                          Image(systemName: "square.stack.3d.up.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         Text("全局 UI 样式")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                         Spacer()
                     }
                     Picker("全局 UI 样式", selection: Binding(
                         get: { theme.uiStyle },
                         set: { theme.setUIStyle($0) }
                     )) {
-                        ForEach(BeansUIStyle.allCases, id: \.self) { style in
+                        ForEach(CoUIStyle.allCases, id: \.self) { style in
                             Text(LocalizedStringKey(style.title)).tag(style)
                         }
                     }
@@ -2931,15 +2931,15 @@ struct SettingsView: View {
                  HStack {
                      Image(systemName: "drop.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("液态容器颜色")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                         Text("只影响 Co 自定义液态容器，系统原生玻璃不变")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
+                            .font(CoFont.appFont(11))
+                            .foregroundStyle(Color.coComment)
                     }
                     Spacer(minLength: 10)
                     ColorPicker("", selection: Binding(
@@ -2953,35 +2953,35 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Button {
                         theme.clearLiquidGlassColor()
-                        BeansHaptics.select()
+                        CoHaptics.select()
                     } label: {
                         Text("恢复默认")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background { BeansSurface(shape: Capsule()) }
+                            .background { CoSurface(shape: Capsule()) }
                     }
                     .buttonStyle(.plain)
                     Spacer()
                     Text(theme.liquidGlassColorHex == nil ? "默认清透" : "已自定义")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 HStack {
                     Image(systemName: "eyedropper.halffull")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     Text("自定义强调色")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     ColorPicker("", selection: Binding(
-                        get: { theme.customAccent ?? Color.beansAmber },
+                        get: { theme.customAccent ?? Color.coAmber },
                         set: { theme.setCustomAccent($0.hexString) }
                     ))
                     .labelsHidden()
@@ -2989,45 +2989,45 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Button {
                         theme.clearCustomAccent()
-                        BeansHaptics.select()
+                        CoHaptics.select()
                     } label: {
                         Text("恢复预设")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background { BeansSurface(shape: Capsule()) }
+                            .background { CoSurface(shape: Capsule()) }
                     }
                     .buttonStyle(.plain)
                     Spacer()
                             Text(LocalizedStringKey(theme.customAccentHex == nil ? "使用预设主题" : "已自定义"))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                 }
 
-                    Divider().overlay(Color.beansComment.opacity(0.15))
+                    Divider().overlay(Color.coComment.opacity(0.15))
 
                     HStack {
                         Image(systemName: "photo.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         Text(beansLocalized("主页背景色", "Home Background Color"))
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                         Spacer()
                     }
                     HStack {
                         Image(systemName: "circle.lefthalf.filled")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         Text(beansLocalized("背景颜色", "Background Color"))
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                         Spacer()
                         ColorPicker("", selection: Binding(
-                            get: { theme.customBackground ?? Color.beansBackground },
+                            get: { theme.customBackground ?? Color.coBackground },
                             set: { theme.setBackground($0.hexString, for: .light); theme.setBackground($0.hexString, for: .dark) }
                         ))
                         .labelsHidden()
@@ -3036,19 +3036,19 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         Button {
                             showWallpaperPicker = true
                         } label: {
                             HStack(spacing: 8) {
                                 Text("上传壁纸（可多张）")
-                                    .font(BeansFont.appFont(15))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .font(CoFont.appFont(15))
+                                    .foregroundStyle(Color.coLabel)
                                 Spacer()
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 22))
-                                    .foregroundStyle(Color.beansAmber)
+                                    .foregroundStyle(Color.coAmber)
                             }
                         }
                         .buttonStyle(.plain)
@@ -3064,10 +3064,10 @@ struct SettingsView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "photo.stack")
                                 .font(.system(size: 13))
-                                .foregroundStyle(Color.beansComment)
+                                .foregroundStyle(Color.coComment)
                             Text("还没有壁纸，上传后会显示在这里")
-                                .font(BeansFont.appFont(12))
-                                .foregroundStyle(Color.beansComment)
+                                .font(CoFont.appFont(12))
+                                .foregroundStyle(Color.coComment)
                             Spacer()
                         }
                     }
@@ -3075,21 +3075,21 @@ struct SettingsView: View {
                         if theme.customBackgroundImage != nil {
                             Button {
                                 theme.clearBackgroundImage(for: .light); theme.clearBackgroundImage(for: .dark)
-                                BeansHaptics.select()
+                                CoHaptics.select()
                             } label: {
                                 Text("清除当前背景")
-                                    .font(BeansFont.appFont(13, .medium))
+                                    .font(CoFont.appFont(13, .medium))
                                     .foregroundStyle(.red)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
-                                    .background { BeansSurface(shape: Capsule()) }
+                                    .background { CoSurface(shape: Capsule()) }
                             }
                             .buttonStyle(.plain)
                         }
                         Spacer()
                             Text(LocalizedStringKey(theme.customBackgroundImage == nil ? "当前：默认背景" : "当前：已应用壁纸"))
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
+                            .font(CoFont.appFont(12))
+                            .foregroundStyle(Color.coComment)
                     }
                 Toggle(isOn: Binding(
                     get: { theme.backgroundSyncAll },
@@ -3098,88 +3098,88 @@ struct SettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "square.grid.2x2.fill")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                         Text(LocalizedStringKey("同步到搜索 / 音乐库 / 我的"))
-                            .font(BeansFont.appFont(13))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(13))
+                            .foregroundStyle(Color.coLabel)
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 HStack {
                     Button {
                         theme.setBackground("")
-                        BeansHaptics.select()
+                        CoHaptics.select()
                     } label: {
                         Text("恢复默认背景")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                        .background { BeansSurface(shape: Capsule()) }
+                        .background { CoSurface(shape: Capsule()) }
                     }
                     .buttonStyle(.plain)
                     Spacer()
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 HStack {
                     Image(systemName: "text.quote")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     Text("注释文字颜色")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     ColorPicker("", selection: Binding(
                         get: {
-                            if let raw = UserDefaults.standard.string(forKey: "beans.commentColorHex"),
+                            if let raw = UserDefaults.standard.string(forKey: "co.commentColorHex"),
                                let c = Color(hex: raw) { return c }
-                            return Color.beansComment
+                            return Color.coComment
                         },
-                        set: { UserDefaults.standard.set($0.hexString, forKey: "beans.commentColorHex") }
+                        set: { UserDefaults.standard.set($0.hexString, forKey: "co.commentColorHex") }
                     ))
                     .labelsHidden()
                 }
                 HStack(spacing: 12) {
                     Button {
-                        UserDefaults.standard.removeObject(forKey: "beans.commentColorHex")
-                        BeansHaptics.select()
+                        UserDefaults.standard.removeObject(forKey: "co.commentColorHex")
+                        CoHaptics.select()
                     } label: {
                         Text("恢复默认")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                        .background { BeansSurface(shape: Capsule()) }
+                        .background { CoSurface(shape: Capsule()) }
                     }
                     .buttonStyle(.plain)
                     Spacer()
                     Text(LocalizedStringKey("全 App 说明文字颜色"))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 HStack {
                     Image(systemName: "house.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     Text("主文字颜色")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     ColorPicker("", selection: Binding(
                         get: {
                             if let c = Color(hex: labelColorHex) { return c }
-                            return Color.beansLabel
+                            return Color.coLabel
                         },
                         set: {
                             labelColorHex = $0.hexString
@@ -3192,23 +3192,23 @@ struct SettingsView: View {
                     Button {
                         labelColorHex = ""
                         theme.objectWillChange.send()
-                        BeansHaptics.select()
+                        CoHaptics.select()
                     } label: {
                         Text("恢复默认")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
+                            .font(CoFont.appFont(13, .medium))
+                            .foregroundStyle(Color.coAmber)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                        .background { BeansSurface(shape: Capsule()) }
+                        .background { CoSurface(shape: Capsule()) }
                     }
                     .buttonStyle(.plain)
                     Spacer()
                     Text(LocalizedStringKey("全 App 主文字颜色"))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -3216,14 +3216,14 @@ struct SettingsView: View {
                         Text("主页壁纸模糊度")
                         Spacer()
                         Text("\(Int(homeWallpaperBlur))")
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                     }
-                    .font(BeansFont.appFont(12))
+                    .font(CoFont.appFont(12))
                     Slider(value: $homeWallpaperBlur, in: 0...30, step: 1)
-                        .tint(Color.beansAmber)
+                        .tint(Color.coAmber)
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 appearanceToggle("隐藏所有界面排序按钮", isOn: $homeHeaderHideSort)
                 appearanceToggle("每日推荐使用旧版样式", isOn: $dailySongsListStyle)
@@ -3231,10 +3231,10 @@ struct SettingsView: View {
                     }
                 } label: {
                     Label("更多外观与主页设置", systemImage: "slider.horizontal.3")
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                        .foregroundStyle(Color.coLabel)
                 }
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
             }
             .padding(.horizontal, 4)
             .padding(.bottom, 14)
@@ -3244,9 +3244,9 @@ struct SettingsView: View {
 
     private func appearanceToggle(_ title: String, isOn: Binding<Bool>) -> some View {
         Toggle(title, isOn: isOn)
-            .font(BeansFont.appFont(13))
+            .font(CoFont.appFont(13))
             .toggleStyle(.switch)
-            .tint(Color.beansAmber)
+            .tint(Color.coAmber)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.trailing, 10)
             .contentShape(Rectangle())
@@ -3255,26 +3255,26 @@ struct SettingsView: View {
     /// 播放与歌词设置。
     private var equalizerSection: some View {
         Button {
-            BeansHaptics.select()
+            CoHaptics.select()
             showEqualizer = true
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(beansLocalized("均衡器", "Equalizer"))
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                 }
                 Spacer()
                 Text(equalizer.isEnabled ? beansLocalized("已开启", "On") : beansLocalized("已关闭", "Off"))
-                    .font(BeansFont.appFont(12, .medium))
-                    .foregroundStyle(equalizer.isEnabled ? Color.beansAmber : Color.beansComment)
+                    .font(CoFont.appFont(12, .medium))
+                    .foregroundStyle(equalizer.isEnabled ? Color.coAmber : Color.coComment)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.beansComment.opacity(0.6))
+                    .foregroundStyle(Color.coComment.opacity(0.6))
             }
             .padding(.horizontal, 4)
             .padding(.vertical, 14)
@@ -3286,7 +3286,7 @@ struct SettingsView: View {
     private var playbackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
-                BeansHaptics.select()
+                CoHaptics.select()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     playbackExpanded.toggle()
                 }
@@ -3294,17 +3294,17 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("播放设置")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                     }
                     Spacer()
                     Image(systemName: playbackExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                        .foregroundStyle(Color.coComment.opacity(0.6))
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 14)
@@ -3318,110 +3318,110 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "speaker.wave.2.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("与其他音频同时播放")
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
                 .onChange(of: mixesWithOthers) { value in
                     player.setMixesWithOthers(value)
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 Toggle(isOn: $nowPlayingEnabled) {
                     HStack(spacing: 12) {
                         Image(systemName: "lock.iphone")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(beansLocalized("显示锁屏与灵动岛播放器", "Show Lock Screen and Dynamic Island player"))
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
                 .onChange(of: nowPlayingEnabled) { value in
                     player.setNowPlayingEnabled(value)
                 }
 
                 Toggle("锁屏沉浸封面", isOn: $lockScreenImmersiveArtworkEnabled)
-                    .tint(Color.beansAmber)
-                    .accessibilityIdentifier("beans.settings.lock-screen-artwork")
+                    .tint(Color.coAmber)
+                    .accessibilityIdentifier("co.settings.lock-screen-artwork")
                     .onChange(of: lockScreenImmersiveArtworkEnabled) { _, _ in player.refreshLockScreenArtwork() }
                 Text("支持专辑封面、自定义 GIF 和视频封面。显示效果由系统和辅助功能设置决定。")
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(11))
+                    .foregroundStyle(Color.coComment)
                 Button("清理未使用的锁屏素材") {
                     ToastCenter.shared.show("锁屏视频素材已在酷狗专版移除")
                 }
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 Toggle(isOn: $autoResumeLastPlayback) {
                     HStack(spacing: 12) {
                         Image(systemName: "play.square.stack.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(beansLocalized("启动时自动播放上次歌曲", "Auto-play the last song on launch"))
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                             Text(beansLocalized("打开软件后自动恢复上次未播放完的歌曲", "Automatically resume the last unfinished song when the app starts."))
-                                .font(BeansFont.appFont(11))
-                                .foregroundStyle(Color.beansComment)
+                                .font(CoFont.appFont(11))
+                                .foregroundStyle(Color.coComment)
                         }
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 Toggle(isOn: $hapticsEnabled) {
                     HStack(spacing: 12) {
                         Image(systemName: "iphone.radiowaves.left.and.right")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         Text(beansLocalized("触感反馈", "Haptic Feedback"))
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
 
-                Divider().overlay(Color.beansComment.opacity(0.15))
+                Divider().overlay(Color.coComment.opacity(0.15))
 
                 Toggle(isOn: $showThirdPartyVIPNotice) {
                     HStack(spacing: 12) {
                         Image(systemName: "bell.badge.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
+                            .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(beansLocalized("第三方播放会员歌提醒", "VIP song notice for third-party playback"))
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
                         }
                     }
                 }
                 .toggleStyle(.switch)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
 
             }
             .padding(.horizontal, 4)
@@ -3435,24 +3435,24 @@ struct SettingsView: View {
     private var changelogSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 showChangelog = true
             } label: {
                 HStack(spacing: 12) {
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 14))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                         .frame(width: 28)
                     Text("更新日志")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(15))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     Text("v\(ChangelogStore.currentVersion)")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                        .foregroundStyle(Color.coComment.opacity(0.6))
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 14)
@@ -3463,22 +3463,22 @@ struct SettingsView: View {
     private var backupSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
-                BeansHaptics.select()
+                CoHaptics.select()
                 withAnimation(.easeInOut(duration: 0.22)) {
                     backupExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "externaldrive.fill")
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("备份与恢复")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15))
+                            .foregroundStyle(Color.coLabel)
                     }
                     Spacer()
                     Image(systemName: backupExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 14)
@@ -3488,29 +3488,29 @@ struct SettingsView: View {
             if backupExpanded {
             VStack(spacing: 10) {
                 Toggle("备份登录信息", isOn: $backupIncludeAccounts)
-                    .tint(Color.beansAmber)
-                    .font(BeansFont.appFont(13))
+                    .tint(Color.coAmber)
+                    .font(CoFont.appFont(13))
                 Divider().opacity(0.35)
                 Toggle("备份壁纸图片", isOn: $backupIncludeWallpapers)
-                    .tint(Color.beansAmber)
-                    .font(BeansFont.appFont(13))
+                    .tint(Color.coAmber)
+                    .font(CoFont.appFont(13))
                 Divider().opacity(0.35)
                 Text("默认不带账号登录信息；关闭壁纸后只备份普通设置，不写入壁纸图片数据")
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(11))
+                    .foregroundStyle(Color.coComment)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(14)
             .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             HStack(spacing: 10) {
                 backupActionButton(icon: "square.and.arrow.up", title: "导出备份") {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     exportBackup(includeAccounts: backupIncludeAccounts, includeWallpapers: backupIncludeWallpapers)
                 }
                 backupActionButton(icon: "square.and.arrow.down", title: "导入恢复") {
-                    BeansHaptics.tap()
+                    CoHaptics.tap()
                     showRestorePicker = true
                 }
             }
@@ -3520,7 +3520,7 @@ struct SettingsView: View {
             ) {
                 guard !clearingImageCache else { return }
                 clearingImageCache = true
-                BeansCoverImageStore.clearCache { success in
+                CoCoverImageStore.clearCache { success in
                     clearingImageCache = false
                     backupMessage = success ? "已清除封面图片缓存" : "清除图片缓存失败"
                 }
@@ -3528,8 +3528,8 @@ struct SettingsView: View {
             .disabled(clearingImageCache)
             if let backupMessage {
                 Text(backupMessage)
-                    .font(BeansFont.appFont(11))
-                    .foregroundStyle(Color.beansComment)
+                    .font(CoFont.appFont(11))
+                    .foregroundStyle(Color.coComment)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             }
@@ -3542,44 +3542,44 @@ struct SettingsView: View {
                 Image(systemName: icon)
                 Text(LocalizedStringKey(title))
             }
-            .font(BeansFont.appFont(14, .semibold))
-            .foregroundStyle(Color.beansLabel)
+            .font(CoFont.appFont(14, .semibold))
+            .foregroundStyle(Color.coLabel)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                CoGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
         }
         .buttonStyle(GlassPressButtonStyle(scale: 0.95))
     }
 
     private static func isAccountBackupKey(_ key: String) -> Bool {
-        key == "beans.user"
-            || key.hasPrefix("beans.netease.")
-            || key.hasPrefix("beans.qqmusic.")
-            || key.hasPrefix("beans.kugou.")
+        key == "co.user"
+            || key.hasPrefix("co.netease.")
+            || key.hasPrefix("co.qqmusic.")
+            || key.hasPrefix("co.kugou.")
     }
 
     private static func isPrivacyBackupKey(_ key: String) -> Bool {
-        key.hasPrefix("beans.search.")
-            || key.hasPrefix("beans.log")
-            || key.hasPrefix("beans.crash")
-            || key == "beans.thirdPartyAPIKeys"
-            || key == "beans.launchInProgress"
-            || key == "beans.wallpapers.deleted"
+        key.hasPrefix("co.search.")
+            || key.hasPrefix("co.log")
+            || key.hasPrefix("co.crash")
+            || key == "co.thirdPartyAPIKeys"
+            || key == "co.launchInProgress"
+            || key == "co.wallpapers.deleted"
     }
 
     private static func isWallpaperBackupKey(_ key: String) -> Bool {
-        key == "beans.background.image"
-            || key == "beans.background.image.light"
-            || key == "beans.background.image.dark"
-            || key == "beans.background.custom"
-            || key == "beans.background.custom.light"
-            || key == "beans.background.custom.dark"
-            || key == "beans.wallpapers.list"
-            || key == "beans.wallpapers.data"
-            || key == "beans.lyricBackground.image"
-            || key == "beans.lyricBackground.data"
+        key == "co.background.image"
+            || key == "co.background.image.light"
+            || key == "co.background.image.dark"
+            || key == "co.background.custom"
+            || key == "co.background.custom.light"
+            || key == "co.background.custom.dark"
+            || key == "co.wallpapers.list"
+            || key == "co.wallpapers.data"
+            || key == "co.lyricBackground.image"
+            || key == "co.lyricBackground.data"
     }
 
     private static func isSystemBackupKey(_ key: String) -> Bool {
@@ -3590,15 +3590,15 @@ struct SettingsView: View {
     }
 
     private static func isBackupCandidateKey(_ key: String) -> Bool {
-        key.hasPrefix("beans.") && !isSystemBackupKey(key)
+        key.hasPrefix("co.") && !isSystemBackupKey(key)
     }
 
     private static func isExcludedBackupKey(_ key: String, includeAccounts: Bool = false, includeWallpapers: Bool = true) -> Bool {
         (!includeAccounts && isAccountBackupKey(key))
             || (!includeWallpapers && isWallpaperBackupKey(key))
             || isPrivacyBackupKey(key)
-            || key == "beans.backup.meta"
-            || key == "beans.font.restore"
+            || key == "co.backup.meta"
+            || key == "co.font.restore"
     }
 
     /// 导出：收集本 App 设置，排除账号、搜索记录和日志，交给系统原生导出面板
@@ -3620,7 +3620,7 @@ struct SettingsView: View {
             payload[key] = safe
         }
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
-        payload["beans.backup.meta"] = [
+        payload["co.backup.meta"] = [
             "app": "Co",
             "created": ISO8601DateFormatter().string(from: Date()),
             "version": version,
@@ -3640,7 +3640,7 @@ struct SettingsView: View {
         }
         backupDoc = BackupDocument(data: data)
         backupMessage = nil
-        BeansLogger.shared.log("导出配置备份（\(payload.count) 项，账号=\(includeAccounts ? "包含" : "排除") 壁纸=\(includeWallpapers ? "包含" : "排除")）", level: .info)
+        CoLogger.shared.log("导出配置备份（\(payload.count) 项，账号=\(includeAccounts ? "包含" : "排除") 壁纸=\(includeWallpapers ? "包含" : "排除")）", level: .info)
         showExportBackup = true
     }
 
@@ -3661,9 +3661,20 @@ struct SettingsView: View {
         showRestoreConfirm = true
     }
 
-    /// 恢复：把 JSON 备份中除账号、搜索记录和日志外的本 App 设置写回 UserDefaults
+    /// 恢复：把 JSON 备份中除账号、搜索记录和日志外的本 App 设置写回 UserDefaults。
+    /// 旧备份里的键还是 beans.*：先统一翻译成 co.* 再写回，否则旧备份
+    /// 恢复后新代码读不到；新备份的键已是 co.*，翻译后原样不动。
     private func applyRestore(_ json: [String: Any]?) {
         guard let json else { return }
+        var translated: [String: Any] = [:]
+        for (key, value) in json {
+            if key.hasPrefix("beans.") {
+                translated["co.\(key.dropFirst("beans.".count))"] = value
+            } else {
+                translated[key] = value
+            }
+        }
+        let json = translated
         let defaults = UserDefaults.standard
         var count = 0
         for (key, value) in json {
@@ -3674,27 +3685,27 @@ struct SettingsView: View {
             count += 1
         }
         // 兼容旧备份：旧版本只有一套背景，恢复后让浅色和深色都继承它。
-        if json["beans.background.custom.light"] == nil,
-           json["beans.background.custom.dark"] == nil,
-           let legacy = json["beans.background.custom"] as? String {
-            defaults.set(legacy, forKey: "beans.background.custom.light")
-            defaults.set(legacy, forKey: "beans.background.custom.dark")
+        if json["co.background.custom.light"] == nil,
+           json["co.background.custom.dark"] == nil,
+           let legacy = json["co.background.custom"] as? String {
+            defaults.set(legacy, forKey: "co.background.custom.light")
+            defaults.set(legacy, forKey: "co.background.custom.dark")
         }
-        if json["beans.background.image.light"] == nil,
-           json["beans.background.image.dark"] == nil,
-           let legacy = json["beans.background.image"] as? String {
-            defaults.set(legacy, forKey: "beans.background.image.light")
-            defaults.set(legacy, forKey: "beans.background.image.dark")
+        if json["co.background.image.light"] == nil,
+           json["co.background.image.dark"] == nil,
+           let legacy = json["co.background.image"] as? String {
+            defaults.set(legacy, forKey: "co.background.image.light")
+            defaults.set(legacy, forKey: "co.background.image.dark")
         }
         theme.reloadBackgroundSettings()
-        defaults.removeObject(forKey: "beans.wallpapers.deleted")
-        // 恢复壁纸：写回 beans.wallpapers.* 后重建文件（沙盒路径变化也能恢复）
+        defaults.removeObject(forKey: "co.wallpapers.deleted")
+        // 恢复壁纸：写回 co.wallpapers.* 后重建文件（沙盒路径变化也能恢复）
         theme.reloadWallpapersFromBackup()
         // 恢复歌词背景图片：路径变化时按备份的 base64 重建文件
         LyricBackgroundStore.restoreFromBackup()
-        BeansLogger.shared.log("恢复配置备份：\(count) 项设置", level: .info)
+        CoLogger.shared.log("恢复配置备份：\(count) 项设置", level: .info)
         if count > 0 {
-            BeansHaptics.success()
+            CoHaptics.success()
             backupMessage = "已恢复 \(count) 项设置，部分设置需重启应用后完全生效"
             ToastCenter.shared.show("已恢复 \(count) 项设置")
         } else {
@@ -3714,7 +3725,7 @@ struct SettingsView: View {
     ) -> some View {
         settingsSlider(title, valueText: String(format: format, value.wrappedValue)) {
             Slider(value: value, in: range, step: step)
-                .tint(Color.beansAmber)
+                .tint(Color.coAmber)
         }
     }
 
@@ -3722,12 +3733,12 @@ struct SettingsView: View {
         VStack(spacing: 5) {
             HStack {
                 Text(LocalizedStringKey(title))
-                    .font(BeansFont.appFont(13))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(13))
+                    .foregroundStyle(Color.coLabel)
                 Spacer()
                 Text(valueText)
-                    .font(BeansFont.appFont(12, .semibold))
-                    .foregroundStyle(Color.beansAmber)
+                    .font(CoFont.appFont(12, .semibold))
+                    .foregroundStyle(Color.coAmber)
             }
             content()
                 .transaction { transaction in transaction.animation = nil }
@@ -3781,13 +3792,13 @@ struct SettingsView: View {
                 } label: {
                     HStack(spacing: 9) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         Text("免责声明")
-                        .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                            .foregroundStyle(Color.coLabel)
                         Spacer()
                         Image(systemName: disclaimerExpanded ? "chevron.up" : "chevron.down")
-                            .foregroundStyle(Color.beansComment)
+                            .foregroundStyle(Color.coComment)
                     }
                 }
                 .buttonStyle(.plain)
@@ -3820,15 +3831,15 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "iphone.gen3")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                         .frame(width: 28)
                     Text("运行环境")
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                        .foregroundStyle(Color.coLabel)
                     Spacer(minLength: 0)
                     Image(systemName: runtimeEnvironmentExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                 }
                 .contentShape(Rectangle())
             }
@@ -3855,12 +3866,12 @@ struct SettingsView: View {
     private func runtimeEnvironmentRow(_ title: String, value: String, monospaced: Bool = false) -> some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(BeansFont.appFont(12))
-                .foregroundStyle(Color.beansSecondary)
+                .font(CoFont.appFont(12))
+                .foregroundStyle(Color.coSecondary)
             Spacer(minLength: 12)
             Text(value)
-                .font(monospaced ? .system(size: 11, design: .default) : BeansFont.appFont(12, .medium))
-                .foregroundStyle(Color.beansComment)
+                .font(monospaced ? .system(size: 11, design: .default) : CoFont.appFont(12, .medium))
+                .foregroundStyle(Color.coComment)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
@@ -3880,22 +3891,22 @@ struct SettingsView: View {
     private func disclaimerRow(_ index: Int, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 9) {
             Text("\(index)")
-                .font(BeansFont.appFont(11, .bold))
+                .font(CoFont.appFont(11, .bold))
                 .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
                 .background(
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [Color.beansAmber, Color.beansHighlight],
+                                colors: [Color.coAmber, Color.coHighlight],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                 )
             Text(text)
-                .font(BeansFont.appFont(13, .semibold))
-                .foregroundStyle(Color.beansAmber)
+                .font(CoFont.appFont(13, .semibold))
+                .foregroundStyle(Color.coAmber)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
         }
@@ -3903,10 +3914,10 @@ struct SettingsView: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.beansAmber.opacity(0.075))
+                .fill(Color.coAmber.opacity(0.075))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Color.beansAmber.opacity(0.22), lineWidth: 0.8)
+                        .strokeBorder(Color.coAmber.opacity(0.22), lineWidth: 0.8)
                 }
         )
     }
@@ -3933,16 +3944,16 @@ struct SettingsView: View {
         let isActive = path == theme.backgroundImagePath(for: .light) || path == theme.backgroundImagePath(for: .dark)
         return ZStack(alignment: .topTrailing) {
             Button {
-                BeansHaptics.tap()
+                CoHaptics.tap()
                 theme.applyWallpaper(at: path, for: .light); theme.applyWallpaper(at: path, for: .dark)
             } label: {
                 Group {
-                    if let img = BeansImageFileCache.image(at: path) {
+                    if let img = CoImageFileCache.image(at: path) {
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
                     } else {
-                        Color.beansGlassFill
+                        Color.coGlassFill
                     }
                 }
                 .frame(height: 108)
@@ -3952,8 +3963,8 @@ struct SettingsView: View {
                     if isActive {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
-                            .foregroundStyle(Color.beansAmber)
-                            .background { BeansSurface(shape: Circle()) }
+                            .foregroundStyle(Color.coAmber)
+                            .background { CoSurface(shape: Circle()) }
                             .padding(5)
                     }
                 }
@@ -3961,14 +3972,14 @@ struct SettingsView: View {
             .buttonStyle(.plain)
 
             Button {
-                BeansHaptics.medium()
+                CoHaptics.medium()
                 theme.deleteWallpaper(at: path)
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(Color.coComment)
                     .frame(width: 28, height: 28)
-                    .background { BeansSurface(shape: Circle()) }
+                    .background { CoSurface(shape: Circle()) }
                     .clipShape(Circle())
                     .contentShape(Circle())
                     .padding(6)
@@ -3997,7 +4008,7 @@ private struct SettingsCatalogGroup<Content: View>: View {
             .padding(.horizontal, 8)
             .background {
                 let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
-                BeansGlass(shape: shape)
+                CoGlass(shape: shape)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -4022,7 +4033,7 @@ struct SettingsLiquidSheetPresentation: ViewModifier {
 /// detent. Keep a single transparent glass surface only while compact, rather
 /// than stacking another glass layer after the sheet has expanded.
 private struct SettingsCompactGlassSurface: View {
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
+    @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
     @ObservedObject private var theme = ThemeStore.shared
 
     private var usesNativeLiquidSurface: Bool {
@@ -4050,35 +4061,35 @@ private struct SettingsCompactGlassSurface: View {
 private struct TabVisibilitySettingsSheet: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.dismiss) private var dismiss
-    @State private var visibility = BeansTabVisibility.load()
-    @AppStorage("beans.headerAccessoryMode") private var headerAccessoryModeRaw = BeansHeaderAccessoryMode.avatar.rawValue
+    @State private var visibility = CoTabVisibility.load()
+    @AppStorage("co.headerAccessoryMode") private var headerAccessoryModeRaw = CoHeaderAccessoryMode.avatar.rawValue
 
     private var visibleTabCount: Int {
         RootTab.bottomTabs.filter { visibility.isVisible($0) }.count
     }
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
                 SettingsCatalogGroup {
                     tabToggle("主页", systemName: "house.fill", tab: .discover)
-                    Divider().overlay(Color.beansComment.opacity(0.15))
+                    Divider().overlay(Color.coComment.opacity(0.15))
                     tabToggle("精选", systemName: "dot.radiowaves.left.and.right", tab: .playlists)
-                    Divider().overlay(Color.beansComment.opacity(0.15))
+                    Divider().overlay(Color.coComment.opacity(0.15))
                     tabToggle("歌单", systemName: "music.note.list", tab: .library)
-                    Divider().overlay(Color.beansComment.opacity(0.15))
+                    Divider().overlay(Color.coComment.opacity(0.15))
                     tabToggle("我的", systemName: "person.crop.circle", tab: .profile)
-                    Divider().overlay(Color.beansComment.opacity(0.15))
+                    Divider().overlay(Color.coComment.opacity(0.15))
                     tabToggle("搜索", systemName: "magnifyingglass", tab: .search)
-                    Divider().overlay(Color.beansComment.opacity(0.15))
+                    Divider().overlay(Color.coComment.opacity(0.15))
                     Picker("右上角入口", selection: $headerAccessoryModeRaw) {
-                        ForEach(BeansHeaderAccessoryMode.allCases) { item in
+                        ForEach(CoHeaderAccessoryMode.allCases) { item in
                             Text(item.title).tag(item.rawValue)
                         }
                     }
-                    .font(BeansFont.appFont(15))
-                    .tint(Color.beansAmber)
+                    .font(CoFont.appFont(15))
+                    .tint(Color.coAmber)
                     .padding(.vertical, 8)
                 }
                 .padding(16)
@@ -4090,21 +4101,21 @@ private struct TabVisibilitySettingsSheet: View {
                     Button("完成") {
                         dismiss()
                     }
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                 }
             }
         }
-        .modifier(BeansSheetModifier(detents: [.fraction(0.5)], dragIndicator: true))
+        .modifier(CoSheetModifier(detents: [.fraction(0.5)], dragIndicator: true))
     }
 
     private func tabToggle(_ title: String, systemName: String, tab: RootTab) -> some View {
         Toggle(isOn: visibilityBinding(for: tab)) {
             Label(title, systemImage: systemName)
-                .font(BeansFont.appFont(15))
-                .foregroundStyle(Color.beansLabel)
+                .font(CoFont.appFont(15))
+                .foregroundStyle(Color.coLabel)
         }
         .toggleStyle(.switch)
-        .tint(Color.beansAmber)
+        .tint(Color.coAmber)
         .padding(.vertical, 10)
         .disabled(visibility.isVisible(tab) && visibleTabCount <= 1)
     }
@@ -4124,7 +4135,7 @@ private struct TabVisibilitySettingsSheet: View {
 struct EqualizerSettingsView: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var equalizer = BeansEqualizer.shared
+    @ObservedObject private var equalizer = CoEqualizer.shared
     @State private var newPresetName = ""
     @State private var showPresetNamePrompt = false
 
@@ -4150,7 +4161,7 @@ struct EqualizerSettingsView: View {
     }
 
     var body: some View {
-        BeansNavigationStack {
+        CoNavigationStack {
             ZStack {
                 GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
                 ScrollView {
@@ -4166,9 +4177,9 @@ struct EqualizerSettingsView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, 32)
-                    .beansAdaptiveContentWidth(compact: 680, regular: 980)
+                    .coAdaptiveContentWidth(compact: 680, regular: 980)
                 }
-                .beansScrollIndicatorsHidden()
+                .coScrollIndicatorsHidden()
             }
             .navigationTitle(beansLocalized("均衡器", "Equalizer"))
             .navigationBarTitleDisplayMode(.inline)
@@ -4187,7 +4198,7 @@ struct EqualizerSettingsView: View {
                 )
                 Button(beansLocalized("保存", "Save")) {
                     if equalizer.saveCustomPreset(name: newPresetName) {
-                        BeansHaptics.select()
+                        CoHaptics.select()
                     }
                     newPresetName = ""
                 }
@@ -4206,33 +4217,33 @@ struct EqualizerSettingsView: View {
                 HStack(spacing: 11) {
                     Image(systemName: "waveform.path.ecg")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color.beansAmber)
+                        .foregroundStyle(Color.coAmber)
                         .frame(width: 24)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(beansLocalized("启用均衡器", "Enable Equalizer"))
-                            .font(BeansFont.appFont(15, .semibold))
-                            .foregroundStyle(Color.beansLabel)
+                            .font(CoFont.appFont(15, .semibold))
+                            .foregroundStyle(Color.coLabel)
                     }
                 }
             }
             .toggleStyle(.switch)
-            .tint(Color.beansAmber)
+            .tint(Color.coAmber)
 
-            Divider().overlay(Color.beansComment.opacity(0.14))
+            Divider().overlay(Color.coComment.opacity(0.14))
 
             VStack(alignment: .leading, spacing: 7) {
                 HStack {
                     Text(beansLocalized("前级增益", "Preamp"))
-                        .font(BeansFont.appFont(13, .medium))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(13, .medium))
+                        .foregroundStyle(Color.coLabel)
                     Spacer()
                     Text(String(format: "%+.1f dB", equalizer.preampGain))
-                        .font(BeansFont.appFont(12, .semibold))
-                        .foregroundStyle(abs(equalizer.preampGain) > 0.01 ? Color.beansAmber : Color.beansComment)
+                        .font(CoFont.appFont(12, .semibold))
+                        .foregroundStyle(abs(equalizer.preampGain) > 0.01 ? Color.coAmber : Color.coComment)
                         .monospacedDigit()
                 }
-                Slider(value: preampBinding, in: -BeansEqualizer.maximumGain...BeansEqualizer.maximumGain, step: 0.5)
-                    .tint(Color.beansAmber)
+                Slider(value: preampBinding, in: -CoEqualizer.maximumGain...CoEqualizer.maximumGain, step: 0.5)
+                    .tint(Color.coAmber)
                     .transaction { transaction in transaction.animation = nil }
                 HStack {
                     Text("-12")
@@ -4241,63 +4252,63 @@ struct EqualizerSettingsView: View {
                     Spacer()
                     Text("+12")
                 }
-                .font(BeansFont.appFont(10))
-                .foregroundStyle(Color.beansComment.opacity(0.75))
+                .font(CoFont.appFont(10))
+                .foregroundStyle(Color.coComment.opacity(0.75))
             }
         }
         .padding(14)
-        .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+        .background { CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
     }
 
     private var presetCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(beansLocalized("预设", "Preset"))
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(14, .semibold))
+                    .foregroundStyle(Color.coLabel)
                 Spacer()
                 Menu {
-                    ForEach(BeansEqualizerPreset.allCases.filter { $0 != .custom }) { preset in
+                    ForEach(CoEqualizerPreset.allCases.filter { $0 != .custom }) { preset in
                         Button(preset.displayName) {
                             equalizer.applyPreset(preset)
-                            BeansHaptics.select()
+                            CoHaptics.select()
                         }
                     }
                 } label: {
                     HStack(spacing: 6) {
                         Text(equalizer.selectedCustomPresetName ?? equalizer.selectedPreset.displayName)
-                            .font(BeansFont.appFont(13, .medium))
+                            .font(CoFont.appFont(13, .medium))
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
                     .padding(.horizontal, 11)
                     .frame(height: 31)
-                    .background { BeansSurface(shape: Capsule()) }
+                    .background { CoSurface(shape: Capsule()) }
                 }
             }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                ForEach(BeansEqualizerPreset.allCases.filter { $0 != .custom }) { preset in
+                ForEach(CoEqualizerPreset.allCases.filter { $0 != .custom }) { preset in
                     let selected = equalizer.selectedPreset == preset
                     Button {
                         equalizer.applyPreset(preset)
-                        BeansHaptics.select()
+                        CoHaptics.select()
                     } label: {
                         Text(preset.displayName)
-                            .font(BeansFont.appFont(11.5, selected ? .semibold : .regular))
-                            .foregroundStyle(selected ? Color.beansAmber : Color.beansLabel)
+                            .font(CoFont.appFont(11.5, selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? Color.coAmber : Color.coLabel)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity)
                             .frame(height: 30)
                             .background {
-                                Capsule().fill(selected ? Color.beansAmber.opacity(0.14) : Color.primary.opacity(0.035))
+                                Capsule().fill(selected ? Color.coAmber.opacity(0.14) : Color.primary.opacity(0.035))
                             }
                             .overlay {
-                                Capsule().strokeBorder(selected ? Color.beansAmber.opacity(0.42) : Color.primary.opacity(0.06), lineWidth: 0.8)
+                                Capsule().strokeBorder(selected ? Color.coAmber.opacity(0.42) : Color.primary.opacity(0.06), lineWidth: 0.8)
                             }
                     }
                     .buttonStyle(.plain)
@@ -4307,20 +4318,20 @@ struct EqualizerSettingsView: View {
             if !equalizer.customPresets.isEmpty {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(beansLocalized("我的预设", "My presets"))
-                        .font(BeansFont.appFont(12, .semibold))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(12, .semibold))
+                        .foregroundStyle(Color.coComment)
                     ForEach(equalizer.customPresets) { preset in
                         HStack(spacing: 8) {
                             Button {
                                 equalizer.applyCustomPreset(preset)
-                                BeansHaptics.select()
+                                CoHaptics.select()
                             } label: {
                                 HStack(spacing: 7) {
                                     Image(systemName: equalizer.selectedCustomPresetName == preset.name ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(equalizer.selectedCustomPresetName == preset.name ? Color.beansAmber : Color.beansComment)
+                                        .foregroundStyle(equalizer.selectedCustomPresetName == preset.name ? Color.coAmber : Color.coComment)
                                     Text(preset.name)
-                                        .font(BeansFont.appFont(12.5, .medium))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .font(CoFont.appFont(12.5, .medium))
+                                        .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                     Spacer()
                                 }
@@ -4331,7 +4342,7 @@ struct EqualizerSettingsView: View {
                             } label: {
                                 Image(systemName: "trash")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.beansComment)
+                                    .foregroundStyle(Color.coComment)
                                     .frame(width: 28, height: 28)
                             }
                             .buttonStyle(.plain)
@@ -4346,30 +4357,30 @@ struct EqualizerSettingsView: View {
                     showPresetNamePrompt = true
                 } label: {
                     Label(beansLocalized("保存当前预设", "Save current preset"), systemImage: "square.and.arrow.down")
-                        .font(BeansFont.appFont(12.5, .medium))
-                        .foregroundStyle(Color.beansAmber)
+                        .font(CoFont.appFont(12.5, .medium))
+                        .foregroundStyle(Color.coAmber)
                         .frame(maxWidth: .infinity)
                         .frame(height: 34)
-                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
+                        .background { CoSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
                 }
                 .buttonStyle(.plain)
 
                 Button {
                     equalizer.reset()
-                    BeansHaptics.select()
+                    CoHaptics.select()
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.beansComment)
+                        .foregroundStyle(Color.coComment)
                         .frame(width: 42, height: 34)
-                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
+                        .background { CoSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(beansLocalized("重置调节", "Reset adjustments"))
             }
         }
         .padding(14)
-        .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+        .background { CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
     }
 
     private var bandsCard: some View {
@@ -4377,24 +4388,24 @@ struct EqualizerSettingsView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(beansLocalized("自定义调节", "Custom tuning"))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                        .foregroundStyle(Color.coLabel)
                     Text(beansLocalized("范围 -12 dB 至 +12 dB", "Range: -12 dB to +12 dB"))
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(11))
+                        .foregroundStyle(Color.coComment)
                 }
                 Spacer()
             }
 
-            ForEach(Array(BeansEqualizer.bandFrequencies.enumerated()), id: \.offset) { index, frequency in
+            ForEach(Array(CoEqualizer.bandFrequencies.enumerated()), id: \.offset) { index, frequency in
                 equalizerBandRow(index: index, frequency: frequency)
-                if index < BeansEqualizer.bandFrequencies.count - 1 {
-                    Divider().overlay(Color.beansComment.opacity(0.14))
+                if index < CoEqualizer.bandFrequencies.count - 1 {
+                    Divider().overlay(Color.coComment.opacity(0.14))
                 }
             }
         }
         .padding(14)
-        .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+        .background { CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
     }
 
     private func equalizerBandRow(index: Int, frequency: Double) -> some View {
@@ -4402,16 +4413,16 @@ struct EqualizerSettingsView: View {
         return VStack(spacing: 6) {
             HStack {
                 Text(frequencyLabel(frequency))
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansLabel)
+                    .font(CoFont.appFont(13, .medium))
+                    .foregroundStyle(Color.coLabel)
                 Spacer()
                 Text(String(format: "%+.1f dB", gain))
-                    .font(BeansFont.appFont(12, .semibold))
-                    .foregroundStyle(abs(gain) > 0.01 ? Color.beansAmber : Color.beansComment)
+                    .font(CoFont.appFont(12, .semibold))
+                    .foregroundStyle(abs(gain) > 0.01 ? Color.coAmber : Color.coComment)
                     .monospacedDigit()
             }
-            Slider(value: gainBinding(index), in: -BeansEqualizer.maximumGain...BeansEqualizer.maximumGain, step: 0.5)
-                .tint(Color.beansAmber)
+            Slider(value: gainBinding(index), in: -CoEqualizer.maximumGain...CoEqualizer.maximumGain, step: 0.5)
+                .tint(Color.coAmber)
                 .transaction { transaction in transaction.animation = nil }
             HStack {
                 Text("-12")
@@ -4420,8 +4431,8 @@ struct EqualizerSettingsView: View {
                 Spacer()
                 Text("+12")
             }
-            .font(BeansFont.appFont(10))
-            .foregroundStyle(Color.beansComment.opacity(0.75))
+            .font(CoFont.appFont(10))
+            .foregroundStyle(Color.coComment.opacity(0.75))
         }
     }
 
@@ -4443,16 +4454,16 @@ private struct EqualizerResponseView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(beansLocalized("频响预览", "Response preview"))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
+                        .font(CoFont.appFont(14, .semibold))
+                        .foregroundStyle(Color.coLabel)
                     Text(beansLocalized("拖动下方频段，实时塑造声音", "Shape the sound in real time by tuning each band below"))
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
+                        .font(CoFont.appFont(11))
+                        .foregroundStyle(Color.coComment)
                 }
                 Spacer()
                 Image(systemName: "waveform.path")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.beansAmber)
+                    .foregroundStyle(Color.coAmber)
             }
 
             GeometryReader { geometry in
@@ -4462,7 +4473,7 @@ private struct EqualizerResponseView: View {
                 ZStack {
                     VStack(spacing: 0) {
                         ForEach(0..<5, id: \.self) { _ in
-                            Divider().overlay(Color.beansComment.opacity(0.12))
+                            Divider().overlay(Color.coComment.opacity(0.12))
                             Spacer()
                         }
                     }
@@ -4476,7 +4487,7 @@ private struct EqualizerResponseView: View {
                     }
                     .stroke(
                         LinearGradient(
-                            colors: [Color.beansAmber.opacity(0.65), Color.beansAmber, Color.beansHighlight],
+                            colors: [Color.coAmber.opacity(0.65), Color.coAmber, Color.coHighlight],
                             startPoint: .leading,
                             endPoint: .trailing
                         ),
@@ -4495,7 +4506,7 @@ private struct EqualizerResponseView: View {
                     }
                     .fill(
                         LinearGradient(
-                            colors: [Color.beansAmber.opacity(0.22), Color.beansAmber.opacity(0.02)],
+                            colors: [Color.coAmber.opacity(0.22), Color.coAmber.opacity(0.02)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -4520,11 +4531,11 @@ private struct EqualizerResponseView: View {
                 Spacer()
                 Text("16 kHz")
             }
-            .font(BeansFont.appFont(10))
-            .foregroundStyle(Color.beansComment)
+            .font(CoFont.appFont(10))
+            .foregroundStyle(Color.coComment)
         }
         .padding(14)
-        .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+        .background { CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
     }
 
     private var responseValues: [Double] {
@@ -4707,7 +4718,7 @@ struct CoHeaderWallpaperCropView: View {
     private func finish() {
         let toSave = CoProfileHeaderWallpaper.croppedImage(image, rectInPoints: cropRectInImagePoints()) ?? image
         if onDone(toSave) {
-            BeansHaptics.success()
+            CoHaptics.success()
         } else {
             showSaveError = true
         }
