@@ -56,6 +56,9 @@ struct ReferencePlaybackView: View {
     @State private var lyricTapTask: Task<Void, Never>?
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
+    /// 封面→歌词页眉的形变命名空间：与 player 前端同款思路——大封面不是整页换掉，
+    /// 而是 0.38s 内缩到歌词页眉左端的小封面位置，歌词层随之淡入上滑。
+    @Namespace private var coverMorphNamespace
 
     init(
         song: Song?,
@@ -115,14 +118,14 @@ struct ReferencePlaybackView: View {
                                 ))
                         } else {
                             coverPage(size: geometry.size)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity),
-                                    removal: .move(edge: .top).combined(with: .opacity)
-                                ))
+                                // 位置/尺寸交给下面的 matchedGeometryEffect 形变，不再整页滑走；
+                                // 只留淡入淡出，避免形变和滑移两层动画叠加。
+                                .transition(.opacity)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .animation(.easeInOut(duration: 0.22), value: showLyrics)
+                    // player 前端同款缓动：0.38s cubic-bezier(.32,.72,.28,1)
+                    .animation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -198,11 +201,20 @@ struct ReferencePlaybackView: View {
                 playsCoverVideoAudio: true
             )
             .frame(width: artworkSize, height: artworkSize)
+            .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.cover)))
             .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
+                BeansHaptics.tap()
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                    showLyrics = true
+                }
+            }
 
             if showLyricPreview {
             VStack(spacing: 5) {
@@ -385,9 +397,12 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 BeansHaptics.tap()
-                showLyrics = false
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                    showLyrics = false
+                }
             } label: {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
+                    .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
@@ -456,7 +471,7 @@ struct ReferencePlaybackView: View {
                 container: PlayerLayoutEntry()
             ),
             onLyrics: {
-                withAnimation(.easeInOut(duration: 0.22)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     if showQueue {
                         showQueue = false
                         showLyrics = true

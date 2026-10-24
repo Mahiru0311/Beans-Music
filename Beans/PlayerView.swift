@@ -32,6 +32,7 @@ struct PlayerView: View {
     @State private var localPlaylistSheetMarksFavorite = false
     @State private var showPlayerSettings = false
     @State private var showQualitySheet = false
+    @State private var showComments = false
     @AppStorage(FoliaPreferences.enabledKey) private var foliaStageEnabled = false
     @AppStorage(FoliaPreferences.modeKey) private var foliaModeRaw = FoliaVisualizerMode.still.rawValue
     @State private var playbackRenderingSuppressed = false
@@ -488,7 +489,9 @@ struct PlayerView: View {
                             toggleLocalFavorite(song)
                         },
                         onComments: {
-                            if song != nil { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
+                            // Apple Music 样式：最小版只读评论（见文件末尾 CoHotCommentsSheet）。
+                            // 唱片样式的评论入口本轮不动，仍弹原提示。
+                            if song != nil { showComments = true }
                         },
                         onSleepTimer: {
                             showSleepTimer = true
@@ -731,6 +734,11 @@ struct PlayerView: View {
         .sheet(isPresented: $showQualitySheet) {
             CoAudioQualityPickerSheet(song: song)
                 .environmentObject(player)
+        }
+        .sheet(isPresented: $showComments) {
+            if let song {
+                CoHotCommentsSheet(song: song)
+            }
         }
         .sheet(isPresented: $showCustomCoverPicker) {
             CustomSongCoverPicker(
@@ -5989,5 +5997,121 @@ struct CoverSpin: ViewModifier {
     private func normalized(_ angle: Double) -> Double {
         let remainder = angle.truncatingRemainder(dividingBy: 360)
         return remainder >= 0 ? remainder : remainder + 360
+    }
+}
+
+/// Apple Music 播放页的最小版评论：只读，不臃肿。
+/// 一个入口（播放页底部评论键）、一页只读列表，不做发评论、点赞、回复、
+/// 分页、排序。只拉第 1 页：有热门就只显示热门，热门为空才显示普通评论，
+/// 两边都空才显示“暂无评论”——不编造任何一条。
+private struct CoHotCommentsSheet: View {
+    let song: Song
+    @Environment(\.dismiss) private var dismiss
+    @State private var comments: [SongComment] = []
+    @State private var isHot = true
+    @State private var isLoading = true
+    @State private var errorText: String?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isHot ? "热门评论" : "评论")
+                        .font(.system(size: 18, weight: .bold))
+                    Text(song.name)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                        .background(Color.primary.opacity(0.08), in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            if isLoading {
+                Spacer()
+                ProgressView("正在加载评论…")
+                Spacer()
+            } else if let errorText {
+                Spacer()
+                Text(errorText)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                Spacer()
+            } else if comments.isEmpty {
+                Spacer()
+                Text("暂无评论")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            } else {
+                List(comments) { comment in
+                    HStack(alignment: .top, spacing: 12) {
+                        AsyncImage(url: comment.avatarURL) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Circle().fill(Color.primary.opacity(0.12))
+                        }
+                        .frame(width: 36, height: 36)
+                        .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(comment.nickname.isEmpty ? "酷狗用户" : comment.nickname)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .lineLimit(1)
+                                Text(comment.time, style: .date)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                if comment.likedCount > 0 {
+                                    Label("\(comment.likedCount)", systemImage: "heart")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Text(comment.content)
+                                .font(.system(size: 14))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
+                    .listRowSeparator(.hidden)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .task(id: song.identityKey) {
+            isLoading = true
+            errorText = nil
+            do {
+                let page = try await KugouMusicAPI.shared.comments(
+                    mixSongID: song.kugouAlbumAudioId ?? "",
+                    hash: song.kugouHash,
+                    page: 1,
+                    limit: 30
+                )
+                if !page.hotComments.isEmpty {
+                    comments = page.hotComments
+                    isHot = true
+                } else {
+                    comments = page.comments
+                    isHot = false
+                }
+            } catch {
+                errorText = "评论加载失败，稍后再试"
+            }
+            isLoading = false
+        }
     }
 }
