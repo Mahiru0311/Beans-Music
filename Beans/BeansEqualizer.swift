@@ -73,6 +73,12 @@ final class CoEqualizer: ObservableObject {
     @Published private(set) var surroundEnabled: Bool
     /// 耳机增强：低音 + 清晰度 + 声场轻微加宽，让官方音质档位在耳机上听感更好，可开关，默认关。
     @Published private(set) var headphoneBoostEnabled: Bool
+    /// 乒乓延迟：回声左右来回弹，空间感更明显，可开关，默认关。
+    @Published private(set) var pingPongEnabled: Bool
+    /// 夜间模式：动态压缩，轻声抬起来、响声压下去，深夜不用频繁调音量，可开关，默认关。
+    @Published private(set) var nightModeEnabled: Bool
+    /// 人声清晰：3kHz 附近提 3dB，人声更靠前，可开关，默认关。
+    @Published private(set) var vocalBoostEnabled: Bool
     @Published private(set) var bandGains: [Double]
     @Published private(set) var selectedPreset: CoEqualizerPreset
     @Published private(set) var selectedCustomPresetName: String?
@@ -102,11 +108,23 @@ final class CoEqualizer: ObservableObject {
     private var reverbAllpassBuffers: [[[Float]]] = []
     private var reverbAllpassIndices: [[Int]] = []
     private var reverbNeedsReset = false
+    /// 人声清晰系数与状态：单段峰值滤波，每声道 1 组状态。
+    private var vocalCoefficients: BiquadCoefficients = .identity
+    private var vocalStates: [BiquadState] = Array(repeating: .zero, count: 8)
+    /// 夜间模式包络：左右声道共用一条包络，声像不漂。
+    private var compressorEnvelope: Float = 0
+    /// 乒乓延迟：两路延迟线（0.3 秒），交叉喂入实现左右来回弹。
+    private var pingPongBuffers: [[Float]] = []
+    private var pingPongIndex = 0
+    private var pingPongNeedsReset = false
     private var pendingPersistWorkItem: DispatchWorkItem?
 
     private static let enabledKey = "co.equalizer.enabled"
     static let surroundKey = "co.surround3D.enabled"
     static let headphoneBoostKey = "co.headphoneBoost.enabled"
+    static let pingPongKey = "co.pingPong.enabled"
+    static let nightModeKey = "co.nightMode.enabled"
+    static let vocalBoostKey = "co.vocalBoost.enabled"
     private static let gainsKey = "co.equalizer.bandGains"
     private static let presetKey = "co.equalizer.preset"
     private static let customPresetNameKey = "co.equalizer.customPresetName"
@@ -136,23 +154,27 @@ final class CoEqualizer: ObservableObject {
         isEnabled = defaults.object(forKey: Self.enabledKey) as? Bool ?? false
         surroundEnabled = defaults.object(forKey: Self.surroundKey) as? Bool ?? false
         headphoneBoostEnabled = defaults.object(forKey: Self.headphoneBoostKey) as? Bool ?? false
+        pingPongEnabled = defaults.object(forKey: Self.pingPongKey) as? Bool ?? false
+        nightModeEnabled = defaults.object(forKey: Self.nightModeKey) as? Bool ?? false
+        vocalBoostEnabled = defaults.object(forKey: Self.vocalBoostKey) as? Bool ?? false
         bandGains = normalizedGains
         selectedPreset = storedPreset
         selectedCustomPresetName = defaults.string(forKey: Self.customPresetNameKey)
         preampGain = Self.normalizedGain((defaults.object(forKey: Self.preampKey) as? NSNumber)?.doubleValue ?? 0)
         customPresets = normalizedCustomPresets
-        processingEnabled = isEnabled || surroundEnabled || headphoneBoostEnabled
+        processingEnabled = isEnabled || surroundEnabled || headphoneBoostEnabled || pingPongEnabled || nightModeEnabled || vocalBoostEnabled
         processingGains = normalizedGains
         processingPreampLinear = Self.linearGain(for: preampGain)
         rebuildCoefficientsLocked(using: normalizedGains)
         rebuildEnhancementCoefficientsLocked()
+        rebuildVocalCoefficientsLocked()
     }
 
     func setEnabled(_ enabled: Bool) {
         guard isEnabled != enabled else { return }
         isEnabled = enabled
         configurationLock.lock()
-        processingEnabled = enabled || surroundEnabled || headphoneBoostEnabled
+        processingEnabled = enabled || surroundEnabled || headphoneBoostEnabled || pingPongEnabled || nightModeEnabled || vocalBoostEnabled
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.enabledKey)
         notifySettingsChanged()
@@ -163,7 +185,7 @@ final class CoEqualizer: ObservableObject {
         guard surroundEnabled != enabled else { return }
         surroundEnabled = enabled
         configurationLock.lock()
-        processingEnabled = isEnabled || enabled || headphoneBoostEnabled
+        processingEnabled = isEnabled || enabled || headphoneBoostEnabled || pingPongEnabled || nightModeEnabled || vocalBoostEnabled
         reverbNeedsReset = true
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.surroundKey)
@@ -175,9 +197,43 @@ final class CoEqualizer: ObservableObject {
         guard headphoneBoostEnabled != enabled else { return }
         headphoneBoostEnabled = enabled
         configurationLock.lock()
-        processingEnabled = isEnabled || surroundEnabled || enabled
+        processingEnabled = isEnabled || surroundEnabled || enabled || pingPongEnabled || nightModeEnabled || vocalBoostEnabled
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.headphoneBoostKey)
+        notifySettingsChanged()
+    }
+
+    /// 乒乓延迟开关：改动后经 settingsDidChange 通知，播放器会重挂音频处理。
+    func setPingPongEnabled(_ enabled: Bool) {
+        guard pingPongEnabled != enabled else { return }
+        pingPongEnabled = enabled
+        configurationLock.lock()
+        processingEnabled = isEnabled || surroundEnabled || headphoneBoostEnabled || enabled || nightModeEnabled || vocalBoostEnabled
+        pingPongNeedsReset = true
+        configurationLock.unlock()
+        defaults.set(enabled, forKey: Self.pingPongKey)
+        notifySettingsChanged()
+    }
+
+    /// 夜间模式开关：改动后经 settingsDidChange 通知，播放器会重挂音频处理。
+    func setNightModeEnabled(_ enabled: Bool) {
+        guard nightModeEnabled != enabled else { return }
+        nightModeEnabled = enabled
+        configurationLock.lock()
+        processingEnabled = isEnabled || surroundEnabled || headphoneBoostEnabled || pingPongEnabled || enabled || vocalBoostEnabled
+        configurationLock.unlock()
+        defaults.set(enabled, forKey: Self.nightModeKey)
+        notifySettingsChanged()
+    }
+
+    /// 人声清晰开关：改动后经 settingsDidChange 通知，播放器会重挂音频处理。
+    func setVocalBoostEnabled(_ enabled: Bool) {
+        guard vocalBoostEnabled != enabled else { return }
+        vocalBoostEnabled = enabled
+        configurationLock.lock()
+        processingEnabled = isEnabled || surroundEnabled || headphoneBoostEnabled || pingPongEnabled || nightModeEnabled || enabled
+        configurationLock.unlock()
+        defaults.set(enabled, forKey: Self.vocalBoostKey)
         notifySettingsChanged()
     }
 
@@ -379,6 +435,10 @@ final class CoEqualizer: ObservableObject {
         }
     }
 
+    private func rebuildVocalCoefficientsLocked() {
+        vocalCoefficients = BiquadCoefficients.peaking(frequency: 3_000, gain: 3, sampleRate: sampleRate)
+    }
+
     private func rebuildEnhancementCoefficientsLocked() {
         enhancementCoefficients = [
             BiquadCoefficients.lowShelf(frequency: 120, gain: 3, sampleRate: sampleRate),
@@ -399,6 +459,13 @@ final class CoEqualizer: ObservableObject {
         rebuildCoefficientsLocked(using: processingGains)
         enhancementStates = Array(repeating: .zero, count: Self.maximumChannels * 2)
         rebuildEnhancementCoefficientsLocked()
+        vocalStates = Array(repeating: .zero, count: Self.maximumChannels)
+        rebuildVocalCoefficientsLocked()
+        compressorEnvelope = 0
+        let pingPongDelay = max(1, Int(sampleRate * 0.3))
+        pingPongBuffers = [Array(repeating: 0, count: pingPongDelay), Array(repeating: 0, count: pingPongDelay)]
+        pingPongIndex = 0
+        pingPongNeedsReset = false
         let reverbScale = sampleRate / 44_100
         reverbCombDelays = [1557, 1617, 1491, 1422].map { max(1, Int(Double($0) * reverbScale)) }
         reverbAllpassDelays = [556, 441].map { max(1, Int(Double($0) * reverbScale)) }
@@ -555,6 +622,43 @@ final class CoEqualizer: ObservableObject {
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
             }
+            if vocalBoostEnabled, channelCount == 2 {
+                // 人声清晰：3kHz 附近提 3dB，人声更靠前；只对立体声生效。
+                for channelOffset in 0..<2 {
+                    let channel = min(firstChannelIndex + channelOffset, Self.maximumChannels - 1)
+                    for frame in 0..<frameCount {
+                        let sampleIndex = frame * channelCount + channelOffset
+                        var sample = samples[sampleIndex]
+                        var state = vocalStates[channel]
+                        let filtered = vocalCoefficients.b0 * sample + state.z1
+                        state.z1 = vocalCoefficients.b1 * sample - vocalCoefficients.a1 * filtered + state.z2
+                        state.z2 = vocalCoefficients.b2 * sample - vocalCoefficients.a2 * filtered
+                        vocalStates[channel] = state
+                        samples[sampleIndex] = filtered.isFinite ? min(max(filtered, -0.98), 0.98) : 0
+                    }
+                }
+            }
+            if nightModeEnabled, channelCount == 2 {
+                // 夜间模式：动态压缩，轻声抬起来、响声压下去，深夜/地铁不用频繁调音量；
+                // 左右共用一条包络，声像不漂。阈值 -20dB、压缩比 4:1，起音 10ms、释音 200ms。
+                let threshold: Float = 0.1
+                let ratio: Float = 4
+                let attackCoeff = Float(1 - exp(-1 / (sampleRate * 0.01)))
+                let releaseCoeff = Float(1 - exp(-1 / (sampleRate * 0.2)))
+                for frame in 0..<frameCount {
+                    let leftIndex = frame * channelCount
+                    let rightIndex = leftIndex + 1
+                    let level = max(abs(samples[leftIndex]), abs(samples[rightIndex]))
+                    let coeff = level > compressorEnvelope ? attackCoeff : releaseCoeff
+                    compressorEnvelope += (level - compressorEnvelope) * coeff
+                    var gain: Float = 1
+                    if compressorEnvelope > threshold {
+                        gain = (threshold + (compressorEnvelope - threshold) / ratio) / compressorEnvelope
+                    }
+                    samples[leftIndex] = (samples[leftIndex] * gain).isFinite ? min(max(samples[leftIndex] * gain, -0.98), 0.98) : 0
+                    samples[rightIndex] = (samples[rightIndex] * gain).isFinite ? min(max(samples[rightIndex] * gain, -0.98), 0.98) : 0
+                }
+            }
             if surroundEnabled, channelCount == 2 {
                 // 3D 环绕（大白话版）：人声在左、中、右三个位置都停得住、缓慢移动——
                 // 快切形会让中间一下而过，所以改成正弦三次方：左、中、右三点导数都为零，都停得住；
@@ -595,9 +699,39 @@ final class CoEqualizer: ObservableObject {
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
             }
+            if pingPongEnabled, channelCount == 2 {
+                // 乒乓延迟：回声左右来回弹，空间感更明显；0.3 秒延迟、湿声 0.25、反馈 0.35。
+                // 交叉喂入：左路的历史回声进右输出、右路的历史回声进左输出，来回弹；只对立体声生效。
+                if pingPongNeedsReset {
+                    pingPongNeedsReset = false
+                    for channel in 0..<2 where channel < pingPongBuffers.count {
+                        pingPongBuffers[channel] = Array(repeating: 0, count: pingPongBuffers[channel].count)
+                    }
+                    pingPongIndex = 0
+                }
+                if pingPongBuffers.count == 2, !pingPongBuffers[0].isEmpty {
+                    let delayCount = pingPongBuffers[0].count
+                    for frame in 0..<frameCount {
+                        let leftIndex = frame * channelCount
+                        let rightIndex = leftIndex + 1
+                        let inLeft = samples[leftIndex]
+                        let inRight = samples[rightIndex]
+                        let echoLeft = pingPongBuffers[0][pingPongIndex]
+                        let echoRight = pingPongBuffers[1][pingPongIndex]
+                        let outLeft = inLeft + echoRight * 0.25
+                        let outRight = inRight + echoLeft * 0.25
+                        samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
+                        samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
+                        pingPongBuffers[0][pingPongIndex] = inLeft + echoRight * 0.35
+                        pingPongBuffers[1][pingPongIndex] = inRight + echoLeft * 0.35
+                        pingPongIndex += 1
+                        if pingPongIndex >= delayCount { pingPongIndex = 0 }
+                    }
+                }
+            }
     }
 
-    /// 单声道混响（Freeverb 精简版）：4 梳状并联 + 2 全通串联，只出湿声，由调用方按 0.35 混入。
+    /// 单声道混响（Freeverb 精简版）：4 梳状并联 + 2 全通串联，只出湿声，由调用方按 0.2 混入。
     private func reverbSample(input: Float, channel: Int) -> Float {
         guard channel < reverbCombBuffers.count,
               reverbCombDelays.count == 4, reverbAllpassDelays.count == 2 else { return 0 }

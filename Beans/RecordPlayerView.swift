@@ -28,6 +28,7 @@ struct RecordPlayerView: View {
     @State private var showQueue = false
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
+    @State private var showLyricOffsetSheet = false
     @AppStorage("co.audioQuality") private var playbackQualityRaw = CoAudioQuality.hires.rawValue
     @AppStorage(LyricTiming.userOffsetKey) private var lyricOffset = 0.0
 
@@ -100,6 +101,9 @@ struct RecordPlayerView: View {
         .sheet(isPresented: $showSoftwareVolume) {
             CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
+        }
+        .sheet(isPresented: $showLyricOffsetSheet) {
+            CoLyricOffsetSheet()
         }
         .overlay(alignment: .top) {
             recordHeader
@@ -584,6 +588,9 @@ struct RecordPlayerView: View {
                     }
                 }
                 Button("播放器设置", action: onSettings)
+                Button("歌词偏移") {
+                    showLyricOffsetSheet = true
+                }
                 Button("软件音量") {
                     showSoftwareVolume = true
                 }
@@ -689,7 +696,7 @@ struct CoAudioQualityMenu: View {
         }
         Divider()
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
             equalizer.setSurroundEnabled(!equalizer.surroundEnabled)
             // EQ 关着时本就没有 tap 在跑：只靠重挂 audioMix 未必立即生效，
             // 断点续播重挂一次，3D 立刻可听；EQ 开着时 tap 已在跑、改动即时生效，不用重播。
@@ -705,7 +712,7 @@ struct CoAudioQualityMenu: View {
             }
         }
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
             equalizer.setHeadphoneBoostEnabled(!equalizer.headphoneBoostEnabled)
             // 与 3D 开关同理：之前没 tap 在跑时断点续播重挂一次，立刻可听。
             if !wasProcessing, equalizer.headphoneBoostEnabled {
@@ -715,6 +722,49 @@ struct CoAudioQualityMenu: View {
             HStack {
                 Text("耳机增强")
                 if equalizer.headphoneBoostEnabled {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        Button {
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
+            equalizer.setPingPongEnabled(!equalizer.pingPongEnabled)
+            // 与 3D 开关同理：之前没 tap 在跑时断点续播重挂一次，立刻可听。
+            if !wasProcessing, equalizer.pingPongEnabled {
+                player.retryCurrent()
+            }
+        } label: {
+            HStack {
+                Text("乒乓延迟")
+                if equalizer.pingPongEnabled {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        Button {
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
+            equalizer.setNightModeEnabled(!equalizer.nightModeEnabled)
+            if !wasProcessing, equalizer.nightModeEnabled {
+                player.retryCurrent()
+            }
+        } label: {
+            HStack {
+                Text("夜间模式")
+                if equalizer.nightModeEnabled {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        Button {
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
+            equalizer.setVocalBoostEnabled(!equalizer.vocalBoostEnabled)
+            if !wasProcessing, equalizer.vocalBoostEnabled {
+                player.retryCurrent()
+            }
+        } label: {
+            HStack {
+                Text("人声清晰")
+                if equalizer.vocalBoostEnabled {
                     Image(systemName: "checkmark")
                 }
             }
