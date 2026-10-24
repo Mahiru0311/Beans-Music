@@ -3942,13 +3942,21 @@ struct EqualizerSettingsView: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var equalizer = CoEqualizer.shared
+    @EnvironmentObject private var player: PlayerManager
     @State private var newPresetName = ""
     @State private var showPresetNamePrompt = false
 
     private var enabledBinding: Binding<Bool> {
         Binding(
             get: { equalizer.isEnabled },
-            set: { equalizer.setEnabled($0) }
+            set: { newValue in
+                let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled
+                equalizer.setEnabled(newValue)
+                // 与 3D 开关同理：之前没 tap 在跑时，断点续播重挂一次，均衡立刻可听。
+                if !wasProcessing, newValue {
+                    player.retryCurrent()
+                }
+            }
         )
     }
 

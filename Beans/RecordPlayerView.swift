@@ -689,7 +689,13 @@ struct CoAudioQualityMenu: View {
         }
         Divider()
         Button {
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled
             equalizer.setSurroundEnabled(!equalizer.surroundEnabled)
+            // EQ 关着时本就没有 tap 在跑：只靠重挂 audioMix 未必立即生效，
+            // 断点续播重挂一次，3D 立刻可听；EQ 开着时 tap 已在跑、改动即时生效，不用重播。
+            if !wasProcessing, equalizer.surroundEnabled {
+                player.retryCurrent()
+            }
         } label: {
             HStack {
                 Text("3D环绕")

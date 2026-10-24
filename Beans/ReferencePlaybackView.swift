@@ -116,8 +116,8 @@ struct ReferencePlaybackView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 封面切歌词不再用 0.38s 固定曲线（太僵硬），改弹簧收尾：起步跟手、结尾带一点柔和回落。
-                    .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
+                    // 封面切歌词用唱片同款淡入淡出（0.22s easeInOut），不再缩放、不再弹簧。
+                    .animation(.easeInOut(duration: 0.22), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -197,9 +197,8 @@ struct ReferencePlaybackView: View {
                 playsCoverVideoAudio: true
             )
             .frame(width: artworkSize, height: artworkSize)
-            // 封面切换不再形变位移：原地缩放加淡入淡出，两方向同一值，不斜着跑。
-            .transition(.scale(scale: 0.55).combined(with: .opacity))
-            .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
+            // 封面切歌词用唱片同款纯淡入淡出，不缩放。
+            .transition(.opacity)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
@@ -209,7 +208,7 @@ struct ReferencePlaybackView: View {
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.easeInOut(duration: 0.22)) {
                     showLyrics = true
                 }
             }
@@ -251,7 +250,7 @@ struct ReferencePlaybackView: View {
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.easeInOut(duration: 0.22)) {
                     showLyrics = true
                 }
             }
@@ -404,14 +403,13 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.easeInOut(duration: 0.22)) {
                     showLyrics = false
                 }
             } label: {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
                     .transition(.opacity)
-                    .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
 
@@ -486,7 +484,7 @@ struct ReferencePlaybackView: View {
                 container: PlayerLayoutEntry()
             ),
             onLyrics: {
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.easeInOut(duration: 0.22)) {
                     if showQueue {
                         showQueue = false
                         showLyrics = true
@@ -618,7 +616,7 @@ struct ReferencePlaybackView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             CoHaptics.tap()
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 showLyrics = false
             }
         }

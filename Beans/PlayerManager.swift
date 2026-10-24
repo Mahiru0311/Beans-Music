@@ -649,7 +649,10 @@ final class PlayerManager: NSObject, ObservableObject {
         guard ensurePlaybackAllowed() else { return }
         loadFailed = false
         resetCrossPlatformFallbackState()
-        loadCurrent()
+        // 换音质 / 开关不断歌：从当前进度续播；暂停时保持暂停，缓冲中按播放处理。
+        let time = player?.currentTime().seconds ?? 0
+        let resume = time.isFinite ? max(0, time) : 0
+        loadCurrent(resumeAt: resume, autoplay: isPlaying || isBuffering)
     }
 
     /// 删除单条播放历史（含持久化）
