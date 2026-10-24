@@ -26,7 +26,6 @@ struct RecordPlayerView: View {
 
     @State private var showLyrics = false
     @State private var showQueue = false
-    @State private var showQualityPicker = false
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @AppStorage("beans.audioQuality") private var playbackQualityRaw = BeansAudioQuality.hires.rawValue
@@ -88,10 +87,6 @@ struct RecordPlayerView: View {
             surface
         }
         .animation(.easeInOut(duration: 0.22), value: showLyrics)
-        .sheet(isPresented: $showQualityPicker) {
-            CoAudioQualityPickerSheet(song: song)
-                .environmentObject(player)
-        }
         .sheet(isPresented: $showCustomCoverPicker) {
             CustomSongCoverPicker(
                 onPick: { url in
@@ -364,8 +359,16 @@ struct RecordPlayerView: View {
                 .font(BeansFont.appFont(11))
                 .foregroundStyle(.white.opacity(0.5))
             HStack(spacing: 8) {
-                metadataButton(title: "音质：\(BeansAudioQuality(rawValue: playbackQualityRaw)?.displayName ?? BeansAudioQuality.hires.displayName)", icon: "waveform") {
-                    showQualityPicker = true
+                Menu {
+                    CoAudioQualityMenu()
+                        .environmentObject(player)
+                } label: {
+                    Label("音质：\(BeansAudioQuality(rawValue: playbackQualityRaw)?.displayName ?? BeansAudioQuality.hires.displayName)", systemImage: "waveform")
+                        .font(BeansFont.appFont(12, .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 44)
+                        .background(.white.opacity(0.12), in: Capsule())
                 }
                 metadataButton(title: "评论", icon: "text.bubble", action: onComments)
             }
@@ -630,17 +633,12 @@ struct RecordPlayerView: View {
     }
 }
 
-/// 共用播放音质选择页（主播放页 Apple Music 样式与唱片页共用同一张表，
-/// 不再各写一套）：只列线上真正能分出高低的 4 档——标准 128、极高 320、
-/// 无损 FLAC、Hi-Res；旧的“更高”归到极高、“Master”归到 Hi-Res，
-/// 不对外宣称 6 档独立。选档只写统一键 beans.audioQuality，
-/// 选完调用 player.retryCurrent() 立即重播；实际档位由
-/// PlayerManager.actualAudioQualityKey 回传，拿不到时显示偏好名、不编档位。
-struct CoAudioQualityPickerSheet: View {
+/// 共用播放音质切换（系统弹窗式）：Menu 里直接列 4 档，点开就是
+/// 系统展开的小弹窗，上下滑动选档、当前档带勾，选完立即重播生效。
+/// 不再进整页选择表——原先那张整页表已删。实际档位能确认时首行
+/// 灰字显示“实际：X”，拿不到时不显示、不编档位（只看勾选的偏好）。
+struct CoAudioQualityMenu: View {
     @EnvironmentObject private var player: PlayerManager
-    @Environment(\.dismiss) private var dismiss
-
-    let song: Song?
     @AppStorage("beans.audioQuality") private var selectedRaw = BeansAudioQuality.hires.rawValue
 
     static func normalized(_ quality: BeansAudioQuality) -> BeansAudioQuality {
@@ -669,64 +667,21 @@ struct CoAudioQualityPickerSheet: View {
         Self.normalized(BeansAudioQuality(rawValue: selectedRaw) ?? .hires)
     }
 
-    private var actualLine: String {
-        if let key = player.actualAudioQualityKey, let name = Self.displayName(forKey: key) {
-            return "实际：\(name)"
-        }
-        return "偏好：\(selectedTier.displayName)（实际档位未确认时显示偏好，不编档位）"
-    }
-
     var body: some View {
-        BeansNavigationStack {
-            List {
-                Section("当前歌曲") {
-                    Text(song?.name ?? "未播放歌曲")
-                        .lineLimit(2)
-                    Text(actualLine)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text("可用音质会随当前平台和音源变化")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("选择播放音质") {
-                    ForEach(tiers, id: \.quality) { tier in
-                        Button {
-                            selectedRaw = tier.quality.rawValue
-                            player.retryCurrent()
-                            dismiss()
-                        } label: {
-                            HStack {
-                                Text(tier.quality.displayName)
-                                Text(tier.note)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                if selectedTier == tier.quality {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.beansAmber)
-                                }
-                            }
-                        }
-                        .foregroundStyle(.primary)
-                        .frame(minHeight: 44)
+        if let key = player.actualAudioQualityKey, let name = Self.displayName(forKey: key) {
+            Button("实际：\(name)") {}.disabled(true)
+        }
+        ForEach(tiers, id: \.quality) { tier in
+            Button {
+                selectedRaw = tier.quality.rawValue
+                player.retryCurrent()
+            } label: {
+                HStack {
+                    Text(tier.quality.displayName)
+                    Text(tier.note)
+                    if selectedTier == tier.quality {
+                        Image(systemName: "checkmark")
                     }
-                }
-
-                Section {
-                    Text("如果选定音质不可用，播放器会自动回退到当前音源支持的较低音质。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("播放音质")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
                 }
             }
         }

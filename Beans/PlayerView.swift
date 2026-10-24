@@ -31,7 +31,6 @@ struct PlayerView: View {
     /// 走同一个弹窗，不能把“加入某歌单”误当成点爱心。
     @State private var localPlaylistSheetMarksFavorite = false
     @State private var showPlayerSettings = false
-    @State private var showQualitySheet = false
     @State private var showComments = false
     @AppStorage(FoliaPreferences.enabledKey) private var foliaStageEnabled = false
     @AppStorage(FoliaPreferences.modeKey) private var foliaModeRaw = FoliaVisualizerMode.still.rawValue
@@ -501,14 +500,8 @@ struct PlayerView: View {
                         onPlayerSettings: {
                             openPlayerSettings()
                         },
-                        onQuality: {
-                            showQualitySheet = true
-                        },
                         onArtist: {
                             openArtistHome()
-                        },
-                        onClose: {
-                            closePlayer()
                         }
                     )
 
@@ -732,10 +725,6 @@ struct PlayerView: View {
         .sheet(isPresented: $showPlayerSettings) {
             PlayerSettingsSheet(layoutMode: $layoutMode, onDismiss: closePlayerSettings)
                 .environmentObject(theme)
-                .environmentObject(player)
-        }
-        .sheet(isPresented: $showQualitySheet) {
-            CoAudioQualityPickerSheet(song: song)
                 .environmentObject(player)
         }
         .sheet(isPresented: $showComments) {

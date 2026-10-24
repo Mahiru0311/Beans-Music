@@ -59,7 +59,7 @@ struct FoliaSettingsView: View {
                         }
                     }
                 }
-                card("Beans 液态外观") {
+                card("Co 液态外观") {
                     Toggle("关闭液态模式", isOn: $disableLiquidGlass)
                     Picker("全局 UI 风格", selection: Binding(get: { theme.uiStyle }, set: { theme.setUIStyle($0) })) {
                         ForEach(BeansUIStyle.allCases, id: \.self) { style in
@@ -71,7 +71,7 @@ struct FoliaSettingsView: View {
                         set: { theme.setLiquidGlassColor("#" + UIColor($0).hexString) }
                     ), supportsOpacity: false)
                     Button("恢复清透颜色") { theme.clearLiquidGlassColor() }
-                    Text("与 Beans 原设置共用，动态壁纸的颜色、速度和扰动参数仍在原设置页调整。")
+                    Text("与 Co 设置共用，动态壁纸的颜色、速度和扰动参数仍在原设置页调整。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
