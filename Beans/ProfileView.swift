@@ -2603,7 +2603,39 @@ struct SettingsView: View {
 
     // MARK: - 隐藏的歌单（旧线 1.8.5 移植：我的页长按隐藏的歌单在此逐条恢复，只藏显示、不删歌单）
     private var hiddenPlaylistsSettingsSection: some View {
-        DisclosureGroup(isExpanded: $hiddenPlaylistsExpanded) {
+        // 外观行用 Button + 上下箭头（只有一个指示符），隐藏行原来用 DisclosureGroup，
+        // 系统会在行尾再补一个黑粗右箭头，变成“无 + 下箭头 + 右箭头”两个指示符叠加，
+        // 且 label 没有图标位、没有和其他行一样的内边距，整行贴到卡片左边缘才显得突出。
+        // 改成和外观行一样的 Button 结构：只有一个上下箭头，图标位、内边距、字号全对齐。
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                BeansHaptics.select()
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    hiddenPlaylistsExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "eye.slash.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.beansAmber)
+                        .frame(width: 28)
+                    Text("隐藏的歌单")
+                        .font(BeansFont.appFont(15))
+                        .foregroundStyle(Color.beansLabel)
+                    Spacer()
+                    Text(hiddenAccounts.isEmpty ? "无" : "\(hiddenAccounts.reduce(0) { $0 + $1.entries.count }) 条已隐藏")
+                        .font(BeansFont.appFont(12))
+                        .foregroundStyle(Color.beansComment)
+                    Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.beansComment.opacity(0.6))
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(GlassPressButtonStyle(scale: 0.98))
+            if hiddenPlaylistsExpanded {
             VStack(alignment: .leading, spacing: 14) {
                 Button { hiddenAccounts = CoHiddenPlaylists.allAccounts() } label: {
                     Text("刷新列表").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
@@ -2645,15 +2677,8 @@ struct SettingsView: View {
                 }
             }
             .onAppear { hiddenAccounts = CoHiddenPlaylists.allAccounts() }
-        } label: {
-            HStack {
-                Text("隐藏的歌单").font(BeansFont.appFont(13, .semibold)).foregroundStyle(Color.beansLabel)
-                Spacer()
-                Text(hiddenAccounts.isEmpty ? "无" : "\(hiddenAccounts.reduce(0) { $0 + $1.entries.count }) 条已隐藏").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
-                Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.beansComment.opacity(0.6))
             }
         }
-        .padding(.vertical, 2)
     }
 
     @ViewBuilder

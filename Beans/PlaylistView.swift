@@ -58,6 +58,7 @@ struct PlaylistView: View {
         return max(0, playlistScrollOffset - rest)
     }
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
+    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
 
     init(playlist: Playlist) {
         self.loadMode = .userPlaylist(playlist)
@@ -301,7 +302,7 @@ struct PlaylistView: View {
                                 .padding(.horizontal, 22)
                                 // 简介→搜索行间距：参考图约 32pt，之前是简介下 20pt +
                                 // 搜索行上下 18pt ≈ 42pt，简介下边距收到 12pt 后约 32pt。
-                                .padding(.bottom, 12)
+                                .padding(.bottom, 8)
                         }
                         unifiedSearchRow
                         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -327,7 +328,7 @@ struct PlaylistView: View {
                             // 控制排后面、越往下越淡、最后融入深色底；标题区本身
                             // 不加不透明底，否则会把虚化底全盖住。
                     }
-                    .padding(.bottom, 180)
+                    .padding(.bottom, 140)
                 }
                 .beansScrollIndicatorsHidden()
                 // 内容不满屏时也能回弹下拉（与我的页 .always 同款），短歌单也能拉动放大。
@@ -439,16 +440,16 @@ struct PlaylistView: View {
         // 圆键 56pt、间距 20pt，整排几乎撑满屏宽；参考图左右各留约 58pt、
         // 胶囊约 168pt、圆键约 48pt、间距约 12pt。按参考图改：圆键 48pt、
         // 胶囊 168×50pt、间距 12pt，整排 288pt、左右各留约 57pt。
-        // 上下内边距改成上 28pt、下 20pt（参考图首数→控制排约 30pt、
-        // 控制排→简介约 22pt，之前上下都是 24pt）。
+        // 上下内边距本轮收紧到上 20pt、下 12pt（纵向收紧的一部分，横向对齐数值不动）；
+        // 控制排三个键本轮改液态玻璃，见各键 background 里的 glassEffect。
+        GlassEffectContainer {
         HStack(spacing: 12) {
             // 播放模式切换键（之前是死图标：写死的 shuffle 图，点它只播一次
             // 随机、图标永远不变）。现在图标读 PlayerManager.playMode.icon，
             // 点它调 togglePlayMode()，图标随模式更换；循环顺序是 PlayerManager
             // 现成的 sequential → repeatAll → repeatOne → shuffle → sequential，
             // 对应图标 arrow.right → repeat → repeat.1 → shuffle → arrow.right。
-            // shuffle 时按 PlayerView 的 modeButton 做法给高亮（琥珀色图标 +
-            // 更亮的圆底），其他模式不高亮。播放胶囊仍是正常播放：playAll() 走
+            // shuffle 时琥珀色图标 + 琥珀色玻璃着色高亮，其他模式常规玻璃、不高亮。播放胶囊仍是正常播放：playAll() 走
             // player.play()，play() 里 buildPlayOrder() 按当前模式出队列，
             // 所以胶囊播出来的顺序就是左键当前显示的模式，不再留一个只播一次
             // 随机、图标不动的假随机键。
@@ -460,7 +461,15 @@ struct PlaylistView: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(player.playMode == .shuffle ? Color.beansAmber : .white)
                     .frame(width: 48, height: 48)
-                    .background(Circle().fill(player.playMode == .shuffle ? .white.opacity(0.25) : .white.opacity(0.15)))
+                    .background {
+                        if #available(iOS 26, *), !disableLiquidGlass {
+                            Circle()
+                                .fill(.clear)
+                                .glassEffect(player.playMode == .shuffle ? .regular.tint(Color.beansAmber.opacity(0.45)) : .regular, in: Circle())
+                        } else {
+                            Circle().fill(player.playMode == .shuffle ? .white.opacity(0.25) : .white.opacity(0.15))
+                        }
+                    }
             }
             .buttonStyle(.plain)
             .accessibilityLabel(player.playMode.title)
@@ -475,7 +484,15 @@ struct PlaylistView: View {
                 .font(BeansFont.appFont(18, .semibold))
                 .foregroundStyle(.black)
                 .frame(width: 168, height: 50)
-                .background(Capsule().fill(.white))
+                .background {
+                    if #available(iOS 26, *), !disableLiquidGlass {
+                        Capsule()
+                            .fill(.clear)
+                            .glassEffect(.regular.tint(.white.opacity(0.92)), in: Capsule())
+                    } else {
+                        Capsule().fill(.white)
+                    }
+                }
             }
             .buttonStyle(.plain)
             // 下载管线不存在（精简时已删下载管理器与批量下载，唯一的 download 是歌词下载），
@@ -488,12 +505,21 @@ struct PlaylistView: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
-                    .background(Circle().fill(.white.opacity(0.15)))
+                    .background {
+                        if #available(iOS 26, *), !disableLiquidGlass {
+                            Circle()
+                                .fill(.clear)
+                                .glassEffect(.regular, in: Circle())
+                        } else {
+                            Circle().fill(.white.opacity(0.15))
+                        }
+                    }
             }
             .buttonStyle(.plain)
         }
-        .padding(.top, 28)
-        .padding(.bottom, 20)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
+        }
     }
 
     private var unifiedSearchRow: some View {
@@ -502,10 +528,20 @@ struct PlaylistView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15))
                     .foregroundStyle(.white.opacity(0.6))
-                TextField(beansLocalized("搜索歌曲", "Search songs"), text: $searchText)
-                    .font(BeansFont.appFont(16))
-                    .foregroundStyle(.white)
-                    .autocorrectionDisabled()
+                // 提示色不能走系统默认：TextField 的 prompt 在深色虚化底上是深灰，
+                // 所以用空 prompt + 叠加的白色提示，输入后文字仍是纯白。
+                ZStack(alignment: .leading) {
+                    if searchText.isEmpty {
+                        Text(beansLocalized("搜索歌曲", "Search songs"))
+                            .font(BeansFont.appFont(16))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .allowsHitTesting(false)
+                    }
+                    TextField("", text: $searchText)
+                        .font(BeansFont.appFont(16))
+                        .foregroundStyle(.white)
+                        .autocorrectionDisabled()
+                }
                 if !searchText.isEmpty {
                     Button { searchText = "" } label: {
                         Image(systemName: "xmark.circle.fill")
@@ -529,7 +565,7 @@ struct PlaylistView: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 22)
-        .padding(.vertical, 18)
+        .padding(.vertical, 12)
     }
 
     private func unifiedSongRow(_ song: Song) -> some View {
