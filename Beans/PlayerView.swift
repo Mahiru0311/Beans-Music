@@ -24,7 +24,6 @@ struct PlayerView: View {
     @State private var showAddToPlaylist = false
     @State private var showMoreActions = false
     @State private var showNativeMoreActions = false
-    @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @State private var showLyricOffsetSheet = false
     @State private var showAddToLocalPlaylist = false
@@ -728,15 +727,6 @@ struct PlayerView: View {
             if let song {
                 CoHotCommentsSheet(song: song)
             }
-        }
-        .sheet(isPresented: $showCustomCoverPicker) {
-            CustomSongCoverPicker(
-                onPick: { url in
-                    showCustomCoverPicker = false
-                    saveCustomCover(from: url)
-                },
-                onCancel: { showCustomCoverPicker = false }
-            )
         }
         .sheet(isPresented: $showSoftwareVolume) {
             CoSoftwareVolumeSheetHost()
@@ -1512,10 +1502,6 @@ struct PlayerView: View {
             moreActionRow("添加到本地歌单", systemName: "text.badge.plus") {
                 showMoreActions = false
                 showAddToLocalPlaylist = true
-            }
-            moreActionRow("更换自定义封面", systemName: "photo.badge.plus") {
-                showMoreActions = false
-                showCustomCoverPicker = true
             }
             if customCovers.hasCover(for: song) {
                 moreActionRow("恢复默认封面", systemName: "arrow.uturn.backward") {
@@ -3921,9 +3907,6 @@ struct PlayerView: View {
     @ViewBuilder
     private var customCoverActions: some View {
         if let song {
-            Button("更换自定义封面") {
-                showCustomCoverPicker = true
-            }
             if customCovers.isVideoCover(for: song) {
                 Toggle(
                     "播放视频封面声音",
@@ -3940,18 +3923,6 @@ struct PlayerView: View {
                     ToastCenter.shared.show("已恢复默认封面")
                 }
             }
-        }
-    }
-
-    private func saveCustomCover(from url: URL) {
-        guard let song else { return }
-        do {
-            try customCovers.saveCover(from: url, for: song)
-            try? FileManager.default.removeItem(at: url)
-            Task { await extractCoverPalette() }
-            ToastCenter.shared.show("自定义封面已保存")
-        } catch {
-            ToastCenter.shared.show(error.localizedDescription)
         }
     }
 

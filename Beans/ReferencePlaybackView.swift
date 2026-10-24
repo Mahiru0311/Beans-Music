@@ -55,7 +55,6 @@ struct ReferencePlaybackView: View {
     @GestureState private var lyricDragActive = false
     @State private var resumeTask: Task<Void, Never>?
     @State private var lyricTapTask: Task<Void, Never>?
-    @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @State private var showLyricOffsetSheet = false
 
@@ -132,15 +131,6 @@ struct ReferencePlaybackView: View {
             selectedLyricID = nil
             focusedLyricID = nil
         }
-        .sheet(isPresented: $showCustomCoverPicker) {
-            CustomSongCoverPicker(
-                onPick: { url in
-                    showCustomCoverPicker = false
-                    saveCustomCover(from: url)
-                },
-                onCancel: { showCustomCoverPicker = false }
-            )
-        }
         .sheet(isPresented: $showSoftwareVolume) {
             CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
@@ -197,8 +187,8 @@ struct ReferencePlaybackView: View {
             )
             .frame(width: artworkSize, height: artworkSize)
             .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
+            .clipShape(RoundedRectangle(cornerRadius: showLyrics ? 10 : 18, style: .continuous))
+            .shadow(color: .black.opacity(showLyrics ? 0.26 : 0.46), radius: showLyrics ? 9 : 36, y: showLyrics ? 4 : 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.cover)))
             .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
@@ -214,7 +204,7 @@ struct ReferencePlaybackView: View {
             VStack(spacing: 5) {
                 HStack(spacing: 9) {
                 Text(song?.name ?? "未在播放")
-                    .font(CoFont.appFont(22, .bold))
+                    .font(CoFont.appFont(showLyrics ? 15 : 22, .bold))
                     .foregroundStyle(primaryColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -233,7 +223,7 @@ struct ReferencePlaybackView: View {
                     }
                 }
                 Text(subtitle)
-                    .font(CoFont.appFont(13.5, .medium))
+                    .font(CoFont.appFont(showLyrics ? 12 : 13.5, .medium))
                     .foregroundStyle(secondaryColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -259,7 +249,7 @@ struct ReferencePlaybackView: View {
 
             if lyrics.isEmpty {
                 emptyLyricsView
-                    .transition(.opacity)
+                    .transition(.modifier(active: LyricsEnterModifier(opacity: 0, offsetY: 14), identity: LyricsEnterModifier(opacity: 1, offsetY: 0)))
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
@@ -335,7 +325,7 @@ struct ReferencePlaybackView: View {
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
                 }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .transition(.modifier(active: LyricsEnterModifier(opacity: 0, offsetY: 14), identity: LyricsEnterModifier(opacity: 1, offsetY: 0)))
             }
         }
     }
@@ -348,8 +338,8 @@ struct ReferencePlaybackView: View {
                     showLyrics = false
                 }
             } label: {
-                CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
-                    .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
+                CoverImage(url: displayCoverURL, size: 48, cornerRadius: showLyrics ? 10 : 18)
+                    .shadow(color: .black.opacity(showLyrics ? 0.26 : 0.46), radius: showLyrics ? 9 : 36, y: showLyrics ? 4 : 18)
                     .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
@@ -357,7 +347,7 @@ struct ReferencePlaybackView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 7) {
                     Text(song?.name ?? "未在播放")
-                        .font(CoFont.appFont(15, .semibold))
+                        .font(CoFont.appFont(showLyrics ? 15 : 22, .semibold))
                         .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
                         .foregroundStyle(primaryColor)
                         .lineLimit(1)
@@ -367,9 +357,17 @@ struct ReferencePlaybackView: View {
                                 copySongTitle()
                             }
                         }
+                    if showSongVIPBadge, song?.isVIP == true {
+                        Text("VIP")
+                            .font(CoFont.appFont(9, .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.coThemeRed, in: Capsule())
+                    }
                 }
                 Text(subtitle)
-                    .font(CoFont.appFont(12, .medium))
+                    .font(CoFont.appFont(showLyrics ? 12 : 13.5, .medium))
                     .foregroundStyle(secondaryColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -507,9 +505,6 @@ struct ReferencePlaybackView: View {
     @ViewBuilder
     private var customCoverActions: some View {
         if let song {
-            Button("更换自定义封面") {
-                showCustomCoverPicker = true
-            }
             if customCovers.isVideoCover(for: song) {
                 Toggle(
                     "播放视频封面声音",
@@ -525,17 +520,6 @@ struct ReferencePlaybackView: View {
                     ToastCenter.shared.show("已恢复默认封面")
                 }
             }
-        }
-    }
-
-    private func saveCustomCover(from url: URL) {
-        guard let song else { return }
-        do {
-            try customCovers.saveCover(from: url, for: song)
-            try? FileManager.default.removeItem(at: url)
-            ToastCenter.shared.show("自定义封面已保存")
-        } catch {
-            ToastCenter.shared.show(error.localizedDescription)
         }
     }
 
@@ -1566,5 +1550,14 @@ private struct ReferenceSystemVolumeView: UIViewRepresentable {
 
     private func allSubviews(in view: UIView) -> [UIView] {
         view.subviews + view.subviews.flatMap { allSubviews(in: $0) }
+    }
+}
+
+/// 歌词层进场：原版前端同款——原地淡入 + 上浮 14px，不是从底部整页滑上来。
+private struct LyricsEnterModifier: ViewModifier {
+    let opacity: Double
+    let offsetY: CGFloat
+    func body(content: Content) -> some View {
+        content.opacity(opacity).offset(y: offsetY)
     }
 }

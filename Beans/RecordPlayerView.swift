@@ -26,7 +26,6 @@ struct RecordPlayerView: View {
 
     @State private var showLyrics = false
     @State private var showQueue = false
-    @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @State private var showLyricOffsetSheet = false
     @AppStorage("co.audioQuality") private var playbackQualityRaw = CoAudioQuality.hires.rawValue
@@ -89,15 +88,6 @@ struct RecordPlayerView: View {
             surface
         }
         .animation(.easeInOut(duration: 0.22), value: showLyrics)
-        .sheet(isPresented: $showCustomCoverPicker) {
-            CustomSongCoverPicker(
-                onPick: { url in
-                    showCustomCoverPicker = false
-                    saveCustomCover(from: url)
-                },
-                onCancel: { showCustomCoverPicker = false }
-            )
-        }
         .sheet(isPresented: $showSoftwareVolume) {
             CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
@@ -569,9 +559,6 @@ struct RecordPlayerView: View {
                 }
                 Button("定时关闭", action: onSleepTimer)
                 Button("添加到本地歌单", action: onAddToLocalPlaylist)
-                Button("更换自定义封面") {
-                    showCustomCoverPicker = true
-                }
                 if customCovers.isVideoCover(for: song) {
                     Toggle(
                         "播放视频封面声音",
@@ -629,16 +616,6 @@ struct RecordPlayerView: View {
         ToastCenter.shared.show("歌名已复制")
     }
 
-    private func saveCustomCover(from url: URL) {
-        guard let song else { return }
-        do {
-            try customCovers.saveCover(from: url, for: song)
-            try? FileManager.default.removeItem(at: url)
-            ToastCenter.shared.show("自定义封面已保存")
-        } catch {
-            ToastCenter.shared.show(error.localizedDescription)
-        }
-    }
 }
 
 /// 共用播放音质切换（系统弹窗式）：Menu 里直接列 4 档，点开就是
@@ -696,7 +673,7 @@ struct CoAudioQualityMenu: View {
         }
         Divider()
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled
             equalizer.setSurroundEnabled(!equalizer.surroundEnabled)
             // EQ 关着时本就没有 tap 在跑：只靠重挂 audioMix 未必立即生效，
             // 断点续播重挂一次，3D 立刻可听；EQ 开着时 tap 已在跑、改动即时生效，不用重播。
@@ -712,7 +689,7 @@ struct CoAudioQualityMenu: View {
             }
         }
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled
             equalizer.setHeadphoneBoostEnabled(!equalizer.headphoneBoostEnabled)
             // 与 3D 开关同理：之前没 tap 在跑时断点续播重挂一次，立刻可听。
             if !wasProcessing, equalizer.headphoneBoostEnabled {
@@ -727,36 +704,7 @@ struct CoAudioQualityMenu: View {
             }
         }
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
-            equalizer.setPingPongEnabled(!equalizer.pingPongEnabled)
-            // 与 3D 开关同理：之前没 tap 在跑时断点续播重挂一次，立刻可听。
-            if !wasProcessing, equalizer.pingPongEnabled {
-                player.retryCurrent()
-            }
-        } label: {
-            HStack {
-                Text("乒乓延迟")
-                if equalizer.pingPongEnabled {
-                    Image(systemName: "checkmark")
-                }
-            }
-        }
-        Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
-            equalizer.setNightModeEnabled(!equalizer.nightModeEnabled)
-            if !wasProcessing, equalizer.nightModeEnabled {
-                player.retryCurrent()
-            }
-        } label: {
-            HStack {
-                Text("夜间模式")
-                if equalizer.nightModeEnabled {
-                    Image(systemName: "checkmark")
-                }
-            }
-        }
-        Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.pingPongEnabled || equalizer.nightModeEnabled || equalizer.vocalBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled
             equalizer.setVocalBoostEnabled(!equalizer.vocalBoostEnabled)
             if !wasProcessing, equalizer.vocalBoostEnabled {
                 player.retryCurrent()
