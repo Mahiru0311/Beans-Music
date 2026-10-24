@@ -1,12 +1,16 @@
 import SwiftUI
 import UIKit
 
-/// 新版详情页共用件（以 PlaylistView 为准，不另起一套数值）：
+/// 新版详情页共用件：下面滚动 + 下拉 + 封面 + 虚化实现，是 PlaylistView（每日推荐 /
+/// 用户歌单 / 榜单三种模式同用、已在真机上验证过）那套逻辑的逐字复用，只改名、不改算法、
+/// 不加状态、不加兜底、不加新门控。对应关系：pull = coverPull、pullActive = coverPullActive、
+/// startedAtTop = coverPullStartedAtTop、scrollOffset = playlistScrollOffset、
+/// restOffset = playlistScrollRestOffset、scrollUp = playlistContentScrollUp。
 /// 固定封面层在 ScrollView 之外、顶边钉在 0、下拉只缩放、上滑跟走单路读数；
 /// 封面底部 120pt 遮罩淡出 + 虚化底深色罩从 0 起步、重叠 120pt 交叉淡化、封面底边无横线；
 /// 歌名 28pt、占位 = 封面高 − 60pt；控制排胶囊 168×50pt、圆键 48×48pt、间距 12pt；
 /// 下拉放慢：封顶 120pt、系数 pull/600、框高半速、回弹 response 0.9 / damping 1.0、
-/// 拖动最小距离 8pt、门控只在页面顶部开始时放大。
+/// 拖动最小距离 8pt、门控只在手势开始时定一次（scrollOffset <= 20）。
 /// 专辑页、歌手页用本文件全套；本地歌单页是 List 结构（swipeActions / 多选只在 List 里有），
 /// 不能照搬 ScrollView 固定层，见 LocalPlaylistDetailSheet 里的等价实现说明。
 /// 沉浸开关（beans.immersiveDetail.enabled）对这些页不再起分叉作用，body 永远走统一布局；
@@ -15,25 +19,17 @@ import UIKit
 /// 歌单页同款深色底（PlaylistView.darkBackground 的同一数值，不跟随系统深浅）。
 let coDetailDarkBackground = Color(red: 0.14, green: 0.10, blue: 0.08)
 
-/// 详情页滚动 + 下拉共用状态：上滑量只用滚动几何这一路读数（内容偏移 − 首帧基线，钳为 >=0），
-/// 不搞两路取大值；下拉门控只在手势开始时定一次。
+/// PlaylistView 滚动 + 下拉状态的逐字复用（只改名）：
+/// 上滑量 = max(0, scrollOffset − restOffset)，restOffset 首帧定一次、之后不再重定；
+/// 下拉门控只在手势开始时定一次（scrollOffset <= 20），不在顶部则 pull = 0。
 final class CoDetailScrollState: ObservableObject {
-    @Published var scrollOffset: CGFloat = 0
-    @Published var restOffset: CGFloat?
     @Published var pull: CGFloat = 0
     private var pullActive = false
     private var startedAtTop = false
-    // 视觉锁定：封面占位区在全局坐标里的顶边（首帧即静止顶边）。
-    // 上滑量优先用占位区实际位移算（静止顶边 − 当前顶边），定义上就不可能比内容多跑；
-    // contentOffset 只做占位区尚未上报时的兜底。导航栏/搜索栏高度变化、内容异步加载
-    // 都会让 contentOffset 的首帧基线失准，这就是上滑封面单独顶上去的成因。
-    @Published private(set) var spacerTop: CGFloat?
-    @Published private(set) var spacerTopAtRest: CGFloat?
+    @Published var scrollOffset: CGFloat = 0
+    @Published var restOffset: CGFloat?
 
     var scrollUp: CGFloat {
-        if let rest = spacerTopAtRest, let top = spacerTop {
-            return max(0, rest - top)
-        }
         guard let rest = restOffset else { return 0 }
         return max(0, scrollOffset - rest)
     }
@@ -43,15 +39,10 @@ final class CoDetailScrollState: ObservableObject {
         scrollOffset = value
     }
 
-    func spacerTopChanged(_ value: CGFloat) {
-        if spacerTopAtRest == nil { spacerTopAtRest = value }
-        spacerTop = value
-    }
-
     func dragChanged(_ translation: CGSize) {
         if !pullActive {
             pullActive = true
-            startedAtTop = scrollUp <= 20
+            startedAtTop = scrollOffset <= 20
         }
         guard startedAtTop else {
             pull = 0
@@ -85,24 +76,13 @@ extension View {
     }
 }
 
-/// 滚动内容里的封面占位区：固定封面基线高（屏宽正方形）减 60pt，
-/// 标题块整体往上压到封面底部渐变淡出段里，标题顶边比封面底边高 60pt。
-/// 同时上报占位区全局顶边给滚动状态（视觉锁定，见 CoDetailScrollState），
-/// 上滑量就等于占位区的实际位移，封面与内容定义上一起动。
+/// 滚动内容里的封面占位区：PlaylistView 的 playlistCoverSpacer 的逐字复用，
+/// 高度是固定封面基线高（屏宽正方形）减 60pt，标题块整体往上压到封面底部
+/// 渐变淡出段里，标题顶边比封面底边高 60pt。不上报任何全局坐标、不参与滚动读数。
 struct CoDetailCoverSpacer: View {
-    var scrollState: CoDetailScrollState?
-
     var body: some View {
         Color.clear
             .frame(height: UIScreen.main.bounds.width - 60)
-            .background {
-                GeometryReader { geo in
-                    Color.clear
-                        .onChange(of: geo.frame(in: .global).minY, initial: true) { _, newValue in
-                            scrollState?.spacerTopChanged(newValue)
-                        }
-                }
-            }
     }
 }
 

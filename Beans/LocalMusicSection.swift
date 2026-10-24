@@ -426,6 +426,12 @@ struct LocalPlaylistDetailSheet: View {
                         // （不像歌单页那样强制深色底），保证浅色下也可读；
                         // 随机键的圆键因此用自适应玻璃 + beansLabel 图标，而不是歌单页
                         // 那支深色底专用的白图标圆键（浅色下白图标会看不见）。
+                        // 与歌单页逻辑的差异点（不要含糊说“已统一”）：封面/标题/控制排/
+                        // 搜索行都是 List 里的行，随列表一起滚动，上滑时它们与歌曲行是
+                        // 同一段内容，不可能像固定层那样单独多跑一截；但下拉放大不是
+                        // 歌单页那套（List 没有 ScrollView 的 simultaneousGesture 挂点，
+                        // 硬挂会和 List 滚动/左滑冲突），所以本页下拉不放大。
+                        // 搜索行已从导航栏抽屉移到播放全部下面的页内行（自适应色）。
                         // 播放/随机/搜索/多选/重命名/导出等功能一律不动。
                         Section {
                             let headerCover: URL? = playlist.coverURL ?? playlist.songs.first?.coverURL
@@ -484,6 +490,38 @@ struct LocalPlaylistDetailSheet: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
+                            // 搜索行在播放全部下面（页内行，不是导航栏抽屉）：与歌手/专辑页
+                            // 同一条规则，只是本页是自适应 GlassBackdrop、不是强制深色底，
+                            // 所以提示/文字用 beansComment/beansLabel，不用强制深色页的白字。
+                            // 过滤逻辑不动，仍是下面的 visibleSongs 按 playlistSearchText 筛。
+                            HStack(spacing: 8) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(Color.beansComment)
+                                ZStack(alignment: .leading) {
+                                    if playlistSearchText.isEmpty {
+                                        Text("搜索本地歌单歌曲")
+                                            .font(BeansFont.appFont(16))
+                                            .foregroundStyle(Color.beansComment)
+                                            .allowsHitTesting(false)
+                                    }
+                                    TextField("", text: $playlistSearchText)
+                                        .font(BeansFont.appFont(16))
+                                        .foregroundStyle(Color.beansLabel)
+                                        .autocorrectionDisabled()
+                                }
+                                if !playlistSearchText.isEmpty {
+                                    Button { playlistSearchText = "" } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(Color.beansComment)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 12)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
                         .listRowBackground(Color.clear)
                         Section {
@@ -500,7 +538,6 @@ struct LocalPlaylistDetailSheet: View {
                     }
                     .beansScrollContentBackgroundHidden()
                     .listStyle(.plain)
-                    .searchable(text: $playlistSearchText, placement: .navigationBarDrawer(displayMode: .always), prompt: LocalizedStringKey("搜索本地歌单歌曲"))
                 } else {
                     EmptyStateView(icon: "music.note.list", text: "歌单不存在或已删除")
                 }

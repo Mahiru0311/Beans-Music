@@ -1661,7 +1661,7 @@ struct AlbumDetailView: View {
                     CoUnifiedDetailCoverLayers(coverURL: album.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
                     ScrollView {
                         VStack(spacing: 0) {
-                            CoDetailCoverSpacer(scrollState: detailScroll)
+                            CoDetailCoverSpacer()
                             albumTitleBlock
                             if !tracks.isEmpty {
                                 CoDetailControlsRow {

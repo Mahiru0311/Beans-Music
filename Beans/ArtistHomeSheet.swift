@@ -108,7 +108,7 @@ struct ArtistHomeSheet: View {
                         CoUnifiedDetailCoverLayers(coverURL: artist?.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
                         ScrollView {
                             VStack(spacing: 0) {
-                                CoDetailCoverSpacer(scrollState: detailScroll)
+                                CoDetailCoverSpacer()
                                 artistTitleBlock
                                 if !hotSongs.isEmpty {
                                     CoDetailControlsRow {
