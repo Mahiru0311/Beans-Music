@@ -1604,6 +1604,8 @@ struct AlbumDetailView: View {
     // 新版统一布局（与 PlaylistView 同款，见 CoUnifiedDetail.swift）：不再读沉浸开关分叉，
     // body 永远走固定封面 + 28pt 标题 + 同款控制排；设置页开关本身不动。
     @StateObject private var detailScroll = CoDetailScrollState()
+    @State private var albumSearchText = ""
+
 
     init(album: Album, embeddedInNavigation: Bool = false) {
         self.album = album
@@ -1647,23 +1649,24 @@ struct AlbumDetailView: View {
     private var albumPage: some View {
         ZStack {
             // 新版底：固定深色底（歌单页同款），不跟随系统深浅；整页强制深色外观，
-            // SongCell / 专辑架的 beansLabel / beansComment 在此页按深色取值，白字可读。
+            // 但 beansLabel / beansComment 会被用户自定义主文字色（黑字）覆盖，落在深色底上
+            // 看不见，所以本页行文字一律用显式白字系列（SongCell 用 forceDarkText，专辑架直接写白字）。
             coDetailDarkBackground.ignoresSafeArea()
             if isLoading {
                 albumDetailLoadingState
             } else if let errorMessage {
-                ErrorStateView(message: errorMessage) { Task { await load() } }
+                ErrorStateView(message: errorMessage, forceDarkText: true) { Task { await load() } }
             } else {
                 ZStack {
                     CoUnifiedDetailCoverLayers(coverURL: album.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
                     ScrollView {
                         VStack(spacing: 0) {
-                            CoDetailCoverSpacer()
+                            CoDetailCoverSpacer(scrollState: detailScroll)
                             albumTitleBlock
                             if !tracks.isEmpty {
                                 CoDetailControlsRow {
                                     CoDetailPlayCapsule(title: "播放全部") {
-                                        player.play(songs: tracks, startAt: 0)
+                                        player.play(songs: displayedAlbumTracks, startAt: 0)
                                     }
                                 }
                             }
@@ -1690,17 +1693,31 @@ struct AlbumDetailView: View {
                                 .padding(.horizontal, 22)
                                 .padding(.bottom, 8)
                             }
-                            ForEach(Array(tracks.enumerated()), id: \.element.identityKey) { index, song in
+                            // 页内搜索行：放在播放全部下面（简介之后）、歌曲列表上面，随内容一起滚动；
+                            // 样式与歌手页搜索行一致（提示白 0.6、输入后纯白、放大镜白 0.6、不加玻璃）。
+                            // 无歌曲时不显示；搜不到时给一句白字提示，不留空白。
+                            if !tracks.isEmpty {
+                                CoDetailSearchRow(prompt: beansLocalized("搜索歌曲", "Search songs"), text: $albumSearchText)
+                            }
+                            if displayedAlbumTracks.isEmpty, !albumSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("未找到相关歌曲")
+                                    .font(BeansFont.appFont(13))
+                                    .foregroundStyle(.white.opacity(0.6))
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 12)
+                            }
+                            ForEach(Array(displayedAlbumTracks.enumerated()), id: \.element.identityKey) { index, song in
                                 SongCell(
                                     song: song,
                                     showCover: false,
                                     suppressNativeCleanRowGlass: true,
                                     leadingIndex: index + 1,
                                     compactAlbumRow: true,
-                                    playbackContext: tracks,
+                                    forceDarkText: true,
+                                    playbackContext: displayedAlbumTracks,
                                     playbackIndex: index
                                 ) {
-                                    player.play(songs: tracks, startAt: index)
+                                    player.play(songs: displayedAlbumTracks, startAt: index)
                                 }
                             }
 
@@ -1768,6 +1785,16 @@ struct AlbumDetailView: View {
         }
     }
 
+    private var displayedAlbumTracks: [Song] {
+        let kw = albumSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !kw.isEmpty else { return tracks }
+        return tracks.filter { song in
+            song.name.lowercased().contains(kw)
+                || song.artists.lowercased().contains(kw)
+                || song.album.lowercased().contains(kw)
+        }
+    }
+
     private var resolvedAlbumDescription: String? {
         let value = (albumDescription ?? album.albumDescription ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1778,7 +1805,7 @@ struct AlbumDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("该歌手的其他专辑")
                 .font(BeansFont.appFont(17, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 16)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -1792,13 +1819,13 @@ struct AlbumDetailView: View {
                                 CoverImage(url: item.coverURL, size: 160, cornerRadius: 12)
                                 Text(item.name)
                                     .font(BeansFont.appFont(13, .medium))
-                                    .foregroundStyle(Color.beansLabel)
+                                    .foregroundStyle(.white)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                     .frame(width: 160, alignment: .leading)
                                 Text(item.releaseCaption)
                                     .font(BeansFont.appFont(11))
-                                    .foregroundStyle(Color.beansComment)
+                                    .foregroundStyle(.white.opacity(0.6))
                                     .lineLimit(1)
                                     .frame(width: 160, alignment: .leading)
                             }
@@ -1817,7 +1844,7 @@ struct AlbumDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("该歌手的其他专辑")
                 .font(BeansFont.appFont(17, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 16)
 
             ScrollView(.horizontal, showsIndicators: false) {

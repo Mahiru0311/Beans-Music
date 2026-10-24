@@ -92,14 +92,15 @@ struct ArtistHomeSheet: View {
     @ViewBuilder
     private var artistPage: some View {
         ZStack {
-            // 新版底：固定深色底（歌单页同款），整页强制深色外观，行文字按深色取值；
+            // 新版底：固定深色底（歌单页同款），整页强制深色外观；行文字不用 beansLabel/beansComment
+            // （会被自定义主文字色覆盖成黑字），一律用显式白字系列；
             // 不再用主页壁纸 GlassBackdrop，歌手页不再是“主页壁纸 + 居中大封面/小头像横排”两套。
             coDetailDarkBackground.ignoresSafeArea()
             Group {
                 if loading {
                     artistLoadingState
                 } else if let errorMessage {
-                    ErrorStateView(message: errorMessage) {
+                    ErrorStateView(message: errorMessage, forceDarkText: true) {
                         Task { await load() }
                     }
                 } else {
@@ -107,7 +108,7 @@ struct ArtistHomeSheet: View {
                         CoUnifiedDetailCoverLayers(coverURL: artist?.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
                         ScrollView {
                             VStack(spacing: 0) {
-                                CoDetailCoverSpacer()
+                                CoDetailCoverSpacer(scrollState: detailScroll)
                                 artistTitleBlock
                                 if !hotSongs.isEmpty {
                                     CoDetailControlsRow {
@@ -115,6 +116,12 @@ struct ArtistHomeSheet: View {
                                             player.play(songs: displayedHotSongs, startAt: 0)
                                         }
                                     }
+                                }
+                                // 页内搜索行：放在播放全部下面、热门歌曲区上面，随内容一起滚动，
+                                // 不再用导航栏抽屉（抽屉在滚动时改变导航栏高度，是上滑脱节的嫌疑点之一）。
+                                // 无热门歌曲时不显示（搜了也没东西可筛）。
+                                if !hotSongs.isEmpty {
+                                    CoDetailSearchRow(prompt: beansLocalized("搜索歌手歌曲", "Search artist songs"), text: $searchText)
                                 }
                                 hotSongsSection
                                 albumsSection
@@ -130,18 +137,13 @@ struct ArtistHomeSheet: View {
             }
         }
         // 标题已在内容里（28pt 居中），导航栏标题留空、背景隐藏，像歌单页一样让封面铺到顶边；
-        // 搜索框（navigationBarDrawer）与返回/拖动指示仍在原位，功能不动。
+        // 搜索已改成页内搜索行（播放全部下面），不再用导航栏抽屉；返回/拖动指示仍在原位。
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .preferredColorScheme(.dark)
-        .searchable(
-            text: $searchText,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: beansLocalized("搜索歌手歌曲", "Search artist songs")
-        )
     }
 
     /// 歌单页 unifiedTitleBlock 同款口径：歌手名 28pt 居中、热门/专辑数 14pt；
@@ -200,13 +202,13 @@ struct ArtistHomeSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("热门歌曲")
                 .font(BeansFont.appFont(17, .bold))
-                .foregroundStyle(Color.beansLabel)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 16)
             // 播放全部已移到标题下的新版控制排（168×50pt 胶囊），这里不再重复放一个按钮。
             if hotSongs.isEmpty {
                 Text("暂无歌曲")
                     .font(BeansFont.appFont(13))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(.white.opacity(0.6))
                     .padding(.horizontal, 16)
             } else {
                 LazyVStack(spacing: 0) {
@@ -218,7 +220,7 @@ struct ArtistHomeSheet: View {
                             HStack(spacing: 12) {
                                 Text("\(index + 1)")
                                     .font(BeansFont.appFont(13, .semibold, .rounded))
-                                    .foregroundStyle(index < 3 ? Color.beansAmber : Color.beansComment)
+                                    .foregroundStyle(index < 3 ? Color.beansAmber : .white.opacity(0.6))
                                     .monospacedDigit()
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
@@ -228,7 +230,7 @@ struct ArtistHomeSheet: View {
                                     HStack(spacing: 6) {
                                         Text(song.name)
                                             .font(BeansFont.appFont(14, .medium))
-                                            .foregroundStyle(Color.beansLabel)
+                                            .foregroundStyle(.white)
                                             .lineLimit(1)
                                             .truncationMode(.tail)
                                             .layoutPriority(1)
@@ -239,7 +241,7 @@ struct ArtistHomeSheet: View {
                                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                                     Text(song.album)
                                         .font(BeansFont.appFont(11))
-                                        .foregroundStyle(Color.beansComment)
+                                        .foregroundStyle(.white.opacity(0.6))
                                         .lineLimit(1)
                                         .truncationMode(.tail)
                                         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -301,7 +303,7 @@ struct ArtistHomeSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .font(BeansFont.appFont(17, .bold))
-                    .foregroundStyle(Color.beansLabel)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 16)
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -314,13 +316,13 @@ struct ArtistHomeSheet: View {
                                     CoverImage(url: album.coverURL, size: 160, cornerRadius: 12)
                                     Text(album.name)
                                         .font(BeansFont.appFont(13, .medium))
-                                        .foregroundStyle(Color.beansLabel)
+                                        .foregroundStyle(.white)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
                                         .frame(width: 160, alignment: .leading)
                                     Text(album.releaseCaption)
                                         .font(BeansFont.appFont(11))
-                                        .foregroundStyle(Color.beansComment)
+                                        .foregroundStyle(.white.opacity(0.6))
                                         .lineLimit(1)
                                         .frame(width: 160, alignment: .leading)
                                 }

@@ -23,8 +23,17 @@ final class CoDetailScrollState: ObservableObject {
     @Published var pull: CGFloat = 0
     private var pullActive = false
     private var startedAtTop = false
+    // 视觉锁定：封面占位区在全局坐标里的顶边（首帧即静止顶边）。
+    // 上滑量优先用占位区实际位移算（静止顶边 − 当前顶边），定义上就不可能比内容多跑；
+    // contentOffset 只做占位区尚未上报时的兜底。导航栏/搜索栏高度变化、内容异步加载
+    // 都会让 contentOffset 的首帧基线失准，这就是上滑封面单独顶上去的成因。
+    @Published private(set) var spacerTop: CGFloat?
+    @Published private(set) var spacerTopAtRest: CGFloat?
 
     var scrollUp: CGFloat {
+        if let rest = spacerTopAtRest, let top = spacerTop {
+            return max(0, rest - top)
+        }
         guard let rest = restOffset else { return 0 }
         return max(0, scrollOffset - rest)
     }
@@ -34,10 +43,15 @@ final class CoDetailScrollState: ObservableObject {
         scrollOffset = value
     }
 
+    func spacerTopChanged(_ value: CGFloat) {
+        if spacerTopAtRest == nil { spacerTopAtRest = value }
+        spacerTop = value
+    }
+
     func dragChanged(_ translation: CGSize) {
         if !pullActive {
             pullActive = true
-            startedAtTop = scrollOffset <= 20
+            startedAtTop = scrollUp <= 20
         }
         guard startedAtTop else {
             pull = 0
@@ -73,10 +87,60 @@ extension View {
 
 /// 滚动内容里的封面占位区：固定封面基线高（屏宽正方形）减 60pt，
 /// 标题块整体往上压到封面底部渐变淡出段里，标题顶边比封面底边高 60pt。
+/// 同时上报占位区全局顶边给滚动状态（视觉锁定，见 CoDetailScrollState），
+/// 上滑量就等于占位区的实际位移，封面与内容定义上一起动。
 struct CoDetailCoverSpacer: View {
+    var scrollState: CoDetailScrollState?
+
     var body: some View {
         Color.clear
             .frame(height: UIScreen.main.bounds.width - 60)
+            .background {
+                GeometryReader { geo in
+                    Color.clear
+                        .onChange(of: geo.frame(in: .global).minY, initial: true) { _, newValue in
+                            scrollState?.spacerTopChanged(newValue)
+                        }
+                }
+            }
+    }
+}
+
+/// 详情页内搜索行（歌单页 unifiedSearchRow 同款样式，不另起一套）：
+/// 提示白 0.6、输入后纯白、放大镜白 0.6、清除叉白 0.6、不加玻璃；
+/// 是 ScrollView 内容的一部分，随内容一起滚动，不固定在顶部抽屉里。
+struct CoDetailSearchRow: View {
+    let prompt: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15))
+                .foregroundStyle(.white.opacity(0.6))
+            ZStack(alignment: .leading) {
+                if text.isEmpty {
+                    Text(prompt)
+                        .font(BeansFont.appFont(16))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $text)
+                    .font(BeansFont.appFont(16))
+                    .foregroundStyle(.white)
+                    .autocorrectionDisabled()
+            }
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
     }
 }
 

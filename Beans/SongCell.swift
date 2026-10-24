@@ -20,6 +20,9 @@ struct SongCell: View {
     /// 覆盖默认封面与行高，用于排行榜等紧凑但需要大封面的列表。
     var coverSize: CGFloat = 46
     var fixedRowHeight: CGFloat?
+    /// 强制深色页专用：专辑页整页是深色底，beansLabel/beansComment 会被用户自定义主文字色
+    /// （黑字）覆盖，落在深色底上看不见；此时改用显式白字系列。默认 false，其他页不动。
+    var forceDarkText = false
     var playbackContext: [Song] = []
     var playbackIndex: Int?
     var onTap: (() -> Void)?
@@ -43,7 +46,7 @@ struct SongCell: View {
                 // jump between two different leading layouts on older iOS.
                 Text("\(leadingIndex)")
                     .font(BeansFont.appFont(12, .regular, .monospaced))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
                     .monospacedDigit()
                 .frame(width: 28, alignment: .trailing)
             }
@@ -54,7 +57,7 @@ struct SongCell: View {
                     HStack(spacing: 6) {
                         Text(song.name)
                             .font(BeansFont.appFont(15, isCurrent ? .semibold : .regular))
-                            .foregroundStyle(isCurrent ? Color.beansAmber : Color.beansLabel)
+                            .foregroundStyle(isCurrent ? Color.beansAmber : (forceDarkText ? .white : Color.beansLabel))
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(1)
@@ -65,7 +68,7 @@ struct SongCell: View {
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 Text(song.artists.isEmpty ? "未知歌手" : song.artists)
                     .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -77,7 +80,7 @@ struct SongCell: View {
             } else {
                 Text(song.formattedDuration)
                     .font(BeansFont.appFont(12, .regular, .monospaced))
-                    .foregroundStyle(Color.beansComment)
+                    .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)

@@ -1480,15 +1480,17 @@ struct EmptyStateView: View {
 struct ErrorStateView: View {
     let message: String
     let retry: () -> Void
+    /// 强制深色页专用（与 SongCell.forceDarkText 同理）：默认 false，其他页不动。
+    var forceDarkText = false
 
     var body: some View {
         VStack(spacing: 14) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 40, weight: .light))
-                .foregroundStyle(Color.beansComment)
+                .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
             Text(message)
                 .font(BeansFont.appFont(14))
-                .foregroundStyle(Color.beansComment)
+                .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
                 .multilineTextAlignment(.center)
             GlassButton(title: "重试", systemName: "arrow.clockwise", action: retry)
         }
