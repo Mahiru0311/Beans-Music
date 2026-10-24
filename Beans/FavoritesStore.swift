@@ -95,3 +95,52 @@ final class FavoritesStore: ObservableObject {
     }
 
 }
+
+/// 歌单本地收藏：酷狗没有收藏歌单接口（只有加歌进歌单、建歌单），星标只做 Co 本地收藏，
+/// 不同步到酷狗官方；点开按 id 重进真歌单页，不是假的收藏状态。
+final class CoPlaylistFavorites: ObservableObject {
+    static let shared = CoPlaylistFavorites()
+
+    struct Entry: Codable, Identifiable, Hashable {
+        var kind: String // "user" 歌单 / "top" 榜单
+        var refID: Int
+        var name: String
+        var coverURL: URL?
+        var id: String { kind + ":\(refID)" }
+    }
+
+    @Published private(set) var entries: [Entry] = []
+
+    private let defaults = UserDefaults.standard
+    private let key = "co.favoritePlaylists.v1"
+
+    private init() {
+        if let data = defaults.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([Entry].self, from: data) {
+            entries = decoded
+        }
+    }
+
+    func isFavorite(kind: String, refID: Int) -> Bool {
+        entries.contains(where: { $0.kind == kind && $0.refID == refID })
+    }
+
+    /// 返回收藏后的状态：true 已收藏，false 已取消。
+    @discardableResult
+    func toggle(_ entry: Entry) -> Bool {
+        if let index = entries.firstIndex(where: { $0.id == entry.id }) {
+            entries.remove(at: index)
+            save()
+            return false
+        }
+        entries.append(entry)
+        save()
+        return true
+    }
+
+    private func save() {
+        if let data = try? JSONEncoder().encode(entries) {
+            defaults.set(data, forKey: key)
+        }
+    }
+}

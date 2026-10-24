@@ -58,9 +58,6 @@ struct ReferencePlaybackView: View {
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @State private var showLyricOffsetSheet = false
-    /// 封面→歌词页眉的形变命名空间：与 player 前端同款思路——大封面不是整页换掉，
-    /// 而是 0.38s 内缩到歌词页眉左端的小封面位置，歌词层随之淡入上滑。
-    @Namespace private var coverMorphNamespace
 
     init(
         song: Song?,
@@ -112,10 +109,10 @@ struct ReferencePlaybackView: View {
                                 .transition(.opacity)
                         } else if showLyrics {
                             lyricsPage
-                                // 歌词页本身不带转场：封面只靠形变，文字与列表各自淡入淡出。
+                                // 歌词页本身不带转场：页眉小封面淡入，文字与列表各自淡入淡出。
                         } else {
                             coverPage(size: geometry.size)
-                                // 封面页本身不带转场：封面只靠形变，标题与预览各自淡入淡出。
+                                // 封面页本身不带转场：大封面原地缩放淡入淡出，标题与预览各自淡入淡出。
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -200,11 +197,10 @@ struct ReferencePlaybackView: View {
                 playsCoverVideoAudio: true
             )
             .frame(width: artworkSize, height: artworkSize)
-            .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
-            // 圆角与阴影跟着 showLyrics 插值：形变结束时与页眉小封面（圆角 10、小阴影）完全一致，
-            // 换页瞬间不再跳变；整体缩放以中心为锚点，四边均匀收。
-            .clipShape(RoundedRectangle(cornerRadius: showLyrics ? 10 : 18, style: .continuous))
-            .shadow(color: .black.opacity(showLyrics ? 0.26 : 0.46), radius: showLyrics ? 9 : 36, y: showLyrics ? 4 : 18)
+            // 封面切换不再形变位移：原地缩放加淡入淡出，两方向同一值，不斜着跑。
+            .transition(.scale(scale: 0.55).combined(with: .opacity))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.cover)))
             .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
@@ -410,10 +406,8 @@ struct ReferencePlaybackView: View {
                 }
             } label: {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
-                    .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
-                    .scaleEffect(player.isPlaying ? 1 : 0.965)
-                    .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
+                    .transition(.opacity)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
 

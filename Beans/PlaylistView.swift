@@ -29,6 +29,7 @@ struct PlaylistView: View {
     @EnvironmentObject private var theme: ThemeStore
     @ObservedObject private var favorites = FavoritesStore.shared
     @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
+    @ObservedObject private var playlistFavorites = CoPlaylistFavorites.shared
 
     private let loadMode: CoPlaylistLoadMode
     @State private var tracks: [Song] = []
@@ -36,7 +37,6 @@ struct PlaylistView: View {
     @State private var errorMessage: String?
     @State private var searchText = ""
     @State private var showDownloadUnsupported = false
-    @State private var showCollectUnsupported = false
     // 虚化过渡层用的同一张封面图（只读缓存，不另起下载；没拿到时为 nil，
     // 过渡区直接显示深色底兜底，拿到后再换虚化层，不叠加取色实色底）。
     @State private var coverBlurImage: UIImage? = nil
@@ -76,6 +76,18 @@ struct PlaylistView: View {
 
     private var userPlaylist: Playlist? {
         if case .userPlaylist(let playlist) = loadMode { return playlist }
+        return nil
+    }
+
+    /// 本页可收藏的本地收藏条目：用户歌单与榜单按 id 收藏；每日推荐每天一变，
+    /// 没有可收藏的固定对象，不显示星标。
+    private var favoriteEntry: CoPlaylistFavorites.Entry? {
+        if let playlist = userPlaylist {
+            return CoPlaylistFavorites.Entry(kind: "user", refID: playlist.id, name: playlistOverrides.customName(for: playlist.id) ?? playlist.name, coverURL: playlist.coverURL)
+        }
+        if case .topList(let info) = loadMode {
+            return CoPlaylistFavorites.Entry(kind: "top", refID: info.id, name: info.name, coverURL: info.coverURL)
+        }
         return nil
     }
 
@@ -367,11 +379,6 @@ struct PlaylistView: View {
         } message: {
             Text("歌单下载功能尚未上线，当前版本只支持在线播放。")
         }
-        .alert("暂不支持收藏歌单", isPresented: $showCollectUnsupported) {
-            Button("好", role: .cancel) {}
-        } message: {
-            Text("酷狗收藏歌单接口尚未接入，点了也不会真的收藏，就不做假的收藏状态了。")
-        }
     }
 
     private var unifiedTitleBlock: some View {
@@ -517,17 +524,21 @@ struct PlaylistView: View {
                 }
             }
             Spacer(minLength: 0)
-            // 收藏歌单没有真实接口（酷狗 API 里只有加歌进歌单、建歌单，没有收藏歌单），
-            // 不做点了假装收藏的星：星保持空心，点它明说暂不支持。
-            Button {
-                CoHaptics.tap()
-                showCollectUnsupported = true
-            } label: {
-                Image(systemName: "star")
-                    .font(.system(size: 22))
-                    .foregroundStyle(.white)
+            // 酷狗没有收藏歌单接口，星标只做 Co 本地收藏（不同步官方）：点一下真收藏、
+            // 再点取消；每日推荐没有固定对象，不显示星标。
+            if let entry = favoriteEntry {
+                let favorited = playlistFavorites.isFavorite(kind: entry.kind, refID: entry.refID)
+                Button {
+                    CoHaptics.tap()
+                    let nowFavorited = playlistFavorites.toggle(entry)
+                    ToastCenter.shared.show(nowFavorited ? "已收藏到本地" : "已取消收藏")
+                } label: {
+                    Image(systemName: favorited ? "star.fill" : "star")
+                        .font(.system(size: 22))
+                        .foregroundStyle(favorited ? Color.coAmber : .white)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 12)

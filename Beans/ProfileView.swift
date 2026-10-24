@@ -329,6 +329,7 @@ struct ProfileView: View {
     // 旧线 1.9.4 做法：歌单行不用 NavigationLink（其内部点按手势会吞掉长按），
     // 改用 Button 点按，导航由下方隐藏链接驱动，仍是页面推入、不是 sheet。
     @State private var navPlaylist: Playlist?
+    @State private var navFavoriteTop: KugouTopInfo?
 
     /// 统一账号登录面板（网易云 + QQ 音乐整合）
     @State private var showAccountHub = false
@@ -774,6 +775,70 @@ struct ProfileView: View {
     }
 
 
+    /// 本地收藏的歌单：星标只写 Co 本地（酷狗无收藏接口），点开按 id 重进真歌单页。
+    private var coFavoritePlaylistsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("收藏的歌单")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(coEffectiveLabel)
+                Spacer()
+            }
+            VStack(spacing: 12) {
+                ForEach(playlistFavorites.entries) { entry in
+                    ZStack {
+                        if entry.kind == "top" {
+                            NavigationLink(destination: PlaylistView(topList: KugouTopInfo(id: entry.refID, name: entry.name, updateFrequency: "", coverURL: entry.coverURL)), isActive: Binding(get: { navFavoriteTop?.id == entry.refID }, set: { if !$0 { navFavoriteTop = nil } })) {
+                                EmptyView()
+                            }
+                            .opacity(0)
+                        } else {
+                            NavigationLink(destination: PlaylistView(playlist: Playlist(id: entry.refID, name: entry.name, coverURL: entry.coverURL)), isActive: Binding(get: { navPlaylist?.id == entry.refID }, set: { if !$0 { navPlaylist = nil } })) {
+                                EmptyView()
+                            }
+                            .opacity(0)
+                        }
+                        Button {
+                            CoHaptics.tap()
+                            if entry.kind == "top" {
+                                navFavoriteTop = KugouTopInfo(id: entry.refID, name: entry.name, updateFrequency: "", coverURL: entry.coverURL)
+                            } else {
+                                navPlaylist = Playlist(id: entry.refID, name: entry.name, coverURL: entry.coverURL)
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                CoverImage(url: entry.coverURL, size: 52, cornerRadius: 10)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(entry.kind == "user" ? (playlistOverrides.customName(for: entry.refID) ?? entry.name) : entry.name)
+                                        .font(CoFont.appFont(16))
+                                        .foregroundStyle(coEffectiveLabel)
+                                        .lineLimit(1)
+                                    Text(entry.kind == "top" ? "榜单" : "歌单")
+                                        .font(CoFont.appFont(13))
+                                        .foregroundStyle(coEffectiveSecondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(coEffectiveSecondary)
+                            }
+                            .padding(14)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                            .allowsHitTesting(false)
+                    }
+                }
+            }
+        }
+    }
+
     private var coPlaylistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -1056,6 +1121,9 @@ struct ProfileView: View {
             coNeteaseStatsInCard
             if !forceHomeBackdrop {
                 coPlaylistsSection
+                if !playlistFavorites.entries.isEmpty {
+                    coFavoritePlaylistsSection
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -1977,6 +2045,7 @@ struct SettingsView: View {
     @State private var editingPlaylistID = 0
     @State private var editingPlaylistName = ""
     @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
+    @ObservedObject private var playlistFavorites = CoPlaylistFavorites.shared
     @State private var settingsCachedPlaylists: [Playlist] = []
     @State private var settingsCurrentHidden: [(id: Int, name: String)] = []
     @State private var settingsOtherHidden: [(userId: String, entries: [(id: Int, name: String)])] = []
