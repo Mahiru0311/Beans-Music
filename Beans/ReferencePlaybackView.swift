@@ -106,15 +106,23 @@ struct ReferencePlaybackView: View {
                         if showQueue {
                             compactQueuePage
                                 .transition(.opacity)
-                        } else if showLyrics {
-                            lyricsPage
                         } else {
-                            coverPage(size: geometry.size)
+                            // 前端同款结构：封面常驻一层（下面 persistentCover），不再换页换封面——
+                            // 封面位置/大小/圆角/阴影全部由 WebCoverProgressModifier 按前端百分比数学算，路径是弧线不是直线。
+                            ZStack(alignment: .topLeading) {
+                                if showLyrics {
+                                    lyricsPage
+                                } else {
+                                    coverPage(size: geometry.size)
+                                }
+                                GeometryReader { upperGeometry in
+                                    persistentCover(upperSize: upperGeometry.size, fullSize: geometry.size)
+                                }
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 原版前端同款：一个状态开关，全体 0.38s 同一条贝塞尔曲线——
-                    // 封面缩进页眉左端、歌名缩小、歌词淡入上浮；原版没有弹跳，弹簧随移植取消。
+                    // 一个状态开关，全体 0.38s 同一条贝塞尔曲线：封面弧线收进页眉、歌名缩小、歌词淡入上浮。
                     .animation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
@@ -194,28 +202,8 @@ struct ReferencePlaybackView: View {
         return VStack(spacing: 0) {
             Spacer(minLength: 8)
 
-            CoverImage(
-                url: displayCoverURL,
-                size: artworkSize,
-                cornerRadius: 18,
-                emptyHint: player.isBuffering ? "等待开始播放…" : nil,
-                playsCoverVideoAudio: true
-            )
-            .frame(width: artworkSize, height: artworkSize)
-            .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
-            .clipShape(RoundedRectangle(cornerRadius: showLyrics ? 10 : 18, style: .continuous))
-            .shadow(color: .black.opacity(showLyrics ? 0.26 : 0.46), radius: showLyrics ? 9 : 36, y: showLyrics ? 4 : 18)
-            .scaleEffect(player.isPlaying ? 1 : 0.965)
-            .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.cover)))
-            .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
-                CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
-                    showLyrics = true
-                }
-            }
+            // 常驻封面在外层 ZStack 里（persistentCover），这里只留同尺寸占位，标题位置与原来一致。
+            Color.clear.frame(width: artworkSize, height: artworkSize)
 
             VStack(spacing: 5) {
                 HStack(spacing: 9) {
@@ -259,7 +247,7 @@ struct ReferencePlaybackView: View {
 
     private var lyricsPage: some View {
         VStack(spacing: 0) {
-            lyricsHeader
+            lyricsHeaderRow
                 .padding(.horizontal, 24)
                 .padding(.bottom, 10)
 
@@ -346,20 +334,8 @@ struct ReferencePlaybackView: View {
         }
     }
 
-    private var lyricsHeader: some View {
+    private var lyricsHeaderRow: some View {
         HStack(spacing: 12) {
-            Button {
-                CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
-                    showLyrics = false
-                }
-            } label: {
-                CoverImage(url: displayCoverURL, size: 48, cornerRadius: showLyrics ? 10 : 18)
-                    .shadow(color: .black.opacity(showLyrics ? 0.26 : 0.46), radius: showLyrics ? 9 : 36, y: showLyrics ? 4 : 18)
-                    .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
-            }
-            .buttonStyle(GlassPressButtonStyle(scale: 0.94))
-
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 7) {
                     Text(song?.name ?? "未在播放")
@@ -418,6 +394,9 @@ struct ReferencePlaybackView: View {
             }
             .transition(.opacity)
         }
+        // 小封面在常驻层（persistentCover），行高固定 48 与原来一致，标题左移 60 到原来小封面右端。
+        .padding(.leading, 60)
+        .frame(height: 48)
     }
 
     private func playbackControls(bottomInset: CGFloat) -> some View {
@@ -1566,6 +1545,71 @@ private struct ReferenceSystemVolumeView: UIViewRepresentable {
 
     private func allSubviews(in view: UIView) -> [UIView] {
         view.subviews + view.subviews.flatMap { allSubviews(in: $0) }
+    }
+}
+
+extension ReferencePlaybackView {
+/// 常驻封面：前端只有一个封面元素，Co 之前是两页各一个封面靠形变连——形变只能走直线。
+/// 这里封面只存在一个（外层 ZStack 顶层），位置/大小/圆角/阴影全部由进度修饰器按前端百分比数学算。
+private func persistentCover(upperSize: CGSize, fullSize: CGSize) -> some View {
+    let contentWidth = max(fullSize.width - 64, 0)
+    let artworkSize = min(contentWidth, min(fullSize.height * 0.50, 390))
+    return Button {
+        CoHaptics.tap()
+        withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+            showLyrics.toggle()
+        }
+    } label: {
+        CoverImage(
+            url: displayCoverURL,
+            size: artworkSize,
+            cornerRadius: 18,
+            emptyHint: player.isBuffering ? "等待开始播放…" : nil,
+            playsCoverVideoAudio: true
+        )
+        .scaleEffect(player.isPlaying ? 1 : 0.965)
+        .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
+    }
+    .buttonStyle(GlassPressButtonStyle(scale: 0.94))
+    .modifier(WebCoverProgressModifier(
+        progress: showLyrics ? 1 : 0,
+        width: upperSize.width,
+        height: upperSize.height,
+        coverSize: artworkSize
+    ))
+    .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.cover)))
+}
+
+}
+
+/// 前端封面过渡的百分比数学（progress 0 = 封面页，1 = 歌词页，由 showLyrics 翻转 + 同一条贝塞尔驱动插值）：
+/// left 是容器宽度的百分比、位移是自身宽度的百分比、容器本身还在缩——三个百分比互相乘，
+/// 位置走出来是弧线（先缩小往上收、后半段再往左滑进页眉），不是从右下角斜着缩到左上角。
+/// 封面页标题块在封面下方（22 间距 + 约 40.5 标题高），居中时封面顶要留出标题一半（31.25），歌词页顶为 0。
+private struct WebCoverProgressModifier: AnimatableModifier {
+    var progress: Double
+    var width: CGFloat
+    var height: CGFloat
+    var coverSize: CGFloat
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let e = progress
+        let size = coverSize + (48 - coverSize) * e
+        // 前端 viewArea 收缩的近似：整页高 → 64px（flex 换算，e² 项）。
+        let viewHeight = height * (1 - e) + 64 * e * e
+        let top = (1 - e) * (0.5 * viewHeight - size / 2 - 31.25)
+        let left = (1 - e) * (0.5 * width - size / 2) + 24 * e
+        let scale = coverSize > 0 ? size / coverSize : 1
+        return content
+            .scaleEffect(scale, anchor: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: 18 - 8 * e, style: .continuous))
+            .shadow(color: .black.opacity(0.46 - 0.20 * e), radius: 36 - 27 * e, y: 18 - 14 * e)
+            .offset(x: left, y: top)
     }
 }
 
