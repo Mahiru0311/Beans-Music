@@ -306,6 +306,8 @@ struct ProfileView: View {
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var favorites: FavoritesStore
+    @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
+    @ObservedObject private var playlistFavorites = CoPlaylistFavorites.shared
     @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -2045,7 +2047,6 @@ struct SettingsView: View {
     @State private var editingPlaylistID = 0
     @State private var editingPlaylistName = ""
     @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
-    @ObservedObject private var playlistFavorites = CoPlaylistFavorites.shared
     @State private var settingsCachedPlaylists: [Playlist] = []
     @State private var settingsCurrentHidden: [(id: Int, name: String)] = []
     @State private var settingsOtherHidden: [(userId: String, entries: [(id: Int, name: String)])] = []
