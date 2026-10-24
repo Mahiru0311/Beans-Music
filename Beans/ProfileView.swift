@@ -325,6 +325,7 @@ struct ProfileView: View {
     @State private var showHistory = false
     @State private var showFavorites = false
     @State private var showTopPlayed = false
+    @State private var showMyPlaylists = false
     @State private var playlistsScrollRequest = 0
     @State private var myPlaylists: [Playlist] = []
     @State private var myPlaylistsLoading = false
@@ -833,6 +834,18 @@ struct ProfileView: View {
                 .environmentObject(theme)
                 .preferredColorScheme(profileEffectiveScheme)
         }
+        .sheet(isPresented: $showMyPlaylists) {
+            CoMyPlaylistsSheet(
+                playlists: visiblePlaylists,
+                isLoading: myPlaylistsLoading,
+                hasAnyPlaylists: !myPlaylists.isEmpty,
+                onRefresh: { await coLoadMyPlaylists(force: true) }
+            )
+                .environmentObject(player)
+                .environmentObject(auth)
+                .environmentObject(theme)
+                .preferredColorScheme(profileEffectiveScheme)
+        }
         .task(id: kugouAuth.isLoggedIn) {
             await coLoadMyPlaylists()
         }
@@ -1159,9 +1172,9 @@ struct ProfileView: View {
             // 没必要隐藏了就不显示实体数量；列表本身仍按隐藏逻辑显示，隐藏的歌单
             // 仍不在列表里、仍可在设置里恢复，只改数据格这个数，不改列表。
             coNeteaseStatButton(title: "歌单", value: "\(myPlaylists.count)") {
-                // 头像界面里没有歌单区，已登录时点按不再滚动（无目标）；未登录时仍进登录；
-                // 我的 tab 里点按仍滑到下方歌单区，原样保留。
-                if !kugouAuth.isLoggedIn { showAccountHub = true } else if !forceHomeBackdrop { playlistsScrollRequest += 1 }
+                // 2026-10-24 歌单弹窗：点“歌单”格出歌单列表弹窗（同我喜欢/历史/常听的 sheet 款式），
+                // 不再只滑到下方歌单区（滑到位置就感觉点不动）；未登录时仍进登录，门不变。
+                if !kugouAuth.isLoggedIn { showAccountHub = true } else { showMyPlaylists = true }
             }
             coNeteaseStatButton(title: "历史", value: "\(player.history.count)") { showHistory = true }
             coNeteaseStatButton(title: "常听", value: "\(player.playCounts.values.reduce(0, +))") { showTopPlayed = true }
@@ -1171,7 +1184,7 @@ struct ProfileView: View {
     private var coNeteaseMainCard: some View {
         // 头像界面精简：本卡片（含数据行与歌单）只在我的 tab 里渲染，body 里已用 if !forceHomeBackdrop 挡住，
         // 头像 sheet 里不会出现数据行、歌单、空白卡三者中的任何一个；数据行代码本身保留给我的页用。
-        // 数据行“歌单”点按在我的 tab 里滑到歌单区，未登录时进登录（见 coNeteaseStatsInCard）。
+        // 数据行“歌单”点按出歌单列表弹窗，未登录时进登录（见 coNeteaseStatsInCard）。
         VStack(alignment: .leading, spacing: 20) {
             coNeteaseStatsInCard
             if !forceHomeBackdrop {
@@ -1598,6 +1611,170 @@ private extension ProfileView {
 // MARK: - 统一账号登录面板（酷狗音乐）
 
 /// 我的页“我喜欢 / 常听”共用歌曲列表：点行即播放并自动关闭，关 sheet 只靠下滑，不再另设“完成”按钮。
+/// 歌单列表弹窗（2026-10-24，只做歌单弹窗+新建，我的页其他地方不动）：
+/// 点数据行“歌单”格出本弹窗，款式同我喜欢/历史/常听的 sheet（自带 BeansNavigationStack、
+/// inline 标题、系统返回键）；列表口径同下方歌单区（visiblePlaylists，隐藏的歌单不列、
+/// 仍可在设置里恢复）；每条行点按用 NavigationLink 推入原有 PlaylistView，是真歌单页，
+/// 不是假详情；返回键回到本弹窗列表、再下滑关闭回我的页。
+/// 新建歌单走真实酷狗接口 KugouMusicAPI.createPlaylist（不是本地歌单），建完强制刷新
+/// 我的歌单列表；新建的歌单先本地补进本弹窗列表（防服务端刷新延迟），点进去也是真歌单页。
+struct CoMyPlaylistsSheet: View {
+    let playlists: [Playlist]
+    let isLoading: Bool
+    let hasAnyPlaylists: Bool
+    var onRefresh: () async -> Void
+
+    @State private var displayed: [Playlist] = []
+    @State private var showCreatePrompt = false
+    @State private var newName = ""
+    @State private var isCreating = false
+    @State private var createError: String? = nil
+    @State private var showCreateError = false
+
+    var body: some View {
+        BeansNavigationStack {
+            Group {
+                if isLoading && displayed.isEmpty {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("正在同步歌单…")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.beansSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !hasAnyPlaylists {
+                    VStack(spacing: 8) {
+                        Image(systemName: "music.note.list")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color.beansSecondary)
+                        Text("暂未同步到酷狗歌单，请稍后重试")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.beansSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if displayed.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "music.note.list")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color.beansSecondary)
+                        Text("暂无歌单")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.beansSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(displayed) { playlist in
+                                NavigationLink(destination: PlaylistView(playlist: playlist)) {
+                                    HStack(spacing: 12) {
+                                        CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(playlist.name)
+                                                .font(.system(size: 16))
+                                                .foregroundStyle(Color.beansLabel)
+                                                .lineLimit(1)
+                                            Text(beansSongCountText(playlist.trackCount))
+                                                .font(.system(size: 13))
+                                                .foregroundStyle(Color.beansSecondary)
+                                        }
+                                        Spacer(minLength: 8)
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(Color.beansSecondary)
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                if playlist.id != displayed.last?.id {
+                                    Divider().padding(.leading, 78)
+                                }
+                            }
+                        }
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
+                    }
+                }
+            }
+            .navigationTitle("我的歌单")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("新建") {
+                        newName = ""
+                        showCreatePrompt = true
+                    }
+                    .disabled(isCreating)
+                }
+            }
+            .alert("新建歌单", isPresented: $showCreatePrompt) {
+                TextField("歌单名称", text: $newName)
+                Button("创建") { Task { await createPlaylist() } }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("新建的歌单会同步到酷狗音乐，创建后会出现在列表里。")
+            }
+            .alert("新建歌单失败", isPresented: $showCreateError) {
+                Button("确定", role: .cancel) { createError = nil }
+            } message: {
+                Text(createError ?? "请稍后重试")
+            }
+            .onAppear { if displayed.isEmpty { displayed = playlists } }
+            .onChange(of: playlists) { newValue in
+                // 合并而非直接覆盖：新建歌单先本地补进列表、再强制刷新，服务端刷新若还没
+                // 带上新建的那条，直接覆盖会把新建的歌单从弹窗里抹掉；保留父列表里没有的
+                // 本地项（即刚建的那条），等服务端带上它后自然去重。
+                let extra = displayed.filter { item in !newValue.contains(where: { $0.id == item.id }) }
+                displayed = newValue + extra
+            }
+            .overlay(alignment: .bottom) {
+                if isCreating {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("正在创建歌单…")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.beansSecondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground), in: Capsule())
+                    .padding(.bottom, 16)
+                }
+            }
+        }
+    }
+
+    private func createPlaylist() async {
+        let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            createError = "歌单名称不能为空"
+            showCreateError = true
+            return
+        }
+        isCreating = true
+        defer { isCreating = false }
+        do {
+            let created = try await KugouMusicAPI.shared.createPlaylist(name: name)
+            if !displayed.contains(where: { $0.id == created.id }) {
+                displayed.append(created)
+            }
+            newName = ""
+            await onRefresh()
+            ToastCenter.shared.show("已创建")
+        } catch {
+            createError = error.localizedDescription
+            showCreateError = true
+        }
+    }
+}
+
 struct CoSongListSheet: View {
     @EnvironmentObject private var player: PlayerManager
     @Environment(\.dismiss) private var dismiss
