@@ -36,6 +36,13 @@ struct PlaylistView: View {
     @State private var searchText = ""
     @State private var showDownloadUnsupported = false
     @State private var showCollectUnsupported = false
+    // 歌单页下拉放大（与我的页同套放慢后的参数，见 unifiedCoverHeader）：
+    // 下拉量封顶 120pt、放大系数 1 + 下拉量/600（封顶约 1.2 倍）、
+    // 框高只跟下拉量的一半走（封顶 +60pt），松手用慢速无弹跳弹簧回 0。
+    @State private var coverPull: CGFloat = 0
+    @State private var coverPullActive = false
+    @State private var coverPullStartedAtTop = false
+    @State private var playlistScrollOffset: CGFloat = 0
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
 
     init(playlist: Playlist) {
@@ -174,11 +181,51 @@ struct PlaylistView: View {
                     .padding(.bottom, 180)
                 }
                 .beansScrollIndicatorsHidden()
+                // 封面铺到顶边：滚动视图忽略顶部安全区，内容从屏幕顶边 0 开始，
+                // 而不是被导航栏 + 状态栏顶到约 134pt 才开始；导航栏背景已隐藏、
+                // 配色为深色，系统返回键仍在导航栏位置、压在封面图上、照常可点。
+                .ignoresSafeArea(edges: .top)
+                // 下拉放大的门控读数（滚动几何内容偏移，不是 PreferenceKey 回写链）：
+                // 静止在顶部时偏移约 0，已下滑时为正；首帧 0 同样算在顶部。
+                .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
+                    playlistScrollOffset = newValue
+                }
+                // 下拉放大：复用我的页验证过的路子——挂在整个滚动视图上的
+                // simultaneousGesture 直接驱动，不走 PreferenceKey 回写链；
+                // 门控只在手势开始时定一次（页面在顶部才放大），拖动最小距离 8pt，
+                // 点按（点歌曲行、点播放、点返回）不到 8pt 不触发，不会被截获。
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 8)
+                        .onChanged { value in
+                            if !coverPullActive {
+                                coverPullActive = true
+                                coverPullStartedAtTop = playlistScrollOffset <= 20
+                            }
+                            guard coverPullStartedAtTop else {
+                                coverPull = 0
+                                return
+                            }
+                            // 下拉量硬上限 120pt，上滑、横向拖动时高度差为负，钳为 0 不放大。
+                            coverPull = min(max(0, value.translation.height), 120)
+                        }
+                        .onEnded { _ in
+                            coverPullActive = false
+                            coverPullStartedAtTop = false
+                            // 松手慢速平滑回 0：response 0.9、damping 1.0，无弹跳感，
+                            // 不是原来我的页那种 response 0.35 的快弹簧。
+                            withAnimation(.spring(response: 0.9, dampingFraction: 1.0)) {
+                                coverPull = 0
+                            }
+                        }
+                )
             }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        // 与上一行同义的显式可见性：防止导航栏仍以不透明底盖住封面顶边；
+        // 返回键仍在导航栏位置、压在封面图上、照常可点。
+        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
         .alert("暂不支持下载", isPresented: $showDownloadUnsupported) {
@@ -193,15 +240,30 @@ struct PlaylistView: View {
         }
     }
 
-    /// 封面全幅铺满：正方形封面、宽 = 屏宽，底部渐变到深色底，与标题区衔接。
+    /// 封面全幅铺满：顶边固定在屏幕顶边 0（滚动视图已忽略顶部安全区），
+    /// 宽 = 屏宽、正方形为基线高，底部渐变到深色底，与标题区衔接；
+    /// 状态栏、灵动岛、返回键都压在封面图上，而不是压在深色带上。
+    /// 下拉放大（与我的页同套放慢后的参数，不再是 120pt 就到 1.4 倍）：
+    /// 框高只跟下拉量的一半走（基线宽 + coverPull/2，封顶 +60pt），
+    /// 图本身按 1 + coverPull/600 缩放（封顶约 1.2 倍），锚点取顶部，
+    /// 所以顶边一动不动、只向左右与下方放大，不出现第二张封面、不留顶部黑边；
+    /// 框整体 .clipped() 裁到框里，放大后图不会跑到标题区下面再露一段。
+    /// 注意这是“页面顶部下拉放大”，不是“手指上滑时放大”（那会和滚动打架）：
+    /// 上滑正常滚动、不放大，松手慢速弹簧回原状，见 ScrollView 上的手势。
     private var unifiedCoverHeader: some View {
         let width = UIScreen.main.bounds.width
-        return ZStack(alignment: .bottom) {
+        let base = width
+        let zoom = 1 + coverPull / 600
+        return ZStack(alignment: .top) {
             CoverImage(url: headerData.coverURL, size: width, cornerRadius: 0)
-            LinearGradient(colors: [.clear, darkBackground], startPoint: .top, endPoint: .bottom)
-                .frame(height: 120)
+                .scaleEffect(zoom, anchor: .top)
+            VStack(spacing: 0) {
+                Spacer()
+                LinearGradient(colors: [.clear, darkBackground], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 120)
+            }
         }
-        .frame(width: width, height: width)
+        .frame(width: width, height: base + coverPull / 2)
         .clipped()
     }
 

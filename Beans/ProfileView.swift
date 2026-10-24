@@ -407,7 +407,8 @@ struct ProfileView: View {
     /// 所以跟手放大出不来。反过来，zoom3/zoom4 那种不经过偏好上报的内联读取曾在
     /// 真机上确实有效果，说明“不依赖布局重算的直接驱动”才是对的路。本轮就用这条路：
     /// 拖动手势的手指位移是事件直接给的，不依赖布局重算，所以跟手就一定能动——
-    /// 手指往下走多少，缩放就跟多少，封顶 120pt / 1.4 倍。
+    /// 手指往下走多少，缩放就跟多少，封顶 120pt / 约 1.2 倍（放慢后，
+    /// 不再是原来 120pt 就到 1.4 倍那种一眼很夸张的效果）。
     /// 挂法教训：zoom6 把高优先级手势只挂在头部上，被滚动视图平移截获而失效；
     /// 本轮手势挂在整个滚动视图上、用 .simultaneousGesture 同时识别，只驱动
     /// headerDragPull 这一个状态，不再和任何 PreferenceKey 双重驱动。
@@ -416,9 +417,11 @@ struct ProfileView: View {
     /// 只在顶部开始的手势才放大，避免从下面往上滑回顶部时一路放大；一旦在顶部
     /// 开始，就用手指位移全程驱动，不再看门控值。
     /// 内容位移仍靠系统回弹：120pt 封的是壁纸效果（缩放、框高增长），不是
-    /// 系统回弹本身；拉到 120pt 后图不再放大、框高不再增长，松手弹回 0。
-    /// 120pt 的理由：头部高约 300pt，120pt 约为头部高的 40%，缩放 1 + 120/300 = 1.4 倍
-    /// 肉眼明显、脸部不至于裁到无法辨认；上一轮拉到 217pt、缩放失控就是没有硬上限的后果。
+    /// 系统回弹本身；拉到 120pt 后图不再放大、框高不再增长，松手慢速平滑回 0。
+    /// 120pt 的理由：头部高约 300pt，120pt 约为头部高的 40%；放慢后缩放
+    /// 1 + 120/600 = 约 1.2 倍、框高只跟下拉量的一半走（封顶 +60pt），
+    /// 不再是原来 1 + 120/300 = 1.4 倍、框高 1:1 暴涨那种一眼很夸张的效果；
+    /// 上一轮拉到 217pt、缩放失控就是没有硬上限的后果。
     @State private var headerDragPull: CGFloat = 0
     @State private var pullGestureActive = false
     @State private var pullGestureStartedAtTop = false
@@ -709,8 +712,9 @@ struct ProfileView: View {
                     .onEnded { _ in
                         pullGestureActive = false
                         pullGestureStartedAtTop = false
-                        // 松手一次弹回静态大小，不用连续动画引擎。
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        // 松手慢速平滑回静态大小：response 0.9、damping 1.0，
+                        // 无弹跳感，不是原来 response 0.35 的快弹簧“啪”一下弹回去。
+                        withAnimation(.spring(response: 0.9, dampingFraction: 1.0)) {
                             headerDragPull = 0
                         }
                     }
@@ -980,10 +984,11 @@ struct ProfileView: View {
     /// 我的 tab 固定壁纸层（重建后唯一的一层壁纸，滚动视图之外）：
     /// 放在 body 的 ZStack 里、滚动视图之前，框顶边用 ignoresSafeArea 固定在屏幕顶边，
     /// 下拉时框顶边一动不动，只有框里的图以中心锚点放大、向左右两边扩。
-    /// 框高 = max(屏幕宽 + 30pt, 410pt) + 拖动量：屏幕宽约等于静止时头部高 + 安全区，
+    /// 框高 = max(屏幕宽 + 30pt, 410pt) + 拖动量的一半（放慢后，120pt 封顶 +60pt）：
+    /// 屏幕宽约等于静止时头部高 + 安全区，
     /// 410pt 下限是头部顶垫 116pt 后的新头部高约 322pt 再加约 88pt 余量，
     /// 保证在任何机型宽度下壁纸底边都压在白卡下面、不在白卡与壁纸之间留缝，
-    /// 多余部分被不透明白卡盖住；框高随拖动量变大，正好抵消内容整体下移量，
+    /// 多余部分被不透明白卡盖住；框高随拖动量的一半变大，配合缩放放慢，
     /// 白卡与壁纸的重叠（-24pt）始终不变。图用 scaleEffect(中心) 后 .clipped() 裁到框里，
     /// 所以放大后图不会跑到白卡下面再露一段。无图时整张填黑，同样固定顶边、同样封顶。
     private var coFixedHeaderWallpaper: some View {
@@ -994,7 +999,8 @@ struct ProfileView: View {
         // 的缩放与位置都不动，图顶边仍固定在屏幕顶边，头像下移露出的只是
         // 原来被白卡盖住的那段壁纸下部，不是图被挪动或放大了。
         let base = max(UIScreen.main.bounds.width + 30, 410)
-        let zoom = 1 + headerDragPull / 300
+        // 放慢后：缩放 1 + 下拉量/600（120pt 封顶约 1.2 倍），与歌单页同套参数。
+        let zoom = 1 + headerDragPull / 600
         return ZStack {
             if let image = profileHeaderWallpaper.image {
                 Image(uiImage: image)
@@ -1005,7 +1011,8 @@ struct ProfileView: View {
                 Color.black
             }
         }
-        .frame(width: UIScreen.main.bounds.width, height: base + headerDragPull)
+        // 框高放慢：只跟下拉量的一半走（120pt 封顶 +60pt），不再 1:1 暴涨。
+        .frame(width: UIScreen.main.bounds.width, height: base + headerDragPull / 2)
         .scaleEffect(zoom, anchor: .center)
         .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
