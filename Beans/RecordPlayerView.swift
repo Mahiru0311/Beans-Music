@@ -673,7 +673,7 @@ struct CoAudioQualityMenu: View {
         }
         Divider()
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled || equalizer.widenEnabled
             equalizer.setSurroundEnabled(!equalizer.surroundEnabled)
             // EQ 关着时本就没有 tap 在跑：只靠重挂 audioMix 未必立即生效，
             // 断点续播重挂一次，3D 立刻可听；EQ 开着时 tap 已在跑、改动即时生效，不用重播。
@@ -689,7 +689,7 @@ struct CoAudioQualityMenu: View {
             }
         }
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled || equalizer.widenEnabled
             equalizer.setHeadphoneBoostEnabled(!equalizer.headphoneBoostEnabled)
             // 与 3D 开关同理：之前没 tap 在跑时断点续播重挂一次，立刻可听。
             if !wasProcessing, equalizer.headphoneBoostEnabled {
@@ -704,7 +704,7 @@ struct CoAudioQualityMenu: View {
             }
         }
         Button {
-            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled || equalizer.widenEnabled
             equalizer.setVocalBoostEnabled(!equalizer.vocalBoostEnabled)
             if !wasProcessing, equalizer.vocalBoostEnabled {
                 player.retryCurrent()
@@ -713,6 +713,20 @@ struct CoAudioQualityMenu: View {
             HStack {
                 Text("人声清晰")
                 if equalizer.vocalBoostEnabled {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        Button {
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled || equalizer.vocalBoostEnabled || equalizer.widenEnabled
+            equalizer.setWidenEnabled(!equalizer.widenEnabled)
+            if !wasProcessing, equalizer.widenEnabled {
+                player.retryCurrent()
+            }
+        } label: {
+            HStack {
+                Text("声场加宽")
+                if equalizer.widenEnabled {
                     Image(systemName: "checkmark")
                 }
             }
