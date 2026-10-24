@@ -311,10 +311,6 @@ struct PlayerView: View {
 
     @MainActor
 
-    @MainActor
-
-
-
     private var playerDustMode: BeansPlayerDustMode {
         return BeansPlayerDustMode(rawValue: playerDustModeRaw) ?? .off
     }
