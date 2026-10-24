@@ -3521,15 +3521,6 @@ struct PlayerView: View {
     }
 
 
-    @ViewBuilder
-
-    private var appleMusicEntryBinding: Binding<PlayerLayoutEntry> {
-        Binding(
-            get: { appleLayout.entry(for: appleLayoutPart) },
-            set: { appleLayout.set($0, for: appleLayoutPart) }
-        )
-    }
-
 
     private var applePrimaryColorBinding: Binding<Color> {
         Binding(

@@ -924,6 +924,81 @@ struct DiscoverView: View {
         }
     }
 
+    private var newAlbumsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: coLocalized("新碟上架", "New Releases"))
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 14) {
+                    ForEach(newAlbums) { album in
+                        Button {
+                            CoHaptics.tap()
+                            openRoute(.album(album))
+                        } label: {
+                            VStack(alignment: .leading, spacing: 7) {
+                                CoverImage(url: album.coverURL, size: isNativeClean ? 148 : 124, cornerRadius: 6)
+                                Text(album.name)
+                                    .font(CoFont.appFont(isNativeClean ? 14 : 12, .semibold))
+                                    .foregroundStyle(Color.coLabel)
+                                    .lineLimit(1)
+                                    .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
+                                Text(album.artistName.isEmpty ? coLocalized("未知歌手", "Unknown artist") : album.artistName)
+                                    .font(CoFont.appFont(11))
+                                    .foregroundStyle(Color.coComment)
+                                    .lineLimit(1)
+                                    .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
+                            }
+                        }
+                        .buttonStyle(GlassPressButtonStyle(scale: 0.95))
+                    }
+                    Color.clear.frame(width: isNativeClean ? 0 : 8, height: 1)
+                }
+                .padding(.vertical, 2)
+                .frame(height: isNativeClean ? 198 : 170)
+            }
+            .coCompatScrollClipDisabled()
+            .padding(.trailing, isNativeClean ? -24 : 0)
+        }
+    }
+
+    private var artistsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: coLocalized("歌手", "Artists"))
+            if topArtists.isEmpty {
+                Text(coLocalized("暂无音乐人", "No artists available"))
+                    .font(CoFont.appFont(13))
+                    .foregroundStyle(Color.coComment)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 18)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 16) {
+                        ForEach(topArtists) { artist in
+                            Button {
+                                CoHaptics.tap()
+                                openRoute(.artist(artist))
+                            } label: {
+                                VStack(spacing: 8) {
+                                    CoverImage(url: artist.coverURL, size: isNativeClean ? 136 : 116, cornerRadius: isNativeClean ? 68 : 58)
+                                    Text(artist.name)
+                                        .font(CoFont.appFont(isNativeClean ? 14 : 12, .semibold))
+                                        .foregroundStyle(Color.coLabel)
+                                        .lineLimit(1)
+                                        .frame(width: isNativeClean ? 136 : 116)
+                                }
+                            }
+                            .buttonStyle(GlassPressButtonStyle(scale: 0.95))
+                        }
+                        Color.clear.frame(width: isNativeClean ? 0 : 8, height: 1)
+                    }
+                    .padding(.vertical, 2)
+                    .frame(height: isNativeClean ? 168 : 146)
+                }
+                .coCompatScrollClipDisabled()
+                .padding(.trailing, isNativeClean ? -24 : 0)
+            }
+        }
+    }
+
     // MARK: - 动作
 
     @MainActor
