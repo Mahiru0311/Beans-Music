@@ -2594,7 +2594,7 @@ struct SettingsView: View {
     private var settingsCurrentHiddenKey: String { kugouAuth.userId.isEmpty ? "local" : kugouAuth.userId }
     private var settingsAllPlaylistRows: [(id: Int, name: String, trackCount: Int?)] {
         let cachedIds = Set(settingsCachedPlaylists.map(\.id))
-        var rows = settingsCachedPlaylists.map { (id: $0.id, name: $0.name, trackCount: $0.trackCount) }
+        var rows: [(id: Int, name: String, trackCount: Int?)] = settingsCachedPlaylists.map { (id: $0.id, name: $0.name, trackCount: $0.trackCount) }
         // 隐藏记录里有、缓存里已没有的（例如酷狗里已删）也追加在末尾、可点恢复，
         // 不要因为缓存里没了就把隐藏记录悄悄丢掉。
         for entry in settingsCurrentHidden where !cachedIds.contains(entry.id) {
