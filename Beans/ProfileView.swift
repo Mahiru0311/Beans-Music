@@ -1934,8 +1934,6 @@ struct SettingsView: View {
     /// 第三方音源播放会员歌成功时提醒，默认开启
     @AppStorage("co.showThirdPartyVIPNotice") private var showThirdPartyVIPNotice = true
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage("co.audio.mixothers.v1") private var mixesWithOthers = false
-    @AppStorage("co.nowPlaying.enabled.v1") private var nowPlayingEnabled = true
     @AppStorage(CoHaptics.enabledKey) private var hapticsEnabled = true
     @AppStorage("co.playback.autoResumeLast") private var autoResumeLastPlayback = false
     @AppStorage("co.labelColorHex") private var labelColorHex = ""
@@ -3147,52 +3145,6 @@ struct SettingsView: View {
 
             if playbackExpanded {
             VStack(spacing: 14) {
-                Toggle(isOn: $mixesWithOthers) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.coAmber)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("与其他音频同时播放")
-                                .font(CoFont.appFont(15))
-                                .foregroundStyle(Color.coLabel)
-                        }
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.coAmber)
-                .onChange(of: mixesWithOthers) { value in
-                    player.setMixesWithOthers(value)
-                }
-
-                Divider().overlay(Color.coComment.opacity(0.15))
-
-                Toggle(isOn: $nowPlayingEnabled) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "lock.iphone")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.coAmber)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(coLocalized("显示锁屏与灵动岛播放器", "Show Lock Screen and Dynamic Island player"))
-                                .font(CoFont.appFont(15))
-                                .foregroundStyle(Color.coLabel)
-                        }
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.coAmber)
-                .onChange(of: nowPlayingEnabled) { value in
-                    player.setNowPlayingEnabled(value)
-                }
-
-                Button("清理未使用的锁屏素材") {
-                    ToastCenter.shared.show("锁屏视频素材已在酷狗专版移除")
-                }
-
-                Divider().overlay(Color.coComment.opacity(0.15))
-
                 Toggle(isOn: $autoResumeLastPlayback) {
                     HStack(spacing: 12) {
                         Image(systemName: "play.square.stack.fill")
@@ -3240,27 +3192,6 @@ struct SettingsView: View {
                             Text(coLocalized("第三方播放会员歌提醒", "VIP song notice for third-party playback"))
                                 .font(CoFont.appFont(15))
                                 .foregroundStyle(Color.coLabel)
-                        }
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.coAmber)
-
-                Divider().overlay(Color.coComment.opacity(0.15))
-
-                Toggle(isOn: Binding(get: { equalizer.surroundEnabled }, set: { equalizer.setSurroundEnabled($0) })) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "rotate.3d")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.coAmber)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("3D环绕")
-                                .font(CoFont.appFont(15))
-                                .foregroundStyle(Color.coLabel)
-                            Text("声场加宽，听感更开阔；会多耗电")
-                                .font(CoFont.appFont(11))
-                                .foregroundStyle(Color.coComment)
                         }
                     }
                 }
@@ -4821,7 +4752,7 @@ struct BackupDocumentPicker: UIViewControllerRepresentable {
 
 
 /// 歌词偏移编辑页：全局生效（全部歌曲），提前为正、延迟为负，范围 ±5 秒、步进 0.1 秒。
-private struct CoLyricOffsetSheet: View {
+struct CoLyricOffsetSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(LyricTiming.userOffsetKey) private var offset = 0.0
 

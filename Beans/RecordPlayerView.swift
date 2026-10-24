@@ -640,6 +640,7 @@ struct RecordPlayerView: View {
 /// 灰字显示“实际：X”，拿不到时不显示、不编档位（只看勾选的偏好）。
 struct CoAudioQualityMenu: View {
     @EnvironmentObject private var player: PlayerManager
+    @ObservedObject private var equalizer = CoEqualizer.shared
     @AppStorage("co.audioQuality") private var selectedRaw = CoAudioQuality.hires.rawValue
 
     static func normalized(_ quality: CoAudioQuality) -> CoAudioQuality {
@@ -683,6 +684,17 @@ struct CoAudioQualityMenu: View {
                     if selectedTier == tier.quality {
                         Image(systemName: "checkmark")
                     }
+                }
+            }
+        }
+        Divider()
+        Button {
+            equalizer.setSurroundEnabled(!equalizer.surroundEnabled)
+        } label: {
+            HStack {
+                Text("3D环绕")
+                if equalizer.surroundEnabled {
+                    Image(systemName: "checkmark")
                 }
             }
         }

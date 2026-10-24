@@ -26,6 +26,7 @@ struct PlayerView: View {
     @State private var showNativeMoreActions = false
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
+    @State private var showLyricOffsetSheet = false
     @State private var showAddToLocalPlaylist = false
     /// 选本地歌单弹窗是否由爱心触发：是才同步到红心库；菜单“添加到本地歌单”
     /// 走同一个弹窗，不能把“加入某歌单”误当成点爱心。
@@ -742,6 +743,9 @@ struct PlayerView: View {
             CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
         }
+        .sheet(isPresented: $showLyricOffsetSheet) {
+            CoLyricOffsetSheet()
+        }
         .sheet(isPresented: $showAddToLocalPlaylist, onDismiss: { localPlaylistSheetMarksFavorite = false }) {
             if let song {
                 AddToLocalPlaylistSheet(song: song) {
@@ -1452,6 +1456,7 @@ struct PlayerView: View {
                     Button("定时关闭") { showSleepTimer = true }
                     Button("添加到本地歌单") { showAddToLocalPlaylist = true }
                     Button("播放器设置") { openPlayerSettings() }
+                    Button("歌词偏移") { showLyricOffsetSheet = true }
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 17, weight: .semibold))

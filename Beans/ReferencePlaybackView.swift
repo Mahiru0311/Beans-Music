@@ -57,6 +57,7 @@ struct ReferencePlaybackView: View {
     @State private var lyricTapTask: Task<Void, Never>?
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
+    @State private var showLyricOffsetSheet = false
     /// 封面→歌词页眉的形变命名空间：与 player 前端同款思路——大封面不是整页换掉，
     /// 而是 0.38s 内缩到歌词页眉左端的小封面位置，歌词层随之淡入上滑。
     @Namespace private var coverMorphNamespace
@@ -111,15 +112,13 @@ struct ReferencePlaybackView: View {
                                 .transition(.opacity)
                         } else if showLyrics {
                             lyricsPage
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                                    removal: .move(edge: .top).combined(with: .opacity)
-                                ))
+                                // 歌词页也只淡入淡出：下滑进场会和封面形变抢方向，缩起来更乱。
+                                .transition(.opacity)
                         } else {
                             coverPage(size: geometry.size)
-                                // 位置/尺寸交给下面的 matchedGeometryEffect 形变，不再整页滑走；
-                                // 离场带轻微缩小，与向页眉小封面的形变方向一致，不再是干巴巴的淡入淡出。
-                                .transition(.scale(scale: 0.94).combined(with: .opacity))
+                                // 封面形变只留 matchedGeometryEffect 这一路：整页只淡入淡出，
+                                // 不再叠加缩放或滑移，否则形变、缩放、滑移三层打架，缩起来就发 warp。
+                                .transition(.opacity)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,6 +151,9 @@ struct ReferencePlaybackView: View {
         .sheet(isPresented: $showSoftwareVolume) {
             CoSoftwareVolumeSheetHost()
                 .environmentObject(player)
+        }
+        .sheet(isPresented: $showLyricOffsetSheet) {
+            CoLyricOffsetSheet()
         }
     }
 
@@ -399,7 +401,7 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                     showLyrics = false
                 }
             } label: {
@@ -441,6 +443,9 @@ struct ReferencePlaybackView: View {
                     CoAudioQualityMenu()
                 }
                 Button("播放器设置", action: onPlayerSettings)
+                    Button("歌词偏移") {
+                        showLyricOffsetSheet = true
+                    }
                     Button("软件音量") {
                         showSoftwareVolume = true
                     }
