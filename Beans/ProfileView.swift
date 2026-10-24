@@ -3511,10 +3511,9 @@ struct SettingsView: View {
                 translated[key] = value
             }
         }
-        let json = translated
         let defaults = UserDefaults.standard
         var count = 0
-        for (key, value) in json {
+        for (key, value) in translated {
             guard Self.isBackupCandidateKey(key) else { continue }
             guard !Self.isExcludedBackupKey(key, includeAccounts: true, includeWallpapers: true) else { continue }
             guard let restored = backupPlistSafe(value) else { continue }
@@ -3522,15 +3521,15 @@ struct SettingsView: View {
             count += 1
         }
         // 兼容旧备份：旧版本只有一套背景，恢复后让浅色和深色都继承它。
-        if json["co.background.custom.light"] == nil,
-           json["co.background.custom.dark"] == nil,
-           let legacy = json["co.background.custom"] as? String {
+        if translated["co.background.custom.light"] == nil,
+           translated["co.background.custom.dark"] == nil,
+           let legacy = translated["co.background.custom"] as? String {
             defaults.set(legacy, forKey: "co.background.custom.light")
             defaults.set(legacy, forKey: "co.background.custom.dark")
         }
-        if json["co.background.image.light"] == nil,
-           json["co.background.image.dark"] == nil,
-           let legacy = json["co.background.image"] as? String {
+        if translated["co.background.image.light"] == nil,
+           translated["co.background.image.dark"] == nil,
+           let legacy = translated["co.background.image"] as? String {
             defaults.set(legacy, forKey: "co.background.image.light")
             defaults.set(legacy, forKey: "co.background.image.dark")
         }
