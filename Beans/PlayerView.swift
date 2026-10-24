@@ -1165,7 +1165,7 @@ struct PlayerView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1.5)
-                                .background(Capsule().fill(.beansThemeRed))
+                                .background(Capsule().fill(Color.beansThemeRed))
                         }
                     }
                     Text(subtitle)
@@ -1835,7 +1835,7 @@ struct PlayerView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1.5)
-                            .background(Capsule().fill(.beansThemeRed))
+                            .background(Capsule().fill(Color.beansThemeRed))
                     }
                 }
                 Text(subtitle)
@@ -2013,7 +2013,7 @@ struct PlayerView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1.5)
-                            .background(Capsule().fill(.beansThemeRed))
+                            .background(Capsule().fill(Color.beansThemeRed))
                     }
                 }
                 Text(subtitle)
@@ -2365,7 +2365,7 @@ struct PlayerView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(.beansThemeRed))
+                            .background(Capsule().fill(Color.beansThemeRed))
                             .shadow(color: palette.accent.opacity(0.45), radius: 6)
                     }
                 }
@@ -2598,7 +2598,7 @@ struct PlayerView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1.5)
-                                .background(Capsule().fill(.beansThemeRed))
+                                .background(Capsule().fill(Color.beansThemeRed))
                         }
                     }
                     HStack(spacing: 8) {

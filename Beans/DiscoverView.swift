@@ -775,7 +775,7 @@ struct DiscoverView: View {
                                                 .foregroundStyle(.white)
                                                 .padding(.horizontal, 5)
                                                 .padding(.vertical, 1.5)
-                                                .background(Capsule().fill(.beansThemeRed))
+                                                .background(Capsule().fill(Color.beansThemeRed))
                                                 .padding(6)
                                         }
                                     }
