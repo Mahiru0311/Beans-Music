@@ -36,13 +36,27 @@ struct PlaylistView: View {
     @State private var searchText = ""
     @State private var showDownloadUnsupported = false
     @State private var showCollectUnsupported = false
-    // 歌单页下拉放大（与我的页同套放慢后的参数，见 unifiedCoverHeader）：
+    // 歌单页下拉放大（与我的页同套放慢后的参数，见 fixedPlaylistCover）：
     // 下拉量封顶 120pt、放大系数 1 + 下拉量/600（封顶约 1.2 倍）、
     // 框高只跟下拉量的一半走（封顶 +60pt），松手用慢速无弹跳弹簧回 0。
     @State private var coverPull: CGFloat = 0
     @State private var coverPullActive = false
     @State private var coverPullStartedAtTop = false
     @State private var playlistScrollOffset: CGFloat = 0
+    // 固定封面层上滑跟走（与我的页同款两路读数取大值，首帧定基线，之后不再重定）：
+    // 第一路是上面占位区的全局 frame，第二路是滚动几何内容偏移；下拉时两路都钳为 0。
+    @State private var playlistCoverHeaderFrame = CGRect.zero
+    @State private var playlistCoverHeaderRestMinY: CGFloat? = nil
+    @State private var playlistScrollRestOffset: CGFloat? = nil
+    private var playlistCoverHeaderScrollUp: CGFloat {
+        guard let rest = playlistCoverHeaderRestMinY, !playlistCoverHeaderFrame.isEmpty else { return 0 }
+        return max(0, rest - playlistCoverHeaderFrame.minY)
+    }
+    private var playlistContentScrollUp: CGFloat {
+        guard let rest = playlistScrollRestOffset else { return 0 }
+        return max(0, playlistScrollOffset - rest)
+    }
+    private var coverScrollUp: CGFloat { max(playlistCoverHeaderScrollUp, playlistContentScrollUp) }
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
 
     init(playlist: Playlist) {
@@ -139,10 +153,21 @@ struct PlaylistView: View {
                     Task { await load(force: true) }
                 }
             } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        unifiedCoverHeader
-                        unifiedTitleBlock
+                // 固定层架构（与我的页同款，不再是滚动内容层封面）：
+                // 深色底 → 固定封面层 → ScrollView。上一轮封面在 ScrollView 里，
+                // 系统回弹会把封面 + 歌单名 + 控制排一起往下带，再加上封面框高增长
+                // 又把下面内容往下推，两层叠加后总位移远超 120pt 封顶，实测封面顶边
+                // 从静止的 0 拉到了约 224/1000、歌单名与播放胶囊被推到迷你播放器下面、
+                // 顶部留了一条深色带。本轮封面移出滚动视图、顶边永远钉在 0，
+                // 下面内容只剩系统回弹本身一位移（和我的页已接受的形态一致），
+                // 不再是“回弹 + 框高增长”两层叠加；下拉程度被限制在背景图范围内。
+                ZStack {
+                    fixedPlaylistCover
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            playlistCoverSpacer
+                            VStack(spacing: 0) {
+                                unifiedTitleBlock
                         unifiedControls
                         if let description = headerData.description, !description.isEmpty {
                             Text(description)
@@ -177,18 +202,37 @@ struct PlaylistView: View {
                                 .overlay(.white.opacity(0.12))
                                 .padding(.leading, 86)
                         }
+                            }
+                            // 标题区以下内容用与页面底色相同的深色作不透明底：
+                            // 静止时与页面底色完全一致、看不出区别；下拉时固定封面框高
+                            // 增长的那 +60pt 被这块不透明底盖住（和我的页白卡盖住壁纸
+                            // 增长同款做法），歌单名、控制排不会被放大的封面照片压住，
+                            // 可读性不变；占位区本身不加这层底，否则会把固定封面全盖住。
+                            .background(darkBackground)
                     }
                     .padding(.bottom, 180)
                 }
                 .beansScrollIndicatorsHidden()
+                // 内容不满屏时也能回弹下拉（与我的页 .always 同款），短歌单也能拉动放大。
+                .scrollBounceBehavior(.always, axes: .vertical)
                 // 封面铺到顶边：滚动视图忽略顶部安全区，内容从屏幕顶边 0 开始，
                 // 而不是被导航栏 + 状态栏顶到约 134pt 才开始；导航栏背景已隐藏、
                 // 配色为深色，系统返回键仍在导航栏位置、压在封面图上、照常可点。
                 .ignoresSafeArea(edges: .top)
                 // 下拉放大的门控读数（滚动几何内容偏移，不是 PreferenceKey 回写链）：
                 // 静止在顶部时偏移约 0，已下滑时为正；首帧 0 同样算在顶部。
+                // 上滑跟走第二路的基线也在首帧定一次，之后不再重定，避免从别页
+                // 返回（滚动停在半途）时把半途误当成静止值（与我的页同款做法）。
                 .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
+                    if playlistScrollRestOffset == nil { playlistScrollRestOffset = newValue }
                     playlistScrollOffset = newValue
+                }
+                // 上滑跟走第一路：占位区全局 frame 上报（与我的页头部 frame 同款做法）。
+                .onPreferenceChange(PlaylistCoverHeaderFrameKey.self) { frame in
+                    playlistCoverHeaderFrame = frame
+                    if playlistCoverHeaderRestMinY == nil && !frame.isEmpty {
+                        playlistCoverHeaderRestMinY = frame.minY
+                    }
                 }
                 // 下拉放大：复用我的页验证过的路子——挂在整个滚动视图上的
                 // simultaneousGesture 直接驱动，不走 PreferenceKey 回写链；
@@ -218,6 +262,7 @@ struct PlaylistView: View {
                             }
                         }
                 )
+                }
             }
         }
         .navigationTitle("")
@@ -240,17 +285,30 @@ struct PlaylistView: View {
         }
     }
 
-    /// 封面全幅铺满：顶边固定在屏幕顶边 0（滚动视图已忽略顶部安全区），
-    /// 宽 = 屏宽、正方形为基线高，底部渐变到深色底，与标题区衔接；
+    /// 固定封面层（与我的页固定壁纸层同款架构，不再是滚动内容层）：
+    /// 放在内容 ZStack 里、滚动视图之前，顶边用 ignoresSafeArea 固定在屏幕顶边 0，
+    /// 下拉时顶边一动不动、顶部永远是封面、不会留深色带；上滑时整体按上滑量
+    /// 往上移（coverScrollUp，头部 frame 与滚动几何两路取大值），封面跟着内容
+    /// 一起滑出视野，不会一直钉在顶部盖住歌曲行；回到顶部时移量回 0。
+    /// 封面全幅铺满：宽 = 屏宽、正方形为基线高，底部渐变到深色底，与标题区衔接；
     /// 状态栏、灵动岛、返回键都压在封面图上，而不是压在深色带上。
     /// 下拉放大（与我的页同套放慢后的参数，不再是 120pt 就到 1.4 倍）：
-    /// 框高只跟下拉量的一半走（基线宽 + coverPull/2，封顶 +60pt），
-    /// 图本身按 1 + coverPull/600 缩放（封顶约 1.2 倍），锚点取顶部，
-    /// 所以顶边一动不动、只向左右与下方放大，不出现第二张封面、不留顶部黑边；
+    /// 下拉量硬上限 120pt、放大系数 1 + coverPull/600（封顶约 1.2 倍）、
+    /// 框高只跟下拉量的一半走（基线宽 + coverPull/2，封顶 +60pt），三层都封顶，
+    /// 下拉程度被限制在背景图（封面）范围内。图本身按顶部锚点缩放：
+    /// 锚点是顶部中心，所以顶边一动不动、只向左右两边与下方放大，
+    /// 上面不动、从中间放大、只放大不改变位置，不出现第二张封面、不留顶部黑边；
     /// 框整体 .clipped() 裁到框里，放大后图不会跑到标题区下面再露一段。
+    /// 注意：下拉时系统回弹本身仍会把 ScrollView 里的歌单名、控制排、歌曲行
+    /// 往下带（和我的页已接受的形态一致：120pt 封的是封面效果，不是系统回弹
+    /// 本身；要真正硬截断系统回弹本身需要自定义滚动容器，那是另一轮的大改，
+    /// 本轮先做到和我的页完全一致的固定层逻辑）。占位区以下内容有不透明深色底，
+    /// 所以框高增长的那 +60pt 被盖住、不会把歌单名往下推，歌单名位移只剩系统
+    /// 回弹本身一位移，不再是“回弹 + 框高增长”两层叠加。
     /// 注意这是“页面顶部下拉放大”，不是“手指上滑时放大”（那会和滚动打架）：
     /// 上滑正常滚动、不放大，松手慢速弹簧回原状，见 ScrollView 上的手势。
-    private var unifiedCoverHeader: some View {
+    /// 本层不响应触摸（allowsHitTesting false），点歌曲行、点播放、点返回不受影响。
+    private var fixedPlaylistCover: some View {
         let width = UIScreen.main.bounds.width
         let base = width
         let zoom = 1 + coverPull / 600
@@ -265,6 +323,29 @@ struct PlaylistView: View {
         }
         .frame(width: width, height: base + coverPull / 2)
         .clipped()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
+        // 上滑时整体往上移（移量 = 上滑量），下拉时移量为 0、顶边不动；
+        // 移量只改固定层的位置，不改框高、不改缩放，相对标题区的位置不变。
+        .offset(y: -coverScrollUp)
+        .allowsHitTesting(false)
+    }
+
+    /// 滚动内容里的封面占位区：高度就是固定封面的基线高（屏宽正方形），
+    /// 静止时歌单名、控制排、歌曲行的位置和原来封面在滚动内容里时完全一致；
+    /// 下拉时占位区高度不动（固定封面框高增长被标题区不透明底盖住），
+    /// 所以歌单名不再被框高增长往下推；同时上报全局 frame，供上滑跟走第一路用。
+    private var playlistCoverSpacer: some View {
+        Color.clear
+            .frame(height: UIScreen.main.bounds.width)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: PlaylistCoverHeaderFrameKey.self,
+                        value: proxy.frame(in: .global)
+                    )
+                }
+            }
     }
 
     private var unifiedTitleBlock: some View {
@@ -550,6 +631,14 @@ struct PlaylistView: View {
             }
             loading = false
         }
+    }
+}
+
+/// 歌单页占位区全局 frame 上报键（上滑跟走第一路，与我的页头部 frame 同款做法）。
+private struct PlaylistCoverHeaderFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
     }
 }
 
