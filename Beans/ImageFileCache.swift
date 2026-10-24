@@ -295,61 +295,6 @@ struct BeansProfileShortcutButton: View {
     }
 }
 
-/// Reusable right-side accessory for detail pages. It follows the same avatar,
-/// theme toggle, and hidden states as the main page header.
-struct BeansDetailProfileShortcut: View {
-    @EnvironmentObject private var auth: AuthStore
-    @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var theme: ThemeStore
-    @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("beans.headerAccessoryMode") private var accessoryModeRaw = BeansHeaderAccessoryMode.avatar.rawValue
-    @State private var showProfile = false
-
-    var body: some View {
-        Group {
-            if #available(iOS 26, *) {
-                switch BeansHeaderAccessoryMode(rawValue: accessoryModeRaw) ?? .avatar {
-                case .avatar:
-                    Button {
-                        BeansHaptics.tap()
-                        showProfile = true
-                    } label: {
-                        BeansAvatarView(remoteURL: auth.user?.avatarURL, size: 38, useCustom: true)
-                            .frame(width: 38, height: 38)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(beansLocalized("我的", "Profile"))
-                case .themeToggle:
-                    BeansThemeToggleButton(colorScheme: colorScheme, usesGlassContainer: false)
-                case .hidden:
-                    EmptyView()
-                }
-            } else {
-                BeansProfileShortcutButton {
-                    showProfile = true
-                }
-            }
-        }
-        .sheet(isPresented: $showProfile) {
-            ProfileView(forceHomeBackdrop: true)
-                .environmentObject(auth)
-                .environmentObject(player)
-                .environmentObject(theme)
-        }
-    }
-}
-
-extension View {
-    func beansDetailProfileToolbar() -> some View {
-        toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                BeansDetailProfileShortcut()
-            }
-        }
-    }
-}
-
 struct BeansThemeToggleButton: View {
     let colorScheme: ColorScheme
     var usesGlassContainer = true

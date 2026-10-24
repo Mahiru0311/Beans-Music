@@ -120,11 +120,6 @@ struct ArtistHomeSheet: View {
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: beansLocalized("搜索歌手歌曲", "Search artist songs")
         )
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                BeansDetailProfileShortcut()
-            }
-        }
     }
 
     @ViewBuilder

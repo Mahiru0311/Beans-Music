@@ -1592,7 +1592,6 @@ struct DailySongsSheet: View {
             .navigationTitle("今日推荐")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: beansLocalized("搜索每日推荐", "Search daily recommendations"))
-            .beansDetailProfileToolbar()
             .task {
                 await refreshDailySongs()
             }
@@ -1655,16 +1654,6 @@ struct DailySongsSheet: View {
     }
 }
 
-struct BeansProfileSheetBackground: ViewModifier {
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 16.4, *) {
-            content.presentationBackground(.clear)
-        } else {
-            content
-        }
-    }
-}
 
 private enum BeansDailyRecommendError: LocalizedError {
     case empty
@@ -1896,7 +1885,6 @@ struct KugouTopListDetailView: View {
             .navigationTitle(beansChartName(topList.name))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: beansLocalized("搜索榜单歌曲", "Search chart songs"))
-            .beansDetailProfileToolbar()
         .task { await load() }
     }
 

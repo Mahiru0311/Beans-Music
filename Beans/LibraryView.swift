@@ -32,7 +32,6 @@ struct LibraryView: View {
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
     @State private var showHistory = false
-    @State private var showProfile = false
     @State private var showSectionSort = false
     @State private var showSyncedPlaylistSort = false
     /// 音乐库板块顺序（本地音乐库 / 我的歌单 / 最近播放，可自定义）
@@ -166,13 +165,6 @@ struct LibraryView: View {
             Button("删除", role: .destructive) { confirmDeletePlaylist() }
             Button("取消", role: .cancel) {}
         }
-        .sheet(isPresented: $showProfile) {
-            ProfileView(forceHomeBackdrop: true)
-                .environmentObject(theme)
-                .environmentObject(auth)
-                .environmentObject(player)
-                .modifier(BeansProfileSheetBackground())
-        }
         .beansNavigationDestination(for: LibraryRoute.self) { route in
             libraryDestination(route)
         }
@@ -209,9 +201,6 @@ struct LibraryView: View {
                 }
                 Spacer()
                 HStack(spacing: 10) {
-                BeansProfileShortcutButton {
-                    showProfile = true
-                }
                 if !hideSortButton {
                     GlassIconButton(systemName: "arrow.up.arrow.down", forceLiquid: isNativeClean) {
                         BeansHaptics.tap()
@@ -233,9 +222,6 @@ struct LibraryView: View {
             HStack(alignment: .center) {
                 libraryTitleButton
                 Spacer(minLength: 12)
-                BeansProfileShortcutButton {
-                    showProfile = true
-                }
                 if !hideSortButton {
                     GlassIconButton(systemName: "arrow.up.arrow.down", forceLiquid: isNativeClean) {
                         BeansHaptics.tap()

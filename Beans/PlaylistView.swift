@@ -84,7 +84,6 @@ struct PlaylistView: View {
             }
             .navigationTitle(playlist.name)
             .navigationBarTitleDisplayMode(.inline)
-            .beansDetailProfileToolbar()
         .task { await load() }
     }
 

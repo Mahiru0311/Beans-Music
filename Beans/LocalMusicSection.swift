@@ -464,9 +464,6 @@ struct LocalPlaylistDetailSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("完成") { dismiss() }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    BeansDetailProfileShortcut()
-                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
