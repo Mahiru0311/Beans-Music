@@ -86,10 +86,8 @@ final class CoEqualizer: ObservableObject {
     private var sampleRate: Double = 44_100
     private var coefficients: [BiquadCoefficients] = Array(repeating: .identity, count: 10)
     private var filterStates: [BiquadState] = Array(repeating: .zero, count: 80)
-    private var surroundDelayL: [Float] = []
-    private var surroundDelayR: [Float] = []
-    private var surroundDelayIndex = 0
-    private var surroundDelayCount = 0
+    /// 3D 声像摆动相位（弧度）：不随换歌清零，摆动不跳变。
+    private var surroundPanPhase: Double = 0
     private var pendingPersistWorkItem: DispatchWorkItem?
 
     private static let enabledKey = "co.equalizer.enabled"
@@ -359,10 +357,6 @@ final class CoEqualizer: ObservableObject {
             && format.mBitsPerChannel == 32
             && (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
         filterStates = Array(repeating: .zero, count: Self.maximumChannels * Self.bandFrequencies.count)
-        surroundDelayCount = min(max(Int(sampleRate * 0.01), 1), 4096)
-        surroundDelayL = Array(repeating: 0, count: surroundDelayCount)
-        surroundDelayR = Array(repeating: 0, count: surroundDelayCount)
-        surroundDelayIndex = 0
         rebuildCoefficientsLocked(using: processingGains)
         configurationLock.unlock()
     }
@@ -409,27 +403,21 @@ final class CoEqualizer: ObservableObject {
                     }
                 }
             }
-            if surroundEnabled, channelCount == 2, surroundDelayCount > 0 {
-                // 轻量环绕：中置不动、两侧信号加宽 1.6 倍，再混入少量对侧延迟声
-                // （约 10ms 串音），模拟环绕感；只对立体声生效，单声道/多声道不动。
-                let width: Float = 1.6
-                let crossfeed: Float = 0.18
+            if surroundEnabled, channelCount == 2 {
+                // 3D 环绕（大白话版）：声像左右摆动——戴耳机一会儿左耳响、一会儿右耳响，
+                // 不是原来那种耳机上几乎听不出来的加宽。6 秒摆一个来回，单耳最低留 0.12 不全哑；
+                // 只对立体声生效，单声道/多声道不动。
+                let phaseStep = 2 * Double.pi / max(sampleRate * 6, 1)
                 for frame in 0..<framesToProcess {
+                    surroundPanPhase += phaseStep
+                    if surroundPanPhase > 2 * Double.pi { surroundPanPhase -= 2 * Double.pi }
+                    let pan = sin(surroundPanPhase) // -1 全左 … +1 全右
+                    let leftGain = Float(0.12 + 0.88 * cos((pan + 1) * Double.pi / 4))
+                    let rightGain = Float(0.12 + 0.88 * sin((pan + 1) * Double.pi / 4))
                     let leftIndex = frame * channelCount
                     let rightIndex = leftIndex + 1
-                    let left = samples[leftIndex]
-                    let right = samples[rightIndex]
-                    let mid = (left + right) * 0.5
-                    let side = (left - right) * 0.5
-                    let widenedLeft = mid + side * width
-                    let widenedRight = mid - side * width
-                    let delayedLeft = surroundDelayL[surroundDelayIndex]
-                    let delayedRight = surroundDelayR[surroundDelayIndex]
-                    surroundDelayL[surroundDelayIndex] = widenedLeft
-                    surroundDelayR[surroundDelayIndex] = widenedRight
-                    surroundDelayIndex = (surroundDelayIndex + 1) % surroundDelayCount
-                    let outLeft = widenedLeft + delayedRight * crossfeed
-                    let outRight = widenedRight + delayedLeft * crossfeed
+                    let outLeft = samples[leftIndex] * leftGain
+                    let outRight = samples[rightIndex] * rightGain
                     samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }

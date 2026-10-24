@@ -199,6 +199,7 @@ struct ReferencePlaybackView: View {
             .frame(width: artworkSize, height: artworkSize)
             // 封面切换不再形变位移：原地缩放加淡入淡出，两方向同一值，不斜着跑。
             .transition(.scale(scale: 0.55).combined(with: .opacity))
+            .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
@@ -250,7 +251,9 @@ struct ReferencePlaybackView: View {
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
-                showLyrics = true
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                    showLyrics = true
+                }
             }
             .padding(.top, 18)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.previewLyric)))
@@ -408,6 +411,7 @@ struct ReferencePlaybackView: View {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
                     .transition(.opacity)
+                    .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
 
@@ -614,7 +618,9 @@ struct ReferencePlaybackView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             CoHaptics.tap()
-            showLyrics = false
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                showLyrics = false
+            }
         }
     }
 
