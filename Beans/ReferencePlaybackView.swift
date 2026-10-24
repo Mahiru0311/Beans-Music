@@ -115,8 +115,8 @@ struct ReferencePlaybackView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 封面切歌词走 GitHub 播放页同款：封面一边均匀缩小、一边滑向左上角小封面，0.38s 曲线。
-                    .animation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38), value: showLyrics)
+                    // 封面切歌词：封面一边均匀缩小、一边滑向左上角小封面，缩小带弹跳（弹簧收尾回弹一下）。
+                    .animation(.spring(response: 0.45, dampingFraction: 0.62), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -206,7 +206,7 @@ struct ReferencePlaybackView: View {
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
                 CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
                     showLyrics = true
                 }
             }
@@ -248,7 +248,7 @@ struct ReferencePlaybackView: View {
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
                     showLyrics = true
                 }
             }
@@ -401,7 +401,7 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
                     showLyrics = false
                 }
             } label: {
@@ -483,7 +483,7 @@ struct ReferencePlaybackView: View {
                 container: PlayerLayoutEntry()
             ),
             onLyrics: {
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
                     if showQueue {
                         showQueue = false
                         showLyrics = true
@@ -615,7 +615,7 @@ struct ReferencePlaybackView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             CoHaptics.tap()
-            withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
                 showLyrics = false
             }
         }

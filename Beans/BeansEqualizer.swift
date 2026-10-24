@@ -558,7 +558,7 @@ final class CoEqualizer: ObservableObject {
             if surroundEnabled, channelCount == 2 {
                 // 3D 环绕（大白话版）：人声在左、中、右三个位置都停得住、缓慢移动——
                 // 快切形会让中间一下而过，所以改成正弦三次方：左、中、右三点导数都为零，都停得住；
-                // 再加一层混响，整个大脑里回荡的空间感才出来。10 秒一个来回，单耳最低留 0.12 不全哑；
+                // 再加一层混响，整个大脑里回荡的空间感才出来。8 秒一个来回，单耳最低留 0.12 不全哑；
                 // 只对立体声生效，单声道/多声道不动。
                 if reverbNeedsReset {
                     reverbNeedsReset = false
@@ -574,7 +574,7 @@ final class CoEqualizer: ObservableObject {
                     reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: 4), count: 2)
                     reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: 2), count: 2)
                 }
-                let phaseStep = 2 * Double.pi / max(sampleRate * 10, 1)
+                let phaseStep = 2 * Double.pi / max(sampleRate * 8, 1)
                 let hasReverb = reverbCombBuffers.count >= 2 && reverbCombDelays.count == 4 && reverbAllpassDelays.count == 2
                 for frame in 0..<frameCount {
                     surroundPanPhase += phaseStep
@@ -588,8 +588,8 @@ final class CoEqualizer: ObservableObject {
                     var outLeft = samples[leftIndex] * leftGain
                     var outRight = samples[rightIndex] * rightGain
                     if hasReverb {
-                        outLeft += reverbSample(input: outLeft, channel: 0) * 0.35
-                        outRight += reverbSample(input: outRight, channel: 1) * 0.35
+                        outLeft += reverbSample(input: outLeft, channel: 0) * 0.2
+                        outRight += reverbSample(input: outRight, channel: 1) * 0.2
                     }
                     samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
@@ -609,7 +609,7 @@ final class CoEqualizer: ObservableObject {
             var filterStore = reverbCombFilterStores[channel][comb]
             filterStore = output * 0.8 + filterStore * 0.2
             reverbCombFilterStores[channel][comb] = filterStore
-            reverbCombBuffers[channel][comb][index] = input + filterStore * 0.84
+            reverbCombBuffers[channel][comb][index] = input + filterStore * 0.75
             index += 1
             if index >= delay { index = 0 }
             reverbCombIndices[channel][comb] = index
