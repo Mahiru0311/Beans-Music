@@ -2,6 +2,7 @@ import SwiftUI
 
 private enum LibraryRoute: Hashable {
     case playlist(Playlist)
+    case topList(KugouTopInfo)
 }
 
 enum LibraryProvider: String, CaseIterable, Identifiable {
@@ -30,6 +31,7 @@ struct LibraryView: View {
     @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
+    @ObservedObject private var playlistFavorites = CoPlaylistFavorites.shared
 
     @State private var showHistory = false
     @State private var showAccountHub = false
@@ -171,6 +173,11 @@ struct LibraryView: View {
                 .environmentObject(player)
                 .environmentObject(auth)
                 .environmentObject(theme)
+        case .topList(let info):
+            PlaylistView(topList: info)
+                .environmentObject(player)
+                .environmentObject(auth)
+                .environmentObject(theme)
         }
     }
 
@@ -277,6 +284,56 @@ struct LibraryView: View {
     private var kugouSection: some View {
         VStack(alignment: .leading, spacing: 24) {
             kugouPlaylistsSection
+            if !playlistFavorites.entries.isEmpty {
+                favoritePlaylistsSection
+            }
+        }
+    }
+
+    /// 本地收藏的歌单：只放歌单 tab 这一处（星标只写 Co 本地，酷狗无收藏接口）。
+    private var favoritePlaylistsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "收藏的歌单", trailing: "\(playlistFavorites.entries.count) 个")
+            VStack(spacing: 0) {
+                ForEach(playlistFavorites.entries) { entry in
+                    Button {
+                        CoHaptics.tap()
+                        if entry.kind == "top" {
+                            openRoute(.topList(KugouTopInfo(id: entry.refID, name: entry.name, updateFrequency: "", coverURL: entry.coverURL)))
+                        } else {
+                            openRoute(.playlist(Playlist(id: entry.refID, name: entry.name, coverURL: entry.coverURL)))
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            CoverImage(url: entry.coverURL, size: 56, cornerRadius: 12)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(entry.name)
+                                    .font(CoFont.appFont(15, .medium))
+                                    .foregroundStyle(Color.coLabel)
+                                    .lineLimit(1)
+                                Text(entry.kind == "top" ? "榜单" : "歌单")
+                                    .font(CoFont.appFont(12))
+                                    .foregroundStyle(Color.coComment)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.coComment.opacity(0.6))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Divider().overlay(Color.coComment.opacity(0.12))
+                }
+            }
+            .padding(.vertical, 6)
+            .background {
+                CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .coCardShadow(radius: 8, y: 3)
         }
     }
 
