@@ -981,15 +981,15 @@ struct ProfileView: View {
     /// 放在 body 的 ZStack 里、滚动视图之前，框顶边用 ignoresSafeArea 固定在屏幕顶边，
     /// 下拉时框顶边一动不动，只有框里的图以中心锚点放大、向左右两边扩。
     /// 框高 = max(屏幕宽 + 30pt, 410pt) + 拖动量：屏幕宽约等于静止时头部高 + 安全区，
-    /// 410pt 下限是头部下移到 159pt 顶垫后的新头部高约 365pt 再加约 45pt 余量，
+    /// 410pt 下限是头部顶垫 116pt 后的新头部高约 322pt 再加约 88pt 余量，
     /// 保证在任何机型宽度下壁纸底边都压在白卡下面、不在白卡与壁纸之间留缝，
     /// 多余部分被不透明白卡盖住；框高随拖动量变大，正好抵消内容整体下移量，
     /// 白卡与壁纸的重叠（-24pt）始终不变。图用 scaleEffect(中心) 后 .clipped() 裁到框里，
     /// 所以放大后图不会跑到白卡下面再露一段。无图时整张填黑，同样固定顶边、同样封顶。
     private var coFixedHeaderWallpaper: some View {
-        // 框高跟着新头部高度走：头部顶部内边距加到 159pt 后，新头部高约
-        // 365pt（159 顶垫 + 其余约 206pt），框高下限 410pt 保证在窄屏机型上
-        // 底边仍压在不透明白卡之下至少约 45pt、白卡与壁纸之间无缝；宽屏机型
+        // 框高跟着新头部高度走：头部顶部内边距 116pt 后，新头部高约
+        // 322pt（116 顶垫 + 其余约 206pt），框高下限 410pt 保证在窄屏机型上
+        // 底边仍压在不透明白卡之下至少约 88pt、白卡与壁纸之间无缝；宽屏机型
         // 上仍是屏幕宽 + 30pt（用户机型约 423pt，已高于下限），框高、图本身
         // 的缩放与位置都不动，图顶边仍固定在屏幕顶边，头像下移露出的只是
         // 原来被白卡盖住的那段壁纸下部，不是图被挪动或放大了。
@@ -1088,7 +1088,13 @@ struct ProfileView: View {
         // 状态行、白卡全部跟着整体往下 115pt，头像尺寸、头像与昵称间距、
         // 壁纸图本身都不动；头像界面（forceHomeBackdrop）仍有顶行，顶部
         // 间距不动，不跟着下移。
-        .padding(.top, forceHomeBackdrop ? 0 : 159)
+        // 2026-10-24 真机返工：159pt 版我的页比用户要的目标（图三）整体低了
+        // 约 46-50/1000（头像中心 281→231、白卡顶边 449→403，852pt 屏约 40-43pt），
+        // 只改这一处：159pt → 116pt（159 - 43），头像、昵称、VIP、白卡 -24pt
+        // 重叠、底部 240pt、固定壁纸层、下拉放大 120pt 封顶、上滑跟走一律不动；
+        // 头部总高约从 365pt 变成约 322pt，仍低于固定壁纸框高下限 410pt，
+        // 壁纸底边仍压在白卡之下，不留新黑边或壁纸条；头像 sheet 分支仍是 0，不动。
+        .padding(.top, forceHomeBackdrop ? 0 : 116)
         .frame(maxWidth: .infinity)
         .background {
             // 重建：我的 tab 的壁纸不在 background 里（background 溢出会被裁掉，上一轮黑带的根源），
@@ -2501,9 +2507,18 @@ struct SettingsView: View {
                         .padding(.vertical, 32)
                 }
             }
-            .padding(.horizontal, 16)
+            // 设置页右侧开关“被裁”定性（2026-10-24 真机图一）：不是壁纸层裁的——
+            // GlassBackdrop 只在 ZStack 背景层、无 .clipped()、不约束兄弟层，
+            // SettingsCompactGlassSurface 在推入页里因高度条件不成立根本不渲染；
+            // 真因是两层 16pt 横向内边距叠加（这里 16 + 下面卡片组的 16 = 32pt），
+            // 开关右缘落在屏宽 - 32pt（约 919/1000）而不是屏宽 - 16pt。
+            // 本轮两层各减到 8pt，合计仍是 16pt，卡片仍有 8pt 外边距、8pt 内呼吸，
+            // 开关右缘回到屏宽 - 16pt（约 959/1000），卡片外观与内边距逻辑不动。
+            .padding(.horizontal, 8)
             .padding(.top, 14)
-            .padding(.bottom, 40)
+            // 底部留白：原 40pt 根本不够迷你播放器（约 50pt）+ 底栏（约 57pt）
+            // + 安全区，最后一行会被盖住；按我的页同款 240pt 给足，不只加 10pt。
+            .padding(.bottom, 240)
             .beansAdaptiveContentWidth()
         }
         .beansScrollIndicatorsHidden()
@@ -2899,6 +2914,7 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
                     .tint(Color.beansAmber)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("beans.settings.immersive-detail")
 
                 Picker("语言", selection: $languageRaw) {
@@ -2913,6 +2929,7 @@ struct SettingsView: View {
                     Toggle("关闭液态模式", isOn: $disableLiquidGlass)
                         .font(BeansFont.appFont(15))
                         .tint(Color.beansAmber)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 DisclosureGroup(isExpanded: $appearanceDetailsExpanded) {
@@ -3048,6 +3065,7 @@ struct SettingsView: View {
                 }
                 .toggleStyle(.switch)
                 .tint(Color.beansAmber)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
@@ -4228,7 +4246,9 @@ private struct SettingsCatalogGroup<Content: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             content
         }
-            .padding(.horizontal, 16)
+            // 见 settingsScrollContent 处注释：与外层 8pt 叠加合计 16pt，
+            // 原来两层 16pt 叠加成 32pt 是设置页开关右缘偏内的真因。
+            .padding(.horizontal, 8)
             .background {
                 let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
                 BeansGlass(shape: shape)
