@@ -33,7 +33,6 @@ struct PlayerView: View {
     @State private var localPlaylistSheetMarksFavorite = false
     @State private var showPlayerSettings = false
     @State private var showComments = false
-    @AppStorage(FoliaPreferences.enabledKey) private var foliaStageEnabled = false
     @AppStorage(FoliaPreferences.modeKey) private var foliaModeRaw = FoliaVisualizerMode.still.rawValue
     @State private var playbackRenderingSuppressed = false
     @State private var showArtistHome = false
@@ -465,9 +464,9 @@ struct PlayerView: View {
         let _ = theme.accent
         GeometryReader { rootGeometry in
         Group {
-            if foliaStageEnabled {
+            if coverPlayerStyle == .folia {
                 FoliaStageView(song: song, lyrics: lyrics, onBack: {
-                    foliaStageEnabled = false
+                    closePlayer()
                 }, onSettings: {
                     openPlayerSettings()
                 })
@@ -921,7 +920,7 @@ struct PlayerView: View {
                     CoHaptics.tap()
                     seekToLyric(line)
                 }
-            case .vinyl, .record:
+            case .vinyl, .record, .folia:
                 iPadLandscapeVinylLyricsColumn(geo: geo)
             }
         }
@@ -1011,7 +1010,7 @@ struct PlayerView: View {
         switch layoutRenderingStyle {
         case .appleMusic:
             iPadLandscapeAppleMusicLyricsHeader
-        case .vinyl, .record:
+        case .vinyl, .record, .folia:
             iPadLandscapeVinylLyricsHeader
         }
     }
@@ -1177,7 +1176,7 @@ struct PlayerView: View {
         switch layoutRenderingStyle {
         case .appleMusic:
             iPadLandscapeAppleMusicControlDeck(bottomInset: bottomInset)
-        case .vinyl, .record:
+        case .vinyl, .record, .folia:
             iPadLandscapeCompactControlDeck(bottomInset: bottomInset)
         }
     }
@@ -1615,7 +1614,7 @@ struct PlayerView: View {
         switch layoutRenderingStyle {
         case .appleMusic:
             appleMusicAlbumPanel(geo: geo)
-        case .vinyl, .record:
+        case .vinyl, .record, .folia:
             vinylAlbumPanel(geo: geo)
         }
     }
@@ -3224,6 +3223,15 @@ struct PlayerView: View {
 
                 layoutEditorStylePicker
 
+                // Folia 舞台不进自定义布局：它的排版本身就是效果，拖来拖去会把效果拆散；
+                // 模式与配色在 Folia 设置里调，这里只留一个入口让用户切回别的风格。
+                if layoutEditorStyle == .folia {
+                    Text("Folia 舞台不支持自定义布局，模式与配色在 Folia 设置里调。")
+                        .font(CoFont.appFont(14, .regular))
+                        .foregroundStyle(palette.text.opacity(0.7))
+                        .padding(.vertical, 24)
+                } else {
+
                 if UIDevice.current.userInterfaceIdiom == .pad {
                     Picker("预览方向", selection: $layoutEditorUsesIPadLandscape) {
                         Text("竖屏").tag(false)
@@ -3281,6 +3289,7 @@ struct PlayerView: View {
                     .foregroundStyle(Color.coAmber)
                     .buttonStyle(.plain)
                 }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -3336,6 +3345,11 @@ struct PlayerView: View {
                 layoutPartChips(AppleMusicLayoutPart.allCases.map { ($0.rawValue, $0) }) { part in
                     appleLayoutPart = part
                 } selected: { appleLayoutPart == $0 }
+        case .folia:
+            Text("Folia 舞台不支持自定义布局，模式与配色在 Folia 设置里调。")
+                .font(CoFont.appFont(14, .regular))
+                .foregroundStyle(palette.text.opacity(0.7))
+                .padding(.vertical, 12)
         case .vinyl, .record:
             layoutPartChips(PlayerLayoutPart.vinylEditableCases.map { (layoutPartTitle($0), $0) }) { part in
                     layoutPart = part
@@ -3418,6 +3432,7 @@ struct PlayerView: View {
                 switch layoutEditorStyle {
                 case .appleMusic:
                     return appleLayout.entry(for: appleLayoutPart)
+                case .folia: return VinylPlayerLayoutStore.defaultEntry(for: layoutPart)
                 case .vinyl, .record:
                     return vinylLayoutData[layoutPart.rawValue]
                         ?? VinylPlayerLayoutStore.defaultEntry(for: layoutPart)
@@ -3433,6 +3448,7 @@ struct PlayerView: View {
                 switch layoutEditorStyle {
                 case .appleMusic:
                     appleLayout.set(value, for: appleLayoutPart)
+                case .folia: break
                 case .vinyl, .record:
                     vinylLayoutData[layoutPart.rawValue] = value
                 }
@@ -3456,6 +3472,7 @@ struct PlayerView: View {
         switch style {
         case .appleMusic:
             appleLayoutPart = .cover
+        case .folia: break
         case .vinyl, .record:
             layoutPart = .vinylCover
             layoutPartRaw = layoutPart.rawValue
@@ -3472,6 +3489,7 @@ struct PlayerView: View {
         switch layoutEditorStyle {
         case .appleMusic:
             appleLayout.reset(appleLayoutPart)
+        case .folia: break
         case .vinyl, .record:
             vinylLayoutData.removeValue(forKey: layoutPart.rawValue)
         }
@@ -3485,6 +3503,7 @@ struct PlayerView: View {
         switch layoutEditorStyle {
         case .appleMusic:
             appleLayout.resetAll()
+        case .folia: break
         case .vinyl, .record:
             vinylLayoutData = [:]
         }
@@ -3705,6 +3724,7 @@ struct PlayerView: View {
     @ViewBuilder
     private var layoutEditorStyleDebugControls: some View {
         switch layoutEditorStyle {
+        case .folia: EmptyView()
         case .vinyl, .record:
             vinylStyleDebugControls
         case .appleMusic:

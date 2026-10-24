@@ -128,7 +128,7 @@ struct FoliaLineEffectView: View {
                 }
                 .frame(maxWidth: 896).padding(.horizontal, 48).padding(.bottom, 64)
                 .allowsHitTesting(false)
-                .animation(.spring(response: 0.45, dampingFraction: 0.85), value: effectiveIndex)
+                .animation(.spring(response: 0.5, dampingFraction: 0.68), value: effectiveIndex)
             }
         }
         .onAppear { effectiveIndex = max(0, activeIndex) }
@@ -159,64 +159,65 @@ struct FoliaLineEffectView: View {
             // 商籁：像诗页一样左对齐衬线排版，换行时整句从下方滑上来。
             baseText(line: line, current: current)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .opacity(current ? 1 : 0.22)
+                .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
         case .tempera:
             // 凝彩：当前句落在实色块上（取用户设的逐词高亮色），字色按色块明暗反白或反黑。
             if current {
                 baseText(line: line, current: true)
                     .foregroundStyle(accentIsLight ? Color.black : Color.white)
-                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .padding(.horizontal, 22).padding(.vertical, 14)
                     .background(Color(hex: accentHex) ?? .accentColor,
-                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .transition(.scale(scale: 0.92).combined(with: .opacity))
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
             } else {
-                baseText(line: line, current: false).opacity(0.3)
+                baseText(line: line, current: false).opacity(0.22)
                     .transition(.opacity)
             }
         case .cadenza:
             // 心象：当前句放大加高亮色辉光、微微倾斜，像一句自由华彩。
             baseText(line: line, current: current)
-                .scaleEffect(current ? 1.12 : 0.95)
-                .rotationEffect(.degrees(current ? -2 : 0))
-                .shadow(color: current ? (Color(hex: accentHex) ?? .accentColor).opacity(0.8) : .clear,
-                        radius: current ? 14 : 0, y: 4)
-                .opacity(current ? 1 : 0.3)
-                .transition(.scale(scale: 0.9).combined(with: .opacity))
+                .scaleEffect(current ? 1.28 : 0.88)
+                .rotationEffect(.degrees(current ? -7 : 0))
+                .shadow(color: current ? (Color(hex: accentHex) ?? .accentColor).opacity(1.0) : .clear,
+                        radius: current ? 26 : 0, y: 4)
+                .opacity(current ? 1 : 0.22)
+                .transition(.scale(scale: 0.75).combined(with: .opacity))
         case .partita:
             // 云阶：三句像台阶一样向右拾级而上。
             baseText(line: line, current: current)
-                .offset(x: CGFloat(offset) * 36)
-                .opacity(current ? 1 : 0.3)
-                .transition(.move(edge: .trailing).combined(with: .opacity))
+                .offset(x: CGFloat(offset) * 60)
+                .opacity(current ? 1 : 0.22)
+                .transition(.move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
         case .fume:
             // 浮名：上一句向上飘散变淡，当前句从下方浮现，像烟。
             baseText(line: line, current: current)
-                .offset(y: offset == -1 ? -24 : (offset == 1 ? 12 : 0))
-                .opacity(current ? 1 : (offset == -1 ? 0.12 : 0.45))
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .offset(y: offset == -1 ? -44 : (offset == 1 ? 22 : 0))
+                .opacity(current ? 1 : (offset == -1 ? 0.06 : 0.3))
+                .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.92)))
         case .diorama:
             // 镜台：当前句下方带一面渐隐的倒影，像镜面舞台。
             if current {
                 VStack(spacing: 4) {
                     baseText(line: line, current: true)
                     baseText(line: line, current: true)
-                        .scaleEffect(x: 1, y: -1).opacity(0.22)
+                        .scaleEffect(x: 1, y: -1).opacity(0.38)
                         .mask(LinearGradient(colors: [.black, .clear],
                                              startPoint: .top, endPoint: .bottom))
                 }
                 .transition(.opacity)
             } else {
-                baseText(line: line, current: false).opacity(0.3)
+                baseText(line: line, current: false).opacity(0.22)
                     .transition(.opacity)
             }
         default:
-            baseText(line: line, current: current).opacity(current ? 1 : 0.3)
+            baseText(line: line, current: current).opacity(current ? 1 : 0.22)
         }
     }
 
     private func baseText(line: FoliaLine, current: Bool) -> some View {
         Text(line.fullText)
-            .font(.system(size: (current ? 40 : 30) * fontScale,
+            .font(.system(size: (current ? 44 : 28) * fontScale,
                           weight: current ? .bold : .semibold,
                           design: mode == .sonnet ? .serif : .default))
             .tracking(0.8)

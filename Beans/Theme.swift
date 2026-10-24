@@ -304,6 +304,7 @@ enum CoCoverPlayerStyle: String, CaseIterable, Identifiable {
     case appleMusic
     case vinyl
     case record
+    case folia
 
     var id: String { rawValue }
 
@@ -312,6 +313,7 @@ enum CoCoverPlayerStyle: String, CaseIterable, Identifiable {
         case .appleMusic: return "Apple Music"
         case .vinyl: return coLocalized("黑胶唱盘", "Vinyl Turntable")
         case .record: return coLocalized("唱片模式", "Record Mode")
+        case .folia: return "Folia"
         }
     }
 
@@ -320,6 +322,7 @@ enum CoCoverPlayerStyle: String, CaseIterable, Identifiable {
         case .appleMusic: return "大封面、细进度条和简洁播放控制"
         case .vinyl: return coLocalized("黑胶唱片、唱臂和旋转唱盘", "Vinyl record, tonearm, and spinning turntable")
         case .record: return coLocalized("参考唱片界面、歌词、队列和播放控制", "Reference record interface with lyrics, queue, and playback controls")
+        case .folia: return "歌词舞台、随封面取色的沉浸歌词"
         }
     }
 
@@ -328,6 +331,7 @@ enum CoCoverPlayerStyle: String, CaseIterable, Identifiable {
         case .appleMusic: return "music.note.list"
         case .vinyl: return "opticaldisc"
         case .record: return "record.circle"
+        case .folia: return "sparkles"
         }
     }
 

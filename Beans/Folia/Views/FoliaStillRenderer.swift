@@ -1,7 +1,7 @@
 import SwiftUI
 
-// Native draft of Folia's Still: three static rows, matching opacity/type sizes, no animated background.
-// Source: src/components/visualizer/still/VisualizerStill.tsx (v0.7.16).
+// Still: three rows, gentle fade+rise on line change — the calmest of the eight effects,
+// no glow or scale. (Earlier it was fully frozen; the bold rewrite gives it motion too.)
 struct FoliaStillRenderer: View {
     let document: FoliaLyricDocument
     @ObservedObject var clock: PlaybackClock
@@ -31,9 +31,9 @@ struct FoliaStillRenderer: View {
                 }
                 .frame(maxWidth: 896).padding(.horizontal, 48).padding(.bottom, 64)
                 .allowsHitTesting(false)
+                .animation(.easeOut(duration: 0.5), value: effectiveIndex)
             }
         }
-        .transaction { $0.animation = nil }
         .onAppear { effectiveIndex = max(0, activeIndex) }
         .onChange(of: activeIndex) { _, index in updateIndex(index) }
         .onChange(of: document) { _, _ in updateIndex(activeIndex) }
@@ -62,6 +62,8 @@ struct FoliaStillRenderer: View {
                         .opacity(current ? 0.8 : 0.3)
                 }
             }.multilineTextAlignment(.center).frame(maxWidth: .infinity)
+                .id(line.id)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
         } else {
             Color.clear.frame(height: 80)
         }

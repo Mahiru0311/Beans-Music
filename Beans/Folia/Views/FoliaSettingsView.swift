@@ -4,7 +4,6 @@ import UIKit
 // Folia preferences use the same CoGlass component and original liquid preference keys.
 struct FoliaSettingsView: View {
     @EnvironmentObject private var theme: ThemeStore
-    @AppStorage(FoliaPreferences.enabledKey) private var enabled = false
     @AppStorage(FoliaPreferences.modeKey) private var modeRaw = FoliaVisualizerMode.still.rawValue
     @AppStorage(FoliaPreferences.fontScaleKey) private var fontScale = 1.0
     // 翻译已删：歌词数据里翻译本就是空的（translation: nil），
@@ -24,7 +23,6 @@ struct FoliaSettingsView: View {
         ScrollView {
             VStack(spacing: 16) {
                 card("Folia 歌词舞台") {
-                    Toggle("使用 Folia 舞台", isOn: $enabled)
                     Picker("歌词模式", selection: $modeRaw) {
                         ForEach(FoliaVisualizerMode.ordered) { mode in
                             Text(mode.title).tag(mode.rawValue)

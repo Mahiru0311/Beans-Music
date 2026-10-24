@@ -13,10 +13,10 @@ enum FoliaClassicIntensity: String, CaseIterable, Identifiable {
         }
     }
     var breathingDuration: Double {
-        switch self { case .calm: return 8.5; case .normal: return 7; case .chaotic: return 5.8 }
+        switch self { case .calm: return 8.5; case .normal: return 6; case .chaotic: return 5 }
     }
     var breathingDistance: Double {
-        switch self { case .calm: return 10; case .normal: return 14; case .chaotic: return 18 }
+        switch self { case .calm: return 12; case .normal: return 20; case .chaotic: return 26 }
     }
 }
 
@@ -56,15 +56,15 @@ enum FoliaClassicMotion {
         func random(_ offset: Int) -> Double { self.random(seed: seed, index: index, offset: offset) }
         if interlude {
             return FoliaClassicWordGeometry(x: 0, y: (random(2) - 0.5) * 15, rotation: 0,
-                                             scale: 1.5, passedRotation: 0, legacyMargin: 48, alignment: 1)
+                                             scale: 1.8, passedRotation: 0, legacyMargin: 48, alignment: 1)
         }
-        let spread: Double = intensity == .chaotic ? 60 : intensity == .calm ? 0 : 20
-        let rotate: Double = intensity == .chaotic ? 30 : intensity == .calm ? 0 : 5
+        let spread: Double = intensity == .chaotic ? 90 : intensity == .calm ? 0 : 36
+        let rotate: Double = intensity == .chaotic ? 45 : intensity == .calm ? 0 : 12
         return FoliaClassicWordGeometry(
             x: (random(1) - 0.5) * spread * 2, y: (random(2) - 0.5) * spread * 2,
             rotation: rotationEnabled ? (random(3) - 0.5) * rotate * 2 : 0,
-            scale: intensity == .chaotic ? 0.8 + random(4) * 0.6 : 1.1 + random(4) * 0.2,
-            passedRotation: rotationEnabled ? (random(8) - 0.5) * 45 : 0,
+            scale: intensity == .chaotic ? 0.8 + random(4) * 0.8 : 1.15 + random(4) * 0.35,
+            passedRotation: rotationEnabled ? (random(8) - 0.5) * 70 : 0,
             legacyMargin: intensity == .chaotic ? random(5) * 24 : 12.8,
             alignment: intensity == .chaotic && random(6) > 0.7 ? (random(7) > 0.5 ? 0 : 2) : nil
         )
@@ -101,7 +101,7 @@ enum FoliaClassicMotion {
         let fraction = position - Double(segment)
         let ease = FoliaClassicEasing.value(fraction)
         let heights = [0.0, -1, 0, 0.45, 0]
-        let scales = [1.0, 1 + 0.01 * multiplier, 1, 1 - 0.005 * multiplier, 1]
+        let scales = [1.0, 1 + 0.015 * multiplier, 1, 1 - 0.008 * multiplier, 1]
         return ((heights[segment] + (heights[segment + 1] - heights[segment]) * ease) * intensity.breathingDistance * multiplier,
                 scales[segment] + (scales[segment + 1] - scales[segment]) * ease)
     }

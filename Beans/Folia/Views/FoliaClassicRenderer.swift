@@ -43,9 +43,9 @@ struct FoliaClassicRenderer: View {
                             lineView(line, fontSize: size, time: time)
                                 .id(line.id)
                                 .transition(reduceMotion ? .opacity : .asymmetric(
-                                    insertion: .modifier(active: FoliaClassicLineTransition(scale: 0.9, blur: 10, opacity: 0),
+                                    insertion: .modifier(active: FoliaClassicLineTransition(scale: 0.8, blur: 16, opacity: 0),
                                                          identity: FoliaClassicLineTransition(scale: 1, blur: 0, opacity: 1)),
-                                    removal: .modifier(active: FoliaClassicLineTransition(scale: 1.1, blur: 20, opacity: 0),
+                                    removal: .modifier(active: FoliaClassicLineTransition(scale: 1.2, blur: 28, opacity: 0),
                                                        identity: FoliaClassicLineTransition(scale: 1, blur: 0, opacity: 1))))
                         } else if showText {
                             Text("等待音乐")
@@ -54,7 +54,7 @@ struct FoliaClassicRenderer: View {
                         }
                     }
                     .frame(maxWidth: 1152, minHeight: min(300, viewport.size.height * 0.5))
-                    .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: activeLine?.id)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: activeLine?.id)
                 }
                 Spacer(minLength: 16)
                 if showText { subtitle(time: time, activeIndex: activeIndex, activeLine: activeLine).font(.system(size: 20 * fontScale * subtitleScale)) }

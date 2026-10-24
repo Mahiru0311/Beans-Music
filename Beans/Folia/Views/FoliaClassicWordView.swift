@@ -17,7 +17,7 @@ struct FoliaClassicWordView: View {
     }
     private var scale: Double {
         guard !reduceMotion else { return 1 }
-        switch state { case .waiting: return 0.5; case .active: return geometry.scale * 1.4; case .passed: return geometry.scale }
+        switch state { case .waiting: return 0.4; case .active: return geometry.scale * 1.6; case .passed: return geometry.scale }
     }
     private var rotation: Double {
         guard !reduceMotion, rotationEnabled else { return 0 }
@@ -31,7 +31,7 @@ struct FoliaClassicWordView: View {
         guard !reduceMotion else { return nil }
         switch state {
         case .waiting: return .easeOut(duration: 0.4)
-        case .active: return .interpolatingSpring(mass: 1, stiffness: 200, damping: 20, initialVelocity: 0)
+        case .active: return .interpolatingSpring(mass: 1, stiffness: 260, damping: 16, initialVelocity: 0)
         case .passed: return .easeInOut(duration: 0.5)
         }
     }
@@ -43,13 +43,13 @@ struct FoliaClassicWordView: View {
             .background {
                 if !reduceMotion { FoliaClassicGlowView(word: word, time: time, fontSize: fontSize, color: accent) }
             }
-            .blur(radius: state == .waiting && !reduceMotion ? 10 : 0)
+            .blur(radius: state == .waiting && !reduceMotion ? 14 : 0)
             .animation(reduceMotion ? nil : .easeOut(duration: state == .active ? 0.2 : 0.5), value: state)
             .opacity(opacity)
             .animation(reduceMotion ? nil : .easeOut(duration: state == .active ? 0.1 : 0.5), value: state)
             .scaleEffect(scale)
-            .offset(x: reduceMotion ? 0 : geometry.x + (state == .waiting ? sin(geometry.y) * 100 : 0),
-                    y: reduceMotion ? 0 : geometry.y + (state == .waiting ? cos(geometry.x) * 50 : 0))
+            .offset(x: reduceMotion ? 0 : geometry.x + (state == .waiting ? sin(geometry.y) * 140 : 0),
+                    y: reduceMotion ? 0 : geometry.y + (state == .waiting ? cos(geometry.x) * 70 : 0))
             .animation(animation, value: state)
             .rotationEffect(.degrees(rotation))
             .animation(reduceMotion ? nil : state == .passed ? .linear(duration: 5) : animation, value: state)
