@@ -5180,32 +5180,6 @@ struct AvatarMediaPicker: UIViewControllerRepresentable {
 }
 
 
-// MARK: - 字体文件选择器（UIDocumentPicker 包装，比 SwiftUI fileImporter 稳定：所有文件可选，系统 asCopy 复制到沙盒）
-
-struct FontDocumentPicker: UIViewControllerRepresentable {
-    let onPick: (URL) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
-        picker.delegate = context.coordinator
-        picker.allowsMultipleSelection = false
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
-
-    final class Coordinator: NSObject, UIDocumentPickerDelegate {
-        let parent: FontDocumentPicker
-        init(_ parent: FontDocumentPicker) { self.parent = parent }
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
-            parent.onPick(url)
-        }
-        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {}
-    }
-}
 // MARK: - 配置备份文档（SwiftUI 原生 fileExporter 导出，稳定可靠）
 
 struct BackupDocument: FileDocument {

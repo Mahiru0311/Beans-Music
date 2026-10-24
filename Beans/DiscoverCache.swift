@@ -29,14 +29,11 @@ final class DiscoverCache {
     let dailyTTL: TimeInterval = 6 * 3600
 
     private let storageKey = "beans.discover.cache.v2"
-    private let qishuiSnapshotVersionKey = "beans.discover.cache.qishui.version"
-    private let qishuiSnapshotVersion = 2
     private var store: [String: Snapshot] = [:]
 
     private init() {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
               let snapshots = try? JSONDecoder().decode([String: Snapshot].self, from: data) else {
-            UserDefaults.standard.set(qishuiSnapshotVersion, forKey: qishuiSnapshotVersionKey)
             return
         }
         store = snapshots

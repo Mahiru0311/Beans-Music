@@ -5,27 +5,16 @@ import Combine
 final class PlatformPreferenceStore: ObservableObject {
     static let shared = PlatformPreferenceStore()
 
-    private static let key = "beans.enabledPlatforms.v1"
     private static let orderKey = "beans.platformOrder.v1"
 
     @Published private(set) var selectedRaw: Set<String>
     @Published var orderedRaw: [String]
 
 
-    var changes: AnyPublisher<Set<String>, Never> { $selectedRaw.eraseToAnyPublisher() }
-
     private init() {
         // 酷狗专版：只剩酷狗一个平台，旧的多平台偏好一律归一。
         selectedRaw = [SearchProvider.kugou.rawValue]
         orderedRaw = [SearchProvider.kugou.rawValue]
-    }
-
-    var enabledSearchProviders: [SearchProvider] { [.kugou] }
-
-    var enabledLibraryProviders: [LibraryProvider] { [.kugou] }
-
-    var summaryText: String {
-        enabledSearchProviders.map(\.rawValue).joined(separator: " / ")
     }
 
     func isEnabled(_ provider: SearchProvider) -> Bool {
@@ -41,29 +30,10 @@ final class PlatformPreferenceStore: ObservableObject {
         _ = provider; _ = enabled
     }
 
-    func ensureVisible(_ provider: SearchProvider) -> SearchProvider { .kugou }
-
-    func ensureVisible(_ provider: LibraryProvider) -> LibraryProvider { .kugou }
-
-    func resetToDefault() {
-        selectedRaw = [SearchProvider.kugou.rawValue]
-        resetOrder()
-        save()
-    }
-
-    func applyRemoteEnabledProviders(_ providers: [SearchProvider]) {
-        // 酷狗专版忽略远程平台列表。
-        _ = providers
-    }
-
     func resetOrder() {
         orderedRaw = [SearchProvider.kugou.rawValue]
         saveOrder()
         objectWillChange.send()
-    }
-
-    var orderedSearchProviders: [SearchProvider] {
-        orderedRaw.compactMap(SearchProvider.init(rawValue:))
     }
 
     func moveProviders(from offsets: IndexSet, to destination: Int) {
@@ -71,14 +41,6 @@ final class PlatformPreferenceStore: ObservableObject {
         normalizeOrder()
         saveOrder()
         objectWillChange.send()
-    }
-
-    private func normalize() {
-        selectedRaw = [SearchProvider.kugou.rawValue]
-    }
-
-    private func save() {
-        UserDefaults.standard.set(Array(selectedRaw), forKey: Self.key)
     }
 
     private func normalizeOrder() {
@@ -89,9 +51,6 @@ final class PlatformPreferenceStore: ObservableObject {
         UserDefaults.standard.set(orderedRaw, forKey: Self.orderKey)
     }
 
-    private static func migrateRawValue(_ raw: String) -> String {
-        SearchProvider.kugou.rawValue
-    }
 }
 
 extension LibraryProvider {

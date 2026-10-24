@@ -32,7 +32,6 @@ struct ReferencePlaybackView: View {
     let onComments: () -> Void
     let onSleepTimer: () -> Void
     let onAddToLocalPlaylist: () -> Void
-    let onDownload: () -> Void
     let onPlayerSettings: () -> Void
     let onArtist: () -> Void
 
@@ -46,7 +45,6 @@ struct ReferencePlaybackView: View {
     @AppStorage("beans.appleMusic.wallpaperBlur") private var wallpaperBlur = 14.0
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
     @AppStorage("beans.appleMusic.showLyricPreview") private var showLyricPreview = true
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var downloadFeatureUnlocked = false
     @State private var lyricCenters: [UUID: CGFloat] = [:]
     @State private var focusedLyricID: UUID?
     @State private var selectedLyricID: UUID?
@@ -67,7 +65,6 @@ struct ReferencePlaybackView: View {
         onComments: @escaping () -> Void,
         onSleepTimer: @escaping () -> Void,
         onAddToLocalPlaylist: @escaping () -> Void,
-        onDownload: @escaping () -> Void = {},
         onPlayerSettings: @escaping () -> Void,
         onArtist: @escaping () -> Void = {}
     ) {
@@ -79,7 +76,6 @@ struct ReferencePlaybackView: View {
         self.onComments = onComments
         self.onSleepTimer = onSleepTimer
         self.onAddToLocalPlaylist = onAddToLocalPlaylist
-        self.onDownload = onDownload
         self.onPlayerSettings = onPlayerSettings
         self.onArtist = onArtist
     }

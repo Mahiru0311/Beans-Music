@@ -22,10 +22,7 @@ struct RecordPlayerView: View {
     let onArtist: () -> Void
     let onSleepTimer: () -> Void
     let onAddToLocalPlaylist: () -> Void
-    let onDownload: () -> Void
-    let downloadFeatureUnlocked: Bool
     let visualsActive: Bool
-    @AppStorage(BeansBackendSettings.downloadUnlockKey) private var storedDownloadFeatureUnlocked = false
 
     @State private var showLyrics = false
     @State private var showQueue = false
@@ -49,8 +46,6 @@ struct RecordPlayerView: View {
         onArtist: @escaping () -> Void = {},
         onSleepTimer: @escaping () -> Void = {},
         onAddToLocalPlaylist: @escaping () -> Void = {},
-        onDownload: @escaping () -> Void = {},
-        downloadFeatureUnlocked: Bool = false,
         visualsActive: Bool = true
     ) {
         self.song = song
@@ -66,8 +61,6 @@ struct RecordPlayerView: View {
         self.onArtist = onArtist
         self.onSleepTimer = onSleepTimer
         self.onAddToLocalPlaylist = onAddToLocalPlaylist
-        self.onDownload = onDownload
-        self.downloadFeatureUnlocked = downloadFeatureUnlocked
         self.visualsActive = visualsActive
         self._showLyrics = State(initialValue: initialShowsLyrics)
     }

@@ -2,8 +2,6 @@ import Foundation
 
 /// 仅保留已存设置键与共用小类型；仅保留已存设置键与共用小类型。
 enum BeansBackendSettings {
-    static let downloadUnlockKey = "beans.downloadFeatureUnlocked"
-    static let downloadGlobalUnlockKey = "beans.downloadGlobalFeatureEnabled"
     static let blockedKey = "beans.backend.userBlocked"
     static let exclusiveIDKey = "beans.backend.exclusiveID"
     static let exclusiveIDBadgeStyleKey = "beans.backend.exclusiveIDBadgeStyle"

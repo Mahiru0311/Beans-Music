@@ -19,7 +19,6 @@ targets:
     resources:
       - Beans/en.lproj
       - Beans/zh-Hans.lproj
-      - Beans/Resources/XProfile.html
       - Beans/Resources/SimpleIcons-LICENSE.txt
     settings:
       base:

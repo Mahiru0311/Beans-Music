@@ -1038,6 +1038,19 @@ extension Color {
         self.init(uiColor: ui)
     }
 
+    /// 取色样板合一：只接受 "#" 开头的自定义色串（与旧样板语义一致，裸 6/8 位串不算），
+    /// 解析失败时返回回退色。PlayerView 里十余处 "hasPrefix(#) + Color(hex:) + 回退" 由此一处承载。
+    static func fromHexPrefixed(_ raw: String, fallback: Color) -> Color {
+        if raw.hasPrefix("#"), let c = Color(hex: raw) { return c }
+        return fallback
+    }
+
+    /// 可空版：解析失败时返回 nil（歌词发光色等可空场景）。
+    static func fromHexPrefixedOrNil(_ raw: String) -> Color? {
+        if raw.hasPrefix("#"), let c = Color(hex: raw) { return c }
+        return nil
+    }
+
     var hexString: String {
         UIColor(self).hexString
     }

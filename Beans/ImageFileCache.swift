@@ -233,14 +233,6 @@ struct BeansAvatarView: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
-        .transaction { transaction in
-            // Avatar media is hosted by navigation bars on older systems.
-            // Suppress implicit replacement animations there so a cached
-            // image/video update cannot make the toolbar item drift visually.
-            if #unavailable(iOS 26) {
-                transaction.disablesAnimations = true
-            }
-        }
     }
 }
 
@@ -264,11 +256,6 @@ struct BeansProfileShortcutButton: View {
                 .buttonStyle(GlassPressButtonStyle(scale: 0.92))
                 .frame(width: 46, height: 46)
                 .fixedSize()
-                .transaction { transaction in
-                    if #unavailable(iOS 26) {
-                        transaction.disablesAnimations = true
-                    }
-                }
                 .accessibilityLabel(beansLocalized("我的", "Profile"))
             case .themeToggle:
                 BeansThemeToggleButton(colorScheme: colorScheme)

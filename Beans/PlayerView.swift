@@ -165,8 +165,7 @@ struct PlayerView: View {
     /// 避免整页反复重绘导致的布局错乱与发烫。深浅模式切换时及时重算配色。
     /// 自定义歌词发光颜色
     private var lyricGlowColor: Color? {
-        if lyricGlowColorRaw.hasPrefix("#"), let c = Color(hex: lyricGlowColorRaw) { return c }
-        return nil
+        Color.fromHexPrefixedOrNil(lyricGlowColorRaw)
     }
 
     /// 歌词对齐样式（居中 / 全部居左）
@@ -188,10 +187,7 @@ struct PlayerView: View {
     }
 
     private var controlAccent: Color {
-        if playerPrimaryButtonColorHex.hasPrefix("#"), let color = Color(hex: playerPrimaryButtonColorHex) {
-            return color
-        }
-        return controlsUseCoverColor ? palette.accent : Color.beansAmber
+        Color.fromHexPrefixed(playerPrimaryButtonColorHex, fallback: controlsUseCoverColor ? palette.accent : Color.beansAmber)
     }
 
     private var controlAccentSoft: Color {
@@ -238,24 +234,15 @@ struct PlayerView: View {
     }
 
     private var landscapeApplePrimaryColor: Color {
-        if appleMusicPrimaryHex.hasPrefix("#"), let color = Color(hex: appleMusicPrimaryHex) {
-            return color
-        }
-        return .white
+        Color.fromHexPrefixed(appleMusicPrimaryHex, fallback: .white)
     }
 
     private var landscapeAppleSecondaryColor: Color {
-        if appleMusicSecondaryHex.hasPrefix("#"), let color = Color(hex: appleMusicSecondaryHex) {
-            return color
-        }
-        return .white.opacity(0.58)
+        Color.fromHexPrefixed(appleMusicSecondaryHex, fallback: .white.opacity(0.58))
     }
 
     private var landscapeAppleAccentColor: Color {
-        if appleMusicAccentHex.hasPrefix("#"), let color = Color(hex: appleMusicAccentHex) {
-            return color
-        }
-        return Color(red: 1.0, green: 0.28, blue: 0.36)
+        Color.fromHexPrefixed(appleMusicAccentHex, fallback: Color(red: 1.0, green: 0.28, blue: 0.36))
     }
 
     private enum VinylLayoutDefaults {
@@ -317,45 +304,32 @@ struct PlayerView: View {
 
     private var playerButtonText: Color {
         if playerButtonStyle == .appleMusic { return .white }
-        if playerMainIconColorHex.hasPrefix("#"), let color = Color(hex: playerMainIconColorHex) {
-            return color
-        }
-        return palette.text
+        return Color.fromHexPrefixed(playerMainIconColorHex, fallback: palette.text)
     }
 
     private var playerButtonSecondaryText: Color {
         if playerButtonStyle == .appleMusic { return .white.opacity(0.88) }
-        if playerSecondaryIconColorHex.hasPrefix("#"), let color = Color(hex: playerSecondaryIconColorHex) {
-            return color
-        }
-        return palette.secondary
+        return Color.fromHexPrefixed(playerSecondaryIconColorHex, fallback: palette.secondary)
     }
 
     private var albumTitleColor: Color {
-        if albumTitleColorHex.hasPrefix("#"), let color = Color(hex: albumTitleColorHex) { return color }
-        return palette.text
+        Color.fromHexPrefixed(albumTitleColorHex, fallback: palette.text)
     }
 
     private var albumArtistColor: Color {
-        if albumArtistColorHex.hasPrefix("#"), let color = Color(hex: albumArtistColorHex) { return color }
-        return palette.secondary
+        Color.fromHexPrefixed(albumArtistColorHex, fallback: palette.secondary)
     }
 
     private var albumPreviewLyricColor: Color {
-        if albumPreviewLyricColorHex.hasPrefix("#"), let color = Color(hex: albumPreviewLyricColorHex) { return color }
-        return palette.text
+        Color.fromHexPrefixed(albumPreviewLyricColorHex, fallback: palette.text)
     }
 
     private var albumPreviewDimColor: Color {
-        if albumPreviewDimColorHex.hasPrefix("#"), let color = Color(hex: albumPreviewDimColorHex) { return color }
-        return palette.secondary
+        Color.fromHexPrefixed(albumPreviewDimColorHex, fallback: palette.secondary)
     }
 
     private var progressAccent: Color {
-        if progressAccentHex.hasPrefix("#"), let color = Color(hex: progressAccentHex) {
-            return color
-        }
-        return controlAccent
+        Color.fromHexPrefixed(progressAccentHex, fallback: controlAccent)
     }
 
     private var albumTitleForeground: AnyShapeStyle {

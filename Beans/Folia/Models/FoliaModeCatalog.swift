@@ -58,17 +58,3 @@ enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
     static var ordered: [Self] { allCases.sorted { $0.order < $1.order } }
 }
 
-enum FoliaBackgroundMode: String, CaseIterable, Codable, Identifiable {
-    case common, latent, monet, nomand, sora, url
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .common: return "通用"
-        case .latent: return "隐现"
-        case .monet: return "莫奈"
-        case .nomand: return "漫游"
-        case .sora: return "空"
-        case .url: return "嵌入"
-        }
-    }
-}

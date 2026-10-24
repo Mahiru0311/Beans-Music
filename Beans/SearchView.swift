@@ -3,41 +3,6 @@ import SwiftUI
 // MARK: - 流式标签布局（热搜标签云）
 
 @available(iOS 16, *)
-struct FlowLayout: Layout {
-    var spacing: CGFloat = 10
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? 0
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
-        for sub in subviews {
-            let size = sub.sizeThatFits(.unspecified)
-            if x + size.width > width, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-        return CGSize(width: width, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
-        for sub in subviews {
-            let size = sub.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                x = bounds.minX
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            sub.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-    }
-}
-
 enum SearchProvider: String, CaseIterable, Identifiable, Hashable {
     case kugou = "酷狗音乐"
 
@@ -217,9 +182,8 @@ struct SearchView: View {
 
     @State private var keyword = ""
     @State private var provider: SearchCatalogProvider = .kugou
-    /// 搜索平台是页面内状态；保留进入搜索前的首页平台，避免搜索筛选意外影响首页。
+    /// 搜索固定为酷狗，不再有平台选择 UI；provider 只是搜索逻辑的常量。
     @State private var homeSourceSnapshot = UserDefaults.standard.string(forKey: "beans.homeSource") ?? SearchProvider.kugou.rawValue
-    private var searchProviders: [SearchCatalogProvider] { [.kugou] }
     /// 已加载热门搜索的 provider（避免切 tab 反复加载）
     @State private var hotLoadedProvider: SearchCatalogProvider?
     @State private var resultType: SearchResultType = .all
@@ -438,7 +402,6 @@ struct SearchView: View {
             hotSection
         } else {
             VStack(spacing: 0) {
-                resultProviderPicker
                 typeTabs
                 resultsArea
             }
@@ -454,7 +417,6 @@ struct SearchView: View {
             hotSection
         } else {
             VStack(spacing: 0) {
-                resultProviderPicker
                 typeTabs
                 resultsArea
             }
@@ -507,61 +469,6 @@ struct SearchView: View {
         UserDefaults.standard.set(homeSourceSnapshot, forKey: "beans.homeSource")
     }
 
-    // MARK: - 搜索结果平台选择
-
-    private var resultProviderPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("搜索平台")
-                    .font(BeansFont.appFont(13, .medium))
-                    .foregroundStyle(Color.beansComment)
-                Spacer(minLength: 0)
-                Text(provider.rawValue)
-                    .font(BeansFont.appFont(12, .semibold))
-                    .foregroundStyle(Color.beansAmber)
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(searchProviders) { candidate in
-                        providerButton(candidate)
-                    }
-                }
-                .padding(.vertical, 1)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
-    }
-
-    private func providerButton(_ candidate: SearchCatalogProvider) -> some View {
-        Button {
-            BeansHaptics.tap()
-            guard provider != candidate else { return }
-            provider = candidate
-        } label: {
-            HStack(spacing: 5) {
-                if provider == candidate {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                }
-                Text(LocalizedStringKey(candidate.rawValue))
-            }
-                .font(BeansFont.appFont(13, .semibold))
-                .foregroundStyle(provider == candidate ? Color.white : Color.beansLabel)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background {
-                    if provider == candidate {
-                        Capsule().fill(Color.beansAmber)
-                    } else {
-                        BeansGlass(shape: Capsule(), forceLiquid: true)
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-        .frame(minHeight: 40)
-    }
-
     // MARK: - 分类选择（歌曲 / 歌手 / 专辑）
 
     private var typeTabs: some View {
@@ -610,7 +517,7 @@ struct SearchView: View {
                 Text("搜索歌曲、歌手、专辑或歌单")
                     .font(BeansFont.appFont(18, .semibold))
                     .foregroundStyle(Color.beansLabel)
-                Text("使用搜索框开始，聚合搜索也可以切换到单个平台。")
+                Text("使用搜索框开始。")
                     .font(BeansFont.appFont(13))
                     .foregroundStyle(Color.beansComment)
                     .multilineTextAlignment(.center)
@@ -623,9 +530,6 @@ struct SearchView: View {
                         .font(BeansFont.appFont(16, .bold))
                         .foregroundStyle(Color.beansLabel)
                     Spacer(minLength: 0)
-                    Text(provider.rawValue)
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
                 }
 
                 if hotWords.isEmpty {
