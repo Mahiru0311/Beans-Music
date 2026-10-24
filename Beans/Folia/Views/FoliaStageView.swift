@@ -13,7 +13,6 @@ struct FoliaStageView: View {
     @ObservedObject private var customCovers = CustomSongCoverStore.shared
     @AppStorage(FoliaPreferences.daylightKey) private var daylight = false
     @AppStorage(FoliaPreferences.modeKey) private var modeRaw = FoliaVisualizerMode.still.rawValue
-    @AppStorage(FoliaPreferences.fxKey) private var fxRaw = FoliaStageFX.none.rawValue
     @State private var document = FoliaLyricDocument(trackIdentity: "empty", lines: [])
     @State private var showControls = true
     @State private var hideControlsTask: Task<Void, Never>?
@@ -32,6 +31,23 @@ struct FoliaStageView: View {
     private var displayCoverURL: URL? { customCovers.url(for: song) ?? song?.coverURL }
 
     var body: some View {
+        GeometryReader { geo in
+            if geo.size.width > geo.size.height {
+                landscapeBody(size: geo.size)
+            } else {
+                portraitBody
+            }
+        }
+        .foregroundStyle(daylight ? Color.black : Color.white)
+        .onAppear { refreshDocument(); pokeControls() }
+        .onDisappear { hideControlsTask?.cancel() }
+        .onChange(of: lyrics) { _, _ in refreshDocument() }
+        .onChange(of: song?.identityKey) { _, _ in refreshDocument() }
+        .onChange(of: clock.duration) { _, _ in refreshDocument() }
+    }
+
+    // 竖屏：原来的舞台（封面毛玻璃背景 + 歌词效果 + 顶部栏 + 底部控制框 3 秒自动藏）。
+    private var portraitBody: some View {
         ZStack {
             (daylight ? Color.white : Color.black).ignoresSafeArea()
             CoverBlurBackground(url: displayCoverURL, scheme: daylight ? .light : .dark)
@@ -39,12 +55,10 @@ struct FoliaStageView: View {
             // 统一罩一层，保证歌词在任何封面上都可读；日间浅罩、夜间深罩。
             Color.black.opacity(daylight ? 0.10 : 0.35).ignoresSafeArea()
                 .allowsHitTesting(false)
-            // 点空白处唤出控制框（歌词与特效层不吃触摸，点得透）。
+            // 点空白处唤出控制框（歌词层不吃触摸，点得透）。
             Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture { pokeControls() }
-            // 舞台特效层：封面之上、歌词之下。
-            FoliaStageFXView(fx: FoliaStageFX(rawValue: fxRaw) ?? .none)
             lyricSurface
             VStack {
                 HStack {
@@ -64,12 +78,50 @@ struct FoliaStageView: View {
             }
             .animation(.easeOut(duration: 0.3), value: showControls)
         }
-        .foregroundStyle(daylight ? Color.black : Color.white)
-        .onAppear { refreshDocument(); pokeControls() }
-        .onDisappear { hideControlsTask?.cancel() }
-        .onChange(of: lyrics) { _, _ in refreshDocument() }
-        .onChange(of: song?.identityKey) { _, _ in refreshDocument() }
-        .onChange(of: clock.duration) { _, _ in refreshDocument() }
+    }
+
+    // 横屏：封面在左、其余在右。顶部只剩两颗键，歌名歌手移到右栏顶部，
+    // 右栏从上到下是歌名歌手、歌词效果、控制框（同样 3 秒自动藏）。
+    private func landscapeBody(size: CGSize) -> some View {
+        let artworkSize = min(size.height - 96, size.width * 0.42)
+        return ZStack {
+            (daylight ? Color.white : Color.black).ignoresSafeArea()
+            CoverBlurBackground(url: displayCoverURL, scheme: daylight ? .light : .dark)
+                .ignoresSafeArea()
+            Color.black.opacity(daylight ? 0.10 : 0.35).ignoresSafeArea()
+                .allowsHitTesting(false)
+            Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture { pokeControls() }
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: onBack) { Image(systemName: "chevron.down").frame(width: 44, height: 44) }
+                    Spacer()
+                    Button(action: onSettings) { Image(systemName: "slider.horizontal.3").frame(width: 44, height: 44) }
+                }
+                .padding(.horizontal, 16)
+                HStack(spacing: 24) {
+                    CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
+                        .frame(width: artworkSize, height: artworkSize)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(song?.name ?? "Folia")
+                            .font(.title3.bold()).lineLimit(1)
+                        Text(song.map { $0.artists } ?? "")
+                            .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        lyricSurface
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        if showControls {
+                            FoliaStageTransport(player: player, clock: clock, onInteract: pokeControls)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 12)
+            }
+            .animation(.easeOut(duration: 0.3), value: showControls)
+        }
     }
 
     @ViewBuilder private var lyricSurface: some View {

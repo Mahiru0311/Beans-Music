@@ -71,12 +71,16 @@ struct FoliaPartitaView: View {
             if showText, let line = currentLine, !line.fullText.isEmpty {
                 VStack(spacing: 16) {
                     ForEach(chunks.indices, id: \.self) { i in
+                        let inset = 20 + foliaHash(i, 5) * 80
                         Text(chunks[i])
                             .font(.system(size: 44 * fontScale, weight: .bold))
                             .foregroundStyle(Color(hex: primaryHex) ?? .white)
                             .shadow(color: .black.opacity(0.25), radius: 2, y: 2)
                             .multilineTextAlignment(.center)
-                            .offset(x: (i % 2 == 0 ? -1 : 1) * (20 + foliaHash(i, 5) * 80))
+                            // 台阶改用内边距不用 offset：offset 是布局后平移，竖屏里会把整行推出屏幕；
+                            // 内边距是布局内留白，台阶方向还在（偶数行靠左、奇数行靠右），但永远不越界。
+                            .padding(.leading, i % 2 == 1 ? inset : 0)
+                            .padding(.trailing, i % 2 == 0 ? inset : 0)
                             .id("\(line.id)-\(i)")
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
@@ -238,7 +242,9 @@ struct FoliaFumeView: View {
                             .font(.system(size: min(84, 44 * fontScale * 1.6), weight: .bold))
                             .foregroundStyle(Color(hex: primaryHex) ?? .white)
                             .shadow(color: .black.opacity(0.25), radius: 2, y: 2)
-                            .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                            // 巨字不再 fixedSize 单行：长句竖屏里会左右溢出屏幕；
+                            // 改两行内换行，字还是巨字，只是不出界。
+                            .lineLimit(2).multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .id(line.id)
                             .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.92)))

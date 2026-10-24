@@ -5,7 +5,6 @@ import UIKit
 struct FoliaSettingsView: View {
     @EnvironmentObject private var theme: ThemeStore
     @AppStorage(FoliaPreferences.modeKey) private var modeRaw = FoliaVisualizerMode.still.rawValue
-    @AppStorage(FoliaPreferences.fxKey) private var fxRaw = FoliaStageFX.none.rawValue
     @AppStorage(FoliaPreferences.fontScaleKey) private var fontScale = 1.0
     // 翻译已删：歌词数据里翻译本就是空的（translation: nil），
     // 显示翻译/翻译字号/翻译颜色三行是永远不起作用的死开关。
@@ -27,11 +26,6 @@ struct FoliaSettingsView: View {
                     Picker("歌词模式", selection: $modeRaw) {
                         ForEach(FoliaVisualizerMode.ordered) { mode in
                             Text(mode.title).tag(mode.rawValue)
-                        }
-                    }
-                    Picker("舞台特效", selection: $fxRaw) {
-                        ForEach(FoliaStageFX.allCases) { fx in
-                            Text(fx.title).tag(fx.rawValue)
                         }
                     }
                     Toggle("显示歌词", isOn: $showText)

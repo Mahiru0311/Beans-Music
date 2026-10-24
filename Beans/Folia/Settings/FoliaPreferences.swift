@@ -3,7 +3,6 @@ import Foundation
 // Separate namespaced settings coexist with Beans' original wallpaper, glass, and lyric preferences.
 enum FoliaPreferences {
     static let modeKey = "co.folia.stage.mode"
-    static let fxKey = "co.folia.stage.fx"
     static let fontScaleKey = "co.folia.lyrics.fontScale"
     static let subtitleScaleKey = "co.folia.lyrics.subtitleScale"
     static let translationKey = "co.folia.lyrics.showTranslation"

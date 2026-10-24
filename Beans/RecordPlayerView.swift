@@ -223,41 +223,32 @@ struct RecordPlayerView: View {
         .padding(.vertical, 12)
     }
 
+    // 横屏（手机）：封面在左、其余在右。左只放方形照片封面——内容是方形就保持方形，
+    // 不转黑胶圆盘；右栏从上到下是歌名歌手、歌词、进度、控制。横屏是固定布局，不跟布局编辑器走。
     private func landscapeLayout(size: CGSize) -> some View {
-        let artworkDimension = min(190, max(120, size.height - 175))
-        return VStack(spacing: 6) {
-            HStack(spacing: 18) {
+        let artworkDimension = min(220, max(140, size.height - 140))
+        return HStack(spacing: 24) {
+            CoverImage(url: displayCoverURL, size: artworkDimension, cornerRadius: 12)
+                .frame(width: artworkDimension, height: artworkDimension)
+            VStack(spacing: 12) {
                 if showQueue {
                     recordQueuePage
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .transition(.opacity)
-                } else if showLyrics {
-                    lyricsColumn
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    VStack(spacing: 7) {
-                        turntable(size: artworkDimension)
-                            .modifier(recordLayout(.vinylCover))
-                        trackMetadata
-                            .modifier(recordLayout(.vinylTitle))
-                    }
-                    .frame(maxWidth: .infinity)
+                    trackMetadata
                     lyricsColumn
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    RecordModeScrubber()
+                        .padding(.horizontal, 8)
+                    transportControls
+                        .frame(maxWidth: 360)
                 }
             }
-            .frame(maxHeight: .infinity)
-            VStack(spacing: 4) {
-                RecordModeScrubber()
-                    .padding(.horizontal, 24)
-                    .modifier(recordLayout(.progress))
-                transportControls
-                    .frame(maxWidth: 360)
-            }
-            .padding(.bottom, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(.horizontal, 24)
-        .padding(.top, 10)
+        .padding(.vertical, 16)
     }
 
     private func regularLayout(size: CGSize) -> some View {

@@ -102,6 +102,9 @@ struct ReferencePlaybackView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            if UIDevice.current.userInterfaceIdiom == .phone && geometry.size.width > geometry.size.height {
+                landscapeBody(size: geometry.size, bottomInset: geometry.safeAreaInsets.bottom)
+            } else {
             ZStack {
                 playerBackground
 
@@ -137,6 +140,7 @@ struct ReferencePlaybackView: View {
 
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
+            }
         }
         .onAppear {
             // 稳态直接对齐：恢复到歌词页打开时，首帧就是小封面，不经过大图闪一下。
@@ -160,6 +164,34 @@ struct ReferencePlaybackView: View {
         }
         .sheet(isPresented: $showLyricOffsetSheet) {
             CoLyricOffsetSheet()
+        }
+    }
+
+    // 横屏（手机）：封面在左、其余在右。左是方形封面（不变形）；右栏是歌词页
+    // （自带歌名/歌手页眉 + 同步歌词列表，队列表开着时右栏改显示队列表）+ 播放控制。
+    // 横屏是固定布局，不跟自定义布局编辑器走；转回竖屏时 showLyrics 不变。
+    private func landscapeBody(size: CGSize, bottomInset: CGFloat) -> some View {
+        let artworkSize = min(size.height - 64, size.width * 0.42)
+        return ZStack {
+            playerBackground
+            HStack(spacing: 24) {
+                CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
+                    .frame(width: artworkSize, height: artworkSize)
+                VStack(spacing: 0) {
+                    if showQueue {
+                        compactQueuePage
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        lyricsPage
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    playbackControls(bottomInset: bottomInset)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .frame(width: size.width, height: size.height)
         }
     }
 
