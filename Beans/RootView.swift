@@ -173,7 +173,6 @@ struct RootView: View {
     @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = BeansTabIconStyle.sfSymbols.rawValue
     @State private var tabVisibility = BeansTabVisibility.load()
     @AppStorage("beans.queueOverlayPresented") private var queueOverlayPresented = false
-    @AppStorage("beans.developer.homeFrameMeter") private var homeFrameMeterEnabled = true
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
     @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
@@ -244,14 +243,6 @@ struct RootView: View {
 
     private var usesPadSidebar: Bool {
         UIDevice.current.userInterfaceIdiom == .pad
-    }
-
-    private var usesSystemPlayerDismissal: Bool {
-        // Preserve the native interactive dismissal on iOS 26. The local
-        // offset fallback exposes the root surface during a drag, which can
-        // flash white when a custom wallpaper has not drawn underneath yet.
-        if #available(iOS 26.0, *) { return true }
-        return false
     }
 
     var body: some View {
@@ -374,7 +365,7 @@ struct RootView: View {
     private var playerPresentation: some View {
         BeansNowPlayingPresentation(
             isPresented: $showPlayer,
-            usesSystemInteractiveDismissal: usesSystemPlayerDismissal
+            usesSystemInteractiveDismissal: true
         ) {
             PlayerView(isPresented: $showPlayer)
                 .environmentObject(favorites)
@@ -385,7 +376,6 @@ struct RootView: View {
     }
 
     /// iOS 26 的系统 Tab 容器：仅 iPad 横屏使用系统侧边栏。
-    @available(iOS 26.0, *)
     @ViewBuilder
     private func nativeTabs(isPadLandscape: Bool) -> some View {
         if isPadLandscape {
@@ -396,14 +386,12 @@ struct RootView: View {
         }
     }
 
-    @available(iOS 26.0, *)
     @ViewBuilder
     private func nativeTabContent(isPadLandscape: Bool) -> some View {
         dynamicNativeTabContent(isPadLandscape: isPadLandscape)
     }
 
 
-    @available(iOS 26.0, *)
     private func dynamicNativeTabContent(isPadLandscape: Bool) -> some View {
         TabView(selection: $selection) {
             if tabVisibility.discover {
@@ -457,7 +445,6 @@ struct RootView: View {
         return tabLabelsVisible ? LocalizedStringKey(tab.title) : LocalizedStringKey("")
     }
 
-    @available(iOS 26.0, *)
     @ViewBuilder
     private func nativeTabLabel(_ tab: RootTab) -> some View {
         Label {
@@ -1128,7 +1115,6 @@ private struct BeansPresentedSurfaceClearer: UIViewControllerRepresentable {
 
 
 
-@available(iOS 26.0, *)
 private struct MiniPlayerAccessoryModifier: ViewModifier {
     let isActive: Bool
     @Binding var showPlayer: Bool
@@ -1141,14 +1127,8 @@ private struct MiniPlayerAccessoryModifier: ViewModifier {
         // Keep the TabView at one structural identity while a detail cover is
         // presented. Branching around `content` tears down the cover's owner;
         // its onDisappear then re-enables the accessory and repeats the cycle.
-        if #available(iOS 26.1, *) {
-            content.tabViewBottomAccessory(isEnabled: isActive) {
-                accessory
-            }
-        } else {
-            content.tabViewBottomAccessory {
-                if isActive { accessory }
-            }
+        content.tabViewBottomAccessory(isEnabled: isActive) {
+            accessory
         }
     }
 
@@ -1164,7 +1144,6 @@ private struct MiniPlayerAccessoryModifier: ViewModifier {
 }
 
 /// 根据系统 accessory 位置在展开和紧凑布局之间切换。
-@available(iOS 26.0, *)
 private struct RootMiniPlayerAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @Binding var showPlayer: Bool

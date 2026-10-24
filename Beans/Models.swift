@@ -51,7 +51,6 @@ enum ThirdPartyAudioQuality: String, CaseIterable, Identifiable, Sendable {
     case master = "master"
 
     static let storageKey = "beans.thirdPartyAudioQuality"
-    static let downloadStorageKey = "beans.downloadAudioQuality"
 
     var id: String { rawValue }
 
@@ -89,12 +88,6 @@ enum ThirdPartyAudioQuality: String, CaseIterable, Identifiable, Sendable {
     /// 当前第三方音源优先音质。
     static var current: ThirdPartyAudioQuality {
         UserDefaults.standard.string(forKey: storageKey)
-            .flatMap { ThirdPartyAudioQuality(sourceValue: $0) } ?? .kb320
-    }
-
-    /// 下载使用的独立音质设置，默认保持 320k 以兼容旧版本。
-    static var downloadCurrent: ThirdPartyAudioQuality {
-        UserDefaults.standard.string(forKey: downloadStorageKey)
             .flatMap { ThirdPartyAudioQuality(sourceValue: $0) } ?? .kb320
     }
 
@@ -452,13 +445,6 @@ struct Album: Identifiable, Hashable, Codable {
     }
 
 
-    private static func releaseDateString(timestamp: TimeInterval) -> String? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
-        let components = calendar.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: timestamp))
-        guard let year = components.year, let month = components.month, let day = components.day else { return nil }
-        return String(format: "%04d-%02d-%02d", year, month, day)
-    }
 }
 
 struct Playlist: Identifiable, Hashable, Codable {

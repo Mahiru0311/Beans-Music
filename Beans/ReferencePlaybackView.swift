@@ -776,7 +776,7 @@ struct ReferencePlaybackView: View {
 
     private var accentColor: Color {
         if accentHex.hasPrefix("#"), let color = Color(hex: accentHex) { return color }
-        return Color(red: 1.0, green: 0.28, blue: 0.36)
+        return Color.beansAppleMusicAccentFallback
     }
 
     private var volumeColor: Color {

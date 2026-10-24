@@ -1072,16 +1072,9 @@ struct DiscoverView: View {
 
     @ViewBuilder
     private var playlistSearchField: some View {
-        if #available(iOS 26, *) {
-            GlassEffectContainer {
-                playlistSearchFieldContent
-                    .glassEffect(.regular, in: .rect(cornerRadius: 16))
-            }
-        } else {
+        GlassEffectContainer {
             playlistSearchFieldContent
-                .background {
-                    BeansGlass(shape: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
+                .glassEffect(.regular, in: .rect(cornerRadius: 16))
         }
     }
 
@@ -1164,68 +1157,26 @@ struct DiscoverView: View {
 
     @ViewBuilder
     private var playlistSearchFieldContent: some View {
-        if #available(iOS 26, *) {
-            ZStack(alignment: .trailing) {
-                NativeSearchBar(
-                    text: $playlistSearchText,
-                    placeholder: playlistSearchPrompt,
-                    onTextChange: { value in
-                        if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, playlistSearchActive {
-                            clearPlaylistSearch()
-                        }
-                    },
-                    onSubmit: { _ in submitPlaylistSearch() }
-                )
-                if playlistSearchLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Color.beansAmber)
-                        .padding(.trailing, 14)
-                        .allowsHitTesting(false)
-                }
-            }
-            .frame(height: 46)
-        } else {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.beansComment)
-
-                TextField(playlistSearchPrompt, text: $playlistSearchText)
-                    .font(BeansFont.appFont(14))
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .onSubmit { submitPlaylistSearch() }
-
-                if playlistSearchLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Color.beansAmber)
-                } else if !playlistSearchText.isEmpty {
-                    Button { clearPlaylistSearch() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(Color.beansComment.opacity(0.85))
+        ZStack(alignment: .trailing) {
+            NativeSearchBar(
+                text: $playlistSearchText,
+                placeholder: playlistSearchPrompt,
+                onTextChange: { value in
+                    if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, playlistSearchActive {
+                        clearPlaylistSearch()
                     }
-                    .buttonStyle(.plain)
-                }
-
-                Button { submitPlaylistSearch() } label: {
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 19))
-                        .foregroundStyle(Color.beansAmber)
-                }
-                .buttonStyle(.plain)
-                .disabled(playlistSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || playlistSearchLoading)
-                .opacity(playlistSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
-            }
-            .padding(.horizontal, 13)
-            .frame(height: 42)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                },
+                onSubmit: { _ in submitPlaylistSearch() }
+            )
+            if playlistSearchLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(Color.beansAmber)
+                    .padding(.trailing, 14)
+                    .allowsHitTesting(false)
             }
         }
+        .frame(height: 46)
     }
 
     @MainActor

@@ -526,36 +526,6 @@ struct ProfileView: View {
     }
 
 
-    private func currentProfileWindowSnapshot() -> (image: UIImage, size: CGSize)? {
-        let windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .filter { $0.windowLevel == .normal && !$0.isHidden }
-        guard let window = windows.first(where: { $0.isKeyWindow }) ?? windows.first else { return nil }
-
-        // Render the visible profile region into a same-sized image so a sheet
-        // presentation does not misalign the reveal overlay on older iOS.
-        let globalFrame = profileGlobalFrame == .zero
-            ? window.convert(window.bounds, to: nil)
-            : profileGlobalFrame
-        let windowFrame = window.convert(globalFrame, from: nil)
-        guard windowFrame.width > 1, windowFrame.height > 1 else { return nil }
-
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = min(window.screen.scale, 1.5)
-        format.opaque = false
-        let image = UIGraphicsImageRenderer(
-            size: windowFrame.size,
-            format: format
-        ).image { context in
-            context.cgContext.translateBy(x: -windowFrame.minX, y: -windowFrame.minY)
-            if !window.drawHierarchy(in: window.bounds, afterScreenUpdates: false) {
-                window.layer.render(in: context.cgContext)
-            }
-        }
-        return (image, windowFrame.size)
-    }
-
     /// Delay presentation by one main-queue turn so the active profile tab
     /// finishes its update before the settings controller is created.
     private func openSettings() {
@@ -1222,26 +1192,6 @@ struct ProfileView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("用户 ID \(DeviceIdentity.publicID)，点击复制")
     }
-    private func profileStat(title: String, value: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.beansAmber)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(BeansFont.appFont(11, .medium))
-                    .foregroundStyle(Color.beansSecondary)
-                Text(value)
-                    .font(BeansFont.appFont(15, .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-            }
-            Spacer(minLength: 8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var userCard: some View {
         VStack(spacing: 16) {
             Button {
@@ -2361,7 +2311,6 @@ struct SettingsView: View {
                     .controlSize(.regular)
             }
         }
-        .environment(\.beansSettingsPerformanceMode, false)
         .preferredColorScheme(themeMode.colorScheme)
         .onAppear {
             if defersSettingsContentForCompatibility {
@@ -3023,12 +2972,10 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .tint(Color.beansAmber)
 
-                if #available(iOS 26, *) {
-                    Toggle("关闭液态模式", isOn: $disableLiquidGlass)
-                        .font(BeansFont.appFont(15))
-                        .tint(Color.beansAmber)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Toggle("关闭液态模式", isOn: $disableLiquidGlass)
+                    .font(BeansFont.appFont(15))
+                    .tint(Color.beansAmber)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 DisclosureGroup(isExpanded: $appearanceDetailsExpanded) {
                     VStack(alignment: .leading, spacing: 14) {

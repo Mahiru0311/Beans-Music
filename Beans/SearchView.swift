@@ -106,17 +106,6 @@ struct BeansUnifiedSearchField: View {
             .clipShape(Capsule())
     }
 
-    /// 保留旧系统原有的圆角、尺寸与材质，避免 iOS 26 的液态搜索栏影响低系统布局。
-    private var legacyField: some View {
-        fieldContent
-            .padding(.vertical, 6)
-            .background {
-                BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .beansCardShadow(radius: 4, y: 2)
-    }
-
     private var fieldContent: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
@@ -223,12 +212,8 @@ struct SearchView: View {
 
     private var musicSearchBody: some View {
         BeansNavigationStack {
-            if #available(iOS 26, *) {
-                pageContent
-                    .navigationTitle(keyword.isEmpty ? "搜索" : keyword)
-            } else {
-                pageContent
-            }
+            pageContent
+                .navigationTitle(keyword.isEmpty ? "搜索" : keyword)
         }
         .task(id: provider) {
             if provider == .bilibili { return }
@@ -328,11 +313,7 @@ struct SearchView: View {
 
     @ViewBuilder
     private var pageContent: some View {
-        if #available(iOS 26, *) {
-            modernPageContent
-        } else {
-            legacyPageContent
-        }
+        modernPageContent
     }
 
     private var modernPageContent: some View {
@@ -355,56 +336,6 @@ struct SearchView: View {
             }
             .beansScrollIndicatorsHidden()
             .beansScrollDismissesKeyboard()
-        }
-    }
-
-    private var legacyPageContent: some View {
-        let _ = theme.accent
-        return ZStack {
-            if !usesSharedRootBackdrop {
-                GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-            }
-            TabBarAppearanceConfigurator()
-            VStack(spacing: 0) {
-                legacyHeaderTitle
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 10)
-                searchField
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
-                ScrollView {
-                    legacyContentArea
-                        .frame(maxWidth: .infinity, alignment: .top)
-                        .padding(.bottom, 120)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .beansScrollIndicatorsHidden()
-                .beansScrollDismissesKeyboard()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-    }
-
-    private var legacyHeaderTitle: some View {
-        HStack {
-            Text("搜索")
-                .font(BeansFont.appFont(32, .bold))
-                .foregroundStyle(Color.beansLabel)
-            Spacer(minLength: 0)
-        }
-    }
-
-    @ViewBuilder
-    private var legacyContentArea: some View {
-        if keyword.isEmpty {
-            hotSection
-        } else {
-            VStack(spacing: 0) {
-                typeTabs
-                resultsArea
-            }
-            .frame(maxWidth: .infinity, alignment: .top)
         }
     }
 
@@ -1044,17 +975,6 @@ struct SearchView: View {
         }
     }
 
-    /// 点击歌手 / 专辑：以其名称搜索歌曲
-    private func searchBy(_ name: String) {
-        BeansHaptics.tap()
-        keyword = name
-        searchController.dismissKeyboard()
-        debounceTask?.cancel()
-        historyStore.record(name)
-        resultType = .song
-        Task { await startSearch(name) }
-    }
-
     private func loadHotWords() async {
         let requestedProvider = provider
         hotWords = await KugouMusicAPI.shared.hotWords()
@@ -1387,7 +1307,7 @@ struct SearchView: View {
             } else if searching && playlistResults.isEmpty {
                 searchResultsLoadingState
             } else if playlistResults.isEmpty {
-                EmptyStateView(icon: "music.note.list", text: "\(provider.rawValue)未找到相关歌单")
+                EmptyStateView(icon: "music.note.list", text: "暂无歌单搜索接口")
             } else {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], alignment: .center, spacing: 20) {
                     ForEach(playlistResults) { playlist in

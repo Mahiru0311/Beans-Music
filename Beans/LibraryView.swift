@@ -32,6 +32,7 @@ struct LibraryView: View {
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
     @State private var showHistory = false
+    @State private var showAccountHub = false
     @State private var showSectionSort = false
     @State private var showSyncedPlaylistSort = false
     /// 音乐库板块顺序（本地音乐库 / 我的歌单 / 最近播放，可自定义）
@@ -113,6 +114,11 @@ struct LibraryView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .beansKugouLoginDidUpdate)) { _ in
             Task { await loadKugouPlaylists(force: true) }
+        }
+        .sheet(isPresented: $showAccountHub) {
+            AccountHubSheet()
+                .environmentObject(theme)
+                .environmentObject(auth)
         }
         .sheet(isPresented: $showHistory) {
             HistoryView()
@@ -307,7 +313,13 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "我的酷狗歌单", trailing: kugouAuth.isLoggedIn ? "\(kugouPlaylists.count) 个" : nil)
             if !kugouAuth.isLoggedIn {
-                EmptyStateView(icon: "music.note.list", text: "登录酷狗音乐后即可同步云端歌单")
+                Button {
+                    BeansHaptics.tap()
+                    showAccountHub = true
+                } label: {
+                    EmptyStateView(icon: "music.note.list", text: "登录酷狗音乐后即可同步云端歌单")
+                }
+                .buttonStyle(.plain)
             } else if kugouLoading {
                 LoadingStateView()
             } else if kugouPlaylists.isEmpty {

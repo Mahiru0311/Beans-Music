@@ -53,11 +53,7 @@ struct MiniPlayerView: View {
         if presentation.drawsBackground {
             content
                 .background {
-                    if #available(iOS 26.0, *) {
-                        BeansGlass(shape: Capsule(), forceLiquid: true)
-                    } else {
-                        Capsule().fill(miniPlayerMaterial)
-                    }
+                    BeansGlass(shape: Capsule(), forceLiquid: true)
                 }
                 .overlay {
                     Capsule()
@@ -72,10 +68,6 @@ struct MiniPlayerView: View {
     /// 横屏 iPad 的悬浮播放器使用更薄的材质，让主页内容本身成为玻璃后的底图。
     private var isIPadLandscape: Bool {
         UIDevice.current.userInterfaceIdiom == .pad && verticalSizeClass == .compact
-    }
-
-    private var miniPlayerMaterial: Material {
-        isIPadLandscape ? .ultraThinMaterial : .regularMaterial
     }
 
     private var content: some View {
@@ -184,11 +176,7 @@ private struct MiniPlayerPlatformShadow: ViewModifier {
     let isIPadLandscape: Bool
 
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.shadow(color: .black.opacity(isIPadLandscape ? 0.08 : 0.12), radius: 10, y: 4)
-        } else {
-            content
-        }
+        content.shadow(color: .black.opacity(isIPadLandscape ? 0.08 : 0.12), radius: 10, y: 4)
     }
 }
 

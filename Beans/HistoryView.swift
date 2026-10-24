@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var theme: ThemeStore
+    @State private var showClearConfirm = false
 
     var body: some View {
         BeansNavigationStack {
@@ -27,11 +28,17 @@ struct HistoryView: View {
             }
             .navigationTitle("最近播放")
             .navigationBarTitleDisplayMode(.inline)
+            .alert("清除播放历史？", isPresented: $showClearConfirm) {
+                Button("清除", role: .destructive) { player.clearHistory() }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("将清除全部播放历史，此操作不可恢复；收藏、歌单不受影响。")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !player.history.isEmpty {
                         Button("清空") {
-                            player.clearHistory()
+                            showClearConfirm = true
                         }
                     }
                 }

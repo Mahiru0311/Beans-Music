@@ -35,18 +35,6 @@ struct FavoriteHeartView: View {
 }
 import CoreImage.CIFilterBuiltins
 
-private struct BeansSettingsPerformanceModeKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    /// 设置页在旧系统上使用轻量表面，避免展开大量控件时反复合成材质。
-    var beansSettingsPerformanceMode: Bool {
-        get { self[BeansSettingsPerformanceModeKey.self] }
-        set { self[BeansSettingsPerformanceModeKey.self] = newValue }
-    }
-}
-
 extension View {
     /// 在紧凑宽度保持手机排版，在规则宽度适当放宽内容区域。
     func beansAdaptiveContentWidth(compact: CGFloat = 860, regular: CGFloat = 1100) -> some View {
@@ -148,7 +136,6 @@ struct GlassPressButtonStyle: ButtonStyle {
 struct GlassBackdrop: View {
     @EnvironmentObject private var theme: ThemeStore
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.beansSettingsPerformanceMode) private var settingsPerformanceMode
     /// 自定义背景色（nil 使用默认氛围渐变）
     var customColor: Color? = nil
     /// 主页模式：即使“同步到全部页面”关闭，也始终显示壁纸/背景色（仅发现页传 true）
@@ -204,7 +191,7 @@ struct GlassBackdrop: View {
             } else {
                 LinearGradient.beansBackdrop
             }
-            if uiStyle != .nativeClean, !settingsPerformanceMode, !isDynamicWallpaperActive {
+            if uiStyle != .nativeClean, !isDynamicWallpaperActive {
                 Circle()
                     .fill(Color.beansAmber.opacity(0.14))
                     .frame(width: 340, height: 340)
@@ -363,7 +350,6 @@ struct BeansGlass<S: Shape>: View {
     @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
     @ObservedObject private var theme = ThemeStore.shared
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.beansSettingsPerformanceMode) private var settingsPerformanceMode
 
     let shape: S
     var forceLiquid = false
@@ -423,15 +409,7 @@ struct BeansGlass<S: Shape>: View {
     }
 
     var body: some View {
-        if settingsPerformanceMode {
-            // Use an opaque system surface in settings. This preserves clear
-            // control boundaries without a liquid or live-blur layer.
-            shape
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                .allowsHitTesting(false)
-        } else {
-            regularBody
-        }
+        regularBody
     }
 }
 
@@ -753,11 +731,7 @@ extension View {
     /// 主页在 iOS 26+ 使用透明导航栏，让壁纸和内容可延伸到顶部安全区域。
     @ViewBuilder
     func beansHomeNavigationBarTransparent() -> some View {
-        if #available(iOS 26, *) {
-            self.toolbarBackground(.hidden, for: .navigationBar)
-        } else {
-            self
-        }
+        self.toolbarBackground(.hidden, for: .navigationBar)
     }
 
     /// 隐藏滚动条
@@ -778,46 +752,6 @@ extension View {
         self.scrollContentBackground(.hidden)
     }
 
-}
-
-private struct BeansDetailMiniPlayerModifier: ViewModifier {
-    @EnvironmentObject private var auth: AuthStore
-    @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var theme: ThemeStore
-    @ObservedObject private var favorites = FavoritesStore.shared
-    @State private var showPlayer = false
-
-    func body(content: Content) -> some View {
-        content
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if player.currentSong != nil {
-                    MiniPlayerView(
-                        showPlayer: $showPlayer,
-                        presentation: .dock
-                    )
-                    .environmentObject(player.clock)
-                    .environmentObject(theme)
-                    .environmentObject(favorites)
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 4)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .fullScreenCover(isPresented: $showPlayer) {
-                // 详情页使用与主页相同的播放页容器，确保顶部下拉手势可以关闭播放器。
-                BeansNowPlayingPresentation(
-                    isPresented: $showPlayer,
-                    usesSystemInteractiveDismissal: false
-                ) {
-                    PlayerView(isPresented: $showPlayer)
-                        .environmentObject(auth)
-                        .environmentObject(player)
-                        .environmentObject(player.clock)
-                        .environmentObject(theme)
-                        .environmentObject(favorites)
-                }
-            }
-    }
 }
 
 // MARK: - 我的页隐藏歌单存储（旧线 1.8.5，只藏显示、不删歌单）

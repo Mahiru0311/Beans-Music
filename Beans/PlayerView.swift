@@ -215,24 +215,6 @@ struct PlayerView: View {
         layoutMode ? layoutPreviewShowLyrics : showLyrics
     }
 
-    private var classicPlayerFeaturesAvailable: Bool {
-        true
-    }
-
-    private var usesAppleMusicOverlayLayoutEditor: Bool {
-        if #available(iOS 26.0, *) {
-            return true
-        }
-        return false
-    }
-
-    private var usesFullScreenLayoutEditor: Bool {
-        if #available(iOS 26.0, *) {
-            return true
-        }
-        return false
-    }
-
     private var landscapeApplePrimaryColor: Color {
         Color.fromHexPrefixed(appleMusicPrimaryHex, fallback: .white)
     }
@@ -242,7 +224,7 @@ struct PlayerView: View {
     }
 
     private var landscapeAppleAccentColor: Color {
-        Color.fromHexPrefixed(appleMusicAccentHex, fallback: Color(red: 1.0, green: 0.28, blue: 0.36))
+        Color.fromHexPrefixed(appleMusicAccentHex, fallback: Color.beansAppleMusicAccentFallback)
     }
 
     private enum VinylLayoutDefaults {
@@ -715,11 +697,7 @@ struct PlayerView: View {
         }
         .fullScreenCover(isPresented: $layoutMode) {
             Group {
-                if usesFullScreenLayoutEditor {
-                    iOS26LayoutPreviewEditor
-                } else {
-                    unifiedPlayerLayoutEditor
-                }
+                iOS26LayoutPreviewEditor
             }
             .environmentObject(theme)
             .environmentObject(player)
@@ -837,24 +815,22 @@ struct PlayerView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            if classicPlayerFeaturesAvailable {
-                AmbientGlowView(
+            AmbientGlowView(
+                accent: palette.accent,
+                secondary: palette.secondary,
+                isPlaying: playerVisualsActive,
+                dustMode: playerDustMode,
+                dustDensity: playerDustDensity,
+                dustSize: playerDustSize,
+                breath: playerBreath
+            )
+            if djVisualEnabled {
+                DJVisualView(
                     accent: palette.accent,
                     secondary: palette.secondary,
                     isPlaying: playerVisualsActive,
-                    dustMode: playerDustMode,
-                    dustDensity: playerDustDensity,
-                    dustSize: playerDustSize,
-                    breath: playerBreath
+                    intensity: djVisualIntensity
                 )
-                if djVisualEnabled {
-                    DJVisualView(
-                        accent: palette.accent,
-                        secondary: palette.secondary,
-                        isPlaying: playerVisualsActive,
-                        intensity: djVisualIntensity
-                    )
-                }
             }
             LinearGradient(
                 colors: colorScheme == .dark
@@ -2411,85 +2387,6 @@ struct PlayerView: View {
         )
     }
 
-    #if false
-
-    private func controlPanelSurface(corner: CGFloat) -> some View {
-        let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
-        return ZStack {
-            BeansGlass(shape: shape)
-            shape
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            palette.accent.opacity(colorScheme == .dark ? 0.24 : 0.18),
-                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.28),
-                            palette.secondary.opacity(colorScheme == .dark ? 0.12 : 0.10),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            shape
-                .strokeBorder(.white.opacity(colorScheme == .dark ? 0.24 : 0.38), lineWidth: 0.9)
-            shape
-                .strokeBorder(palette.accent.opacity(0.18), lineWidth: 1.4)
-                .blur(radius: 0.4)
-        }
-    }
-
-    private var controlPanelLyricPreview: some View {
-        let rows = lyricPreviewRows
-        return VStack(spacing: 5) {
-            if rows.isEmpty {
-                Text("暂无歌词，点击封面查看完整歌词")
-                    .font(BeansFont.appFont(12, .medium))
-                    .foregroundStyle(albumPreviewDimForeground)
-                    .lineLimit(1)
-            } else {
-                ForEach(Array(rows.prefix(3).enumerated()), id: \.offset) { _, item in
-                    Text(item.text)
-                        .font(BeansFont.appFont(item.isCurrent ? 14 : 12, item.isCurrent ? .bold : .regular))
-                        .foregroundStyle(item.isCurrent ? albumPreviewForeground : albumPreviewDimForeground)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                        .frame(maxWidth: .infinity)
-                        .scaleEffect(item.isCurrent ? 1.02 : 0.96)
-                        .shadow(color: albumGlow(item.isCurrent ? albumPreviewLyricColor : albumPreviewDimColor), radius: albumTextGlow && item.isCurrent ? 8 : 0, y: 1)
-                        .animation(.easeInOut(duration: 0.18), value: item.isCurrent)
-                }
-            }
-        }
-        .frame(height: 58)
-        .padding(.horizontal, 18)
-        .contentShape(Rectangle())
-        .onTapGesture { toggleLyrics() }
-    }
-
-    private func controlPanelAction(icon: String, title: String, active: Bool = false, action: @escaping () -> Void) -> some View {
-        Button {
-            BeansHaptics.tap()
-            action()
-        } label: {
-            VStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 30, height: 30)
-                    .background(
-                        Circle()
-                            .fill(active ? controlAccent.opacity(0.24) : Color.white.opacity(0.08))
-                    )
-                Text(title)
-                    .font(BeansFont.appFont(10, .semibold))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(active ? controlAccent : albumPreviewDimColor)
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.92))
-    }
-
-    #endif
-
     /// 封面下歌词阅览：最多 5 行，跟随当前播放行自动滚动预览
     private var lyricPreviewBox: some View {
         let rows = lyricPreviewRows
@@ -3135,21 +3032,15 @@ struct PlayerView: View {
             .frame(width: size, height: size)
         case .appleMusic:
             if appleLiquid {
-                if #available(iOS 26, *) {
-                    GlassEffectContainer {
-                        Circle()
-                            .fill(.clear)
-                            .glassEffect(
-                                primary ? .regular.tint(.white.opacity(0.96)) : .regular,
-                                in: Circle()
-                            )
-                    }
-                    .frame(width: size, height: size)
-                } else {
+                GlassEffectContainer {
                     Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: size, height: size)
+                        .fill(.clear)
+                        .glassEffect(
+                            primary ? .regular.tint(.white.opacity(0.96)) : .regular,
+                            in: Circle()
+                        )
                 }
+                .frame(width: size, height: size)
             } else {
                 Color.clear
                     .frame(width: size, height: size)
@@ -3384,7 +3275,7 @@ struct PlayerView: View {
     private var appleMusicLayoutToolbar: some View {
         VStack(spacing: 10) {
             HStack {
-                Text(usesAppleMusicOverlayLayoutEditor ? "Apple Music 实时布局" : "Apple Music 布局调整")
+                Text("Apple Music 实时布局")
                     .font(BeansFont.appFont(15, .bold))
                 Spacer()
                 Button {
@@ -3399,9 +3290,6 @@ struct PlayerView: View {
                         .background { BeansSurface(shape: Capsule()) }
                 }
                 .buttonStyle(.plain)
-            }
-            if !usesAppleMusicOverlayLayoutEditor {
-                appleMusicLayoutPreview
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -3438,9 +3326,7 @@ struct PlayerView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Text(usesAppleMusicOverlayLayoutEditor
-                         ? "X / Y / 大小和 Apple Music 外观会立即同步到当前播放页"
-                         : "上方预览会同步显示当前调整，关闭此页后播放器也会保留相同布局")
+                    Text("X / Y / 大小和 Apple Music 外观会立即同步到当前播放页")
                         .font(BeansFont.appFont(11))
                         .foregroundStyle(palette.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3730,90 +3616,6 @@ struct PlayerView: View {
         }
     }
 
-    private var unifiedPlayerLayoutEditor: some View {
-        BeansNavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text("自定义布局")
-                            .font(BeansFont.appFont(20, .bold))
-                        Spacer()
-                        Button("完成") {
-                            BeansHaptics.select()
-                            layoutMode = false
-                        }
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansAmber)
-                    }
-
-                    layoutEditorStylePicker
-
-                    if UIDevice.current.userInterfaceIdiom == .pad {
-                        Picker("预览方向", selection: $layoutEditorUsesIPadLandscape) {
-                            Text("竖屏").tag(false)
-                            Text("横屏").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    if layoutEditorUsesIPadLandscape && UIDevice.current.userInterfaceIdiom == .pad {
-                        iPadLandscapeLayoutPreview
-                    } else if layoutEditorStyle == .appleMusic {
-                        appleMusicLayoutPreview
-                    } else {
-                        playerLayoutPreview
-                    }
-
-                    Picker("预览页面", selection: $layoutPreviewShowLyrics) {
-                        Text("封面").tag(false)
-                        Text("歌词").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-
-                    layoutEditorPartPicker
-                    layoutEditorSliders
-                    layoutEditorStyleDebugControls
-
-                    HStack(spacing: 18) {
-                        Button {
-                            resetUnifiedLayoutPart()
-                            BeansHaptics.success()
-                        } label: {
-                            Label("恢复当前", systemImage: "arrow.counterclockwise")
-                        }
-                        .foregroundStyle(Color.beansAmber)
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        Button {
-                            resetUnifiedLayoutStyle()
-                            BeansHaptics.success()
-                        } label: {
-                            Label("恢复此样式", systemImage: "arrow.counterclockwise.circle")
-                        }
-                        .foregroundStyle(Color.beansAmber)
-                        .buttonStyle(.plain)
-                    }
-
-                    Text(layoutEditorUsesIPadLandscape && UIDevice.current.userInterfaceIdiom == .pad
-                         ? "当前调整只保存到 iPad 横屏布局"
-                         : "当前调整只保存到所选播放器样式的竖屏布局")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .frame(maxWidth: 780)
-                .frame(maxWidth: .infinity)
-            }
-            .background { GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil) }
-            .navigationTitle("播放器布局")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    /// iOS 26 使用单个实时预览，调节控件直接修改布局数据，不重复创建播放器视图。
     private var iOS26LayoutPreviewEditor: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -4218,7 +4020,7 @@ struct PlayerView: View {
                 if appleAccentHex.hasPrefix("#"), let color = Color(hex: appleAccentHex) {
                     return color
                 }
-                return Color(red: 1.0, green: 0.28, blue: 0.36)
+                return Color.beansAppleMusicAccentFallback
             },
             set: { appleAccentHex = "#" + UIColor($0).hexString }
         )
@@ -4586,44 +4388,13 @@ struct PlayerView: View {
 
     @ViewBuilder
     private func layoutValueSlider(title: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat) -> some View {
-        if #available(iOS 26.0, *) {
-            Slider(value: value, in: range, step: step)
-                .tint(Color.beansAmber)
-                .transaction { transaction in transaction.animation = nil }
-        } else {
-            LegacyLayoutSlider(value: value, range: range, step: step, accessibilityLabel: title)
-                .frame(height: 36)
-        }
+        Slider(value: value, in: range, step: step)
+            .tint(Color.beansAmber)
+            .transaction { transaction in transaction.animation = nil }
     }
 
     // MARK: - 分享
 
-
-    /// 各平台歌曲链接（网易云 / QQ音乐 / 酷狗音乐）
-    private func shareURL(for song: Song) -> URL? {
-        switch song.source {
-        case .netease:
-            return URL(string: "https://music.163.com/#/song?id=\(song.id)")
-        case .qq:
-            if let mid = song.qqMid, !mid.isEmpty {
-                return URL(string: "https://y.qq.com/n/ryqq/songDetail/\(mid)")
-            }
-            let encoded = song.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? song.name
-            return URL(string: "https://y.qq.com/n/ryqq/search?w=\(encoded)")
-        case .kugou:
-            let encoded = song.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? song.name
-            return URL(string: "https://www.kugou.com/yy/html/search.html#searchType=song&searchKeyWord=\(encoded)")
-        case .kuwo:
-            return URL(string: "https://www.kuwo.cn/play_detail/\(song.id)")
-        case .migu:
-            return URL(string: "https://music.migu.cn/v3/music/song/\(song.id)")
-        case .qishui:
-            return song.officialURL
-        case .bilibili:
-            return song.officialURL
-        case .webdav: return nil
-        }
-    }
 
     // MARK: - 下载
 
@@ -5668,8 +5439,6 @@ struct PlayerSettingsSheet: View {
     @AppStorage("beans.lyricBackground.image") private var lyricBackgroundImagePath = ""
     @AppStorage("beans.lyricBackground.blur") private var lyricBackgroundBlur = 12.0
     @AppStorage("beans.lyricBackground.syncCover") private var lyricBackgroundSyncCover = false
-    @AppStorage("beans.audio.mixothers.v1") private var mixesWithOthers = false
-    @AppStorage("beans.nowPlaying.enabled.v1") private var nowPlayingEnabled = true
     @AppStorage("beans.playerButtonStyle") private var playerButtonStyleRaw = BeansPlayerButtonStyle.glass.rawValue
     @AppStorage("beans.albumTitleColorHex") private var albumTitleColorHex = ""
     @AppStorage("beans.albumArtistColorHex") private var albumArtistColorHex = ""
@@ -5694,10 +5463,6 @@ struct PlayerSettingsSheet: View {
 
     private var selectedCoverPlayerStyle: BeansCoverPlayerStyle {
         BeansCoverPlayerStyle.resolved(rawValue: coverPlayerStyleRaw)
-    }
-
-    private var classicPlayerFeaturesAvailable: Bool {
-        true
     }
 
     private var tiltYText: String {
@@ -6365,75 +6130,6 @@ struct PlayerSettingsSheet: View {
         }
     }
 }
-
-private struct LegacyLayoutSlider: UIViewRepresentable {
-    @Binding var value: CGFloat
-    let range: ClosedRange<CGFloat>
-    let step: CGFloat
-    let accessibilityLabel: String
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(value: $value, range: range, step: step)
-    }
-
-    func makeUIView(context: Context) -> UISlider {
-        let slider = UISlider(frame: .zero)
-        slider.minimumValue = Float(range.lowerBound)
-        slider.maximumValue = Float(range.upperBound)
-        slider.minimumTrackTintColor = UIColor(Color.beansAmber)
-        slider.maximumTrackTintColor = UIColor(Color.beansAmber.opacity(0.24))
-        slider.accessibilityLabel = accessibilityLabel
-        slider.addTarget(context.coordinator, action: #selector(Coordinator.valueChanged(_:)), for: .valueChanged)
-        update(slider)
-        return slider
-    }
-
-    func updateUIView(_ slider: UISlider, context: Context) {
-        context.coordinator.value = $value
-        context.coordinator.range = range
-        context.coordinator.step = step
-        slider.minimumValue = Float(range.lowerBound)
-        slider.maximumValue = Float(range.upperBound)
-        slider.accessibilityLabel = accessibilityLabel
-        update(slider)
-    }
-
-    private func update(_ slider: UISlider) {
-        let clamped = min(max(value, range.lowerBound), range.upperBound)
-        let snapped: CGFloat
-        if step > 0 {
-            snapped = range.lowerBound + ((clamped - range.lowerBound) / step).rounded() * step
-        } else {
-            snapped = clamped
-        }
-        slider.setValue(Float(min(max(snapped, range.lowerBound), range.upperBound)), animated: false)
-    }
-
-    final class Coordinator: NSObject {
-        var value: Binding<CGFloat>
-        var range: ClosedRange<CGFloat>
-        var step: CGFloat
-
-        init(value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat) {
-            self.value = value
-            self.range = range
-            self.step = step
-        }
-
-        @objc func valueChanged(_ sender: UISlider) {
-            let raw = CGFloat(sender.value)
-            let clamped = min(max(raw, range.lowerBound), range.upperBound)
-            let snapped: CGFloat
-            if step > 0 {
-                snapped = range.lowerBound + ((clamped - range.lowerBound) / step).rounded() * step
-            } else {
-                snapped = clamped
-            }
-            value.wrappedValue = min(max(snapped, range.lowerBound), range.upperBound)
-        }
-    }
-}
-
 
 private struct PlayerSettingsLiquidGlass<S: Shape>: View {
     let shape: S

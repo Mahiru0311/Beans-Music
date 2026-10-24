@@ -71,6 +71,7 @@ extension Color {
     static let beansSage = Color(uiColor: .beansSage)
     static let beansGlassFill = Color(uiColor: .beansGlassFill)
     static let beansThemeRed = Color(red: 0.93, green: 0.25, blue: 0.22)
+    static let beansAppleMusicAccentFallback = Color(red: 1.0, green: 0.28, blue: 0.36)
     /// 当前配色主题的高亮色（播放器进度点 / 光斑 / 歌词高亮等）
     static var beansHighlight: Color {
         ThemeStore.shared.customAccent ?? AccentTheme.current.highlight
@@ -924,28 +925,15 @@ extension LinearGradient {
 
 struct BeansCardShadowModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.beansSettingsPerformanceMode) private var settingsPerformanceMode
     var radius: CGFloat
     var y: CGFloat
 
     func body(content: Content) -> some View {
-        if settingsPerformanceMode {
-            if #available(iOS 26, *) {
-                content.shadow(
-                    color: colorScheme == .dark ? .black.opacity(0.35) : .black.opacity(0.08),
-                    radius: radius,
-                    y: y
-                )
-            } else {
-                content
-            }
-        } else {
-            content.shadow(
-                color: colorScheme == .dark ? .black.opacity(0.35) : .black.opacity(0.08),
-                radius: radius,
-                y: y
-            )
-        }
+        content.shadow(
+            color: colorScheme == .dark ? .black.opacity(0.35) : .black.opacity(0.08),
+            radius: radius,
+            y: y
+        )
     }
 }
 
