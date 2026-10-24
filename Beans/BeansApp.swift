@@ -25,7 +25,6 @@ struct BeansApp: App {
             "beans.uiStyle": BeansUIStyle.nativeClean.rawValue,
             "beans.coverPlayerStyle": BeansCoverPlayerStyle.appleMusic.rawValue,
             "beans.appleMusic.showVolume": false,
-            "beans.homeHideUsername": true,
             "beans.homeHeaderHideSort": true,
             "beans.homeHeaderHideRefresh": true,
             PlatformPreferenceStore.hidePickerKey: true,

@@ -64,7 +64,6 @@ struct DiscoverView: View {
     @AppStorage("beans.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
     @AppStorage("beans.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
     @AppStorage("beans.homeGreetingFont") private var homeGreetingFontName = ""
-    @AppStorage("beans.homeHideUsername") private var homeHideUsername = false
     @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
@@ -327,18 +326,6 @@ struct DiscoverView: View {
                         }
                     }
                     .contentShape(Rectangle())
-                    if !homeHideUsername {
-                        Group {
-                            if let nickname = auth.user?.nickname, !nickname.isEmpty {
-                                Text(nickname)
-                            } else {
-                                Text(LocalizedStringKey("发现好音乐"))
-                            }
-                        }
-                        .font(BeansFont.appFont(13))
-                        .foregroundStyle(Color.beansComment)
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
                 Spacer()
                 HStack(spacing: 10) {

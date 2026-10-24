@@ -825,7 +825,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showMyPlaylists) {
             CoMyPlaylistsSheet(
-                playlists: visiblePlaylists,
+                playlists: myPlaylists,
                 isLoading: myPlaylistsLoading,
                 hasAnyPlaylists: !myPlaylists.isEmpty,
                 onRefresh: { await coLoadMyPlaylists(force: true) }
@@ -1583,8 +1583,9 @@ private extension ProfileView {
 /// 我的页“我喜欢 / 常听”共用歌曲列表：点行即播放并自动关闭，关 sheet 只靠下滑，不再另设“完成”按钮。
 /// 歌单列表弹窗（2026-10-24，只做歌单弹窗+新建，我的页其他地方不动）：
 /// 点数据行“歌单”格出本弹窗，款式同我喜欢/历史/常听的 sheet（自带 BeansNavigationStack、
-/// inline 标题、系统返回键）；列表口径同下方歌单区（visiblePlaylists，隐藏的歌单不列、
-/// 仍可在设置里恢复）；每条行点按用 NavigationLink 推入原有 PlaylistView，是真歌单页，
+/// inline 标题、系统返回键）；列表口径是全部歌单（myPlaylists，不用隐藏逻辑，
+/// 歌单是几个就是几个，下方歌单区的隐藏逻辑与设置恢复不受影响）；每条行点按用
+/// NavigationLink 推入原有 PlaylistView，是真歌单页，
 /// 不是假详情；返回键回到本弹窗列表、再下滑关闭回我的页。
 /// 新建歌单走真实酷狗接口 KugouMusicAPI.createPlaylist（不是本地歌单），建完强制刷新
 /// 我的歌单列表；新建的歌单先本地补进本弹窗列表（防服务端刷新延迟），点进去也是真歌单页。
@@ -2061,7 +2062,6 @@ struct SettingsView: View {
     @AppStorage("beans.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
     @AppStorage("beans.homeGreetingFont") private var homeGreetingFontName = ""
     @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
-    @AppStorage("beans.homeHideUsername") private var homeHideUsername = false
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
     @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
@@ -3650,7 +3650,6 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
-                appearanceToggle("隐藏主页用户名", isOn: $homeHideUsername)
                 appearanceToggle("隐藏所有界面排序按钮", isOn: $homeHeaderHideSort)
                 appearanceToggle("隐藏顶部平台列表", isOn: $hidePlatformPicker)
                 appearanceToggle("隐藏主页刷新按钮", isOn: $homeHeaderHideRefresh)
