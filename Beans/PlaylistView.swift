@@ -1,13 +1,5 @@
 import SwiftUI
 
-/// 歌单内排序方式（标准布局用；截图式布局按歌单原顺序播，不提供排序入口）
-enum PlaylistSortMode: String, CaseIterable, Identifiable {
-    case original = "默认"
-    case name = "歌名"
-    case duration = "时长"
-    var id: String { rawValue }
-}
-
 /// 统一歌单详情的数据源适配层：用户歌单、每日推荐、排行榜都走同一个 View 渲染，
 /// 只换加载方式与头部数据，不再为每种歌单各做一个页面。
 private enum CoPlaylistLoadMode {
@@ -27,10 +19,10 @@ private struct CoPlaylistHeaderData {
 
 /// 统一歌单详情页：我的页、歌单弹窗、主页每日推荐、榜单、搜索结果、歌单库、侧栏
 /// 点进来的都是这一个 View、同一套头部、同一套控制、同一套歌曲行、同一套播放队列。
-/// 截图式布局（默认，沉浸详情界面开着时）：封面全幅铺满、居中歌单名、来源、首数、
+/// 截图式布局（唯一布局，不再分叉）：封面全幅铺满、居中歌单名、来源、首数、
 /// 随机 / 播放 / 下载一排、简介、搜索歌曲 + 收藏星、歌曲行。
-/// 沉浸详情界面关着时，用户歌单仍走原来的标准布局（小封面 + 播放全部），
-/// 每日推荐与榜单没有标准布局历史，一律走截图式布局。
+/// 用户歌单、每日推荐、榜单一律同用这一套逻辑，不再受沉浸详情界面开关影响；
+/// 该开关仍保留给歌手页、本地音乐区、搜索专辑页等其他详情页用。
 struct PlaylistView: View {
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
@@ -42,13 +34,8 @@ struct PlaylistView: View {
     @State private var loading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
-    @State private var sortMode: PlaylistSortMode = .original
-    @State private var showPlaylistDescription = false
     @State private var showDownloadUnsupported = false
     @State private var showCollectUnsupported = false
-    @AppStorage(BeansImmersiveDetailHeader.enabledKey) private var immersiveDetail = true
-    @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
 
     init(playlist: Playlist) {
@@ -74,15 +61,6 @@ struct PlaylistView: View {
     private static func initialCachedSongs(for playlist: Playlist) -> SyncedPlaylistCache.SongEntry? {
         let accountID: String = playlist.source == .kugou ? KugouMusicAuth.shared.userId : ""
         return SyncedPlaylistCache.shared.cachedSongs(playlist: playlist, accountID: accountID)
-    }
-
-    private var isNativeClean: Bool {
-        BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
-
-    private var isUserMode: Bool {
-        if case .userPlaylist = loadMode { return true }
-        return false
     }
 
     private var userPlaylist: Playlist? {
@@ -138,14 +116,10 @@ struct PlaylistView: View {
     }
 
     var body: some View {
-        if immersiveDetail || !isUserMode {
-            unifiedBody
-        } else {
-            standardBody
-        }
+        unifiedBody
     }
 
-    // MARK: - 截图式统一布局
+    // MARK: - 统一布局（用户歌单、每日推荐、榜单同用，不再受沉浸开关影响）
 
     private var unifiedBody: some View {
         let _ = theme.accent
@@ -380,190 +354,10 @@ struct PlaylistView: View {
         player.play(songs: orderedTracks, startAt: Int.random(in: 0..<orderedTracks.count))
     }
 
-    // MARK: - 标准布局（沉浸详情界面关着时，用户歌单仍走老布局）
-
-    private var standardBody: some View {
-        let _ = theme.accent
-        return ZStack {
-            GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil)
-            Group {
-                if loading {
-                    BeansDetailSongsLoadingState(coverSize: 96, rowCount: 10)
-                } else if let errorMessage {
-                    ErrorStateView(message: errorMessage) {
-                        Task { await load(force: true) }
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            standardHeader
-                            ForEach(Array(displayedTracks.enumerated()), id: \.element.identityKey) { _, song in
-                                SongCell(
-                                    song: song,
-                                    showCover: true,
-                                    suppressNativeCleanRowGlass: true,
-                                    coverSize: 46,
-                                    fixedRowHeight: 64,
-                                    playbackContext: orderedTracks,
-                                    playbackIndex: playbackIndex(for: song)
-                                ) {
-                                    player.play(songs: orderedTracks, startAt: playbackIndex(for: song))
-                                }
-                                .padding(.horizontal, 22)
-                            }
-                        }
-                        .padding(.top, 12)
-                        .padding(.bottom, 118)
-                    }
-                    .beansScrollIndicatorsHidden()
-                }
-            }
-        }
-        .navigationTitle(headerData.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-    }
-
-    private var standardHeader: some View {
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: isNativeClean ? 18 : 14) {
-                CoverImage(url: headerData.coverURL, size: 96, cornerRadius: 18)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(headerData.title)
-                        .font(BeansFont.appFont(18, .bold))
-                        .foregroundStyle(Color.beansLabel)
-                        .lineLimit(2)
-                    if !headerData.sourceName.isEmpty {
-                        HStack(spacing: 6) {
-                            CoverImage(url: headerData.creatorAvatarURL, size: 22, cornerRadius: 11)
-                            Text(headerData.sourceName)
-                                .font(BeansFont.appFont(12))
-                                .foregroundStyle(Color.beansComment)
-                        }
-                    }
-                    Text(beansSongCountText(tracks.count))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                    if headerData.playCount > 0 {
-                        Text("播放 \(formatPlaylistPlayCount(headerData.playCount))")
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            if let description = headerData.description {
-                Button {
-                    BeansHaptics.tap()
-                    showPlaylistDescription = true
-                } label: {
-                    HStack(alignment: .top, spacing: 6) {
-                        Text(description.replacingOccurrences(of: "\n", with: " "))
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
-                            .lineLimit(3)
-                            .multilineTextAlignment(.leading)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color.beansComment.opacity(0.72))
-                            .padding(.top, 2)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-            HStack(spacing: 10) {
-                GlassButton(title: "播放全部", systemName: "play.fill", prominent: true) {
-                    playAll()
-                }
-                GlassButton(title: "随机播放", systemName: "shuffle", forceLiquid: true) {
-                    playShuffled()
-                }
-            }
-            if tracks.count > 1 {
-                HStack {
-                    Text(beansSongCountText(displayedTracks.count))
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                    Spacer()
-                }
-            }
-            HStack(spacing: 10) {
-                if #available(iOS 26, *) {
-                    NativeSearchBar(
-                        text: $searchText,
-                        placeholder: beansLocalized("搜索歌单内歌曲", "Search songs in playlist"),
-                        onSubmit: { _ in }
-                    )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Color.beansComment)
-                        TextField(beansLocalized("搜索歌单内歌曲", "Search songs in playlist"), text: $searchText)
-                            .font(BeansFont.appFont(14))
-                            .autocorrectionDisabled()
-                        if !searchText.isEmpty {
-                            Button {
-                                searchText = ""
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Color.beansComment)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                }
-
-                if !hideSortButton {
-                    Menu {
-                        Picker("排序", selection: $sortMode) {
-                            ForEach(PlaylistSortMode.allCases) { mode in
-                                Text(LocalizedStringKey(mode.rawValue)).tag(mode)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.beansAmber)
-                            .frame(width: 38, height: 38)
-                            .background { BeansSurface(shape: Circle()) }
-                    }
-                    .buttonStyle(GlassPressButtonStyle())
-                }
-            }
-        }
-        .padding(.horizontal, 22)
-        .padding(.bottom, 14)
-        .sheet(isPresented: $showPlaylistDescription) {
-            BeansLongDescriptionSheet(title: "歌单简介", text: headerData.description ?? "")
-        }
-    }
-
-    private func formatPlaylistPlayCount(_ count: Int) -> String {
-        if count >= 100_000_000 { return String(format: "%.1f亿", Double(count) / 100_000_000) }
-        if count >= 10_000 { return String(format: "%.1f万", Double(count) / 10_000) }
-        return "\(count)"
-    }
-
     /// The full playlist order remains the playback queue even when the list is filtered.
+    /// 截图式布局不提供排序入口，队列永远是歌单原顺序。
     private var orderedTracks: [Song] {
-        var list = tracks
-        switch sortMode {
-        case .original: break
-        case .name:
-            list.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        case .duration:
-            list.sort { $0.duration < $1.duration }
-        }
-        return list
+        tracks
     }
 
     /// Search only changes what is visible, not the queue that follows the selected song.
