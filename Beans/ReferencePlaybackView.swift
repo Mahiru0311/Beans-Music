@@ -1634,6 +1634,7 @@ private struct WebCoverProgressModifier: AnimatableModifier {
         let scale = coverSize > 0 ? size / coverSize : 1
         return content
             .scaleEffect(scale, anchor: .topLeading)
+            .frame(width: size, height: size, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 18 - 8 * e, style: .continuous))
             .shadow(color: .black.opacity(0.46 - 0.20 * e), radius: 36 - 27 * e, y: 18 - 14 * e)
             .offset(x: left, y: top)
