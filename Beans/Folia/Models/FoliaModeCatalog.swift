@@ -1,34 +1,22 @@
 import Foundation
 
-// Folia v0.7.16 registry identities. Entries describe separate renderers, never aliases.
-enum FoliaPortStatus: String, Codable {
-    case pending
-    case draft
-    case verified
-}
-
+// Folia 舞台效果表（2026-10-25 重构后）：只留 8 个全部有原生渲染器的效果，
+// 待移植的空壳项已全部拿掉，设置页不再出现“待移植”。
 enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
-    case cadenza, cappella, claddagh, classic, diorama, fume, lumiere
-    case monet, partita, pendolo, sonnet, still, tempera, tilt
+    case sonnet, tempera, classic, cadenza, partita, fume, diorama, still
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .cadenza: return "心象"
-        case .cappella: return "群唱"
-        case .claddagh: return "回环"
-        case .classic: return "流光"
-        case .diorama: return "镜台"
-        case .fume: return "浮名"
-        case .lumiere: return "绘光"
-        case .monet: return "莫奈"
-        case .partita: return "云阶"
-        case .pendolo: return "时计"
         case .sonnet: return "商籁"
-        case .still: return "静止"
         case .tempera: return "凝彩"
-        case .tilt: return "倾诉"
+        case .classic: return "流光"
+        case .cadenza: return "心象"
+        case .partita: return "云阶"
+        case .fume: return "浮名"
+        case .diorama: return "镜台"
+        case .still: return "静止"
         }
     }
 
@@ -36,25 +24,17 @@ enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .sonnet: return 10
         case .tempera: return 20
-        case .lumiere: return 25
         case .classic: return 30
         case .cadenza: return 40
         case .partita: return 50
         case .fume: return 60
-        case .tilt: return 70
-        case .claddagh: return 80
-        case .monet: return 90
-        case .pendolo: return 100
-        case .cappella: return 110
-        case .diorama: return 120
-        case .still: return 130
+        case .diorama: return 70
+        case .still: return 80
         }
     }
 
-    var portStatus: FoliaPortStatus { hasNativeRenderer ? .draft : .pending }
-    var hasNativeRenderer: Bool { self == .still || self == .classic }
-    var sourcePath: String { "src/components/visualizer/\(rawValue)/entry.tsx" }
+    /// 重构后全部效果都有原生渲染器，不再有待移植项。
+    var hasNativeRenderer: Bool { true }
 
     static var ordered: [Self] { allCases.sorted { $0.order < $1.order } }
 }
-

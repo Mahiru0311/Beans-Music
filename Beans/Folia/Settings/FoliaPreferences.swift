@@ -18,8 +18,8 @@ enum FoliaPreferences {
     static let classicLegacyLayoutKey = "co.folia.classic.useLegacyLayout"
     static let classicSpacingKey = "co.folia.classic.wordSpacing"
 
-    static func availableMode(rawValue: String) -> FoliaVisualizerMode? {
-        guard let mode = FoliaVisualizerMode(rawValue: rawValue), mode.hasNativeRenderer else { return nil }
-        return mode
+    /// 重构后全部保留的效果都有渲染器；旧存档里已删的效果名回落到静止，不再出现空壳提示。
+    static func availableMode(rawValue: String) -> FoliaVisualizerMode {
+        FoliaVisualizerMode(rawValue: rawValue) ?? .still
     }
 }

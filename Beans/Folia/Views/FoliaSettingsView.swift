@@ -27,8 +27,7 @@ struct FoliaSettingsView: View {
                     Toggle("使用 Folia 舞台", isOn: $enabled)
                     Picker("歌词模式", selection: $modeRaw) {
                         ForEach(FoliaVisualizerMode.ordered) { mode in
-                            Text(mode.hasNativeRenderer ? mode.title : "\(mode.title) · 待移植")
-                                .tag(mode.rawValue).disabled(!mode.hasNativeRenderer)
+                            Text(mode.title).tag(mode.rawValue)
                         }
                     }
                     Toggle("显示歌词", isOn: $showText)

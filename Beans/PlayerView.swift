@@ -465,7 +465,7 @@ struct PlayerView: View {
         let _ = theme.accent
         GeometryReader { rootGeometry in
         Group {
-            if foliaStageEnabled && FoliaPreferences.availableMode(rawValue: foliaModeRaw) != nil {
+            if foliaStageEnabled {
                 FoliaStageView(song: song, lyrics: lyrics, onBack: {
                     foliaStageEnabled = false
                 }, onSettings: {
