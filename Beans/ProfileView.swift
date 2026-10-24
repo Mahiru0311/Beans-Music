@@ -2010,8 +2010,6 @@ struct SettingsView: View {
     @State private var settingsSearchText = ""
     @State private var settingsContentReady = false
     @State private var runtimeEnvironmentExpanded = false
-    @AppStorage(CoLockScreenArtwork.enabledKey) private var lockScreenImmersiveArtworkEnabled = true
-    @AppStorage(CoImmersiveDetailHeader.enabledKey) private var immersiveDetailEnabled = true
 
     private var themeMode: CoThemeMode {
         CoThemeMode(rawValue: themeModeRaw) ?? .system
@@ -2585,10 +2583,6 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
-                    .tint(Color.coAmber)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("co.settings.immersive-detail")
 
                 Picker("语言", selection: $languageRaw) {
                     ForEach(AppLanguage.allCases) { language in
@@ -3191,13 +3185,6 @@ struct SettingsView: View {
                     player.setNowPlayingEnabled(value)
                 }
 
-                Toggle("锁屏沉浸封面", isOn: $lockScreenImmersiveArtworkEnabled)
-                    .tint(Color.coAmber)
-                    .accessibilityIdentifier("co.settings.lock-screen-artwork")
-                    .onChange(of: lockScreenImmersiveArtworkEnabled) { _, _ in player.refreshLockScreenArtwork() }
-                Text("支持专辑封面、自定义 GIF 和视频封面。显示效果由系统和辅助功能设置决定。")
-                    .font(CoFont.appFont(11))
-                    .foregroundStyle(Color.coComment)
                 Button("清理未使用的锁屏素材") {
                     ToastCenter.shared.show("锁屏视频素材已在酷狗专版移除")
                 }

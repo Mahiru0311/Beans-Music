@@ -15,8 +15,7 @@ import UIKit
 /// 拖动最小距离 8pt、门控只在手势开始时定一次（scrollOffset <= 20）。
 /// 专辑页、歌手页用本文件全套；本地歌单页是 List 结构（swipeActions / 多选只在 List 里有），
 /// 不能照搬 ScrollView 固定层，见 LocalPlaylistDetailSheet 里的等价实现说明。
-/// 沉浸开关（beans.immersiveDetail.enabled）对这些页不再起分叉作用，body 永远走统一布局；
-/// 设置页“沉浸详情界面”开关本身不动（只是页不再读它）。
+/// 五页永远走统一布局，不再有开关分叉。
 
 /// 取色 helper 的回落深色底（旧统一深褐底的同一数值，不跟随系统深浅）。
 /// 只在没拿到图时作回落，不再是所有页统一的底色。

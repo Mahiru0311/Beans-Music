@@ -243,35 +243,6 @@ struct LibraryView: View {
             .contentShape(Rectangle())
     }
 
-    private var createPlaylistCard: some View {
-        Button {
-            CoHaptics.tap()
-            newPlaylistName = ""
-            showCreatePlaylist = true
-        } label: {
-            VStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                        .foregroundStyle(Color.coComment.opacity(0.45))
-                        .frame(width: 160, height: 160)
-                    Image(systemName: "plus")
-                        .font(.system(size: 26, weight: .medium))
-                        .foregroundStyle(Color.coComment)
-                }
-                Text("新建歌单")
-                    .font(CoFont.appFont(12, .medium))
-                    .foregroundStyle(Color.coComment)
-            }
-            .padding(8)
-            .frame(maxWidth: .infinity)
-            .background {
-                                CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "最近播放", trailing: "查看全部") {
@@ -351,6 +322,12 @@ struct LibraryView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            Button("删除", role: .destructive) {
+                                pendingDelete = playlist
+                                showDeleteConfirm = true
+                            }
+                        }
                         Divider().overlay(Color.coComment.opacity(0.12))
                     }
                 }
@@ -360,6 +337,24 @@ struct LibraryView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .coCardShadow(radius: 8, y: 3)
+            }
+            if kugouAuth.isLoggedIn {
+                Button {
+                    CoHaptics.tap()
+                    newPlaylistName = ""
+                    showCreatePlaylist = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                        Text("新建歌单")
+                    }
+                    .font(CoFont.appFont(14, .medium))
+                    .foregroundStyle(Color.coAmber)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -400,13 +395,36 @@ struct LibraryView: View {
             ToastCenter.shared.show("请输入歌单名称")
             return
         }
-        ToastCenter.shared.show("酷狗歌单暂不支持新建")
+        Task {
+            do {
+                _ = try await KugouMusicAPI.shared.createPlaylist(name: name)
+                newPlaylistName = ""
+                ToastCenter.shared.show("已创建")
+                await loadKugouPlaylists(force: true)
+            } catch {
+                ToastCenter.shared.show(error.localizedDescription)
+            }
+        }
     }
 
 
     private func confirmDeletePlaylist() {
-        guard let _ = pendingDelete else { return }
-        ToastCenter.shared.show("酷狗歌单暂不支持删除")
+        guard let playlist = pendingDelete else { return }
+        Task {
+            do {
+                let ok = try await KugouMusicAPI.shared.deletePlaylist(playlistID: playlist.id)
+                guard ok else {
+                    ToastCenter.shared.show("删除失败，请稍后重试")
+                    return
+                }
+                kugouPlaylists.removeAll { $0.id == playlist.id }
+                SyncedPlaylistCache.shared.savePlaylists(kugouPlaylists, source: .kugou, accountID: kugouCacheAccountID)
+                pendingDelete = nil
+                ToastCenter.shared.show("已删除")
+            } catch {
+                ToastCenter.shared.show(error.localizedDescription)
+            }
+        }
     }
 
     private func playFromHistory(_ song: Song) {

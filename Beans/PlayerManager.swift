@@ -178,11 +178,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private var lastNowPlayingArtworkKey: String?
     private var nowPlayingSongKey: String?
     private var nowPlayingInfo: [String: Any] = [:]
-    private lazy var lockScreenArtwork: CoLockScreenArtwork = {
-        let artwork = CoLockScreenArtwork()
-        artwork.onReady = { [weak self] in self?.updateNowPlaying() }
-        return artwork
-    }()
     /// 酷狗高音质地址在部分账号/系统上会返回但无法由 AVPlayer 打开；每首歌只自动降级一次。
     private var kugouStandardFallbackSongKey: String?
     /// 第三方地址偶发过期或节点不可用时，按失败域名重试，避免同一节点反复进入播放器。
@@ -2026,7 +2021,6 @@ final class PlayerManager: NSObject, ObservableObject {
                     }
                 }
             }
-            for (key, artwork) in lockScreenArtwork.artwork(sourceURL: artworkURL) { info[key] = artwork }
         } else {
             lastNowPlayingArtworkKey = nil
         }
@@ -2076,8 +2070,6 @@ final class PlayerManager: NSObject, ObservableObject {
         MPNowPlayingInfoCenter.default().playbackState = .stopped
         Task { @MainActor in CoNowPlayingLiveActivity.shared.update(song: nil, isPlaying: false) }
     }
-
-    func refreshLockScreenArtwork() { updateNowPlaying() }
 
     private func setupRemoteCommands() {
         guard !remoteCommandsInstalled else { return }
