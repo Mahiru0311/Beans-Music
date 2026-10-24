@@ -220,7 +220,7 @@ struct ArtistHomeSheet: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Text("\(index + 1)")
-                                    .font(BeansFont.appFont(13, .semibold, .rounded))
+                                    .font(BeansFont.appFont(13, .semibold, .default))
                                     .foregroundStyle(index < 3 ? Color.beansAmber : .white.opacity(0.6))
                                     .monospacedDigit()
                                     .lineLimit(1)

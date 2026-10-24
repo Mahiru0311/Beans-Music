@@ -1161,7 +1161,7 @@ struct ProfileView: View {
                 Image(systemName: isExclusive ? "crown.fill" : "number.circle.fill")
                     .font(.system(size: 9, weight: .bold))
                 Text(isExclusive ? "专属 ID · \(DeviceIdentity.publicID)" : "ID · \(DeviceIdentity.publicID)")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .font(.system(size: 10, weight: .medium, design: .default))
                     .monospacedDigit()
                     .lineLimit(1)
                 Image(systemName: "doc.on.doc")
@@ -1215,7 +1215,7 @@ struct ProfileView: View {
                             }
                         }
                         Text(accountStatusLine)
-                            .font(BeansFont.appFont(12, .regular, .monospaced))
+                            .font(BeansFont.appFont(12, .regular, .default))
                             .foregroundStyle(Color.beansComment)
                             .lineLimit(1)
                     }
@@ -1405,7 +1405,7 @@ private extension ProfileView {
                             }
                         }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isDeveloper ? "Beans Creator" : "用户 ID")
+                        Text(isDeveloper ? "Co Creator" : "用户 ID")
                             .font(BeansFont.appFont(14, .semibold))
                             .foregroundStyle(Color.beansLabel)
                         Text(isDeveloper ? "专属开发者铭牌" : "绑定当前设备，永久保留")
@@ -1421,7 +1421,7 @@ private extension ProfileView {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     if isDeveloper {
                         Text(DeviceIdentity.publicID)
-                            .font(.system(size: 25, weight: .bold, design: .rounded))
+                            .font(.system(size: 25, weight: .bold, design: .default))
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [Color(red: 0.98, green: 0.42, blue: 0.67), Color(red: 0.42, green: 0.48, blue: 1.0)],
@@ -1432,7 +1432,7 @@ private extension ProfileView {
                             .monospacedDigit()
                     } else {
                         Text(DeviceIdentity.publicID)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .font(.system(size: 22, weight: .bold, design: .default))
                             .foregroundStyle(Color.beansLabel)
                             .monospacedDigit()
                     }
@@ -2084,11 +2084,6 @@ struct SettingsView: View {
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
     @AppStorage("beans.audio.mixothers.v1") private var mixesWithOthers = false
     @AppStorage("beans.nowPlaying.enabled.v1") private var nowPlayingEnabled = true
-    @AppStorage("beans.audioQuality") private var playbackAudioQualityRaw = BeansAudioQuality.hires.rawValue
-    @AppStorage(PlayerManager.playbackSourcePreferenceKey) private var playbackSourcePreferenceRaw = PlaybackSourcePreference.automatic.rawValue
-    @AppStorage(NetworkAudioQuality.connectionAwareKey) private var connectionAwareQuality = false
-    @AppStorage(NetworkAudioQuality.wifiOfficialKey) private var wifiPlaybackAudioQualityRaw = BeansAudioQuality.hires.rawValue
-    @AppStorage(NetworkAudioQuality.cellularOfficialKey) private var cellularPlaybackAudioQualityRaw = BeansAudioQuality.higher.rawValue
     @AppStorage(BeansHaptics.enabledKey) private var hapticsEnabled = true
     @AppStorage("beans.playback.autoResumeLast") private var autoResumeLastPlayback = false
     @AppStorage("beans.labelColorHex") private var labelColorHex = ""
@@ -2136,7 +2131,6 @@ struct SettingsView: View {
     @State private var settingsCurrentHidden: [(id: Int, name: String)] = []
     @State private var settingsOtherHidden: [(userId: String, entries: [(id: Int, name: String)])] = []
     @State private var playbackExpanded = false
-    @State private var audioQualityExpanded = false
     @State private var showWallpaperPicker = false
     @State private var showProfileHeaderWallpaperPicker = false
     // 选图后先裁切、不直接存：有值时弹裁切页，点“完成”才存、点“取消”不存旧图不动。
@@ -2195,89 +2189,6 @@ struct SettingsView: View {
         let query = settingsSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return true }
         return terms.joined(separator: " ").localizedCaseInsensitiveContains(query)
-    }
-
-    @ViewBuilder
-    private func liquidQualityOptionBackground(selected: Bool) -> some View {
-        ZStack {
-            BeansGlass(shape: Capsule())
-            if selected {
-                Capsule()
-                    .fill(Color.beansAmber.opacity(0.16))
-            }
-        }
-    }
-
-    private var playbackAudioQualitySelection: Binding<BeansAudioQuality> {
-        Binding(
-            get: { BeansAudioQuality(rawValue: playbackAudioQualityRaw) ?? .hires },
-            set: { playbackAudioQualityRaw = $0.rawValue }
-        )
-    }
-
-    private var wifiPlaybackAudioQualitySelection: Binding<BeansAudioQuality> {
-        Binding(
-            get: { BeansAudioQuality(rawValue: wifiPlaybackAudioQualityRaw) ?? .hires },
-            set: { wifiPlaybackAudioQualityRaw = $0.rawValue }
-        )
-    }
-
-    private var cellularPlaybackAudioQualitySelection: Binding<BeansAudioQuality> {
-        Binding(
-            get: { BeansAudioQuality(rawValue: cellularPlaybackAudioQualityRaw) ?? .higher },
-            set: { cellularPlaybackAudioQualityRaw = $0.rawValue }
-        )
-    }
-
-
-    private var playbackQualitySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 9) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(beansLocalized("播放音质", "Playback quality"))
-                        .font(BeansFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.beansLabel)
-                    Text(beansLocalized("按列表选择，无法使用时会由平台自动降级。", "Choose a quality below; the platform will downgrade automatically when unavailable."))
-                        .font(BeansFont.appFont(10))
-                        .foregroundStyle(Color.beansComment)
-                        .lineLimit(1)
-                }
-                Spacer()
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(BeansAudioQuality.allCases) { quality in
-                        let selected = playbackAudioQualitySelection.wrappedValue == quality
-                        Button {
-                            playbackAudioQualitySelection.wrappedValue = quality
-                            BeansHaptics.select()
-                        } label: {
-                            HStack(spacing: 5) {
-                                Text(quality.displayName)
-                                if selected {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .bold))
-                                }
-                            }
-                            .font(BeansFont.appFont(12, selected ? .semibold : .medium))
-                            .foregroundStyle(selected ? Color.beansAmber : Color.beansLabel)
-                            .padding(.horizontal, 12)
-                            .frame(height: 31)
-                            .background {
-                                liquidQualityOptionBackground(selected: selected)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 1)
-            }
-        }
     }
 
     private var homeGreetingLines: [String] {
@@ -2385,7 +2296,7 @@ struct SettingsView: View {
             isPresented: $showExportBackup,
             document: backupDoc,
             contentType: .json,
-            defaultFilename: "Beans设置备份-\(Self.backupDateString())"
+            defaultFilename: "Co设置备份-\(Self.backupDateString())"
         ) { result in
             switch result {
             case .success:
@@ -2503,7 +2414,6 @@ struct SettingsView: View {
     }
 
     private var showAppearanceSettings: Bool { settingsMatches("主题 外观 背景 壁纸 底栏 颜色 赞助 深色 深浅") }
-    private var showAudioSettings: Bool { settingsMatches("音源 音质 网络 Wi-Fi 蜂窝 导入") }
     private var showPlaybackSettings: Bool { settingsMatches("播放 触感 锁屏 灵动岛") }
     private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
     private var showBackupSettings: Bool { settingsMatches("备份 恢复 导出 导入 缓存") }
@@ -2511,7 +2421,7 @@ struct SettingsView: View {
     private var showSupportSettings: Bool { settingsMatches("帮助 声明") }
     private var hasSettingsSearchResults: Bool {
         showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings
-            || showAudioSettings || showPlaybackSettings || showEqualizerSettings
+            || showPlaybackSettings || showEqualizerSettings
             || showBackupSettings || showChangelogSettings || showSupportSettings
     }
 
@@ -2698,10 +2608,8 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var playbackSettingsGroup: some View {
-        if showAudioSettings || showPlaybackSettings || showEqualizerSettings {
+        if showPlaybackSettings || showEqualizerSettings {
             SettingsCatalogGroup {
-                if showAudioSettings { audioQualitySection }
-                if showAudioSettings && (showPlaybackSettings || showEqualizerSettings) { catalogDivider }
                 if showPlaybackSettings { playbackSection }
                 if showPlaybackSettings && showEqualizerSettings { catalogDivider }
                 if showEqualizerSettings { equalizerSection }
@@ -2726,125 +2634,6 @@ struct SettingsView: View {
         Divider()
             .overlay(Color.primary.opacity(0.09))
             .padding(.leading, 48)
-    }
-
-    private func officialQualityPills(_ selection: Binding<BeansAudioQuality>) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(BeansAudioQuality.allCases) { quality in
-                    let selected = selection.wrappedValue == quality
-                    Button {
-                        selection.wrappedValue = quality
-                        BeansHaptics.select()
-                    } label: {
-                        Text(quality.displayName)
-                            .font(BeansFont.appFont(12, selected ? .semibold : .medium))
-                            .foregroundStyle(selected ? Color.beansAmber : Color.beansLabel)
-                            .padding(.horizontal, 12)
-                            .frame(height: 31)
-                            .background { liquidQualityOptionBackground(selected: selected) }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 1)
-        }
-    }
-
-    private func networkQualityRow(
-        title: String,
-        icon: String,
-        officialSelection: Binding<BeansAudioQuality>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Label(title, systemImage: icon)
-                .font(BeansFont.appFont(14, .semibold))
-                .foregroundStyle(Color.beansLabel)
-            Text("官方音质")
-                .font(BeansFont.appFont(11))
-                .foregroundStyle(Color.beansComment)
-            officialQualityPills(officialSelection)
-        }
-        .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-
-    private var audioQualitySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                BeansHaptics.select()
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    audioQualityExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("音源与音质")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                        Text(connectionAwareQuality ? "已按 Wi-Fi / 蜂窝网络分别选择" : "统一音质")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                    Spacer()
-                    Image(systemName: audioQualityExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.beansComment.opacity(0.6))
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-
-            if audioQualityExpanded {
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("播放来源")
-                            .font(BeansFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                        Picker("播放来源", selection: $playbackSourcePreferenceRaw) {
-                            ForEach(PlaybackSourcePreference.allCases) { preference in
-                                Text(preference.title).tag(preference.rawValue)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        Text((PlaybackSourcePreference(rawValue: playbackSourcePreferenceRaw) ?? .automatic).detail)
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
-                    }
-
-                    Divider().overlay(Color.beansComment.opacity(0.15))
-                    Toggle("按网络类型选择音质", isOn: $connectionAwareQuality)
-                        .font(BeansFont.appFont(14))
-                        .tint(Color.beansAmber)
-
-                    if connectionAwareQuality {
-                        networkQualityRow(
-                            title: "Wi-Fi",
-                            icon: "wifi",
-                            officialSelection: wifiPlaybackAudioQualitySelection
-                        )
-                        networkQualityRow(
-                            title: "蜂窝数据",
-                            icon: "antenna.radiowaves.left.and.right",
-                            officialSelection: cellularPlaybackAudioQualitySelection
-                        )
-                    } else {
-                        playbackQualitySection
-                    }
-
-
-                }
-                .padding(.horizontal, 4)
-                .padding(.bottom, 14)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
     }
 
     /// 主题相关设置统一归组，避免平台和排行榜外观选项散落在设置页。
@@ -3148,7 +2937,7 @@ struct SettingsView: View {
                         Text("液态容器颜色")
                             .font(BeansFont.appFont(15))
                             .foregroundStyle(Color.beansLabel)
-                        Text("只影响 Beans 自定义液态容器，系统原生玻璃不变")
+                        Text("只影响 Co 自定义液态容器，系统原生玻璃不变")
                             .font(BeansFont.appFont(11))
                             .foregroundStyle(Color.beansComment)
                     }
@@ -3832,7 +3621,7 @@ struct SettingsView: View {
         }
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         payload["beans.backup.meta"] = [
-            "app": "Beans Music",
+            "app": "Co",
             "created": ISO8601DateFormatter().string(from: Date()),
             "version": version,
             "includedAccounts": includeAccounts,
@@ -4070,7 +3859,7 @@ struct SettingsView: View {
                 .foregroundStyle(Color.beansSecondary)
             Spacer(minLength: 12)
             Text(value)
-                .font(monospaced ? .system(size: 11, design: .monospaced) : BeansFont.appFont(12, .medium))
+                .font(monospaced ? .system(size: 11, design: .default) : BeansFont.appFont(12, .medium))
                 .foregroundStyle(Color.beansComment)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -4080,7 +3869,7 @@ struct SettingsView: View {
     private var runtimeVersionText: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        return "Beans \(version) (Build \(build))"
+        return "Co \(version) (Build \(build))"
     }
 
     private var runtimeScreenDimensions: String {

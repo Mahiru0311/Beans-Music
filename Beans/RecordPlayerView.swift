@@ -89,7 +89,7 @@ struct RecordPlayerView: View {
         }
         .animation(.easeInOut(duration: 0.22), value: showLyrics)
         .sheet(isPresented: $showQualityPicker) {
-            RecordModeQualityPickerSheet(song: song)
+            CoAudioQualityPickerSheet(song: song)
                 .environmentObject(player)
         }
         .sheet(isPresented: $showCustomCoverPicker) {
@@ -630,12 +630,51 @@ struct RecordPlayerView: View {
     }
 }
 
-private struct RecordModeQualityPickerSheet: View {
+/// 共用播放音质选择页（主播放页 Apple Music 样式与唱片页共用同一张表，
+/// 不再各写一套）：只列线上真正能分出高低的 4 档——标准 128、极高 320、
+/// 无损 FLAC、Hi-Res；旧的“更高”归到极高、“Master”归到 Hi-Res，
+/// 不对外宣称 6 档独立。选档只写统一键 beans.audioQuality，
+/// 选完调用 player.retryCurrent() 立即重播；实际档位由
+/// PlayerManager.actualAudioQualityKey 回传，拿不到时显示偏好名、不编档位。
+struct CoAudioQualityPickerSheet: View {
     @EnvironmentObject private var player: PlayerManager
     @Environment(\.dismiss) private var dismiss
 
     let song: Song?
     @AppStorage("beans.audioQuality") private var selectedRaw = BeansAudioQuality.hires.rawValue
+
+    static func normalized(_ quality: BeansAudioQuality) -> BeansAudioQuality {
+        switch quality {
+        case .higher: return .exhigh
+        case .master: return .hires
+        default: return quality
+        }
+    }
+
+    static func displayName(forKey key: String) -> String? {
+        switch key {
+        case "hires": return "Hi-Res"
+        case "lossless": return "无损"
+        case "exhigh": return "极高"
+        case "standard": return "标准"
+        default: return nil
+        }
+    }
+
+    private var tiers: [(quality: BeansAudioQuality, note: String)] {
+        [(.standard, "128"), (.exhigh, "320"), (.lossless, "FLAC"), (.hires, "Hi-Res")]
+    }
+
+    private var selectedTier: BeansAudioQuality {
+        Self.normalized(BeansAudioQuality(rawValue: selectedRaw) ?? .hires)
+    }
+
+    private var actualLine: String {
+        if let key = player.actualAudioQualityKey, let name = Self.displayName(forKey: key) {
+            return "实际：\(name)"
+        }
+        return "偏好：\(selectedTier.displayName)（实际档位未确认时显示偏好，不编档位）"
+    }
 
     var body: some View {
         BeansNavigationStack {
@@ -643,22 +682,28 @@ private struct RecordModeQualityPickerSheet: View {
                 Section("当前歌曲") {
                     Text(song?.name ?? "未播放歌曲")
                         .lineLimit(2)
+                    Text(actualLine)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     Text("可用音质会随当前平台和音源变化")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
                 Section("选择播放音质") {
-                    ForEach(BeansAudioQuality.allCases) { quality in
+                    ForEach(tiers, id: \.quality) { tier in
                         Button {
-                            selectedRaw = quality.rawValue
+                            selectedRaw = tier.quality.rawValue
                             player.retryCurrent()
                             dismiss()
                         } label: {
                             HStack {
-                                Text(quality.displayName)
+                                Text(tier.quality.displayName)
+                                Text(tier.note)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
                                 Spacer()
-                                if selectedRaw == quality.rawValue {
+                                if selectedTier == tier.quality {
                                     Image(systemName: "checkmark")
                                         .foregroundStyle(Color.beansAmber)
                                 }
@@ -803,7 +848,7 @@ private struct RecordModeScrubber: View {
                 Spacer()
                 Text(beansTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
             }
-            .font(BeansFont.appFont(10.5, .regular, .monospaced))
+            .font(BeansFont.appFont(10.5, .regular, .default))
             .foregroundStyle(.white.opacity(0.55))
         }
     }

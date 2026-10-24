@@ -31,6 +31,7 @@ struct PlayerView: View {
     /// 走同一个弹窗，不能把“加入某歌单”误当成点爱心。
     @State private var localPlaylistSheetMarksFavorite = false
     @State private var showPlayerSettings = false
+    @State private var showQualitySheet = false
     @AppStorage(FoliaPreferences.enabledKey) private var foliaStageEnabled = false
     @AppStorage(FoliaPreferences.modeKey) private var foliaModeRaw = FoliaVisualizerMode.still.rawValue
     @State private var playbackRenderingSuppressed = false
@@ -498,6 +499,9 @@ struct PlayerView: View {
                         onPlayerSettings: {
                             openPlayerSettings()
                         },
+                        onQuality: {
+                            showQualitySheet = true
+                        },
                         onArtist: {
                             openArtistHome()
                         }
@@ -724,6 +728,10 @@ struct PlayerView: View {
                 .environmentObject(theme)
                 .environmentObject(player)
         }
+        .sheet(isPresented: $showQualitySheet) {
+            CoAudioQualityPickerSheet(song: song)
+                .environmentObject(player)
+        }
         .sheet(isPresented: $showCustomCoverPicker) {
             CustomSongCoverPicker(
                 onPick: { url in
@@ -922,38 +930,10 @@ struct PlayerView: View {
                 }
             case .vinyl, .record:
                 iPadLandscapeVinylLyricsColumn(geo: geo)
-            case .classic:
-                LyricsSection(
-                    lyrics: lyrics,
-                    accent: lyricCurrentColor,
-                    secondary: lyricDimColor,
-                    gradientStart: lyricGradStart,
-                    gradientEnd: lyricGradEnd,
-                    baseFontSize: CGFloat(lyricFontSize) * CGFloat(lyricScale),
-                    lineSpacing: CGFloat(lyricLineSpacing),
-                    glowRadius: lyricGlowRadius,
-                    showTranslation: lyricTranslation,
-                    alignment: lyricAlign,
-                    offsetX: CGFloat(lyricOffsetX),
-                    anchor: lyricAnchor,
-                    glowColorOverride: lyricGlowColor,
-                    blurStart: CGFloat(lyricBlurStart),
-                    blurAmount: CGFloat(lyricBlurAmount),
-                    tilt: CGFloat(lyricTilt),
-                    tiltY: CGFloat(lyricTiltY),
-                    lyricOffset: CGFloat(lyricOffset)
-                ) { line in
-                    BeansHaptics.tap()
-                    seekToLyric(line)
-                }
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            if layoutRenderingStyle != .classic {
-                toggleLyrics()
-            }
-        }
+        .onTapGesture { toggleLyrics() }
     }
 
     private func iPadLandscapeVinylLyricsColumn(geo: GeometryProxy) -> some View {
@@ -1040,9 +1020,6 @@ struct PlayerView: View {
             iPadLandscapeAppleMusicLyricsHeader
         case .vinyl, .record:
             iPadLandscapeVinylLyricsHeader
-        case .classic:
-            // 经典样式沿用播放器页的顶部栏，保证横屏与普通播放器使用同一套点击区域。
-            headerBar
         }
     }
 
@@ -1172,24 +1149,6 @@ struct PlayerView: View {
                 }
                 .buttonStyle(GlassPressButtonStyle())
 
-                if layoutRenderingStyle == .classic {
-                    Button {
-                        guard song != nil else { return }
-                        BeansHaptics.tap()
-                        showCustomCoverPicker = true
-                    } label: {
-                        Image(systemName: customCovers.hasCover(for: song) ? "photo.badge.checkmark" : "photo.badge.plus")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(albumTitleForeground.opacity(0.78))
-                            .frame(width: 38, height: 38)
-                            .background { BeansGlass(shape: Circle(), forceLiquid: true) }
-                            .clipShape(Circle())
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(GlassPressButtonStyle())
-                    .accessibilityLabel(customCovers.hasCover(for: song) ? "更换自定义封面" : "添加自定义封面")
-                }
-
                 Menu {
                     Button("定时关闭") { showSleepTimer = true }
                     Button("添加到本地歌单") { showAddToLocalPlaylist = true }
@@ -1214,91 +1173,12 @@ struct PlayerView: View {
         .frame(maxWidth: .infinity, minHeight: 64, maxHeight: 64, alignment: .leading)
     }
 
-    private var iPadLandscapeClassicLyricsHeader: some View {
-        HStack(spacing: 14) {
-            Button {
-                BeansHaptics.tap()
-                closePlayer()
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(playerButtonText)
-                    .frame(width: 42, height: 42)
-                    .background {
-                        if layoutRenderingStyle == .classic {
-                            BeansGlass(shape: Circle())
-                        } else {
-                            playerButtonSurface(size: 42)
-                        }
-                    }
-                    .clipShape(Circle())
-            }
-            .buttonStyle(GlassPressButtonStyle())
-
-            Spacer(minLength: 0)
-
-            VStack(spacing: 3) {
-                Text(song?.name ?? "未在播放")
-                    .font(BeansFont.appFont(15, .semibold))
-                    .foregroundStyle(playerButtonText)
-                    .lineLimit(1)
-                    .contextMenu {
-                        Button("复制歌名") { copyCurrentSongTitle() }
-                    }
-                Text(song?.artists ?? "")
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(playerButtonSecondaryText)
-                    .lineLimit(1)
-                    .contentShape(Rectangle())
-                    .onTapGesture { openArtistHome() }
-            }
-            .frame(maxWidth: 430)
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 10) {
-                Button {
-                    guard let song else { return }
-                    toggleLocalFavorite(song)
-                } label: {
-                    FavoriteHeartView(mark: favoriteMark(for: song), size: 17, inactiveColor: playerButtonText)
-                        .frame(width: 42, height: 42)
-                        .background {
-                            if layoutRenderingStyle == .classic {
-                                BeansGlass(shape: Circle())
-                            }
-                        }
-                }
-                .buttonStyle(GlassPressButtonStyle())
-
-                Button {
-                    BeansHaptics.tap()
-                    showNativeMoreActions = true
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(playerButtonText)
-                        .frame(width: 42, height: 42)
-                        .background {
-                            if layoutRenderingStyle == .classic {
-                                BeansGlass(shape: Circle())
-                            }
-                        }
-                }
-                .buttonStyle(GlassPressButtonStyle())
-            }
-        }
-        .padding(.horizontal, 30)
-        .padding(.top, 8)
-        .frame(height: 64)
-    }
-
     @ViewBuilder
     private func iPadLandscapeControlDeck(bottomInset: CGFloat) -> some View {
         switch layoutRenderingStyle {
         case .appleMusic:
             iPadLandscapeAppleMusicControlDeck(bottomInset: bottomInset)
-        case .vinyl, .record, .classic:
+        case .vinyl, .record:
             iPadLandscapeCompactControlDeck(bottomInset: bottomInset)
         }
     }
@@ -1306,8 +1186,8 @@ struct PlayerView: View {
     private func iPadLandscapeCompactControlDeck(bottomInset: CGFloat) -> some View {
         VStack(spacing: 8) {
             progressBlock(
-                styleOverride: layoutRenderingStyle == .classic ? nil : 0,
-                accentOverride: layoutRenderingStyle == .classic ? nil : .white.opacity(0.92)
+                styleOverride: 0,
+                accentOverride: .white.opacity(0.92)
             )
             .modifier(IPadLandscapeLayoutable(
                 part: .progress,
@@ -1351,7 +1231,7 @@ struct PlayerView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .foregroundStyle(layoutRenderingStyle == .classic ? playerButtonText : .white)
+            .foregroundStyle(.white)
             .modifier(IPadLandscapeLayoutable(
                 part: .controls,
                 style: layoutRenderingStyle,
@@ -1442,7 +1322,7 @@ struct PlayerView: View {
                     onPreviousTrack: { player.previous() }
                 )
             } else {
-                let isCircular = layoutRenderingStyle == .classic && circularCover
+                let isCircular = false // 经典已删，原条件对剩余样式恒假
                 let cornerRadius = isCircular ? size / 2 : 18
                 if isCircular {
                     ZStack {
@@ -1544,7 +1424,7 @@ struct PlayerView: View {
                     .font(BeansFont.appFont(12, .semibold))
                     .foregroundStyle(palette.secondary)
                     .lineLimit(1)
-                Text(song?.album ?? "Beans Music")
+                Text(song?.album ?? "Co")
                     .font(BeansFont.appFont(10))
                     .foregroundStyle(palette.secondary.opacity(0.85))
                     .lineLimit(1)
@@ -1737,8 +1617,8 @@ struct PlayerView: View {
     @ViewBuilder
     private func albumPanel(geo: GeometryProxy) -> some View {
         switch layoutRenderingStyle {
-        case .classic, .appleMusic:
-            classicAlbumPanel(geo: geo)
+        case .appleMusic:
+            appleMusicAlbumPanel(geo: geo)
         case .vinyl, .record:
             vinylAlbumPanel(geo: geo)
         }
@@ -2066,7 +1946,7 @@ struct PlayerView: View {
                 if isSelected {
                     Spacer(minLength: 8)
                     Text(beansTimeString(line.time))
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(albumArtistForeground.opacity(0.82))
                     Button {
                         vinylLyricTapTask?.cancel()
@@ -2219,7 +2099,7 @@ struct PlayerView: View {
 
             if let index = vinylCurrentVisualIndex, lyrics.indices.contains(index) {
                 Text(beansTimeString(lyrics[index].time))
-                    .font(BeansFont.appFont(11, .semibold, .monospaced))
+                    .font(BeansFont.appFont(11, .semibold, .default))
                     .foregroundStyle(albumArtistForeground.opacity(0.8))
                     .offset(x: 25)
             }
@@ -2228,7 +2108,7 @@ struct PlayerView: View {
         .allowsHitTesting(false)
     }
 
-    private func classicAlbumPanel(geo: GeometryProxy) -> some View {
+    private func appleMusicAlbumPanel(geo: GeometryProxy) -> some View {
         let size = coverSize(in: geo)
         let coverRadius: CGFloat = circularCover ? size / 2 : min(24, size * 0.08)
         return VStack(spacing: 12) {
@@ -2620,8 +2500,6 @@ struct PlayerView: View {
             return 136
         case .record:
             return 136
-        case .classic:
-            return 148
         }
     }
 
@@ -2693,9 +2571,6 @@ struct PlayerView: View {
                         data: $iPadLandscapeLayoutData,
                         appliesTransform: !appliesPortraitLayout
                     ))
-            }
-            if layoutRenderingStyle == .classic {
-                commentSwipeSurface
             }
         }
         .padding(.horizontal, playerButtonStyle == .appleMusic ? 24 : 32)
@@ -2779,7 +2654,7 @@ struct PlayerView: View {
                 .foregroundStyle(
                     active
                         ? Color.beansAmber
-                        : (layoutRenderingStyle == .classic ? playerButtonSecondaryText : .white.opacity(0.86))
+                        : .white.opacity(0.86)
                 )
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -2807,7 +2682,7 @@ struct PlayerView: View {
         } label: {
             Image(systemName: icon)
                 .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(layoutRenderingStyle == .classic ? playerButtonText : .white)
+                .foregroundStyle(.white)
                 .frame(width: 44, height: 58)
                 .contentShape(Rectangle())
         }
@@ -2823,25 +2698,6 @@ struct PlayerView: View {
 
     private var vinylProgress: some View {
         VinylScrubber()
-    }
-
-    /// 经典样式保留上划评论手势，但不绘制任何底部指示线。
-    private var commentSwipeSurface: some View {
-        Color.clear
-            .frame(maxWidth: .infinity)
-            .frame(height: 18)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 25)
-                    .onEnded { value in
-                        guard !layoutMode,
-                              value.translation.height < -50,
-                              abs(value.translation.height) > abs(value.translation.width),
-                              song != nil else { return }
-                        BeansHaptics.medium()
-                        ToastCenter.shared.show("评论功能已在酷狗专版移除")
-                    }
-            )
     }
 
     private var subtitle: String {
@@ -2864,12 +2720,12 @@ struct PlayerView: View {
                     seekPillButton("gobackward.15") { player.seekBy(-15) }
                 }
                 Text(beansTimeString(clock.progress))
-                    .font(BeansFont.appFont(10, .regular, .monospaced))
+                    .font(BeansFont.appFont(10, .regular, .default))
                     .foregroundStyle(timeColor)
                     .frame(minWidth: 34, alignment: .leading)
                 Spacer(minLength: 0)
                 Text(beansTimeString(clock.duration))
-                    .font(BeansFont.appFont(10, .regular, .monospaced))
+                    .font(BeansFont.appFont(10, .regular, .default))
                     .foregroundStyle(timeColor)
                     .frame(minWidth: 34, alignment: .trailing)
                 if !isAppleMusicStyle {
@@ -3745,11 +3601,6 @@ struct PlayerView: View {
                     layoutPart = part
                     layoutPartRaw = part.rawValue
                 } selected: { layoutPart == $0 }
-            case .classic:
-                layoutPartChips(PlayerLayoutPart.classicEditableCases.map { ($0.rawValue, $0) }) { part in
-                    layoutPart = part
-                    layoutPartRaw = part.rawValue
-                } selected: { layoutPart == $0 }
             }
         }
     }
@@ -3830,9 +3681,6 @@ struct PlayerView: View {
                 case .vinyl, .record:
                     return vinylLayoutData[layoutPart.rawValue]
                         ?? VinylPlayerLayoutStore.defaultEntry(for: layoutPart)
-                case .classic:
-                    return layoutData[layoutPart.rawValue]
-                        ?? PlayerLayoutStore.defaultEntry(for: layoutPart)
                 }
             },
             set: { value in
@@ -3847,8 +3695,6 @@ struct PlayerView: View {
                     appleLayout.set(value, for: appleLayoutPart)
                 case .vinyl, .record:
                     vinylLayoutData[layoutPart.rawValue] = value
-                case .classic:
-                    layoutData[layoutPart.rawValue] = value
                 }
             }
         )
@@ -3873,9 +3719,6 @@ struct PlayerView: View {
         case .vinyl, .record:
             layoutPart = .vinylCover
             layoutPartRaw = layoutPart.rawValue
-        case .classic:
-            layoutPart = .cover
-            layoutPartRaw = layoutPart.rawValue
         }
     }
 
@@ -3891,8 +3734,6 @@ struct PlayerView: View {
             appleLayout.reset(appleLayoutPart)
         case .vinyl, .record:
             vinylLayoutData.removeValue(forKey: layoutPart.rawValue)
-        case .classic:
-            resetCurrentLayoutPart()
         }
     }
 
@@ -3906,8 +3747,6 @@ struct PlayerView: View {
             appleLayout.resetAll()
         case .vinyl, .record:
             vinylLayoutData = [:]
-        case .classic:
-            layoutData = [:]
         }
     }
 
@@ -4147,7 +3986,7 @@ struct PlayerView: View {
                     Slider(value: $appleWallpaperBlur, in: 0...32, step: 1)
                         .tint(Color.beansAmber)
                     Text("\(Int(appleWallpaperBlur))")
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(Color.beansAmber)
                         .frame(width: 28, alignment: .trailing)
                 }
@@ -4186,7 +4025,7 @@ struct PlayerView: View {
                     Slider(value: $albumTextGlowIntensity, in: 0.2...2.0, step: 0.05)
                         .tint(Color.beansAmber)
                     Text("\(Int((albumTextGlowIntensity * 100).rounded()))%")
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(Color.beansAmber)
                         .frame(width: 42, alignment: .trailing)
                 }
@@ -4199,87 +4038,11 @@ struct PlayerView: View {
     @ViewBuilder
     private var layoutEditorStyleDebugControls: some View {
         switch layoutEditorStyle {
-        case .classic:
-            classicStyleDebugControls
         case .vinyl, .record:
             vinylStyleDebugControls
         case .appleMusic:
             appleMusicAppearanceControls
         }
-    }
-
-    private var classicStyleDebugControls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("经典样式调试")
-                .font(BeansFont.appFont(13, .bold))
-                .foregroundStyle(palette.text)
-            Picker("播放器按钮样式", selection: $playerButtonStyleRaw) {
-                ForEach(BeansPlayerButtonStyle.allCases) { style in
-                    Text(LocalizedStringKey(style.title)).tag(style.rawValue)
-                }
-            }
-            .pickerStyle(.segmented)
-            Divider().opacity(0.45)
-            layoutDebugToggle("控件跟随封面取色", isOn: $controlsUseCoverColor,
-                              caption: "关闭后使用全局主题色")
-            Divider().opacity(0.35)
-            ColorPicker("主图标颜色", selection: playerMainIconColorBinding, supportsOpacity: false)
-                .font(BeansFont.appFont(13))
-            ColorPicker("次级图标颜色", selection: playerSecondaryIconColorBinding, supportsOpacity: false)
-                .font(BeansFont.appFont(13))
-            ColorPicker("播放按钮颜色", selection: playerPrimaryButtonColorBinding, supportsOpacity: false)
-                .font(BeansFont.appFont(13))
-            Divider().opacity(0.35)
-            Picker("进度条样式", selection: $progressBarStyle) {
-                Text("流光").tag(0)
-                Text("辉光").tag(1)
-                Text("极光").tag(2)
-                Text("波浪").tag(3)
-            }
-            .pickerStyle(.segmented)
-            Divider().opacity(0.35)
-            layoutDebugSlider("背景浮沉强度", valueText: "\(Int((playerBreath * 100).rounded()))%", value: Binding(get: { CGFloat(playerBreath) }, set: { playerBreath = Double($0) }), range: 0...1, step: 0.05)
-            Picker("浮沉样式", selection: $playerDustModeRaw) {
-                ForEach(BeansPlayerDustMode.allCases) { mode in
-                    Label(LocalizedStringKey(mode.title), systemImage: mode.icon).tag(mode.rawValue)
-                }
-            }
-            .pickerStyle(.segmented)
-            if playerDustModeRaw == BeansPlayerDustMode.snow.rawValue {
-                layoutDebugSlider("浮沉密度", valueText: String(format: "%.1fx", playerDustDensity), value: Binding(get: { CGFloat(playerDustDensity) }, set: { playerDustDensity = Double($0) }), range: 0.4...2.6, step: 0.1)
-                layoutDebugSlider("浮沉大小", valueText: String(format: "%.1fx", playerDustSize), value: Binding(get: { CGFloat(playerDustSize) }, set: { playerDustSize = Double($0) }), range: 0.8...2.8, step: 0.1)
-            }
-            Divider().opacity(0.35)
-            layoutDebugToggle("DJ 节奏脉冲光效", isOn: $djVisualEnabled,
-                              caption: "封面背后随节拍扩散光环")
-            if djVisualEnabled {
-                layoutDebugSlider("光效强度", valueText: "\(Int((djVisualIntensity * 100).rounded()))%", value: Binding(get: { CGFloat(djVisualIntensity) }, set: { djVisualIntensity = Double($0) }), range: 0...1, step: 0.05)
-            }
-            Divider().opacity(0.35)
-            lyricDisplayEditorControls
-            Divider().opacity(0.35)
-            lyricEffectEditorControls
-            Divider().opacity(0.35)
-            layoutDebugToggle("圆形封面模式", isOn: $circularCover,
-                              caption: "播放器封面和歌词页封面显示为圆形")
-            layoutDebugToggle("圆形封面旋转", isOn: $circularCoverSpin,
-                              caption: "播放时封面自动旋转")
-            Divider().opacity(0.35)
-            HStack {
-                Text("歌词对齐样式")
-                    .font(BeansFont.appFont(13))
-                    .foregroundStyle(palette.text)
-                Spacer()
-                Picker("歌词对齐样式", selection: $lyricAlignRaw) {
-                    Text("居中").tag("center")
-                    Text("全部居左").tag("left")
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 190)
-            }
-        }
-        .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var vinylStyleDebugControls: some View {
@@ -4341,7 +4104,7 @@ struct PlayerView: View {
                     .foregroundStyle(palette.secondary)
                 Spacer()
                 Text(valueText)
-                    .font(BeansFont.appFont(11, .semibold, .monospaced))
+                    .font(BeansFont.appFont(11, .semibold, .default))
                     .foregroundStyle(Color.beansAmber)
             }
             layoutValueSlider(title: title, value: value, range: range, step: step)
@@ -4380,7 +4143,7 @@ struct PlayerView: View {
                 .frame(width: 56, alignment: .leading)
             layoutValueSlider(title: title, value: value, range: range, step: step)
             Text(String(format: format, value.wrappedValue))
-                .font(BeansFont.appFont(11, .regular, .monospaced))
+                .font(BeansFont.appFont(11, .regular, .default))
                 .foregroundStyle(palette.secondary)
                 .frame(width: 34, alignment: .trailing)
         }
@@ -4651,7 +4414,7 @@ private struct VinylScrubber: View {
                 Spacer(minLength: 0)
                 Text(beansTimeString(clock.duration))
             }
-            .font(BeansFont.appFont(10, .regular, .monospaced))
+            .font(BeansFont.appFont(10, .regular, .default))
             .foregroundStyle(.white.opacity(0.55))
             .monospacedDigit()
         }
@@ -4797,7 +4560,7 @@ struct SeekBar: View {
 
                 if scrubbing {
                     Text(beansTimeString(scrubValue))
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
@@ -5241,7 +5004,7 @@ struct LyricsSection: View {
             if selectedLyricIndex == index || (isUserScrolling && isFocused) {
                 HStack(spacing: 6) {
                     Text(beansTimeString(line.time))
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondary.opacity(0.82))
                     Button {
                         lyricTapTask?.cancel()

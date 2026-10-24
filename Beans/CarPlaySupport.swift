@@ -207,7 +207,7 @@ final class BeansCarPlayCoordinator: NSObject {
                 self?.pushTrackList(title: "每日推荐", tracks: daily)
                 completion()
             }
-            sections.append(CPListSection(items: [dailyItem], header: "Beans Music", sectionIndexTitle: nil))
+            sections.append(CPListSection(items: [dailyItem], header: "Co", sectionIndexTitle: nil))
         }
 
         if !playlists.isEmpty {
@@ -304,7 +304,7 @@ final class BeansCarPlayCoordinator: NSObject {
 
         if sections.isEmpty {
             sections.append(CPListSection(items: [
-                CPListItem(text: "暂无本地播放记录", detailText: "在 Beans Music 播放歌曲后会显示在这里")
+                CPListItem(text: "暂无本地播放记录", detailText: "在 Co 播放歌曲后会显示在这里")
             ]))
         }
         libraryTemplate.updateSections(sections)
@@ -312,7 +312,7 @@ final class BeansCarPlayCoordinator: NSObject {
 
     private func makePlaylistItem(_ playlist: Playlist) -> CPListItem {
         let detail = playlist.playCount > 0
-            ? "\(playlist.creatorName.isEmpty ? "Beans Music" : playlist.creatorName) · \(playlist.playCount) 次播放"
+            ? "\(playlist.creatorName.isEmpty ? "Co" : playlist.creatorName) · \(playlist.playCount) 次播放"
             : (playlist.creatorName.isEmpty ? "歌单" : playlist.creatorName)
         let item = CPListItem(text: playlist.name, detailText: detail)
         item.accessoryType = .disclosureIndicator

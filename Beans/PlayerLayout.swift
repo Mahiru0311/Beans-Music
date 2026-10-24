@@ -28,14 +28,6 @@ enum PlayerLayoutPart: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    static var classicEditableCases: [PlayerLayoutPart] {
-        [
-            .topBack, .topTitle, .topFavorite, .cover, .title, .previewLyric,
-            .progress, .controls, .loop, .previous, .playPause, .next, .queue,
-            .lyric, .grabber,
-        ]
-    }
-
     static var vinylEditableCases: [PlayerLayoutPart] {
         [
             .vinylCover, .vinylTitle, .vinylLyricsHeader, .vinylLyricsText,
@@ -43,7 +35,14 @@ enum PlayerLayoutPart: String, CaseIterable, Identifiable {
         ]
     }
 
-    static var editableCases: [PlayerLayoutPart] { classicEditableCases }
+    // 经典样式已删除，旧布局编辑器沿用同一份组件列表（不引用已删的 classicEditableCases）。
+    static var editableCases: [PlayerLayoutPart] {
+        [
+            .topBack, .topTitle, .topFavorite, .cover, .title, .previewLyric,
+            .progress, .controls, .loop, .previous, .playPause, .next, .queue,
+            .lyric, .grabber,
+        ]
+    }
 }
 
 /// Apple Music 播放页实时调试组件。

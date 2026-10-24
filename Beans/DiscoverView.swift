@@ -678,7 +678,7 @@ struct DiscoverView: View {
         } label: {
             HStack(spacing: 12) {
                 Text("\(index + 1)")
-                    .font(BeansFont.appFont(16, .bold, .rounded))
+                    .font(BeansFont.appFont(16, .bold, .default))
                     .foregroundStyle(index < 3 ? Color.beansAmber : Color.beansComment)
                     .frame(width: 24)
                 CoverImage(url: coverURL, size: 52, cornerRadius: 6)

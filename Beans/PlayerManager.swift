@@ -309,7 +309,13 @@ final class PlayerManager: NSObject, ObservableObject {
         }
     }
 
+    /// 当前歌曲实际拿到的音质档位键（hires/lossless/exhigh/standard），
+    /// 由 KugouMusicAPI 回传的 hash 键推断；主 hash 或网页兜底拿到时为 nil，
+    /// 此时播放页诚实显示偏好名，不编一个档位。
+    @Published var actualAudioQualityKey: String? = nil
+
     override init() {
+        NetworkAudioQuality.migrateConnectionAwareIfNeeded()
         super.init()
         softwareVolume = min(max(defaults.object(forKey: softwareVolumeKey) as? Double ?? 1.0, 0), 1)
         // Ensure a stale auxiliary-audio category cannot carry a previous mix
@@ -807,6 +813,7 @@ final class PlayerManager: NSObject, ObservableObject {
         clearAudioRecoveryIntent()
         loadGeneration += 1
         let generation = loadGeneration
+        actualAudioQualityKey = nil
         thirdPartyRetryExcludedHostsBySong.removeValue(forKey: song.identityKey)
         attemptedThirdPartyQualitiesBySong.removeValue(forKey: song.identityKey)
         attemptedQQOfficialBRsBySong.removeValue(forKey: song.identityKey)
@@ -852,7 +859,12 @@ final class PlayerManager: NSObject, ObservableObject {
                     if Task.isCancelled { return }
                 }
                 guard generation == self.loadGeneration else { return }
-                urlString = try? await KugouMusicAPI.shared.songURL(song: song, quality: quality)
+                let resolved = try? await KugouMusicAPI.shared.songURLWithActual(song: song, quality: quality)
+                urlString = resolved?.url
+                await MainActor.run {
+                    guard generation == self.loadGeneration else { return }
+                    self.actualAudioQualityKey = resolved?.actualKey
+                }
                 if urlString != nil { break }
             }
             guard let urlString, let url = URL(string: urlString) else {

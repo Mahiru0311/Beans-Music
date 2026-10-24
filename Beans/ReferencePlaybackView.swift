@@ -33,6 +33,7 @@ struct ReferencePlaybackView: View {
     let onSleepTimer: () -> Void
     let onAddToLocalPlaylist: () -> Void
     let onPlayerSettings: () -> Void
+    let onQuality: () -> Void
     let onArtist: () -> Void
 
     @AppStorage("beans.lyricOffset") private var lyricOffset = 0.0
@@ -66,6 +67,7 @@ struct ReferencePlaybackView: View {
         onSleepTimer: @escaping () -> Void,
         onAddToLocalPlaylist: @escaping () -> Void,
         onPlayerSettings: @escaping () -> Void,
+        onQuality: @escaping () -> Void = {},
         onArtist: @escaping () -> Void = {}
     ) {
         self.song = song
@@ -77,6 +79,7 @@ struct ReferencePlaybackView: View {
         self.onSleepTimer = onSleepTimer
         self.onAddToLocalPlaylist = onAddToLocalPlaylist
         self.onPlayerSettings = onPlayerSettings
+        self.onQuality = onQuality
         self.onArtist = onArtist
     }
 
@@ -276,6 +279,7 @@ struct ReferencePlaybackView: View {
                 Button("定时关闭", action: onSleepTimer)
                 Button("添加到本地歌单", action: onAddToLocalPlaylist)
                 customCoverActions
+                Button("播放音质", action: onQuality)
                 Button("播放器设置", action: onPlayerSettings)
                 Button("软件音量") {
                     showSoftwareVolume = true
@@ -416,7 +420,8 @@ struct ReferencePlaybackView: View {
                     Button("定时关闭", action: onSleepTimer)
                     Button("添加到本地歌单", action: onAddToLocalPlaylist)
                     customCoverActions
-                    Button("播放器设置", action: onPlayerSettings)
+                    Button("播放音质", action: onQuality)
+                Button("播放器设置", action: onPlayerSettings)
                     Button("软件音量") {
                         showSoftwareVolume = true
                     }
@@ -512,6 +517,7 @@ struct ReferencePlaybackView: View {
                 Button("定时关闭", action: onSleepTimer)
                 Button("添加到本地歌单", action: onAddToLocalPlaylist)
                 customCoverActions
+                Button("播放音质", action: onQuality)
                 Button("播放器设置", action: onPlayerSettings)
                 Button("软件音量") {
                     showSoftwareVolume = true
@@ -645,7 +651,7 @@ struct ReferencePlaybackView: View {
                 if isSelected {
                     Spacer(minLength: 8)
                     Text(beansTimeString(line.time))
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondaryColor.opacity(0.82))
                     Button {
                         lyricTapTask?.cancel()
@@ -967,7 +973,7 @@ struct AppleMusicCompactQueueContent: View {
                     .foregroundStyle(.white)
                 Spacer()
                 Text("\(player.upcomingQueue.count) 首")
-                    .font(BeansFont.appFont(12, .regular, .monospaced))
+                    .font(BeansFont.appFont(12, .regular, .default))
                     .foregroundStyle(.white.opacity(0.46))
             }
 
@@ -1075,7 +1081,7 @@ private struct AppleMusicCompactQueueRow: View {
                     Spacer(minLength: 4)
 
                     Text(song.formattedDuration)
-                        .font(BeansFont.appFont(11, .regular, .monospaced))
+                        .font(BeansFont.appFont(11, .regular, .default))
                         .foregroundStyle(.white.opacity(0.36))
                 }
                 .padding(.vertical, 4)
@@ -1148,7 +1154,7 @@ struct ReferenceScrubber: View {
                 .overlay(alignment: .topLeading) {
                     if scrubbing {
                         Text(beansTimeString(scrubValue))
-                            .font(BeansFont.appFont(11, .semibold, .monospaced))
+                            .font(BeansFont.appFont(11, .semibold, .default))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 5)
@@ -1165,7 +1171,7 @@ struct ReferenceScrubber: View {
                 Spacer()
                 Text(beansTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
             }
-            .font(BeansFont.appFont(11, .regular, .monospaced))
+            .font(BeansFont.appFont(11, .regular, .default))
             .foregroundStyle(.white.opacity(0.52))
         }
         .frame(maxWidth: 420)
@@ -1339,7 +1345,7 @@ struct AppleMusicLyricsSection: View {
                 if isSelected {
                     Spacer(minLength: 8)
                     Text(beansTimeString(line.time))
-                        .font(BeansFont.appFont(11, .semibold, .monospaced))
+                        .font(BeansFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondary.opacity(0.82))
                     Button {
                         lyricTapTask?.cancel()
@@ -1495,11 +1501,11 @@ struct BeansSoftwareVolumeSheet: View {
                             .font(BeansFont.appFont(20, .bold))
                         Spacer()
                         Text("\(Int((player.softwareVolume * 100).rounded()))%")
-                            .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 15, weight: .semibold, design: .default))
                             .foregroundStyle(Color.beansComment)
                     }
 
-                    Text("只调整 Beans 的播放音量，不改变系统音量。适合和其他音频同时播放时降低背景音。")
+                    Text("只调整 Co 的播放音量，不改变系统音量。适合和其他音频同时播放时降低背景音。")
                         .font(BeansFont.appFont(13))
                         .foregroundStyle(Color.beansComment)
                         .fixedSize(horizontal: false, vertical: true)

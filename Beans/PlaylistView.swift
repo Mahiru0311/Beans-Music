@@ -605,7 +605,7 @@ struct PlaylistView: View {
             // 时长缺了（duration == 0）就不显示时长，不编一个假时长。
             if song.duration > 0 {
                 Text(song.formattedDuration)
-                    .font(BeansFont.appFont(13, .regular, .monospaced))
+                    .font(BeansFont.appFont(13, .regular, .default))
                     .foregroundStyle(.white.opacity(0.6))
             }
         }

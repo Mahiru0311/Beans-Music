@@ -1320,6 +1320,14 @@ final class KugouMusicAPI {
     }
 
     func songURL(song: Song, quality: BeansAudioQuality? = nil) async throws -> String? {
+        try await songURLWithActual(song: song, quality: quality).url
+    }
+
+    /// 带实际档位回传的播放地址：actualKey 是命中的 hash 档位键
+    ///（hires/lossless/exhigh/standard），主 hash 或网页兜底命中时为 nil，
+    /// 调用方此时诚实显示偏好名，不编档位。降级链、vipType 探测、
+    /// 服务端裁决与原 songURL 完全一致，只是多回传一个键。
+    func songURLWithActual(song: Song, quality: BeansAudioQuality? = nil) async throws -> (url: String?, actualKey: String?) {
         await refreshMembershipStatusIfNeeded()
         let requestedQuality = quality ?? NetworkAudioQuality.officialPreferred
         var primary = song.kugouHash
@@ -1332,23 +1340,24 @@ final class KugouMusicAPI {
             qualityHashes = completed.kugouQualityHashes ?? qualityHashes
             albumAudioId = completed.kugouAlbumAudioId ?? albumAudioId
             albumId = completed.kugouAlbumId ?? albumId
-            BeansLogger.shared.log("酷狗播放元数据补齐：\(song.name) hash=\((primary ?? "").isEmpty ? "无" : "有") albumAudioId=\(albumAudioId ?? "")", level: .debug)
+            BeansLogger.shared.log("酷狗播放元数据补齐：\(song.name) hash=\((primary ?? "").isEmpty ? "无" : "有") albumAudioId=\(albumId ?? "")", level: .debug)
         }
-        let hashes = Self.qualityHashCandidates(primary: primary, qualityHashes: qualityHashes, quality: requestedQuality)
-        guard !hashes.isEmpty else { return nil }
-        return try await songURL(hashes: hashes, albumAudioId: albumAudioId, albumId: albumId, quality: requestedQuality)
+        let candidates = Self.qualityHashCandidatesWithKeys(primary: primary, qualityHashes: qualityHashes, quality: requestedQuality)
+        guard !candidates.isEmpty else { return (nil, nil) }
+        return try await songURL(candidates: candidates, albumAudioId: albumAudioId, albumId: albumId, quality: requestedQuality)
     }
 
     func songURL(hash: String, albumAudioId: String?, albumId: String?) async throws -> String? {
-        try await songURL(hashes: [hash], albumAudioId: albumAudioId, albumId: albumId, quality: NetworkAudioQuality.officialPreferred)
+        try await songURL(candidates: [(nil, hash)], albumAudioId: albumAudioId, albumId: albumId, quality: NetworkAudioQuality.officialPreferred).url
     }
 
-    private func songURL(hashes: [String], albumAudioId: String?, albumId: String?, quality: BeansAudioQuality) async throws -> String? {
+    private func songURL(candidates: [(key: String?, hash: String)], albumAudioId: String?, albumId: String?, quality: BeansAudioQuality) async throws -> (url: String?, actualKey: String?) {
         let auth = KugouMusicAuth.shared
         let vipTypes = Self.vipTypeCandidates(auth.vipType, loggedIn: auth.isLoggedIn)
         var lastCode = 0
         var lastStatus = 0
-        for hash in hashes {
+        for candidate in candidates {
+            let hash = candidate.hash
             if let latest = try? await upstreamSongURLOnce(
                 hash: hash,
                 albumAudioId: albumAudioId,
@@ -1356,7 +1365,7 @@ final class KugouMusicAPI {
                 quality: quality
             ), let url = latest.url, !url.isEmpty {
                 BeansLogger.shared.log("酷狗 KuGouMusicApi 播放地址命中：hash=\(hash.prefix(8))", level: .debug)
-                return url
+                return (url, candidate.key)
             }
             for vipType in vipTypes {
                 guard let result = try? await songURLOnce(hash: hash, albumAudioId: albumAudioId, albumId: albumId, vipType: vipType) else {
@@ -1368,7 +1377,7 @@ final class KugouMusicAPI {
                     if vipType != auth.vipType {
                         BeansLogger.shared.log("酷狗播放地址命中：hash=\(hash.prefix(8)) vipType=\(vipType)", level: .debug)
                     }
-                    return url
+                    return (url, candidate.key)
                 }
             }
             // 酷狗新版客户端使用 v5/url。旧版 i/v2 在部分新曲和会员曲目上
@@ -1383,17 +1392,17 @@ final class KugouMusicAPI {
                     if vipType != auth.vipType {
                         BeansLogger.shared.log("酷狗 v5 播放地址命中：hash=\(hash.prefix(8)) vipType=\(vipType)", level: .debug)
                     }
-                    return url
+                    return (url, candidate.key)
                 }
             }
             let web = try await songURLWebOnce(hash: hash, albumAudioId: albumAudioId, albumId: albumId)
             lastCode = web.code
             lastStatus = web.status
-            if let url = web.url, !url.isEmpty { return url }
+            if let url = web.url, !url.isEmpty { return (url, candidate.key) }
         }
         let vipTypeText = vipTypes.map(String.init).joined(separator: "/")
-        BeansLogger.shared.log("酷狗播放地址为空：hash候选=\(hashes.count) vipType=\(vipTypeText) 已登录=\(auth.isLoggedIn ? "是" : "否") token=\(auth.token.isEmpty ? "无" : "有") dfid=\(auth.dfid.isEmpty ? "无" : "有") status=\(lastStatus) code=\(lastCode)", level: .debug)
-        return nil
+        BeansLogger.shared.log("酷狗播放地址为空：hash候选=\(candidates.count) vipType=\(vipTypeText) 已登录=\(auth.isLoggedIn ? "是" : "否") token=\(auth.token.isEmpty ? "无" : "有") dfid=\(auth.dfid.isEmpty ? "无" : "有") status=\(lastStatus) code=\(lastCode)", level: .debug)
+        return (nil, nil)
     }
 
     /// KuGouMusicApi 使用的 song_url 请求：v5/url + signKey，不依赖网页播放地址。
@@ -2395,6 +2404,35 @@ final class KugouMusicAPI {
         for key in order { append(qualityHashes?[key]) }
         append(primary)
         ["hires", "lossless", "exhigh", "standard"].forEach { append(qualityHashes?[$0]) }
+        return result
+    }
+
+    /// 带档位键的 hash 候选：顺序与 qualityHashCandidates 完全一致，
+    /// 只是多保留 key（hires/lossless/exhigh/standard），主 hash 的 key 为 nil。
+    private static func qualityHashCandidatesWithKeys(primary: String?, qualityHashes: [String: String]?, quality requestedQuality: BeansAudioQuality? = nil) -> [(key: String?, hash: String)] {
+        let requested = requestedQuality ?? NetworkAudioQuality.officialPreferred
+        let order: [String]
+        switch requested {
+        case .hires, .master:
+            order = ["hires", "lossless", "exhigh", "standard"]
+        case .lossless:
+            order = ["lossless", "exhigh", "standard"]
+        case .exhigh, .higher:
+            order = ["exhigh", "standard"]
+        case .standard:
+            order = ["standard"]
+        }
+        var seen = Set<String>()
+        var result: [(key: String?, hash: String)] = []
+        func append(_ value: String?, key: String?) {
+            let hash = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            guard !hash.isEmpty, !seen.contains(hash) else { return }
+            seen.insert(hash)
+            result.append((key, hash))
+        }
+        for key in order { append(qualityHashes?[key], key: key) }
+        append(primary, key: nil)
+        ["hires", "lossless", "exhigh", "standard"].forEach { append(qualityHashes?[$0], key: $0) }
         return result
     }
 

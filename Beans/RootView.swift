@@ -287,19 +287,10 @@ struct RootView: View {
             TabBarAppearanceConfigurator()
         }
         .preferredColorScheme(themeMode.colorScheme)
+        // 播放页打开/关闭走系统默认底部滑入，不再用 zoom 变形与根视图动画叠加。
         .fullScreenCover(isPresented: $showPlayer) {
             playerPresentation
-                .navigationTransition(
-                    .zoom(
-                        sourceID: BeansNowPlayingTransitionID.surface,
-                        in: nowPlayingTransition
-                    )
-                )
         }
-        .animation(
-            rootLayoutSettled ? .spring(response: 0.4, dampingFraction: 0.86) : nil,
-            value: player.currentSong?.id
-        )
         .animation(
             rootLayoutSettled ? .easeInOut(duration: 0.22) : nil,
             value: selection
@@ -510,10 +501,6 @@ struct RootView: View {
         .animation(
             rootLayoutSettled ? .easeInOut(duration: 0.25) : nil,
             value: selection
-        )
-        .animation(
-            rootLayoutSettled ? .easeInOut(duration: 0.25) : nil,
-            value: player.currentSong?.identityKey
         )
     }
 

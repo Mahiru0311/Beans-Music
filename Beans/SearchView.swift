@@ -1466,7 +1466,7 @@ private struct BeansSearchSongRow: View {
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 Text(song.formattedDuration)
-                    .font(BeansFont.appFont(14, .regular, .monospaced))
+                    .font(BeansFont.appFont(14, .regular, .default))
                     .foregroundStyle(Color.beansComment)
             }
             .padding(.horizontal, 10)

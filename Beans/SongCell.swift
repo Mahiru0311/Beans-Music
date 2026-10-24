@@ -45,7 +45,7 @@ struct SongCell: View {
                 // here as well as at the trailing edge made album/detail rows
                 // jump between two different leading layouts on older iOS.
                 Text("\(leadingIndex)")
-                    .font(BeansFont.appFont(12, .regular, .monospaced))
+                    .font(BeansFont.appFont(12, .regular, .default))
                     .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
                     .monospacedDigit()
                 .frame(width: 28, alignment: .trailing)
@@ -79,7 +79,7 @@ struct SongCell: View {
                 NowPlayingIndicator()
             } else {
                 Text(song.formattedDuration)
-                    .font(BeansFont.appFont(12, .regular, .monospaced))
+                    .font(BeansFont.appFont(12, .regular, .default))
                     .foregroundStyle(forceDarkText ? .white.opacity(0.6) : Color.beansComment)
             }
         }

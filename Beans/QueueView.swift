@@ -96,7 +96,7 @@ struct QueueView: View {
                     }
                 } else {
                     Text(song.formattedDuration)
-                        .font(BeansFont.appFont(12, .regular, .monospaced))
+                        .font(BeansFont.appFont(12, .regular, .default))
                         .foregroundStyle(Color.beansComment)
                 }
             }
