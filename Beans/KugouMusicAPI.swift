@@ -1745,7 +1745,7 @@ final class KugouMusicAPI {
     }
 
     /// 酷狗官方移动评论接口。评论读取不依赖会员权限。
-    func comments(mixSongID: String, hash: String?, page: Int = 1, limit: Int = 30) async throws -> KugouCommentPage {
+    func comments(mixSongID: String, hash: String?, page: Int = 1, limit: Int = 30, songName: String? = nil, artist: String? = nil) async throws -> KugouCommentPage {
         var commentID = mixSongID.trimmingCharacters(in: .whitespacesAndNewlines)
         if commentID.isEmpty || Int(commentID) == nil {
             commentID = try await commentAudioID(hash: hash) ?? commentID
@@ -1783,10 +1783,57 @@ final class KugouMusicAPI {
             }
         }
         let parsed = Self.parseComments(json: json, page: page, songName: commentID)
-        if parsed.comments.isEmpty && parsed.hotComments.isEmpty, let legacy = try? await legacyCommentJSON(childrenID: commentID, page: page, limit: limit) {
-            return Self.parseComments(json: legacy, page: page, songName: commentID)
+        if !parsed.comments.isEmpty || !parsed.hotComments.isEmpty {
+            return parsed
+        }
+        if let legacy = try? await legacyCommentJSON(childrenID: commentID, page: page, limit: limit) {
+            let legacyParsed = Self.parseComments(json: legacy, page: page, songName: commentID)
+            if !legacyParsed.comments.isEmpty || !legacyParsed.hotComments.isEmpty {
+                return legacyParsed
+            }
+        }
+        // 主链与原 ID 旧接口都为空时，旧接口很可能是不认 MixSongID：
+        // 用公开搜歌按 hash / MixSongID 反查 Audioid，再用 Audioid 查一次。
+        // 查不到或仍为空时，返回空页（诚实显示“暂无评论”，不编造）。
+        if let audioID = try? await commentAudioIDFromSearch(songName: songName, artist: artist, hash: hash, mixSongID: commentID),
+           !audioID.isEmpty, audioID != commentID,
+           let legacy = try? await legacyCommentJSON(childrenID: audioID, page: page, limit: limit) {
+            return Self.parseComments(json: legacy, page: page, songName: audioID)
         }
         return parsed
+    }
+
+    /// 公开搜歌反查 Audioid：song_search_v2 免 key，返回里同时有
+    /// FileHash、MixSongID、Audioid，按 hash 或 MixSongID 命中才认，
+    /// 歌名相近但 hash 对不上的一律不认，避免串到别的歌的评论。
+    private func commentAudioIDFromSearch(songName: String?, artist: String?, hash: String?, mixSongID: String) async throws -> String? {
+        guard let name = songName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return nil }
+        var components = URLComponents(string: "https://songsearch.kugou.com/song_search_v2")!
+        let keyword = artist.map { $0.isEmpty ? name : "\(name) \($0)" } ?? name
+        components.queryItems = [
+            URLQueryItem(name: "keyword", value: keyword),
+            URLQueryItem(name: "page", value: "1"),
+            URLQueryItem(name: "pagesize", value: "10"),
+            URLQueryItem(name: "userid", value: "0"),
+            URLQueryItem(name: "platform", value: "WebFilter"),
+            URLQueryItem(name: "tag", value: "em"),
+            URLQueryItem(name: "filter", value: "2"),
+            URLQueryItem(name: "iscorrection", value: "1"),
+            URLQueryItem(name: "privilege_filter", value: "0"),
+        ]
+        guard let url = components.url else { return nil }
+        let json = try await getJSON(url, ua: Self.browserUA)
+        guard let data = json["data"] as? [String: Any],
+              let lists = data["lists"] as? [[String: Any]] else { return nil }
+        for raw in lists {
+            let audio = Self.string(raw["Audioid"] ?? raw["audio_id"] ?? raw["audioid"])
+            guard !audio.isEmpty else { continue }
+            let fileHash = Self.string(raw["FileHash"] ?? raw["Hash"] ?? raw["hash"])
+            if let hash, !hash.isEmpty, fileHash.uppercased() == hash.uppercased() { return audio }
+            let mix = Self.string(raw["MixSongID"] ?? raw["mixsongid"])
+            if !mixSongID.isEmpty, mix == mixSongID { return audio }
+        }
+        return nil
     }
 
     private func gatewayCommentJSON(params: [String: String]) async throws -> [String: Any] {
@@ -1863,10 +1910,26 @@ final class KugouMusicAPI {
             let avatar = Self.string(
                 raw["avatarurl"] ?? raw["avatar_url"] ?? raw["avatar"] ?? raw["user_pic"] ?? raw["headurl"]
             )
-            let timestamp = Self.double(
-                raw["addtime"] ?? raw["add_time"] ?? raw["time"] ?? raw["timestamp"] ?? raw["created_at"]
-            )
+            // 旧接口的时间是 "yyyy-MM-dd HH:mm:ss" 字符串，不是时间戳：
+            // 原先 Double("2026-10-15 …") 得 0，评论日期全变成当天。
+            let timeValue = raw["addtime"] ?? raw["add_time"] ?? raw["time"] ?? raw["timestamp"] ?? raw["created_at"]
+            let timestamp = Self.double(timeValue)
             let seconds = timestamp > 10_000_000_000 ? timestamp / 1000 : timestamp
+            let commentDate: Date
+            if seconds > 0 {
+                commentDate = Date(timeIntervalSince1970: seconds)
+            } else if let dateString = timeValue as? String,
+                      let parsedDate = Self.commentDateFormatter.date(from: dateString) {
+                commentDate = parsedDate
+            } else {
+                commentDate = Date()
+            }
+            // 旧接口的点赞在 like 字典里（likenum / count），不是顶层字段。
+            let likeDict = raw["like"] as? [String: Any]
+            var liked = Self.int(raw["praisenum"] ?? raw["like_count"] ?? raw["liked_count"] ?? raw["likes"])
+            if liked == 0, let likeDict {
+                liked = Self.int(likeDict["likenum"] ?? likeDict["count"])
+            }
             let id = rawID.isEmpty ? abs(content.hashValue) : abs(rawID.hashValue)
             guard seen.insert(id).inserted else { return nil }
             return SongComment(
@@ -1874,8 +1937,8 @@ final class KugouMusicAPI {
                 content: content,
                 nickname: nickname.isEmpty ? "酷狗用户" : nickname,
                 avatarURL: avatar.isEmpty ? nil : URL(string: avatar),
-                time: seconds > 0 ? Date(timeIntervalSince1970: seconds) : Date(),
-                likedCount: Self.int(raw["praisenum"] ?? raw["like_count"] ?? raw["liked_count"] ?? raw["likes"]),
+                time: commentDate,
+                likedCount: liked,
                 isHot: isHot
             )
         }
@@ -2500,6 +2563,15 @@ final class KugouMusicAPI {
         if flag { return 1 }
         return 0
     }
+
+    /// 旧版评论接口的日期格式（酷狗服务端北京时间）。
+    private static let commentDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter
+    }()
 
     private static func deepString(_ obj: Any, names: [String]) -> String {
         if let value = deepValue(obj, names: names), let array = value as? [Any] {

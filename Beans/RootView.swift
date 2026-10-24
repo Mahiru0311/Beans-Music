@@ -354,9 +354,14 @@ struct RootView: View {
 
     @ViewBuilder
     private var playerPresentation: some View {
+        // 下拉收起不能再走系统：19:16 那轮删掉 zoom 过渡后，全屏页走系统默认
+        // 底部滑入，而全屏页本身没有下滑收起手势，播放页就关不掉了。
+        // 旧版能下拉收起，靠的就是 zoom 过渡带来的系统交互收起；不恢复 zoom
+        // （用户已判它僵硬），改用本地下拉手势收起：从顶部区域下拉超过阈值
+        // 即关闭，打开仍是系统底部滑入。
         BeansNowPlayingPresentation(
             isPresented: $showPlayer,
-            usesSystemInteractiveDismissal: true
+            usesSystemInteractiveDismissal: false
         ) {
             PlayerView(isPresented: $showPlayer)
                 .environmentObject(favorites)

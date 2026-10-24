@@ -35,6 +35,10 @@ struct ReferencePlaybackView: View {
     let onPlayerSettings: () -> Void
     let onQuality: () -> Void
     let onArtist: () -> Void
+    /// 封面页左上角的收起键：Apple Music 样式此前没有任何收起入口，
+    /// 下拉手势一旦失效就彻底关不掉。歌词/队列页已有自己的页眉，
+    /// 收起键只在封面页出现，不与歌词页眉的小封面重叠。
+    let onClose: () -> Void
 
     @AppStorage("beans.lyricOffset") private var lyricOffset = 0.0
     @AppStorage("beans.appleMusic.showVolume") private var showVolumeControl = false
@@ -71,7 +75,8 @@ struct ReferencePlaybackView: View {
         onAddToLocalPlaylist: @escaping () -> Void,
         onPlayerSettings: @escaping () -> Void,
         onQuality: @escaping () -> Void = {},
-        onArtist: @escaping () -> Void = {}
+        onArtist: @escaping () -> Void = {},
+        onClose: @escaping () -> Void = {}
     ) {
         self.song = song
         self.lyrics = lyrics
@@ -84,6 +89,7 @@ struct ReferencePlaybackView: View {
         self.onPlayerSettings = onPlayerSettings
         self.onQuality = onQuality
         self.onArtist = onArtist
+        self.onClose = onClose
     }
 
     private func layoutEntry(_ part: AppleMusicLayoutPart) -> PlayerLayoutEntry {
@@ -129,6 +135,22 @@ struct ReferencePlaybackView: View {
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
+                }
+
+                // 封面页左上角收起键：下拉手势是主路，这颗键是保底，
+                // 手势区域没对上时也能点一下回到主界面。
+                if !showLyrics && !showQueue {
+                    Button(action: onClose) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(primaryColor)
+                            .frame(width: 38, height: 38)
+                            .background(Color.black.opacity(0.22), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, geometry.safeAreaInsets.top + 6)
+                    .padding(.leading, 20)
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)

@@ -84,7 +84,6 @@ struct PlayerView: View {
     @AppStorage("beans.appleMusic.primaryHex") private var appleMusicPrimaryHex = ""
     @AppStorage("beans.appleMusic.secondaryHex") private var appleMusicSecondaryHex = ""
     @AppStorage("beans.appleMusic.accentHex") private var appleMusicAccentHex = ""
-    @AppStorage("beans.lyricTranslation") private var lyricTranslation = true
     /// 进度条样式：0 流光 / 1 辉光 / 2 极光 / 3 波浪
     @AppStorage("beans.progressBarStyle") private var progressBarStyle = 0
     /// 进度条单独强调色；空值时跟随播放控件颜色
@@ -359,7 +358,7 @@ struct PlayerView: View {
                       abs(value.translation.height) > abs(value.translation.width),
                       song != nil else { return }
                 BeansHaptics.medium()
-                ToastCenter.shared.show("评论功能已在酷狗专版移除")
+                showComments = true
             }
     }
 
@@ -507,6 +506,9 @@ struct PlayerView: View {
                         },
                         onArtist: {
                             openArtistHome()
+                        },
+                        onClose: {
+                            closePlayer()
                         }
                     )
 
@@ -542,7 +544,8 @@ struct PlayerView: View {
                         toggleLocalFavorite(song)
                     },
                     onComments: {
-                        if song != nil { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
+                        // 评论已接回：唱片样式不再弹“已移除”，走同一张只读评论页。
+                        if song != nil { showComments = true }
                     },
                     onSettings: {
                         openPlayerSettings()
@@ -1260,7 +1263,7 @@ struct PlayerView: View {
                             guard value.translation.height < -54,
                                   abs(value.translation.height) > abs(value.translation.width) else { return }
                             BeansHaptics.medium()
-                            ToastCenter.shared.show("评论功能已在酷狗专版移除")
+                            showComments = true
                         }
                 )
                 : nil
@@ -1311,7 +1314,7 @@ struct PlayerView: View {
                     showAppleMusicQueue.toggle()
                 }
             },
-            onComments: { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
+            onComments: { showComments = true }
         )
     }
 
@@ -1668,7 +1671,7 @@ struct PlayerView: View {
                     guard value.translation.height < -54,
                           abs(value.translation.height) > abs(value.translation.width) else { return }
                     BeansHaptics.medium()
-                    ToastCenter.shared.show("评论功能已在酷狗专版移除")
+                    showComments = true
                 }
         )
     }
@@ -2421,7 +2424,7 @@ struct PlayerView: View {
                         baseFontSize: CGFloat(lyricFontSize) * CGFloat(lyricScale),
                         lineSpacing: CGFloat(lyricLineSpacing),
                         glowRadius: lyricGlowRadius,
-                        showTranslation: lyricTranslation,
+                        showTranslation: false,
                         alignment: lyricAlign,
                         offsetX: CGFloat(lyricOffsetX),
                         anchor: lyricAnchor,
@@ -4072,7 +4075,7 @@ struct PlayerView: View {
                 .foregroundStyle(palette.text)
             layoutDebugSlider("歌词字号", valueText: "\(lyricFontSize) pt", value: Binding(get: { CGFloat(lyricFontSize) }, set: { lyricFontSize = Int($0) }), range: 12...28, step: 1)
             layoutDebugSlider("歌词行距", valueText: "\(lyricLineSpacing) pt", value: Binding(get: { CGFloat(lyricLineSpacing) }, set: { lyricLineSpacing = Int($0) }), range: 14...40, step: 1)
-            layoutDebugToggle("显示歌词翻译", isOn: $lyricTranslation)
+            // 翻译开关已删：歌词数据里翻译本就是空的，这开关永远不起作用。
         }
     }
 
@@ -6099,7 +6102,9 @@ private struct CoHotCommentsSheet: View {
                     mixSongID: song.kugouAlbumAudioId ?? "",
                     hash: song.kugouHash,
                     page: 1,
-                    limit: 30
+                    limit: 30,
+                    songName: song.name,
+                    artist: song.artists
                 )
                 if !page.hotComments.isEmpty {
                     comments = page.hotComments

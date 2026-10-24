@@ -7,12 +7,11 @@ struct FoliaSettingsView: View {
     @AppStorage(FoliaPreferences.enabledKey) private var enabled = false
     @AppStorage(FoliaPreferences.modeKey) private var modeRaw = FoliaVisualizerMode.still.rawValue
     @AppStorage(FoliaPreferences.fontScaleKey) private var fontScale = 1.0
-    @AppStorage(FoliaPreferences.subtitleScaleKey) private var subtitleScale = 1.0
-    @AppStorage(FoliaPreferences.translationKey) private var showTranslation = true
+    // 翻译已删：歌词数据里翻译本就是空的（translation: nil），
+    // 显示翻译/翻译字号/翻译颜色三行是永远不起作用的死开关。
     @AppStorage(FoliaPreferences.daylightKey) private var daylight = false
     @AppStorage(FoliaPreferences.showTextKey) private var showText = true
     @AppStorage(FoliaPreferences.primaryColorKey) private var primaryHex = "#FFFFFF"
-    @AppStorage(FoliaPreferences.secondaryColorKey) private var secondaryHex = "#FFFFFF"
     @AppStorage(FoliaPreferences.accentColorKey) private var accentHex = "#A5B4FC"
     @AppStorage(FoliaPreferences.classicIntensityKey) private var intensityRaw = "normal"
     @AppStorage(FoliaPreferences.classicRotationKey) private var rotationEnabled = true
@@ -33,7 +32,6 @@ struct FoliaSettingsView: View {
                         }
                     }
                     Toggle("显示歌词", isOn: $showText)
-                    Toggle("显示翻译", isOn: $showTranslation)
                     Toggle("日间舞台", isOn: $daylight)
                     Text("静止模式显示上一句、当前句和下一句，句间停顿保持当前位置。")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -41,10 +39,7 @@ struct FoliaSettingsView: View {
                 card("字体与配色") {
                     Text("歌词字号 \(fontScale, specifier: "%.2f")×")
                     Slider(value: $fontScale, in: 0.5...2, step: 0.05)
-                    Text("翻译字号 \(subtitleScale, specifier: "%.2f")×")
-                    Slider(value: $subtitleScale, in: 0.5...2, step: 0.05)
                     ColorPicker("歌词颜色", selection: colorBinding($primaryHex), supportsOpacity: false)
-                    ColorPicker("翻译颜色", selection: colorBinding($secondaryHex), supportsOpacity: false)
                     ColorPicker("逐词高亮颜色", selection: colorBinding($accentHex), supportsOpacity: false)
                 }
                 if modeRaw == FoliaVisualizerMode.classic.rawValue {
