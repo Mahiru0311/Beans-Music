@@ -4799,7 +4799,6 @@ struct CoLyricOffsetSheet: View {
                         .font(CoFont.appFont(12))
                         .foregroundStyle(Color.coComment)
                 }
-                Spacer()
             }
             .padding()
             .navigationTitle("歌词偏移")
@@ -4815,5 +4814,6 @@ struct CoLyricOffsetSheet: View {
                 }
             }
         }
+        .presentationDetents([.medium, .large])
     }
 }

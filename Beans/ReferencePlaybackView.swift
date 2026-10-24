@@ -112,13 +112,10 @@ struct ReferencePlaybackView: View {
                                 .transition(.opacity)
                         } else if showLyrics {
                             lyricsPage
-                                // 歌词页也只淡入淡出：下滑进场会和封面形变抢方向，缩起来更乱。
-                                .transition(.opacity)
+                                // 歌词页本身不带转场：封面只靠形变，文字与列表各自淡入淡出。
                         } else {
                             coverPage(size: geometry.size)
-                                // 封面形变只留 matchedGeometryEffect 这一路：整页只淡入淡出，
-                                // 不再叠加缩放或滑移，否则形变、缩放、滑移三层打架，缩起来就发 warp。
-                                .transition(.opacity)
+                                // 封面页本身不带转场：封面只靠形变，标题与预览各自淡入淡出。
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -204,8 +201,10 @@ struct ReferencePlaybackView: View {
             )
             .frame(width: artworkSize, height: artworkSize)
             .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
+            // 圆角与阴影跟着 showLyrics 插值：形变结束时与页眉小封面（圆角 10、小阴影）完全一致，
+            // 换页瞬间不再跳变；整体缩放以中心为锚点，四边均匀收。
+            .clipShape(RoundedRectangle(cornerRadius: showLyrics ? 10 : 18, style: .continuous))
+            .shadow(color: .black.opacity(showLyrics ? 0.26 : 0.46), radius: showLyrics ? 9 : 36, y: showLyrics ? 4 : 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.cover)))
             .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
@@ -251,6 +250,7 @@ struct ReferencePlaybackView: View {
             .frame(maxWidth: 420)
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
+            .transition(.opacity)
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
@@ -258,9 +258,11 @@ struct ReferencePlaybackView: View {
             }
             .padding(.top, 18)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.previewLyric)))
+            .transition(.opacity)
             } else {
                 compactTrackHeader
                     .padding(.top, 22)
+                    .transition(.opacity)
             }
 
             Spacer(minLength: 0)
@@ -318,6 +320,7 @@ struct ReferencePlaybackView: View {
 
             if lyrics.isEmpty {
                 emptyLyricsView
+                    .transition(.opacity)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
@@ -393,6 +396,7 @@ struct ReferencePlaybackView: View {
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
                 }
+                .transition(.opacity)
             }
         }
     }
@@ -408,6 +412,8 @@ struct ReferencePlaybackView: View {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
                     .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
+                    .scaleEffect(player.isPlaying ? 1 : 0.965)
+                    .animation(.spring(response: 0.36, dampingFraction: 0.84), value: player.isPlaying)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
 
@@ -432,6 +438,7 @@ struct ReferencePlaybackView: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onArtist)
             }
+            .transition(.opacity)
             Spacer(minLength: 0)
             HStack(spacing: 0) {
                 favoriteActionButton()
@@ -457,6 +464,7 @@ struct ReferencePlaybackView: View {
                         .contentShape(Rectangle())
                 }
             }
+            .transition(.opacity)
         }
     }
 
