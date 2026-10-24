@@ -1,9 +1,10 @@
 import Foundation
 
-// Folia 舞台效果表（2026-10-25 重构后）：只留 8 个全部有原生渲染器的效果，
-// 待移植的空壳项已全部拿掉，设置页不再出现“待移植”。
+// Folia 舞台效果表：15 个 folia-major 原版（按原版 order 排）+ 涌现（QQ 音乐式，Co 自加，放最后）。
+// 设置页按 order 排序显示；rawValue 是存档身份，order 只管排序，改 order 不影响已存偏好。
 enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
-    case sonnet, tempera, classic, cadenza, partita, fume, diorama, still, rise
+    case sonnet, tempera, lumiere, hanabi, classic, cadenza, partita, fume,
+         tilt, claddagh, monet, pendolo, cappella, diorama, still, rise
 
     var id: String { rawValue }
 
@@ -11,10 +12,17 @@ enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .sonnet: return "商籁"
         case .tempera: return "凝彩"
+        case .lumiere: return "绘光"
+        case .hanabi: return "花火"
         case .classic: return "流光"
         case .cadenza: return "心象"
         case .partita: return "云阶"
         case .fume: return "浮名"
+        case .tilt: return "倾诉"
+        case .claddagh: return "回环"
+        case .monet: return "莫奈"
+        case .pendolo: return "时计"
+        case .cappella: return "群唱"
         case .diorama: return "镜台"
         case .still: return "静止"
         case .rise: return "涌现"
@@ -25,13 +33,20 @@ enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .sonnet: return 10
         case .tempera: return 20
+        case .lumiere: return 25
+        case .hanabi: return 26
         case .classic: return 30
         case .cadenza: return 40
         case .partita: return 50
         case .fume: return 60
-        case .diorama: return 70
-        case .still: return 80
-        case .rise: return 90
+        case .tilt: return 70
+        case .claddagh: return 80
+        case .monet: return 90
+        case .pendolo: return 100
+        case .cappella: return 110
+        case .diorama: return 120
+        case .still: return 130
+        case .rise: return 140
         }
     }
 

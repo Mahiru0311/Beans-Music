@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Beans owns the audio and queue. This shell replaces only the visible lyric surface.
 // 2026-10-25 重构：背景不再是纯黑/纯白，改成封面毛玻璃取色（与播放页同款 CoverBlurBackground，
@@ -17,6 +18,7 @@ struct FoliaStageView: View {
     @State private var document = FoliaLyricDocument(trackIdentity: "empty", lines: [])
     @State private var showControls = true
     @State private var hideControlsTask: Task<Void, Never>?
+    @State private var orientationObserver: NSObjectProtocol?
 
     /// 沉浸式：点一下出现，3 秒不动自动藏起（只藏底部控制框，顶部栏一直在，退出路不断）。
     private func pokeControls() {
@@ -26,6 +28,40 @@ struct FoliaStageView: View {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             if !Task.isCancelled { showControls = false }
         }
+    }
+
+    /// 横屏锁：切进 Folia 自动转横屏，且在 Folia 里只能横屏。
+    /// 公开接口只能“允许”横屏、不能强制转过去，所以这里用了 UIDevice 的转屏接口；
+    /// 侧载包不受 App Store 审核影响。退出 Folia 时转回竖屏。
+    private func lockLandscape() {
+        UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+        UIViewController.attemptRotationToDeviceOrientation()
+        startOrientationWatch()
+    }
+
+    /// 在 Folia 里只要转回竖屏，就再弹回横屏（真正“只能横屏”）。
+    private func startOrientationWatch() {
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        orientationObserver = NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) { _ in
+            if UIDevice.current.orientation.isPortrait {
+                UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+                UIViewController.attemptRotationToDeviceOrientation()
+            }
+        }
+    }
+
+    private func stopOrientationWatch() {
+        if let observer = orientationObserver {
+            NotificationCenter.default.removeObserver(observer)
+            orientationObserver = nil
+        }
+        UIDevice.current.endGeneratingDeviceOrientationNotifications()
+    }
+
+    private func unlockToPortrait() {
+        UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+        UIViewController.attemptRotationToDeviceOrientation()
     }
 
     /// 播放页同款取法：自定义封面优先，否则用歌曲封面；无封面时毛玻璃层为空，只剩底色。
@@ -65,8 +101,8 @@ struct FoliaStageView: View {
             .animation(.easeOut(duration: 0.3), value: showControls)
         }
         .foregroundStyle(daylight ? Color.black : Color.white)
-        .onAppear { refreshDocument(); pokeControls() }
-        .onDisappear { hideControlsTask?.cancel() }
+        .onAppear { refreshDocument(); pokeControls(); lockLandscape() }
+        .onDisappear { hideControlsTask?.cancel(); stopOrientationWatch(); unlockToPortrait() }
         .onChange(of: lyrics) { _, _ in refreshDocument() }
         .onChange(of: song?.identityKey) { _, _ in refreshDocument() }
         .onChange(of: clock.duration) { _, _ in refreshDocument() }
@@ -78,8 +114,24 @@ struct FoliaStageView: View {
             FoliaClassicRenderer(document: document, clock: clock)
         case .still:
             FoliaStillRenderer(document: document, clock: clock)
-        case .sonnet, .tempera, .cadenza, .partita, .fume, .diorama:
+        case .sonnet, .tempera, .cadenza, .fume, .diorama:
             FoliaLineEffectView(document: document, clock: clock, mode: currentMode)
+        case .partita:
+            FoliaPartitaView(document: document, clock: clock)
+        case .lumiere:
+            FoliaLumiereView(document: document, clock: clock)
+        case .hanabi:
+            FoliaHanabiView(document: document, clock: clock)
+        case .tilt:
+            FoliaTiltView(document: document, clock: clock)
+        case .claddagh:
+            FoliaCladdaghView(document: document, clock: clock)
+        case .monet:
+            FoliaMonetView(document: document, clock: clock, coverURL: displayCoverURL)
+        case .pendolo:
+            FoliaPendoloView(document: document, clock: clock)
+        case .cappella:
+            FoliaCappellaView(document: document, clock: clock)
         case .rise:
             FoliaRiseView(document: document, clock: clock)
         }
@@ -165,13 +217,6 @@ struct FoliaLineEffectView: View {
                     }
                 }
                 .frame(maxWidth: 896).padding(.horizontal, 48).padding(.bottom, 64)
-                .background {
-                    // 云阶的引导线：顺着台阶下行的斜线，淡淡的一笔。
-                    if mode == .partita {
-                        Rectangle().fill((Color(hex: accentHex) ?? .accentColor).opacity(0.15))
-                            .frame(width: 220, height: 1).rotationEffect(.degrees(18))
-                    }
-                }
                 .allowsHitTesting(false)
                 .animation(.spring(response: 0.5, dampingFraction: 0.68), value: effectiveIndex)
             }
@@ -287,12 +332,6 @@ struct FoliaLineEffectView: View {
             } else {
                 baseText(line: line, current: false).opacity(0.22).transition(.opacity)
             }
-        case .partita:
-            // 云阶：三句逐行向右下错落成台阶（引导线在 body 的 background 里）。
-            baseText(line: line, current: current)
-                .offset(x: CGFloat(offset + 1) * 40)
-                .opacity(current ? 1 : 0.22)
-                .transition(.move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
         case .diorama:
             // 镜台：不同景深上的方块——远景小而倾斜、近景大而正对。
             baseText(line: line, current: current)
@@ -347,21 +386,24 @@ private struct CornerMark: View {
     }
 }
 
-/// 流式排布：子视图按行排，超宽自动换行（心象的字符云用它，行再长也不溢出）。
-private struct FoliaFlowLayout: Layout {
+/// 流式排布：子视图按行排，超宽自动换行（心象的字符云与花火的词块共用）。
+struct FoliaFlowLayout: Layout {
     var spacing: CGFloat = 2
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxRowWidth: CGFloat = 0
         for sub in subviews {
             let size = sub.sizeThatFits(.unspecified)
             if x > 0 && x + size.width > width {
+                maxRowWidth = max(maxRowWidth, x - spacing)
                 x = 0; y += rowHeight + spacing; rowHeight = 0
             }
             x += size.width + spacing; rowHeight = max(rowHeight, size.height)
         }
-        return CGSize(width: width == .infinity ? x : width, height: y + rowHeight)
+        maxRowWidth = max(maxRowWidth, x > 0 ? x - spacing : 0)
+        // 贴着内容宽（不超过提议宽），不撑满：群唱气泡与花火词块靠它贴着文本，不撑成满宽条。
+        return CGSize(width: min(maxRowWidth, width), height: y + rowHeight)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
