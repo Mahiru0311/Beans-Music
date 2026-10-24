@@ -48,6 +48,9 @@ struct ReferencePlaybackView: View {
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
     @Namespace private var coverMorphNamespace
     @State private var lyricCenters: [UUID: CGFloat] = [:]
+    /// 封面过渡进度：0 = 封面页，1 = 歌词页。由 @State 持有、不再直接派生自 showLyrics——
+    /// 派生值在分支切换时可能丢终态（歌词页里封面弹回大图），@State 跨重建保留，稳态一定对。
+    @State private var coverProgress: Double = 0
     @State private var focusedLyricID: UUID?
     @State private var selectedLyricID: UUID?
     @State private var lyricsViewportHeight: CGFloat = 0
@@ -131,6 +134,15 @@ struct ReferencePlaybackView: View {
 
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .onAppear {
+            // 稳态直接对齐：恢复到歌词页打开时，首帧就是小封面，不经过大图闪一下。
+            coverProgress = showLyrics ? 1 : 0
+        }
+        .onChange(of: showLyrics) { newValue in
+            withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                coverProgress = newValue ? 1 : 0
+            }
         }
         .onDisappear {
             resumeTask?.cancel()
@@ -1599,7 +1611,7 @@ private func persistentCover(upperSize: CGSize, fullSize: CGSize) -> some View {
     }
     .buttonStyle(GlassPressButtonStyle(scale: 0.94))
     .modifier(WebCoverProgressModifier(
-        progress: showLyrics ? 1 : 0,
+        progress: coverProgress,
         width: upperSize.width,
         height: upperSize.height,
         coverSize: artworkSize
