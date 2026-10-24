@@ -10,30 +10,6 @@ final class CoverImagePrefetcher {
 
     private init() {}
 
-    func prefetchStartupCovers(
-        auth: AuthStore,
-        player: PlayerManager,
-        favorites: FavoritesStore
-    ) {
-        guard !didStartStartupPrefetch else { return }
-        didStartStartupPrefetch = true
-
-        var urls = Set<URL>()
-        for snapshot in DiscoverCache.shared.allSnapshots() {
-            urls.formUnion(Self.urls(in: snapshot))
-        }
-        urls.formUnion(Self.urls(in: auth.playlists))
-        urls.formUnion(Self.urls(in: player.queue))
-        urls.formUnion(Self.urls(in: player.history))
-        urls.formUnion(Self.urls(in: favorites.kugouFavoriteSongs))
-        urls.formUnion(Self.urls(in: favorites.kugouOfficialFavoriteSongs))
-        urls.formUnion(Self.urls(in: favorites.kugouFavoriteSongs))
-        urls.formUnion(Self.urls(in: LocalLibraryStore.shared.playlists.flatMap(\.songs)))
-        urls.formUnion(Self.urls(in: SyncedPlaylistCache.shared.allCachedPlaylists()))
-        urls.formUnion(Self.urls(in: SyncedPlaylistCache.shared.allCachedSongs()))
-        urls.formUnion(Self.urls(in: DetailSongsCache.shared.allCachedSongs()))
-        schedule(urls)
-    }
 
     /// 主页请求完成后立即补充本次新拿到的封面，不必等下次启动。
     func prefetch(snapshot: DiscoverCache.Snapshot) {

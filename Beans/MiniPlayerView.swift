@@ -223,7 +223,7 @@ private struct BeansTransitionSourceModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if let namespace, #available(iOS 18.0, *) {
+        if let namespace {
             content.matchedTransitionSource(
                 id: BeansNowPlayingTransitionID.surface,
                 in: namespace

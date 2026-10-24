@@ -128,9 +128,7 @@ final class PlayerManager: NSObject, ObservableObject {
     private var itemStatusObserver: NSKeyValueObservation?
     private var timeControlStatusObserver: NSKeyValueObservation?
     private var equalizerSettingsObserver: NSObjectProtocol?
-    private var backendBlockObserver: NSObjectProtocol?
     private var customCoverObserver: NSObjectProtocol?
-    private var listeningStatsObserver: NSObjectProtocol?
     private var playbackConfirmed = false
     private var pendingThirdPartyVIPNotice: ThirdPartyVIPNotice?
     private var sessionConfigured = false
@@ -246,17 +244,6 @@ final class PlayerManager: NSObject, ObservableObject {
         return counts.values.reduce(0, +)
     }
 
-    static func mergeServerListeningStats(seconds: Int?, playCount: Int?) {
-        let defaults = UserDefaults.standard
-        if let seconds, seconds > Int(storedListeningDuration.rounded(.down)) {
-            defaults.set(Double(seconds), forKey: listeningDurationKey)
-        }
-        if let playCount, playCount > storedPlayCount {
-            let increase = playCount - storedPlayCount
-            let offset = max(0, defaults.integer(forKey: listeningPlayCountOffsetKey))
-            defaults.set(offset + increase, forKey: listeningPlayCountOffsetKey)
-        }
-    }
 
     var totalPlayCount: Int {
         playCounts.values.reduce(0, +)
@@ -357,28 +344,12 @@ final class PlayerManager: NSObject, ObservableObject {
         ) { [weak self] _ in
             self?.applyEqualizerToCurrentItem()
         }
-        backendBlockObserver = NotificationCenter.default.addObserver(
-            forName: .beansBackendBlockStateDidChange,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.stopPlaybackIfBackendBlocked()
-        }
         customCoverObserver = NotificationCenter.default.addObserver(
             forName: .beansCustomSongCoverDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             self?.updateNowPlaying()
-        }
-        listeningStatsObserver = NotificationCenter.default.addObserver(
-            forName: .beansListeningStatsDidSync,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            self.listeningDuration = max(self.listeningDuration, Self.storedListeningDuration)
-            self.objectWillChange.send()
         }
     }
 
@@ -391,14 +362,8 @@ final class PlayerManager: NSObject, ObservableObject {
         if let equalizerSettingsObserver {
             NotificationCenter.default.removeObserver(equalizerSettingsObserver)
         }
-        if let backendBlockObserver {
-            NotificationCenter.default.removeObserver(backendBlockObserver)
-        }
         if let customCoverObserver {
             NotificationCenter.default.removeObserver(customCoverObserver)
-        }
-        if let listeningStatsObserver {
-            NotificationCenter.default.removeObserver(listeningStatsObserver)
         }
     }
 
@@ -436,9 +401,6 @@ final class PlayerManager: NSObject, ObservableObject {
         savePersistedPlaybackState()
     }
 
-    func playSong(_ song: Song, in context: [Song]) {
-        play(songs: context, startAt: context.firstIndex(of: song) ?? 0)
-    }
 
     /// 插队播放：把歌曲放到当前歌曲之后，不打断当前播放
     func playNext(_ song: Song) {
@@ -934,9 +896,6 @@ final class PlayerManager: NSObject, ObservableObject {
         return queue[nextIndex]
     }
 
-    private func shouldLockOfficialOnly(_ song: Song) -> Bool {
-        false
-    }
 
     /// 在网易云按 歌名+歌手 匹配同名歌曲（QQ vkey 失败时的免费播放兜底）
     /// 仅在高音质地址已经交给 AVPlayer 但实际无法打开时回退标准音质。
@@ -1256,28 +1215,6 @@ final class PlayerManager: NSObject, ObservableObject {
         DispatchQueue.main.async(execute: workItem)
     }
 
-    /// 当前平台播放失败时，匹配其它目录平台的同一录音并重新走完整播放链。
-    /// 这样会优先遵循用户的官方/第三方播放来源设置；只接受标题、歌手和时长均匹配的结果，避免播放到翻唱或不同版本。
-    private func bestMatchingSong(for source: Song, in candidates: [Song]) -> Song? {
-        let title = normalizedTrackText(source.name)
-        guard !title.isEmpty else { return nil }
-        let sourceArtists = artistTokens(source.artists)
-        return candidates.compactMap { candidate -> (Song, Int)? in
-            guard normalizedTrackText(candidate.name) == title else { return nil }
-            let candidateArtists = artistTokens(candidate.artists)
-            guard sourceArtists.isEmpty || candidateArtists.isEmpty || !sourceArtists.isDisjoint(with: candidateArtists) else {
-                return nil
-            }
-            let durationDifference = abs(source.duration - candidate.duration)
-            guard source.duration <= 0 || candidate.duration <= 0 || durationDifference <= 12 else {
-                return nil
-            }
-            let artistScore = sourceArtists.intersection(candidateArtists).count * 60
-            return (candidate, 100 + artistScore - Int(durationDifference.rounded()))
-        }
-        .max { $0.1 < $1.1 }?
-        .0
-    }
 
     private func normalizedTrackText(_ value: String) -> String {
         var result = value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)

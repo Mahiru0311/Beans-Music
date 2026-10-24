@@ -471,7 +471,7 @@ struct PlaylistView: View {
                     .foregroundStyle(player.playMode == .shuffle ? Color.beansAmber : .white)
                     .frame(width: 48, height: 48)
                     .background {
-                        if #available(iOS 26, *), !disableLiquidGlass {
+                        if !disableLiquidGlass {
                             Circle()
                                 .fill(.clear)
                                 .glassEffect(player.playMode == .shuffle ? .regular.tint(Color.beansAmber.opacity(0.45)) : .regular, in: Circle())
@@ -494,7 +494,7 @@ struct PlaylistView: View {
                 .foregroundStyle(.black)
                 .frame(width: 168, height: 50)
                 .background {
-                    if #available(iOS 26, *), !disableLiquidGlass {
+                    if !disableLiquidGlass {
                         Capsule()
                             .fill(.clear)
                             .glassEffect(.regular.tint(.white.opacity(0.92)), in: Capsule())
@@ -515,7 +515,7 @@ struct PlaylistView: View {
                     .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
                     .background {
-                        if #available(iOS 26, *), !disableLiquidGlass {
+                        if !disableLiquidGlass {
                             Circle()
                                 .fill(.clear)
                                 .glassEffect(.regular, in: Circle())

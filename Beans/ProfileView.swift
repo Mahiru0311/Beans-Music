@@ -525,47 +525,6 @@ struct ProfileView: View {
         }
     }
 
-    private func beginProfileThemeReveal(from globalLocation: CGPoint?) {
-        let target = resolvedThemeToggleTarget
-        guard themeRevealSnapshot == nil else { return }
-
-        if reduceMotion {
-            themeModeRaw = target.rawValue
-            return
-        }
-
-        guard let captured = currentProfileWindowSnapshot() else {
-            themeModeRaw = target.rawValue
-            return
-        }
-
-        let frame = profileGlobalFrame == .zero
-            ? CGRect(origin: .zero, size: captured.size)
-            : profileGlobalFrame
-        let requested = globalLocation ?? CGPoint(x: frame.midX, y: frame.midY)
-        themeRevealOrigin = CGPoint(
-            x: min(max(requested.x - frame.minX, 0), frame.width),
-            y: min(max(requested.y - frame.minY, 0), frame.height)
-        )
-        themeRevealSnapshot = captured.image
-        themeRevealProgress = 0
-
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            themeModeRaw = target.rawValue
-        }
-
-        DispatchQueue.main.async {
-            withAnimation(.timingCurve(0.16, 0.82, 0.22, 1.0, duration: 1.12)) {
-                themeRevealProgress = 1
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.22) {
-            themeRevealSnapshot = nil
-            themeRevealProgress = 0
-        }
-    }
 
     private func currentProfileWindowSnapshot() -> (image: UIImage, size: CGSize)? {
         let windows = UIApplication.shared.connectedScenes
@@ -2016,10 +1975,6 @@ struct SettingsView: View {
     /// 底栏是否显示文字（关闭后只显示图标）
     @AppStorage("beans.tabLabelsVisible") private var tabLabelsVisible = true
     @AppStorage("beans.tabIconStyle") private var tabIconStyleRaw = BeansTabIconStyle.sfSymbols.rawValue
-    @AppStorage("beans.legacyTabCornerRadius") private var legacyTabCornerRadius = 32.0
-    @AppStorage("beans.legacyTabWidth") private var legacyTabWidth = 356.0
-    @AppStorage("beans.legacyTabOffsetX") private var legacyTabOffsetX = 0.0
-    @AppStorage("beans.legacyTabOffsetY") private var legacyTabOffsetY = 0.0
     /// 第三方音源播放会员歌成功时提醒，默认开启
     @AppStorage("beans.showThirdPartyVIPNotice") private var showThirdPartyVIPNotice = true
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
@@ -2223,130 +2178,11 @@ struct SettingsView: View {
         return custom.components(separatedBy: .newlines)
     }
 
-    private func greetingLineSizeBinding(_ index: Int) -> Binding<Double> {
-        Binding(
-            get: {
-                switch index {
-                case 0: return homeGreetingLine1Size > 0 ? homeGreetingLine1Size : homeGreetingSize
-                case 1: return homeGreetingLine2Size > 0 ? homeGreetingLine2Size : homeGreetingSize
-                default: return homeGreetingLine3Size > 0 ? homeGreetingLine3Size : homeGreetingSize
-                }
-            },
-            set: { value in
-                switch index {
-                case 0: homeGreetingLine1Size = value
-                case 1: homeGreetingLine2Size = value
-                default: homeGreetingLine3Size = value
-                }
-            }
-        )
-    }
 
-    private func greetingLineColorBinding(_ index: Int) -> Binding<Color> {
-        Binding(
-            get: {
-                let raw: String
-                switch index {
-                case 0: raw = homeGreetingLine1ColorHex
-                case 1: raw = homeGreetingLine2ColorHex
-                default: raw = homeGreetingLine3ColorHex
-                }
-                return Color(hex: raw) ?? (Color(hex: homeGreetingColorHex) ?? Color.beansLabel)
-            },
-            set: { color in
-                let hex = color.hexString
-                switch index {
-                case 0: homeGreetingLine1ColorHex = hex
-                case 1: homeGreetingLine2ColorHex = hex
-                default: homeGreetingLine3ColorHex = hex
-                }
-            }
-        )
-    }
 
-    private func greetingLineOffsetBinding(_ index: Int) -> Binding<Double> {
-        Binding(
-            get: {
-                switch index {
-                case 0: return homeGreetingLine1OffsetY
-                case 1: return homeGreetingLine2OffsetY
-                default: return homeGreetingLine3OffsetY
-                }
-            },
-            set: { value in
-                switch index {
-                case 0: homeGreetingLine1OffsetY = value
-                case 1: homeGreetingLine2OffsetY = value
-                default: homeGreetingLine3OffsetY = value
-                }
-            }
-        )
-    }
 
-    private func greetingLineGradientStartBinding(_ index: Int) -> Binding<Color> {
-        Binding(
-            get: {
-                let raw: String
-                switch index {
-                case 0: raw = homeGreetingLine1GradientStartHex
-                case 1: raw = homeGreetingLine2GradientStartHex
-                default: raw = homeGreetingLine3GradientStartHex
-                }
-                return Color(hex: raw) ?? (Color(hex: homeGreetingGradientStartHex) ?? Color.beansLabel)
-            },
-            set: { color in
-                switch index {
-                case 0: homeGreetingLine1GradientStartHex = color.hexString
-                case 1: homeGreetingLine2GradientStartHex = color.hexString
-                default: homeGreetingLine3GradientStartHex = color.hexString
-                }
-            }
-        )
-    }
 
-    private func greetingLineGradientEndBinding(_ index: Int) -> Binding<Color> {
-        Binding(
-            get: {
-                let raw: String
-                switch index {
-                case 0: raw = homeGreetingLine1GradientEndHex
-                case 1: raw = homeGreetingLine2GradientEndHex
-                default: raw = homeGreetingLine3GradientEndHex
-                }
-                return Color(hex: raw) ?? (Color(hex: homeGreetingGradientEndHex) ?? Color.beansLabel)
-            },
-            set: { color in
-                switch index {
-                case 0: homeGreetingLine1GradientEndHex = color.hexString
-                case 1: homeGreetingLine2GradientEndHex = color.hexString
-                default: homeGreetingLine3GradientEndHex = color.hexString
-                }
-            }
-        )
-    }
 
-    private func resetGreetingLineStyle(_ index: Int) {
-        switch index {
-        case 0:
-            homeGreetingLine1Size = 0
-            homeGreetingLine1ColorHex = ""
-            homeGreetingLine1OffsetY = 0
-            homeGreetingLine1GradientStartHex = ""
-            homeGreetingLine1GradientEndHex = ""
-        case 1:
-            homeGreetingLine2Size = 0
-            homeGreetingLine2ColorHex = ""
-            homeGreetingLine2OffsetY = 0
-            homeGreetingLine2GradientStartHex = ""
-            homeGreetingLine2GradientEndHex = ""
-        default:
-            homeGreetingLine3Size = 0
-            homeGreetingLine3ColorHex = ""
-            homeGreetingLine3OffsetY = 0
-            homeGreetingLine3GradientStartHex = ""
-            homeGreetingLine3GradientEndHex = ""
-        }
-    }
 
     var body: some View {
         ZStack {
@@ -2519,10 +2355,6 @@ struct SettingsView: View {
         .beansScrollIndicatorsHidden()
     }
 
-    private func closeSettings() {
-        onClose?()
-        dismiss()
-    }
 
     private var showAccountSettings: Bool {
         settingsMatches("账号 登录 酷狗")
@@ -3152,11 +2984,6 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
-                if #unavailable(iOS 26) {
-                    legacyTabBarSettings
-
-                    Divider().overlay(Color.beansComment.opacity(0.15))
-                }
 
                  VStack(alignment: .leading, spacing: 8) {
                      HStack {
@@ -3954,65 +3781,8 @@ struct SettingsView: View {
         }
     }
 
-    private var legacyTabBarSettings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                Image(systemName: "iphone.gen3")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.beansAmber)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("低系统悬浮底栏")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
-                    Text("仅 iOS 26 以下生效，用来模拟高系统悬浮底栏")
-                        .font(BeansFont.appFont(11))
-                        .foregroundStyle(Color.beansComment)
-                }
-                Spacer()
-                Button("默认") {
-                    resetLegacyTabBar()
-                    BeansHaptics.select()
-                }
-                .font(BeansFont.appFont(12, .semibold))
-                .foregroundStyle(Color.beansAmber)
-                .buttonStyle(.plain)
-            }
-            settingsSlider("圆润度", valueText: "\(Int(legacyTabCornerRadius))") {
-                Slider(value: $legacyTabCornerRadius, in: 18...42, step: 1)
-                    .tint(Color.beansAmber)
-            }
-            settingsSlider("长度", valueText: "\(Int(legacyTabWidth))") {
-                Slider(value: $legacyTabWidth, in: 300...420, step: 1)
-                    .tint(Color.beansAmber)
-            }
-            settingsSlider("X 位置", valueText: signedIntText(legacyTabOffsetX)) {
-                Slider(value: $legacyTabOffsetX, in: -40...40, step: 1)
-                    .tint(Color.beansAmber)
-            }
-            settingsSlider("Y 位置", valueText: signedIntText(legacyTabOffsetY)) {
-                Slider(value: $legacyTabOffsetY, in: -36...36, step: 1)
-                    .tint(Color.beansAmber)
-            }
-        }
-        .padding(14)
-        .background {
-            BeansGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-    }
 
-    private func resetLegacyTabBar() {
-        legacyTabCornerRadius = 32
-        legacyTabWidth = 356
-        legacyTabOffsetX = 0
-        legacyTabOffsetY = 0
-    }
 
-    private func signedIntText(_ value: Double) -> String {
-        let intValue = Int(value.rounded())
-        if intValue == 0 { return "0" }
-        return intValue > 0 ? "+\(intValue)" : "\(intValue)"
-    }
 
     private func layoutSettingSlider(
         _ title: String,
@@ -4220,32 +3990,6 @@ struct SettingsView: View {
         )
     }
 
-    private func settingsSupportButton(
-        icon: String,
-        title: String,
-        tint: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 28)
-                Text(title)
-                    .font(BeansFont.appFont(14, .semibold))
-                    .foregroundStyle(Color.beansLabel)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.beansComment.opacity(0.65))
-            }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-    }
 
     private func normalizedFloatingImageBase64(from data: Data) -> String? {
         guard let image = UIImage(data: data) else { return nil }
@@ -4347,13 +4091,9 @@ private struct SettingsCatalogGroup<Content: View>: View {
 struct SettingsLiquidSheetPresentation: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
-        if #available(iOS 16.4, *) {
-            content
-                .presentationBackground(.clear)
-                .presentationCornerRadius(28)
-        } else {
-            content
-        }
+        content
+            .presentationBackground(.clear)
+            .presentationCornerRadius(28)
     }
 }
 
@@ -4371,7 +4111,7 @@ private struct SettingsCompactGlassSurface: View {
 
     var body: some View {
         GeometryReader { proxy in
-            if #available(iOS 26, *), usesNativeLiquidSurface,
+            if usesNativeLiquidSurface,
                proxy.size.height < UIScreen.main.bounds.height * 0.82 {
                 GlassEffectContainer {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)

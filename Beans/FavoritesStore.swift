@@ -94,13 +94,4 @@ final class FavoritesStore: ObservableObject {
         }
     }
 
-    func markKugouOfficial(_ song: Song, liked: Bool) {
-        if liked {
-            kugouOfficialFavoriteSongs.removeAll { $0.identityKey == song.identityKey }
-            kugouOfficialFavoriteSongs.insert(song, at: 0)
-        } else {
-            kugouOfficialFavoriteSongs.removeAll { $0.identityKey == song.identityKey }
-        }
-        saveSongs(kugouOfficialFavoriteSongs, key: kugouOfficialKey)
-    }
 }

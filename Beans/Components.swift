@@ -53,14 +53,10 @@ extension View {
         modifier(BeansAdaptiveContentWidthModifier(compact: compact, regular: regular))
     }
 
-    /// 横向卡片列表的滚动裁剪兼容：高系统允许卡片自然延伸，旧系统保持系统默认裁剪。
+    /// 横向卡片列表的滚动裁剪：卡片自然延伸。
     @ViewBuilder
     func beansCompatScrollClipDisabled() -> some View {
-        if #available(iOS 17.0, *) {
-            scrollClipDisabled()
-        } else {
-            self
-        }
+        scrollClipDisabled()
     }
 }
 
@@ -396,22 +392,11 @@ struct BeansGlass<S: Shape>: View {
                 shape
                     .fill(Color.beansGlassFill.opacity(0.94))
             } else if isLiquid {
-                if #available(iOS 26, *) {
-                    GlassEffectContainer {
-                        ZStack {
-                            shape
-                                .fill(.clear)
-                                .glassEffect(.clear, in: shape)
-                            if let liquidGlassColor = theme.liquidGlassColor {
-                                shape
-                                    .fill(liquidGlassColor.opacity(liquidTintOpacity))
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    }
-                } else {
+                GlassEffectContainer {
                     ZStack {
-                        shape.fill(.ultraThinMaterial)
+                        shape
+                            .fill(.clear)
+                            .glassEffect(.clear, in: shape)
                         if let liquidGlassColor = theme.liquidGlassColor {
                             shape
                                 .fill(liquidGlassColor.opacity(liquidTintOpacity))
@@ -692,7 +677,7 @@ extension View {
     }
 }
 
-/// 弹窗尺寸（自定义枚举，避免在低版本引用 iOS 16 类型）
+/// 弹窗尺寸（自定义枚举）
 enum BeansDetent {
     case medium
     case large
@@ -700,12 +685,11 @@ enum BeansDetent {
     case height(CGFloat)
 }
 
-/// 弹窗尺寸与拖拽指示条：iOS 16+ 生效，低版本全屏展示
+/// 弹窗尺寸与拖拽指示条
 struct BeansSheetModifier: ViewModifier {
     let detents: [BeansDetent]
     var dragIndicator: Bool?
 
-    @available(iOS 16, *)
     private static func makeDetents(_ detents: [BeansDetent]) -> Set<PresentationDetent> {
         var result: Set<PresentationDetent> = []
         for detent in detents {
@@ -721,17 +705,13 @@ struct BeansSheetModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if #available(iOS 16, *) {
-            if let dragIndicator {
-                content
-                    .presentationDetents(Self.makeDetents(detents))
-                    .presentationDragIndicator(dragIndicator ? .visible : .hidden)
-            } else {
-                content
-                    .presentationDetents(Self.makeDetents(detents))
-            }
+        if let dragIndicator {
+            content
+                .presentationDetents(Self.makeDetents(detents))
+                .presentationDragIndicator(dragIndicator ? .visible : .hidden)
         } else {
             content
+                .presentationDetents(Self.makeDetents(detents))
         }
     }
 }
@@ -780,28 +760,24 @@ extension View {
         }
     }
 
-    /// iOS 16+ 隐藏滚动条，低版本保持默认
+    /// 隐藏滚动条
     @ViewBuilder
     func beansScrollIndicatorsHidden() -> some View {
-        if #available(iOS 16, *) { self.scrollIndicators(.hidden) } else { self }
+        self.scrollIndicators(.hidden)
     }
 
-    /// iOS 16+ 滚动时收起键盘，低版本保持默认
+    /// 滚动时收起键盘
     @ViewBuilder
     func beansScrollDismissesKeyboard() -> some View {
-        if #available(iOS 16, *) { self.scrollDismissesKeyboard(.interactively) } else { self }
+        self.scrollDismissesKeyboard(.interactively)
     }
 
-    /// iOS 16+ 隐藏滚动内容默认背景，低版本保持默认
+    /// 隐藏滚动内容默认背景
     @ViewBuilder
     func beansScrollContentBackgroundHidden() -> some View {
-        if #available(iOS 16, *) { self.scrollContentBackground(.hidden) } else { self }
+        self.scrollContentBackground(.hidden)
     }
 
-    /// 在歌单、排行榜等详情页底部保留可用的迷你播放器。
-    func beansDetailMiniPlayer() -> some View {
-        modifier(BeansDetailMiniPlayerModifier())
-    }
 }
 
 private struct BeansDetailMiniPlayerModifier: ViewModifier {
@@ -1323,7 +1299,7 @@ struct VIPBadgeView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
-            .background(Capsule().fill(text == "SVIP" ? Color(red: 0.85, green: 0.62, blue: 0.18) : Color(red: 0.93, green: 0.25, blue: 0.22)))
+            .background(Capsule().fill(text == "SVIP" ? Color(red: 0.85, green: 0.62, blue: 0.18) : .beansThemeRed))
     }
 }
 

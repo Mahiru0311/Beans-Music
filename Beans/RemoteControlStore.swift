@@ -67,23 +67,7 @@ final class RemoteControlStore: ObservableObject {
         defaults.set(value, forKey: key)
     }
 
-    private func setHex(_ value: String?, key: String, defaults: UserDefaults) {
-        guard let value, value.hasPrefix("#"), value.count == 7 else {
-            restore(key: key, defaults: defaults)
-            return
-        }
-        rememberOriginal(key: key, defaults: defaults)
-        defaults.set(value, forKey: key)
-    }
 
-    private func setString(_ value: String?, key: String, defaults: UserDefaults) {
-        guard let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            restore(key: key, defaults: defaults)
-            return
-        }
-        rememberOriginal(key: key, defaults: defaults)
-        defaults.set(value, forKey: key)
-    }
 
     private func rememberOriginal(key: String, defaults: UserDefaults) {
         var keys = defaults.stringArray(forKey: appliedKeysKey) ?? []

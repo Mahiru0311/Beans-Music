@@ -20,12 +20,6 @@ func beansLocalized(_ chinese: String, _ english: String) -> String {
     UserDefaults.standard.string(forKey: "beans.language") == AppLanguage.english.rawValue ? english : chinese
 }
 
-func beansPlatformName(_ provider: SearchProvider) -> String {
-    switch provider {
-    case .kugou: return beansLocalized("酷狗音乐", "Kugou Music")
-    default: return beansLocalized("酷狗音乐", "Kugou Music")
-    }
-}
 
 func beansChartName(_ name: String) -> String {
     guard UserDefaults.standard.string(forKey: "beans.language") == AppLanguage.english.rawValue else { return name }

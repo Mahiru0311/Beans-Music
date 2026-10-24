@@ -70,6 +70,7 @@ extension Color {
     static var beansAmber: Color { Color(uiColor: .beansAmber) }
     static let beansSage = Color(uiColor: .beansSage)
     static let beansGlassFill = Color(uiColor: .beansGlassFill)
+    static let beansThemeRed = Color(red: 0.93, green: 0.25, blue: 0.22)
     /// 当前配色主题的高亮色（播放器进度点 / 光斑 / 歌词高亮等）
     static var beansHighlight: Color {
         ThemeStore.shared.customAccent ?? AccentTheme.current.highlight
@@ -751,33 +752,6 @@ final class ThemeStore: ObservableObject {
         invalidateBackgroundCache()
     }
 
-    /// 重置设置时清空整套壁纸库与当前背景。
-    func clearAllWallpapers() {
-        for path in wallpaperPaths {
-            try? FileManager.default.removeItem(atPath: path)
-            BeansImageFileCache.remove(path)
-        }
-        for path in Set([backgroundImagePathLight, backgroundImagePathDark].filter { !$0.isEmpty }) {
-            try? FileManager.default.removeItem(atPath: path)
-            BeansImageFileCache.remove(path)
-        }
-        wallpaperPaths = []
-        backgroundImagePathLight = ""
-        backgroundImagePathDark = ""
-        backgroundHexLight = ""
-        backgroundHexDark = ""
-        UserDefaults.standard.removeObject(forKey: wallpaperListKey)
-        UserDefaults.standard.removeObject(forKey: wallpaperDataKey)
-        UserDefaults.standard.removeObject(forKey: deletedKey)
-        UserDefaults.standard.set("", forKey: backgroundImageKey)
-        UserDefaults.standard.set("", forKey: backgroundImageLightKey)
-        UserDefaults.standard.set("", forKey: backgroundImageDarkKey)
-        UserDefaults.standard.set("", forKey: backgroundKey)
-        UserDefaults.standard.set("", forKey: backgroundLightKey)
-        UserDefaults.standard.set("", forKey: backgroundDarkKey)
-        invalidateBackgroundCache()
-        BeansImageFileCache.removeAll()
-    }
 
     private func effectiveBackgroundHex(for colorScheme: ColorScheme) -> String {
         let primary = colorScheme == .dark ? backgroundHexDark : backgroundHexLight

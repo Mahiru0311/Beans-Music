@@ -220,7 +220,7 @@ struct ReferencePlaybackView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Color(red: 0.93, green: 0.25, blue: 0.22), in: Capsule())
+                            .background(.beansThemeRed, in: Capsule())
                     }
                 }
                 Text(subtitle)
@@ -561,19 +561,6 @@ struct ReferencePlaybackView: View {
         }
     }
 
-    private func compactActionButton(icon: String, active: Bool = false, action: @escaping () -> Void) -> some View {
-        Button {
-            BeansHaptics.tap()
-            action()
-        } label: {
-            Image(systemName: icon)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(active ? accentColor : primaryColor.opacity(0.78))
-                .frame(width: 38, height: 38)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 
     private var emptyLyricsView: some View {
         VStack(spacing: 10) {
@@ -1096,16 +1083,14 @@ private struct AppleMusicCompactQueueRow: View {
             }
             .buttonStyle(.plain)
 
-            if #available(iOS 17.0, *) {
-                QueueReorderHandle(
-                    position: position,
-                    maxPosition: maxPosition,
-                    rowStep: 60,
-                    onMove: onMove,
-                    onCommit: onCommit
-                )
-                .foregroundStyle(.white.opacity(0.54))
-            }
+            QueueReorderHandle(
+                position: position,
+                maxPosition: maxPosition,
+                rowStep: 60,
+                onMove: onMove,
+                onCommit: onCommit
+            )
+            .foregroundStyle(.white.opacity(0.54))
         }
         .contextMenu {
             Button("从播放列表移除", role: .destructive) {
@@ -1564,19 +1549,11 @@ struct BeansSoftwareVolumeSheetHost: View {
             .environmentObject(player)
             .environmentObject(theme)
 
-        if #available(iOS 16.4, *) {
-            content
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.clear)
-                .presentationCornerRadius(28)
-        } else if #available(iOS 16, *) {
-            content
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        } else {
-            content
-        }
+        content
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.clear)
+            .presentationCornerRadius(28)
     }
 }
 

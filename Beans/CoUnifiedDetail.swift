@@ -256,7 +256,7 @@ struct CoDetailPlayCapsule: View {
             .foregroundStyle(.black)
             .frame(width: 168, height: 50)
             .background {
-                if #available(iOS 26, *), !disableLiquidGlass {
+                if !disableLiquidGlass {
                     Capsule()
                         .fill(.clear)
                         .glassEffect(.regular.tint(.white.opacity(0.92)), in: Capsule())
@@ -269,34 +269,6 @@ struct CoDetailPlayCapsule: View {
     }
 }
 
-/// 歌单页同款圆键：48×48pt。
-struct CoDetailCircleButton: View {
-    let systemName: String
-    let action: () -> Void
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
-
-    var body: some View {
-        Button {
-            BeansHaptics.tap()
-            action()
-        } label: {
-            Image(systemName: systemName)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 48, height: 48)
-                .background {
-                    if #available(iOS 26, *), !disableLiquidGlass {
-                        Circle()
-                            .fill(.clear)
-                            .glassEffect(.regular, in: Circle())
-                    } else {
-                        Circle().fill(.white.opacity(0.15))
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-    }
-}
 
 /// 歌单页同款控制排上下内边距：上 20pt、下 12pt，内容居中、间距 12pt。
 struct CoDetailControlsRow<Content: View>: View {

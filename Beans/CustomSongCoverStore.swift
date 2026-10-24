@@ -22,13 +22,6 @@ enum CustomCoverMedia {
         return .image
     }
 
-    static func usesAnimatedRenderer(for url: URL?) -> Bool {
-        guard let url, url.isFileURL else { return false }
-        switch kind(for: url) {
-        case .gif, .video: return true
-        case .image: return false
-        }
-    }
 
     static func previewImage(at url: URL) -> UIImage? {
         switch kind(for: url) {

@@ -45,13 +45,9 @@ struct SectionOrderSheet: View {
     var body: some View {
         let _ = theme.accent
         Group {
-            if #available(iOS 16.0, *) {
-                listView
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            } else {
-                listView
-            }
+            listView
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .onAppear {
             var merged = order

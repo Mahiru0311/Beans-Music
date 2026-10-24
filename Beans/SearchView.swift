@@ -2,7 +2,6 @@ import SwiftUI
 
 // MARK: - 流式标签布局（热搜标签云）
 
-@available(iOS 16, *)
 enum SearchProvider: String, CaseIterable, Identifiable, Hashable {
     case kugou = "酷狗音乐"
 
@@ -1409,18 +1408,6 @@ struct SearchView: View {
         }
     }
 
-    private func deduplicatedSongs(_ songs: [Song]) -> [Song] {
-        var seen = Set<String>()
-        return songs.filter { song in
-            let title = song.name
-                .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-                .lowercased()
-            let artists = song.artists
-                .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-                .lowercased()
-            return seen.insert("\(title)|\(artists)").inserted
-        }
-    }
 
     private func catalogSongs(
         keyword: String,
@@ -1971,9 +1958,6 @@ struct AlbumDetailView: View {
     }
 
 
-    private func loadNetEaseRelatedAlbums(artistName: String) async -> [Album] {
-        []
-    }
 
 
     private func searchFallbackSongs(

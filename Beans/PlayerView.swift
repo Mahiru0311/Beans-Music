@@ -1165,7 +1165,7 @@ struct PlayerView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1.5)
-                                .background(Capsule().fill(Color(red: 0.93, green: 0.25, blue: 0.22)))
+                                .background(Capsule().fill(.beansThemeRed))
                         }
                     }
                     Text(subtitle)
@@ -1686,12 +1686,6 @@ struct PlayerView: View {
         .beansCardShadow(radius: 14, y: 8)
     }
 
-    private func openMoreActions() {
-        showNativeMoreActions = false
-        withAnimation(.spring(response: 0.22, dampingFraction: 0.9)) {
-            showMoreActions = true
-        }
-    }
 
     private func moreActionRow(_ title: String, systemName: String, action: @escaping () -> Void) -> some View {
         Button {
@@ -1841,7 +1835,7 @@ struct PlayerView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1.5)
-                            .background(Capsule().fill(Color(red: 0.93, green: 0.25, blue: 0.22)))
+                            .background(Capsule().fill(.beansThemeRed))
                     }
                 }
                 Text(subtitle)
@@ -2019,7 +2013,7 @@ struct PlayerView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1.5)
-                            .background(Capsule().fill(Color(red: 0.93, green: 0.25, blue: 0.22)))
+                            .background(Capsule().fill(.beansThemeRed))
                     }
                 }
                 Text(subtitle)
@@ -2371,7 +2365,7 @@ struct PlayerView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Color(red: 0.93, green: 0.25, blue: 0.22)))
+                            .background(Capsule().fill(.beansThemeRed))
                             .shadow(color: palette.accent.opacity(0.45), radius: 6)
                     }
                 }
@@ -2418,154 +2412,6 @@ struct PlayerView: View {
     }
 
     #if false
-    private func controlPanelAlbumPanel(geo: GeometryProxy) -> some View {
-        let panelWidth = min(geo.size.width - 54, 392)
-        let panelHeight = min(max(398, geo.size.height * 0.54), 486)
-        let coverHeight = min(panelHeight * 0.40, 188)
-        let corner: CGFloat = 28
-
-        return VStack(spacing: 0) {
-            Spacer(minLength: 10)
-
-            VStack(spacing: 12) {
-                Button {
-                    toggleLyrics()
-                } label: {
-                    ZStack(alignment: .bottomLeading) {
-                        CoverImage(
-                            url: displayCoverURL,
-                            size: panelWidth - 28,
-                            cornerRadius: 24,
-                            emptyHint: player.isBuffering ? "等待开始播放…" : nil
-                        )
-                        .frame(width: panelWidth - 28, height: coverHeight)
-                        .clipped()
-                        .modifier(CoverSpin(enabled: circularCover && circularCoverSpin, isPlaying: playerVisualsActive))
-                        .scaleEffect(coverSwitchPulse ? 0.96 : 1)
-                        .blur(radius: coverSwitchPulse ? 1.5 : 0)
-                        .rotation3DEffect(.degrees(Double(coverDrag.height / -24)), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
-                        .rotation3DEffect(.degrees(Double(coverDrag.width / 24)), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
-                        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: coverDrag)
-                        .animation(.easeOut(duration: 0.24), value: coverSwitchPulse)
-
-                        LinearGradient(
-                            colors: [.clear, .black.opacity(0.54)],
-                            startPoint: .center,
-                            endPoint: .bottom
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
-                        HStack(spacing: 8) {
-                            Image(systemName: player.isPlaying ? "waveform" : "pause.fill")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(player.isPlaying ? "正在播放" : "已暂停")
-                                .font(BeansFont.appFont(12, .semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(.black.opacity(0.28), in: Capsule())
-                        .padding(12)
-                    }
-                    .frame(width: panelWidth - 28, height: coverHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(.white.opacity(0.20), lineWidth: 1)
-                    }
-                    .shadow(color: palette.accent.opacity(0.28), radius: 20, y: 10)
-                }
-                .buttonStyle(GlassPressButtonStyle(scale: 0.965))
-                .gesture(
-                    DragGesture(minimumDistance: 15)
-                        .onChanged { value in
-                            guard swipeSwitchSong else { return }
-                            coverDrag = value.translation
-                            let x = value.translation.width
-                            if abs(x) > abs(value.translation.height) {
-                                swipeOffset = x
-                            }
-                        }
-                        .onEnded { value in
-                            handleSwipeEnd(horizontal: value.translation.width)
-                        }
-                )
-                .modifier(Layoutable(part: .controlCenterCover, enabled: layoutMode, data: $layoutData))
-
-                VStack(spacing: 4) {
-                    Text(song?.name ?? "未在播放")
-                        .font(BeansFont.appFont(20, .bold))
-                        .foregroundStyle(albumTitleForeground)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.58)
-                        .contextMenu {
-                            Button("复制歌名") {
-                                copyCurrentSongTitle()
-                            }
-                        }
-                        .multilineTextAlignment(.center)
-                        .shadow(color: albumGlow(albumTitleColor, strong: true), radius: albumTextGlow ? 10 : 0, y: 2)
-                    Text(subtitle)
-                        .font(BeansFont.appFont(13, .medium))
-                        .foregroundStyle(albumArtistForeground)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .shadow(color: albumGlow(albumArtistColor), radius: albumTextGlow ? 7 : 0, y: 1)
-                        .contentShape(Rectangle())
-                        .onTapGesture { openArtistHome() }
-                }
-                .padding(.horizontal, 18)
-                .modifier(Layoutable(part: .controlCenterTitle, enabled: layoutMode, data: $layoutData))
-
-                controlPanelLyricPreview
-                    .modifier(Layoutable(part: .controlCenterLyric, enabled: layoutMode, data: $layoutData))
-
-                HStack(spacing: 12) {
-                    controlPanelAction(icon: favorites.isLiked(song) ? "heart.fill" : "heart", title: "收藏", active: favorites.isLiked(song)) {
-                        if let song {
-                            toggleLocalFavorite(song)
-                        }
-                    }
-                    controlPanelAction(icon: "text.bubble", title: "评论") {
-                        ToastCenter.shared.show("评论功能已在酷狗专版移除")
-                    }
-                    controlPanelAction(icon: "ellipsis", title: "更多") {
-                        showNativeMoreActions = true
-                    }
-                }
-                .padding(.horizontal, 14)
-                .modifier(Layoutable(part: .controlCenterActions, enabled: layoutMode, data: $layoutData))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .frame(width: panelWidth, height: panelHeight, alignment: .top)
-            .background {
-                controlPanelSurface(corner: corner)
-            }
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.34 : 0.18), radius: 28, y: 14)
-            .modifier(Layoutable(part: .controlCenter, enabled: layoutMode, data: $layoutData))
-
-            Spacer(minLength: 8)
-        }
-        .padding(.bottom, deckInset + geo.safeAreaInsets.bottom)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .offset(x: swipeOffset)
-        .opacity(1 - min(abs(swipeOffset) / 260, 0.35))
-        .gesture(
-            DragGesture(minimumDistance: 15)
-                .onChanged { value in
-                    guard swipeSwitchSong else { return }
-                    coverDrag = value.translation
-                    let x = value.translation.width
-                    if abs(x) > abs(value.translation.height) {
-                        swipeOffset = x
-                    }
-                }
-                .onEnded { value in
-                    handleSwipeEnd(horizontal: value.translation.width)
-                }
-        )
-    }
 
     private func controlPanelSurface(corner: CGFloat) -> some View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -2752,7 +2598,7 @@ struct PlayerView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1.5)
-                                .background(Capsule().fill(Color(red: 0.93, green: 0.25, blue: 0.22)))
+                                .background(Capsule().fill(.beansThemeRed))
                         }
                     }
                     HStack(spacing: 8) {
@@ -4752,14 +4598,6 @@ struct PlayerView: View {
 
     // MARK: - 分享
 
-    /// 原生系统分享内容：歌名 - 歌手 + 对应平台链接
-    private func shareItems(for song: Song) -> [Any] {
-        var text = "\(song.name) - \(song.artists)"
-        if let url = shareURL(for: song) {
-            text += "\n\(url.absoluteString)"
-        }
-        return [text]
-    }
 
     /// 各平台歌曲链接（网易云 / QQ音乐 / 酷狗音乐）
     private func shareURL(for song: Song) -> URL? {
@@ -5867,35 +5705,6 @@ struct PlayerSettingsSheet: View {
         return lyricTiltY > 0 ? "右倾 \(lyricTiltY)°" : "左倾 \(-lyricTiltY)°"
     }
 
-    /// 预设按钮：点击应用渐变起止色 + 发光强度
-    private func presetButton(_ preset: LyricPreset) -> some View {
-        Button {
-            gradStartRaw = preset.start
-            gradEndRaw = preset.end
-            glowLevel = preset.glow
-            gradMode = 1
-            BeansHaptics.select()
-        } label: {
-            VStack(spacing: 5) {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(LinearGradient(
-                        colors: [(Color(hex: preset.start) ?? Color.beansAmber), (Color(hex: preset.end) ?? Color.beansComment)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ))
-                    .frame(height: 26)
-                Text(preset.name)
-                    .font(BeansFont.appFont(10, .medium))
-                    .foregroundStyle(Color.beansLabel)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .padding(6)
-            .frame(maxWidth: .infinity)
-            .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 12, style: .continuous)) }
-        }
-        .buttonStyle(.plain)
-    }
 
     /// 当前行高亮色：色盘选色写入 hex，关闭面板后依然生效
     private var currentColor: Binding<Color> {

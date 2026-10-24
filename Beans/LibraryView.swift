@@ -37,7 +37,6 @@ struct LibraryView: View {
     /// 音乐库板块顺序（本地音乐库 / 我的歌单 / 最近播放，可自定义）
     @State private var libraryOrder = SectionOrderStore.load(SectionOrderStore.libraryKey, defaults: SectionOrderStore.libraryDefaults)
     @State private var navigationPath: [LibraryRoute] = []
-    @State private var legacyRoute: LibraryRoute?
     @State private var showCreatePlaylist = false
     @State private var newPlaylistName = ""
     @State private var pendingDelete: Playlist?
@@ -81,18 +80,6 @@ struct LibraryView: View {
             }
             // 实例级 UITabBar 清透风格（固定全透明，无需调节）
             TabBarAppearanceConfigurator()
-            if #unavailable(iOS 16.0) {
-                NavigationLink(
-                    destination: libraryDestination(legacyRoute ?? .playlist(Playlist(id: 0, name: "", coverURL: nil))),
-                    isActive: Binding(
-                        get: { legacyRoute != nil },
-                        set: { if !$0 { legacyRoute = nil } }
-                    )
-                ) {
-                    EmptyView()
-                }
-                .hidden()
-            }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: isNativeClean ? 30 : 24) {
                 if isNativeClean {
@@ -182,11 +169,7 @@ struct LibraryView: View {
     }
 
     private func openRoute(_ route: LibraryRoute) {
-        if #available(iOS 16.0, *) {
-            navigationPath.append(route)
-        } else {
-            legacyRoute = route
-        }
+        navigationPath.append(route)
     }
 
     private var header: some View {
@@ -408,10 +391,6 @@ struct LibraryView: View {
         ToastCenter.shared.show("酷狗歌单暂不支持新建")
     }
 
-    private func requestDelete(_ playlist: Playlist) {
-        pendingDelete = playlist
-        showDeleteConfirm = true
-    }
 
     private func confirmDeletePlaylist() {
         guard let _ = pendingDelete else { return }

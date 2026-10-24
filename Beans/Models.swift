@@ -451,30 +451,6 @@ struct Album: Identifiable, Hashable, Codable {
         return trackCount.map(beansSongCountText) ?? ""
     }
 
-    static func releaseDateText(from rawValue: Any?) -> String? {
-        guard let rawValue else { return nil }
-        if let number = rawValue as? NSNumber {
-            let timestamp = number.doubleValue
-            guard timestamp > 0 else { return nil }
-            let seconds = timestamp > 10_000_000_000 ? timestamp / 1_000 : timestamp
-            return releaseDateString(timestamp: seconds)
-        }
-        guard let text = rawValue as? String else { return nil }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if let timestamp = Double(trimmed), timestamp > 10_000_000_000 {
-            return releaseDateString(timestamp: timestamp / 1_000)
-        }
-        if let match = trimmed.range(of: #"\d{4}[-./]\d{1,2}[-./]\d{1,2}"#, options: .regularExpression) {
-            return String(trimmed[match])
-                .replacingOccurrences(of: ".", with: "-")
-                .replacingOccurrences(of: "/", with: "-")
-        }
-        if let match = trimmed.range(of: #"\d{4}-\d{1,2}"#, options: .regularExpression) {
-            return String(trimmed[match])
-        }
-        return trimmed.count == 4 && trimmed.allSatisfy(\.isNumber) ? trimmed : nil
-    }
 
     private static func releaseDateString(timestamp: TimeInterval) -> String? {
         var calendar = Calendar(identifier: .gregorian)

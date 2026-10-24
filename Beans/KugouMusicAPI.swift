@@ -232,26 +232,6 @@ final class KugouMusicAPI {
         return code == 0 || code == 1 || code == 200
     }
 
-    func removeFromPlaylist(playlistID: Int, songs: [Song]) async throws -> Bool {
-        let auth = KugouMusicAuth.shared
-        guard auth.isLoggedIn else { throw CoError.unknown("请先登录酷狗音乐") }
-        let fileIDs = try await playlistFileIDs(playlistID: playlistID, matching: songs)
-        guard !fileIDs.isEmpty else { throw CoError.unknown("未在所选酷狗歌单中找到该歌曲") }
-        let json = try await cloudlistRequest(
-            "/v4/delete_songs",
-            params: ["last_time": "\(Int(Date().timeIntervalSince1970))", "last_area": "gztx"],
-            data: [
-                "listid": playlistID,
-                "userid": Int(auth.userId) ?? 0,
-                "token": auth.token,
-                "type": 0,
-                "list_ver": 0,
-                "data": fileIDs.map { ["fileid": $0] as [String: Any] },
-            ]
-        )
-        let code = Self.int(json["status"] ?? json["code"] ?? json["errcode"] ?? (json["data"] as? [String: Any])?["code"])
-        return code == 0 || code == 1 || code == 200
-    }
 
     /// 酷狗删除歌单歌曲需要歌单条目 fileid，而不是全局 audio_id。
     private func playlistFileIDs(playlistID: Int, matching songs: [Song]) async throws -> [Int] {

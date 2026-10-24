@@ -123,18 +123,10 @@ struct SleepTimerSheetHost: View {
             .environmentObject(player)
             .environmentObject(theme)
 
-        if #available(iOS 16.4, *) {
-            content
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.clear)
-                .presentationCornerRadius(28)
-        } else if #available(iOS 16, *) {
-            content
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        } else {
-            content
-        }
+        content
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.clear)
+            .presentationCornerRadius(28)
     }
 }
