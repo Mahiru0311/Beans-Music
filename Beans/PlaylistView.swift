@@ -17,6 +17,56 @@ private struct CoPlaylistHeaderData {
     let playCount: Int
 }
 
+/// 歌单页渐变分隔线（共用一处，不要每处各写一套渐变）：横向两端透明、中间淡白，
+/// 不再是满宽实色横线；高度 0.5pt，调用处只负责左右留白。
+private struct CoPlaylistGradientDivider: View {
+    var body: some View {
+        LinearGradient(colors: [.clear, .white.opacity(0.22), .clear], startPoint: .leading, endPoint: .trailing)
+            .frame(height: 0.5)
+    }
+}
+
+/// 封面取色（轻量，不要搞一套颜色引擎）：只对歌单封面这一张图算一次，
+/// 用系统 CIAreaAverage 求平均色，按 coverURL 缓存；不另起下载、缓存、网络请求，
+/// 图只从 BeansCoverImageStore 已有的内存 / 磁盘缓存里读，算色在后台线程做。
+/// 返回值已压暗（与黑色混合 55%，且亮度钳到 0.20），保证白字可读；太亮、太浅
+/// 的封面也不会铺出刺眼亮底，算不出来时调用方回落到深色底。
+private enum CoPlaylistCoverTint {
+    private static var cache: [String: Color] = [:]
+    private static let ciContext = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
+
+    static func cached(for url: URL?) -> Color? {
+        guard let url else { return nil }
+        return cache[url.absoluteString]
+    }
+
+    static func compute(image: UIImage, for url: URL) -> Color {
+        if let hit = cache[url.absoluteString] { return hit }
+        let tint = averageDarkened(image) ?? Color(red: 0.14, green: 0.10, blue: 0.08)
+        cache[url.absoluteString] = tint
+        return tint
+    }
+
+    private static func averageDarkened(_ image: UIImage) -> Color? {
+        guard let cg = image.cgImage else { return nil }
+        let ci = CIImage(cgImage: cg)
+        guard let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: ci, kCIInputExtentKey: CIVector(cgRect: ci.extent)]),
+              let out = filter.outputImage else { return nil }
+        var rgba = [UInt8](repeating: 0, count: 4)
+        ciContext.render(out, toBitmap: &rgba, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+        guard rgba[3] > 0 else { return nil }
+        var r = Double(rgba[0]) / 255 * 0.45
+        var g = Double(rgba[1]) / 255 * 0.45
+        var b = Double(rgba[2]) / 255 * 0.45
+        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        if luminance > 0.20 {
+            let scale = 0.20 / luminance
+            r *= scale; g *= scale; b *= scale
+        }
+        return Color(red: r, green: g, blue: b)
+    }
+}
+
 /// 统一歌单详情页：我的页、歌单弹窗、主页每日推荐、榜单、搜索结果、歌单库、侧栏
 /// 点进来的都是这一个 View、同一套头部、同一套控制、同一套歌曲行、同一套播放队列。
 /// 截图式布局（唯一布局，不再分叉）：封面全幅铺满、居中歌单名、来源、首数、
@@ -36,6 +86,10 @@ struct PlaylistView: View {
     @State private var searchText = ""
     @State private var showDownloadUnsupported = false
     @State private var showCollectUnsupported = false
+    // 封面取色结果（只算歌单封面一张图，按 coverURL 缓存；没算出来时为 nil，
+    // 页面用深色底兜底，算出来后再换成取色结果，不阻塞主线程、不每帧算）。
+    @State private var coverTint: Color? = nil
+    @State private var coverTintRetried = false
     // 歌单页下拉放大（与我的页同套放慢后的参数，见 fixedPlaylistCover）：
     // 下拉量封顶 120pt、放大系数 1 + 下拉量/600（封顶约 1.2 倍）、
     // 框高只跟下拉量的一半走（封顶 +60pt），松手用慢速无弹跳弹簧回 0。
@@ -94,8 +148,47 @@ struct PlaylistView: View {
         return playlist.source == .kugou ? KugouMusicAuth.shared.userId : ""
     }
 
-    /// 深色底（截图里的深褐底），不跟随系统深浅，歌单页永远按截图的深色呈现。
+    /// 深色底（截图里的深褐底），不跟随系统深浅；封面没取到色时用它兜底。
     private let darkBackground = Color(red: 0.14, green: 0.10, blue: 0.08)
+
+    /// 列表顶色：封面取色压暗后的结果，没算出来时回落到深色底。
+    private var pageTopColor: Color { coverTint ?? darkBackground }
+
+    /// 列表底色：从封面取色（压暗）往下渐变到黑，不再是全页一个实色。
+    /// 歌曲行本身透明，渐变从页面根背景透出来，封面与列表之间没有硬边。
+    private var pageGradient: LinearGradient {
+        LinearGradient(colors: [pageTopColor, .black], startPoint: .top, endPoint: .bottom)
+    }
+
+    /// 封面取色刷新：图只从 BeansCoverImageStore 已有的缓存里读（内存优先，
+    /// 再走磁盘 / URLCache 复水），不另起下载；网络图还没回来时 1.5 秒后只重试一次。
+    private func refreshCoverTint() {
+        let url = CustomSongCoverStore.shared.resolvedURL(for: headerData.coverURL) ?? headerData.coverURL
+        guard let url else { coverTint = nil; return }
+        if let hit = CoPlaylistCoverTint.cached(for: url) { coverTint = hit; return }
+        if let image = BeansCoverImageStore.memoryImage(for: url) {
+            computeTintAsync(image: image, url: url)
+            return
+        }
+        BeansCoverImageStore.loadCachedImage(for: url) { image in
+            if let image {
+                computeTintAsync(image: image, url: url)
+            } else if !coverTintRetried {
+                coverTintRetried = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { refreshCoverTint() }
+            }
+        }
+    }
+
+    private func computeTintAsync(image: UIImage, url: URL) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let tint = CoPlaylistCoverTint.compute(image: image, for: url)
+            DispatchQueue.main.async {
+                let current = CustomSongCoverStore.shared.resolvedURL(for: headerData.coverURL) ?? headerData.coverURL
+                if current == url { coverTint = tint }
+            }
+        }
+    }
 
     private var headerData: CoPlaylistHeaderData {
         switch loadMode {
@@ -145,7 +238,7 @@ struct PlaylistView: View {
     private var unifiedBody: some View {
         let _ = theme.accent
         return ZStack {
-            darkBackground.ignoresSafeArea()
+            pageGradient.ignoresSafeArea()
             if loading && tracks.isEmpty {
                 BeansDetailSongsLoadingState(coverSize: 96, rowCount: 10)
             } else if let errorMessage, tracks.isEmpty {
@@ -178,8 +271,7 @@ struct PlaylistView: View {
                                 .padding(.horizontal, 22)
                                 .padding(.bottom, 20)
                         }
-                        Divider()
-                            .overlay(.white.opacity(0.15))
+                        CoPlaylistGradientDivider()
                             .padding(.horizontal, 22)
                         unifiedSearchRow
                         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -198,17 +290,16 @@ struct PlaylistView: View {
                                 unifiedSongRow(song)
                             }
                             .buttonStyle(.plain)
-                            Divider()
-                                .overlay(.white.opacity(0.12))
+                            CoPlaylistGradientDivider()
                                 .padding(.leading, 86)
                         }
                             }
-                            // 标题区以下内容用与页面底色相同的深色作不透明底：
-                            // 静止时与页面底色完全一致、看不出区别；下拉时固定封面框高
-                            // 增长的那 +60pt 被这块不透明底盖住（和我的页白卡盖住壁纸
-                            // 增长同款做法），歌单名、控制排不会被放大的封面照片压住，
-                            // 可读性不变；占位区本身不加这层底，否则会把固定封面全盖住。
-                            .background(darkBackground)
+                            // 标题区以下不再铺实色不透明底：页面根背景就是从封面取色
+                            // 往下渐变到黑的渐变，歌曲行透明、渐变直接透出来，封面与
+                            // 列表之间没有硬边。下拉时固定封面框高增长的那 +60pt 会
+                            // 露在标题区顶部，但封面底部本身有 120pt 渐变到取色顶色，
+                            // 标题字仍压在深色渐变上、可读性不变；占位区本身不加底，
+                            // 否则会把固定封面全盖住。
                     }
                     .padding(.bottom, 180)
                 }
@@ -273,6 +364,13 @@ struct PlaylistView: View {
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await load() }
+        // 封面取色触发：封面 URL 一换就重算（每日封面是首歌封面，歌曲载入后
+        // URL 会变，正好重算）；先清掉上一张封面的色、再算新的，不串色。
+        .task(id: headerData.coverURL) {
+            coverTint = nil
+            coverTintRetried = false
+            refreshCoverTint()
+        }
         .alert("暂不支持下载", isPresented: $showDownloadUnsupported) {
             Button("好", role: .cancel) {}
         } message: {
@@ -317,7 +415,7 @@ struct PlaylistView: View {
                 .scaleEffect(zoom, anchor: .top)
             VStack(spacing: 0) {
                 Spacer()
-                LinearGradient(colors: [.clear, darkBackground], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [.clear, pageTopColor], startPoint: .top, endPoint: .bottom)
                     .frame(height: 120)
             }
         }
