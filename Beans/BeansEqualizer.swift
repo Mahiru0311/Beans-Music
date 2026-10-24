@@ -93,6 +93,15 @@ final class CoEqualizer: ObservableObject {
     private var enhancementStates: [BiquadState] = Array(repeating: .zero, count: 16)
     /// 3D 声像摆动相位（弧度）：不随换歌清零，摆动不跳变。
     private var surroundPanPhase: Double = 0
+    /// 3D 混响状态：每声道 4 个梳状 + 2 个全通（Freeverb 精简版），给 3D 那种“整个大脑里回荡”的空间感。
+    private var reverbCombDelays: [Int] = []
+    private var reverbAllpassDelays: [Int] = []
+    private var reverbCombBuffers: [[[Float]]] = []
+    private var reverbCombIndices: [[Int]] = []
+    private var reverbCombFilterStores: [[Float]] = []
+    private var reverbAllpassBuffers: [[[Float]]] = []
+    private var reverbAllpassIndices: [[Int]] = []
+    private var reverbNeedsReset = false
     private var pendingPersistWorkItem: DispatchWorkItem?
 
     private static let enabledKey = "co.equalizer.enabled"
@@ -155,6 +164,7 @@ final class CoEqualizer: ObservableObject {
         surroundEnabled = enabled
         configurationLock.lock()
         processingEnabled = isEnabled || enabled || headphoneBoostEnabled
+        reverbNeedsReset = true
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.surroundKey)
         notifySettingsChanged()
@@ -389,6 +399,15 @@ final class CoEqualizer: ObservableObject {
         rebuildCoefficientsLocked(using: processingGains)
         enhancementStates = Array(repeating: .zero, count: Self.maximumChannels * 2)
         rebuildEnhancementCoefficientsLocked()
+        let reverbScale = sampleRate / 44_100
+        reverbCombDelays = [1557, 1617, 1491, 1422].map { max(1, Int(Double($0) * reverbScale)) }
+        reverbAllpassDelays = [556, 441].map { max(1, Int(Double($0) * reverbScale)) }
+        reverbCombBuffers = (0..<2).map { _ in reverbCombDelays.map { delay in Array(repeating: 0, count: delay) } }
+        reverbCombIndices = Array(repeating: Array(repeating: 0, count: 4), count: 2)
+        reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: 4), count: 2)
+        reverbAllpassBuffers = (0..<2).map { _ in reverbAllpassDelays.map { delay in Array(repeating: 0, count: delay) } }
+        reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: 2), count: 2)
+        reverbNeedsReset = false
         configurationLock.unlock()
     }
 
@@ -537,24 +556,78 @@ final class CoEqualizer: ObservableObject {
                 }
             }
             if surroundEnabled, channelCount == 2 {
-                // 3D 环绕（大白话版）：声像左右摆动——戴耳机一会儿左耳响、一会儿右耳响，
-                // 不是原来那种耳机上几乎听不出来的加宽。10 秒摆一个来回，单耳最低留 0.12 不全哑；
+                // 3D 环绕（大白话版）：人声在左、中、右三个位置都停得住、缓慢移动——
+                // 快切形会让中间一下而过，所以改成正弦三次方：左、中、右三点导数都为零，都停得住；
+                // 再加一层混响，整个大脑里回荡的空间感才出来。10 秒一个来回，单耳最低留 0.12 不全哑；
                 // 只对立体声生效，单声道/多声道不动。
+                if reverbNeedsReset {
+                    reverbNeedsReset = false
+                    for channel in 0..<2 {
+                        for comb in 0..<4 where channel < reverbCombBuffers.count && comb < reverbCombBuffers[channel].count {
+                            reverbCombBuffers[channel][comb] = Array(repeating: 0, count: reverbCombBuffers[channel][comb].count)
+                        }
+                        for ap in 0..<2 where channel < reverbAllpassBuffers.count && ap < reverbAllpassBuffers[channel].count {
+                            reverbAllpassBuffers[channel][ap] = Array(repeating: 0, count: reverbAllpassBuffers[channel][ap].count)
+                        }
+                    }
+                    reverbCombIndices = Array(repeating: Array(repeating: 0, count: 4), count: 2)
+                    reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: 4), count: 2)
+                    reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: 2), count: 2)
+                }
                 let phaseStep = 2 * Double.pi / max(sampleRate * 10, 1)
+                let hasReverb = reverbCombBuffers.count >= 2 && reverbCombDelays.count == 4 && reverbAllpassDelays.count == 2
                 for frame in 0..<frameCount {
                     surroundPanPhase += phaseStep
                     if surroundPanPhase > 2 * Double.pi { surroundPanPhase -= 2 * Double.pi }
-                    let pan = tanh(2.0 * sin(surroundPanPhase)) // 突兀快切形：两端停留、中间快切，-1 全左 … +1 全右
+                    let sine = sin(surroundPanPhase)
+                    let pan = sine * sine * sine // 三点停留形：左、中、右都停得住，-1 全左 … +1 全右
                     let leftGain = Float(0.12 + 0.88 * cos((pan + 1) * Double.pi / 4))
                     let rightGain = Float(0.12 + 0.88 * sin((pan + 1) * Double.pi / 4))
                     let leftIndex = frame * channelCount
                     let rightIndex = leftIndex + 1
-                    let outLeft = samples[leftIndex] * leftGain
-                    let outRight = samples[rightIndex] * rightGain
+                    var outLeft = samples[leftIndex] * leftGain
+                    var outRight = samples[rightIndex] * rightGain
+                    if hasReverb {
+                        outLeft += reverbSample(input: outLeft, channel: 0) * 0.35
+                        outRight += reverbSample(input: outRight, channel: 1) * 0.35
+                    }
                     samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
             }
+    }
+
+    /// 单声道混响（Freeverb 精简版）：4 梳状并联 + 2 全通串联，只出湿声，由调用方按 0.35 混入。
+    private func reverbSample(input: Float, channel: Int) -> Float {
+        guard channel < reverbCombBuffers.count,
+              reverbCombDelays.count == 4, reverbAllpassDelays.count == 2 else { return 0 }
+        var combSum: Float = 0
+        for comb in 0..<4 {
+            let delay = reverbCombDelays[comb]
+            var index = reverbCombIndices[channel][comb]
+            let output = reverbCombBuffers[channel][comb][index]
+            var filterStore = reverbCombFilterStores[channel][comb]
+            filterStore = output * 0.8 + filterStore * 0.2
+            reverbCombFilterStores[channel][comb] = filterStore
+            reverbCombBuffers[channel][comb][index] = input + filterStore * 0.84
+            index += 1
+            if index >= delay { index = 0 }
+            reverbCombIndices[channel][comb] = index
+            combSum += output
+        }
+        var signal = combSum * 0.25
+        for ap in 0..<2 {
+            let delay = reverbAllpassDelays[ap]
+            var index = reverbAllpassIndices[channel][ap]
+            let bufferOut = reverbAllpassBuffers[channel][ap][index]
+            let output = -signal + bufferOut
+            reverbAllpassBuffers[channel][ap][index] = signal + bufferOut * 0.5
+            index += 1
+            if index >= delay { index = 0 }
+            reverbAllpassIndices[channel][ap] = index
+            signal = output
+        }
+        return signal
     }
 
 }
