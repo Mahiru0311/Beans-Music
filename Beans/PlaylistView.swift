@@ -40,7 +40,7 @@ struct PlaylistView: View {
     // 过渡区直接显示深色底兜底，拿到后再换虚化层，不叠加取色实色底）。
     @State private var coverBlurImage: UIImage? = nil
     @State private var coverBlurRetried = false
-    // 歌单页下拉放大（与我的页同套放慢后的参数，见 playlistCoverInScroll）：
+    // 歌单页下拉放大（与我的页同套放慢后的参数，见 fixedPlaylistCover）：
     // 下拉量封顶 120pt、放大系数 1 + 下拉量/600（封顶约 1.2 倍）、
     // 框高只跟下拉量的一半走（封顶 +60pt），松手用慢速无弹跳弹簧回 0。
     @State private var coverPull: CGFloat = 0
@@ -102,25 +102,97 @@ struct PlaylistView: View {
     /// 只贴在标题区顶部往下 520pt 的带子里，越往下越淡，最后融入深色底，
     /// 没有任何线条、没有硬边。没拿到图时这一层什么都不画，直接是深色底兜底，
     /// 不叠加取色实色底。虚化层只影响过渡区，不动封面本身的铺满、缩放、回弹。
-    private var blurredPlaylistTransition: some View {
+    /// 封面下面到列表的虚化过渡层（本轮重构，只剩这一层虚化，不再两层叠加）：
+    /// 根部 ZStack 里、滚动视图下面的一层虚化底，用的就是同一张封面图
+    /// （coverBlurImage，缓存里读，不另起下载），系统 blur 半径 28。
+    /// 关键是交界处不能断档：这一层的深色罩是从 0 开始往下加深的，
+    /// 在封面底边往上 120pt 处还是 0，到封面底边处只有黑 0.25，
+    /// 再往下才慢慢加深到深色底，交界处没有任何一层是从实色或高不透明度起步的。
+    /// 这一层跟固定封面层用同一个上滑读数（playlistContentScrollUp）一起往上移，
+    /// 相对位置不变；下拉时移量钳为 0、顶边不动，滚动内容往下带时露出的
+    /// 空隙里也是这一层虚化图，不是深色带。封面没拿到图时这一层什么都不画，
+    /// 下面就是深色底兜底，同样没有硬边。
+    private var blurredCoverUnderlayer: some View {
         Group {
             if let image = coverBlurImage {
-                ZStack {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: UIScreen.main.bounds.width, height: 520)
-                        .blur(radius: 28)
-                        .mask(
-                            LinearGradient(colors: [.black, .black.opacity(0.5), .clear], startPoint: .top, endPoint: .bottom)
+                let width = UIScreen.main.bounds.width
+                let total = width + 520
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: width, height: total)
+                    .blur(radius: 28)
+                    .overlay(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .clear, location: max(0, (width - 120) / total)),
+                                .init(color: .black.opacity(0.25), location: width / total),
+                                .init(color: .black.opacity(0.7), location: 0.85),
+                                .init(color: darkBackground, location: 1),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
-                    // 深色罩：上面压暗保证白字可读，下面压到深色底、自然融入底色。
-                    LinearGradient(colors: [.black.opacity(0.6), darkBackground], startPoint: .top, endPoint: .bottom)
-                        .frame(width: UIScreen.main.bounds.width, height: 520)
-                }
-                .frame(width: UIScreen.main.bounds.width, height: 520)
+                    )
+                    .clipped()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(edges: .top)
+                    .offset(y: -playlistContentScrollUp)
+                    .allowsHitTesting(false)
             }
         }
+    }
+
+    /// 固定封面层（我的页 coFixedHeaderWallpaper 同款架构，滚动视图之外）：
+    /// 顶边固定在屏幕顶边 0，下拉时只缩放、不下移（offset 只用上滑量，
+    /// 下拉时上滑量钳为 0）；上滑时按上滑量整体往上移，移量和滚动内容位移
+    /// 是同一路读数（滚动几何内容偏移 - 首帧基线），不是两路取大值，
+    /// 所以不可能像上一轮固定层那样多出一截、单独顶上去。
+    /// 封面底部不是渐变到实色 darkBackground，而是用 mask 在最后 120pt
+    /// 内渐变到透明，露出下面同一张封面图的虚化层（blurredCoverUnderlayer，
+    /// 在这段里深色罩还是 0 到 0.25），封面图先虚化、再越往下越淡，
+    /// 最后自然融入深色底，封面底边没有一条线、没有一个硬边。
+    /// 下拉放大参数与我的页同套放慢后的参数：下拉量硬上限 120pt、
+    /// 放大系数 1 + coverPull/600（封顶约 1.2 倍）、框高只跟下拉量的一半走
+    /// （基线宽 + coverPull/2，封顶 +60pt），松手 response 0.9 / damping 1.0。
+    /// 图按顶部锚点缩放：上面不动、只向左右两边与下方放大，不出现第二张封面；
+    /// 框整体 .clipped() 裁到框里。本层不响应触摸。
+    private var fixedPlaylistCover: some View {
+        let width = UIScreen.main.bounds.width
+        let height = width + coverPull / 2
+        let zoom = 1 + coverPull / 600
+        let fadeStart = max(0, (height - 120) / height)
+        return ZStack(alignment: .top) {
+            CoverImage(url: headerData.coverURL, size: width, cornerRadius: 0)
+                .scaleEffect(zoom, anchor: .top)
+        }
+        .frame(width: width, height: height)
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: fadeStart),
+                    .init(color: .clear, location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipped()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
+        .offset(y: -playlistContentScrollUp)
+        .allowsHitTesting(false)
+    }
+
+    /// 滚动内容里的封面占位区：高度就是固定封面的基线高（屏宽正方形），
+    /// 静止时歌名紧贴封面底边（标题区顶部内边距 0），歌名、控制排、
+    /// 歌曲行的位置和封面在滚动内容里时完全一致；下拉时占位区高度不动，
+    /// 固定封面框高增长被虚化层盖住，歌名不再被框高增长往下推。
+    private var playlistCoverSpacer: some View {
+        Color.clear
+            .frame(height: UIScreen.main.bounds.width)
     }
 
     /// 虚化层用图刷新：图只从 BeansCoverImageStore 已有的缓存里读（内存优先，
@@ -198,25 +270,25 @@ struct PlaylistView: View {
                     Task { await load(force: true) }
                 }
             } else {
-                // 滚动整体架构（本轮改动，上一轮固定层已撤，不再钉在 0）：
-                // 深色底 → 顶部虚化背景层 → ScrollView；封面、歌名、控制排、
-                // 列表都在同一个 ScrollView 里，滚动、下拉时作为一个整体一起动。
-                // 为什么撤固定层：上一轮固定层用“头部 frame 与滚动几何两路取大值”
-                // 算上滑移量，两路读数更新时机不同、max 又取大的那一路，封面位移
-                // 就比滚动内容多出一截，封面被单独顶上去、和歌名、控制排、列表
-                // 分了层；本轮位移只剩滚动视图本身这一路，分层不可能再出现。
-                // 下拉顶部空隙不用深色带：静止时顶部虚化背景层被不透明的实封面
-                // 全盖住、看不见；下拉时实封面跟着内容往下走，空隙里露出的就是
-                // 同一张封面图的虚化（blur 28、上面压深色罩），不是深色带；上滑时
-                // 它按上滑量同步往上移，封面滑出视野时它也一起出去，不会钉在顶部
-                // 盖住歌曲行。下拉放大参数不变（封顶 120pt、系数 pull/600、
-                // 框高半速、回弹 response 0.9 / damping 1.0），框高增长照样推着
-                // 歌名一起往下走——但那是同一个容器里的一起走，不是两层叠加分层。
+                // 滚动整体架构（本轮改动，封面改回我的页同款固定层、顶边钉在 0）：
+                // 深色底 → 虚化底（blurredCoverUnderlayer）→ 固定封面层
+                // （fixedPlaylistCover）→ ScrollView（从歌名开始，顶部是透明占位）。
+                // 上滑移量只用滚动几何这一路读数（内容偏移 - 首帧基线，钳为 >=0），
+                // 固定封面层和虚化底都用这一路一起往上移，移量等于滚动内容位移，
+                // 不会多、不会少，所以不会再像上一轮两路取大值那样单独顶上去。
+                // 下拉时上滑量钳为 0，固定封面层只缩放、不下移，顶边钉在 0；
+                // 滚动内容往下带时，固定封面底边与歌名之间的空隙里露出的就是
+                // 同一张封面图的虚化底，不是深色带。下拉放大参数不变（封顶 120pt、
+                // 系数 pull/600、框高半速、回弹 response 0.9 / damping 1.0）。
+                // 封面底边没有横线：固定封面用 mask 在最后 120pt 渐变到透明，
+                // 下面虚化底的深色罩在这段里还是 0 到 0.25，封面图先虚化、
+                // 再越往下越淡、最后自然融入深色底。
                 ZStack {
-                    blurredTopBackground
+                    blurredCoverUnderlayer
+                    fixedPlaylistCover
                     ScrollView {
                         VStack(spacing: 0) {
-                            playlistCoverInScroll
+                            playlistCoverSpacer
                             VStack(spacing: 0) {
                                 unifiedTitleBlock
                         unifiedControls
@@ -250,13 +322,10 @@ struct PlaylistView: View {
                             .buttonStyle(.plain)
                         }
                             }
-                            // 标题区以下不铺实色底、不画任何线：标题区顶部贴一层
-                            // 虚化过渡（见 blurredPlaylistTransition），封面图隐隐约约
-                            // 透在歌名、控制排后面、越往下越淡、最后融入深色底；
-                            // 标题区本身不加不透明底，否则会把虚化过渡全盖住。
-                            .background(alignment: .top) {
-                                blurredPlaylistTransition
-                            }
+                            // 标题区以下不铺实色底、不画任何线：标题区本身透明，
+                            // 根部虚化底（见 blurredCoverUnderlayer）透在歌名、
+                            // 控制排后面、越往下越淡、最后融入深色底；标题区本身
+                            // 不加不透明底，否则会把虚化底全盖住。
                     }
                     .padding(.bottom, 180)
                 }
@@ -270,8 +339,8 @@ struct PlaylistView: View {
                 // 滚动几何读数（不是 PreferenceKey 回写链）：静止在顶部时偏移约 0，
                 // 已下滑时为正；首帧 0 同样算在顶部。基线在首帧定一次，之后不再重定，
                 // 避免从别页返回（滚动停在半途）时把半途误当成静止值。这一路读数只
-                // 供两处用：下拉放大门控（页面在顶部才放大），以及顶部虚化背景层
-                // 的上滑跟走（上滑量 = 偏移 − 基线，钳在 0 到封面基线高之间）。
+                // 供两处用：下拉放大门控（页面在顶部才放大），以及固定封面层与虚化底
+                // 的上滑跟走（上滑量 = 偏移 − 基线，钳为 >=0）。
                 .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
                     if playlistScrollRestOffset == nil { playlistScrollRestOffset = newValue }
                     playlistScrollOffset = newValue
@@ -343,57 +412,6 @@ struct PlaylistView: View {
     /// 之间），封面滑出视野时它也一起出去，不会钉在顶部盖住歌曲行。
     /// 封面没加载出来时这一层什么都不画，顶部空隙就是深色底兜底，不叠加取色底。
     /// 本层不响应触摸，点歌曲行、点播放、点返回不受影响。
-    private var blurredTopBackground: some View {
-        Group {
-            if let image = coverBlurImage {
-                let width = UIScreen.main.bounds.width
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: width, height: width)
-                    .blur(radius: 28)
-                    .overlay(
-                        LinearGradient(colors: [.black.opacity(0.6), darkBackground], startPoint: .top, endPoint: .bottom)
-                    )
-                    .clipped()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .offset(y: -min(playlistContentScrollUp, width))
-                    .allowsHitTesting(false)
-            }
-        }
-    }
-
-    /// 滚动内容里的封面（本轮从固定层改回滚动内容层，与歌名、控制排、列表
-    /// 同一个容器、同一个位移，不可能再分层）：
-    /// 封面全幅铺满：宽 = 屏宽、正方形为基线高，底部 120pt 渐变到深色底，
-    /// 与标题区衔接；静止时状态栏、灵动岛、返回键都压在封面图上。
-    /// 下拉放大参数与我的页同套放慢后的参数（不再是 120pt 就到 1.4 倍）：
-    /// 下拉量硬上限 120pt、放大系数 1 + coverPull/600（封顶约 1.2 倍）、
-    /// 框高只跟下拉量的一半走（基线宽 + coverPull/2，封顶 +60pt），三层都封顶。
-    /// 图本身按顶部锚点缩放：锚点是顶部中心，放大时只向左右两边与下方放大，
-    /// 不出现第二张封面；框整体 .clipped() 裁到框里。
-    /// 注意：框高增长的那 +60pt 现在会推着歌名一起往下走（同一个容器里的一起走，
-    /// 不是上一轮固定层那种“封面不动、内容单独走”的分层）；120pt 封的是封面
-    /// 效果，不是系统回弹本身——要真正硬截断系统回弹本身需要自定义滚动容器，
-    /// 那是另一轮的大改，本轮不做。
-    /// 注意这是“页面顶部下拉放大”，不是“手指上滑时放大”（那会和滚动打架）：
-    /// 上滑正常滚动、不放大，松手慢速弹簧回原状，见 ScrollView 上的手势。
-    private var playlistCoverInScroll: some View {
-        let width = UIScreen.main.bounds.width
-        let zoom = 1 + coverPull / 600
-        return ZStack(alignment: .top) {
-            CoverImage(url: headerData.coverURL, size: width, cornerRadius: 0)
-                .scaleEffect(zoom, anchor: .top)
-            VStack(spacing: 0) {
-                Spacer()
-                LinearGradient(colors: [.clear, darkBackground], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 120)
-            }
-        }
-        .frame(width: width, height: width + coverPull / 2)
-        .clipped()
-    }
-
     private var unifiedTitleBlock: some View {
         // 对照参考图量的排布：歌名紧贴封面底边（顶部内边距 0，之前是 8），
         // 歌名→来源、来源→首数两档间距从 10pt 收到 4pt（参考图约 6pt，
