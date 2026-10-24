@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// 新版详情页共用件：下面滚动 + 下拉 + 封面 + 虚化实现，是 PlaylistView（每日推荐 /
-/// 用户歌单 / 榜单三种模式同用、已在真机上验证过）那套逻辑的逐字复用，只改名、不改算法、
-/// 不加状态、不加兜底、不加新门控。对应关系：pull = coverPull、pullActive = coverPullActive、
+/// 新版详情页共用件：滚动 + 上滑跟走复用 PlaylistView（每日推荐 / 用户歌单 / 榜单
+/// 三种模式同用、已在真机上验证过）那套单路几何读数，只改名、不改算法；
+/// 但封面放大按我的页（ProfileView.coFixedHeaderWallpaper）逻辑，不按歌单页的顶部锚点：
+/// 先定框、再中心缩放、再裁剪——图从中间向两边放大，不是顶部钉住、只往下展开。
+/// 对应关系：pull = coverPull、pullActive = coverPullActive、
 /// startedAtTop = coverPullStartedAtTop、scrollOffset = playlistScrollOffset、
 /// restOffset = playlistScrollRestOffset、scrollUp = playlistContentScrollUp。
 /// 固定封面层在 ScrollView 之外、顶边钉在 0、下拉只缩放、上滑跟走单路读数；
@@ -178,16 +180,27 @@ struct CoUnifiedDetailCoverLayers: View {
         }
     }
 
+    /// 封面放大按我的页同款写法（coFixedHeaderWallpaper），不要再用顶部锚点：
+    /// 先定框（屏宽方形 + pull/2），再 .scaleEffect(zoom, anchor: .center)，
+    /// 再 .clipped()，再外框顶部对齐 + 忽略顶部安全区，再整体上滑偏移。
+    /// 中心缩放时：402pt 宽、pull=120 时框高 462、zoom 1.2，方形图在框里居中、
+    /// 渲染高 482、框中心 231pt，渲染顶边 -10、底边 472，裁到框里后图从中间
+    /// 向上下两边同时展开；旧的顶部锚点写法是渲染顶边钉在 0、全部扩张往下走，
+    /// 向上的一半根本不存在，看起来就是把整个图片往下拉，不是放大。
+    /// 方形图在 taller 框里居中：pull=0 时框高 = 图高，无缝隙；pull>0 时渲染高
+    /// = 宽 × (1 + pull/600)，恒大于框高（宽 402 时每 pt 下拉多 0.17pt），
+    /// 缩放后上下无空隙，不会露出底色带。
     private var fixedCover: some View {
         let width = UIScreen.main.bounds.width
         let height = width + pull / 2
         let zoom = 1 + pull / 600
         let fadeStart = max(0, (height - 120) / height)
-        return ZStack(alignment: .top) {
+        return ZStack {
             CoverImage(url: coverURL, size: width, cornerRadius: 0)
-                .scaleEffect(zoom, anchor: .top)
         }
         .frame(width: width, height: height)
+        .scaleEffect(zoom, anchor: .center)
+        .clipped()
         .mask(
             LinearGradient(
                 stops: [
