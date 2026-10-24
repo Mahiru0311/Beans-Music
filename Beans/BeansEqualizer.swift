@@ -373,6 +373,49 @@ final class CoEqualizer: ObservableObject {
         guard processingEnabled, processingFormatIsFloat32 || processingFormatIsInt16 else { return }
 
         let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
+        // 分开声道布局（两路各 1 声道）：交错那套按单声道会跳过摆动，先交错成一路再走同一套处理。
+        if buffers.count == 2,
+           Int(buffers[0].mNumberChannels) == 1, Int(buffers[1].mNumberChannels) == 1,
+           let leftData = buffers[0].mData, let rightData = buffers[1].mData {
+            let leftFrames = Int(buffers[0].mDataByteSize) / (processingFormatIsFloat32 ? MemoryLayout<Float>.size : MemoryLayout<Int16>.size)
+            let rightFrames = Int(buffers[1].mDataByteSize) / (processingFormatIsFloat32 ? MemoryLayout<Float>.size : MemoryLayout<Int16>.size)
+            let framesToProcess = min(frameCount, leftFrames, rightFrames)
+            if framesToProcess > 0 {
+                var interleaved = [Float](repeating: 0, count: framesToProcess * 2)
+                if processingFormatIsFloat32 {
+                    let left = leftData.assumingMemoryBound(to: Float.self)
+                    let right = rightData.assumingMemoryBound(to: Float.self)
+                    for frame in 0..<framesToProcess {
+                        interleaved[frame * 2] = left[frame]
+                        interleaved[frame * 2 + 1] = right[frame]
+                    }
+                    interleaved.withUnsafeMutableBufferPointer { pointer in
+                        guard let base = pointer.baseAddress else { return }
+                        processFloatSamples(base, frameCount: framesToProcess, channelCount: 2, firstChannelIndex: 0)
+                    }
+                    for frame in 0..<framesToProcess {
+                        left[frame] = interleaved[frame * 2]
+                        right[frame] = interleaved[frame * 2 + 1]
+                    }
+                } else {
+                    let left = leftData.assumingMemoryBound(to: Int16.self)
+                    let right = rightData.assumingMemoryBound(to: Int16.self)
+                    for frame in 0..<framesToProcess {
+                        interleaved[frame * 2] = Float(left[frame]) / 32768
+                        interleaved[frame * 2 + 1] = Float(right[frame]) / 32768
+                    }
+                    interleaved.withUnsafeMutableBufferPointer { pointer in
+                        guard let base = pointer.baseAddress else { return }
+                        processFloatSamples(base, frameCount: framesToProcess, channelCount: 2, firstChannelIndex: 0)
+                    }
+                    for frame in 0..<framesToProcess {
+                        left[frame] = Int16(clamping: Int(max(-1, min(1, interleaved[frame * 2])) * 32767))
+                        right[frame] = Int16(clamping: Int(max(-1, min(1, interleaved[frame * 2 + 1])) * 32767))
+                    }
+                }
+            }
+            return
+        }
         var firstChannelIndex = 0
         for buffer in buffers {
             let channelCount = max(Int(buffer.mNumberChannels), 1)
@@ -441,7 +484,7 @@ final class CoEqualizer: ObservableObject {
                 for frame in 0..<frameCount {
                     surroundPanPhase += phaseStep
                     if surroundPanPhase > 2 * Double.pi { surroundPanPhase -= 2 * Double.pi }
-                    let pan = sin(surroundPanPhase) // -1 全左 … +1 全右
+                    let pan = tanh(2.0 * sin(surroundPanPhase)) // 突兀快切形：两端停留、中间快切，-1 全左 … +1 全右
                     let leftGain = Float(0.12 + 0.88 * cos((pan + 1) * Double.pi / 4))
                     let rightGain = Float(0.12 + 0.88 * sin((pan + 1) * Double.pi / 4))
                     let leftIndex = frame * channelCount

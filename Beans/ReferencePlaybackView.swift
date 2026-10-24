@@ -47,6 +47,7 @@ struct ReferencePlaybackView: View {
     @AppStorage("co.appleMusic.wallpaperBlur") private var wallpaperBlur = 14.0
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
     @AppStorage("co.appleMusic.showLyricPreview") private var showLyricPreview = true
+    @Namespace private var coverMorphNamespace
     @State private var lyricCenters: [UUID: CGFloat] = [:]
     @State private var focusedLyricID: UUID?
     @State private var selectedLyricID: UUID?
@@ -109,16 +110,13 @@ struct ReferencePlaybackView: View {
                                 .transition(.opacity)
                         } else if showLyrics {
                             lyricsPage
-                                // 整页淡入；封面页整页四边同时均匀缩放加淡入，同一弹簧。
-                                .transition(.opacity)
                         } else {
                             coverPage(size: geometry.size)
-                                .transition(.scale(scale: 0.55).combined(with: .opacity))
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 封面切歌词：整页缩放淡入淡出，同一弹簧；子项不再各自带转场。
-                    .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
+                    // 封面切歌词走 GitHub 播放页同款：封面一边均匀缩小、一边滑向左上角小封面，0.38s 曲线。
+                    .animation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -198,7 +196,7 @@ struct ReferencePlaybackView: View {
                 playsCoverVideoAudio: true
             )
             .frame(width: artworkSize, height: artworkSize)
-            // 转场在整页上，不在封面子项上。
+            .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
@@ -208,7 +206,7 @@ struct ReferencePlaybackView: View {
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = true
                 }
             }
@@ -246,18 +244,21 @@ struct ReferencePlaybackView: View {
             .frame(maxWidth: 420)
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
+            .transition(.opacity)
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = true
                 }
             }
             .padding(.top, 18)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.previewLyric)))
+            .transition(.opacity)
             } else {
                 compactTrackHeader
                     .padding(.top, 22)
+                    .transition(.opacity)
             }
 
             Spacer(minLength: 0)
@@ -315,6 +316,7 @@ struct ReferencePlaybackView: View {
 
             if lyrics.isEmpty {
                 emptyLyricsView
+                    .transition(.opacity)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
@@ -390,6 +392,7 @@ struct ReferencePlaybackView: View {
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
                 }
+                .transition(.opacity)
             }
         }
     }
@@ -398,12 +401,13 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = false
                 }
             } label: {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
+                    .matchedGeometryEffect(id: "appleMusicCover", in: coverMorphNamespace)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
 
@@ -428,6 +432,7 @@ struct ReferencePlaybackView: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onArtist)
             }
+            .transition(.opacity)
             Spacer(minLength: 0)
             HStack(spacing: 0) {
                 favoriteActionButton()
@@ -453,6 +458,7 @@ struct ReferencePlaybackView: View {
                         .contentShape(Rectangle())
                 }
             }
+            .transition(.opacity)
         }
     }
 
@@ -476,7 +482,7 @@ struct ReferencePlaybackView: View {
                 container: PlayerLayoutEntry()
             ),
             onLyrics: {
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     if showQueue {
                         showQueue = false
                         showLyrics = true
@@ -608,7 +614,7 @@ struct ReferencePlaybackView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             CoHaptics.tap()
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+            withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                 showLyrics = false
             }
         }
