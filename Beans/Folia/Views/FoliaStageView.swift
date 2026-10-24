@@ -78,7 +78,6 @@ private struct FoliaStageTransport: View {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44)
                 }
                 Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
-                Button { player.togglePlayMode() } label: { Image(systemName: player.playMode.icon).frame(width: 44, height: 44) }
             }.font(.title3)
         }
         .padding(12).background { CoGlass(shape: RoundedRectangle(cornerRadius: 24)) }

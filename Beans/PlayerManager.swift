@@ -1411,7 +1411,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func configureEqualizer(for item: AVPlayerItem) {
-        guard CoEqualizer.shared.isEnabled else {
+        guard CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled else {
             item.audioMix = nil
             return
         }
@@ -1429,7 +1429,7 @@ final class PlayerManager: NSObject, ObservableObject {
                 guard let self,
                       let item,
                       self.player?.currentItem === item,
-                      CoEqualizer.shared.isEnabled else { return }
+                      CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled else { return }
                 item.audioMix = mix
             }
         }

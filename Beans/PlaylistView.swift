@@ -41,23 +41,11 @@ struct PlaylistView: View {
     // 过渡区直接显示深色底兜底，拿到后再换虚化层，不叠加取色实色底）。
     @State private var coverBlurImage: UIImage? = nil
     @State private var coverBlurRetried = false
-    // 歌单页下拉放大（与我的页同套放慢后的参数，见 fixedPlaylistCover）：
+    // 滚动与下拉状态走五页共用的 CoDetailScrollState（与歌手页、专辑页同一套）：
     // 下拉量封顶 120pt、放大系数 1 + 下拉量/600（封顶约 1.2 倍）、
     // 框高只跟下拉量的一半走（封顶 +60pt），松手用慢速无弹跳弹簧回 0。
-    @State private var coverPull: CGFloat = 0
-    @State private var coverPullActive = false
-    @State private var coverPullStartedAtTop = false
-    @State private var playlistScrollOffset: CGFloat = 0
-    // 顶部虚化背景层跟走只用滚动几何这一路读数（首帧定基线，之后不再重定）；
-    // 下拉时钳为 0。上一轮固定封面层用的“头部 frame 与滚动几何两路取大值”
-    // 正是封面被单独顶上去的根因：两路读数更新时机不同、max 又取大的那一路，
-    // 封面位移就比滚动内容多出一截，和歌名、控制排、列表分了层；本轮封面
-    // 回到滚动内容里、位移只剩滚动视图本身这一路，不可能再分层。
-    @State private var playlistScrollRestOffset: CGFloat? = nil
-    private var playlistContentScrollUp: CGFloat {
-        guard let rest = playlistScrollRestOffset else { return 0 }
-        return max(0, playlistScrollOffset - rest)
-    }
+    // 上滑量 = 滚动偏移 − 首帧基线，钳为 >=0；下拉门控只在手势开始时定一次。
+    @StateObject private var detailScroll = CoDetailScrollState()
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
     @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
 
@@ -111,7 +99,7 @@ struct PlaylistView: View {
     /// 关键是交界处不能断档：这一层的深色罩是从 0 开始往下加深的，
     /// 在封面底边往上 120pt 处还是 0，到封面底边处只有黑 0.25，
     /// 再往下才慢慢加深到深色底，交界处没有任何一层是从实色或高不透明度起步的。
-    /// 这一层跟固定封面层用同一个上滑读数（playlistContentScrollUp）一起往上移，
+    /// 这一层跟固定封面层用同一个上滑读数（detailScroll.scrollUp）一起往上移，
     /// 相对位置不变；下拉时移量钳为 0、顶边不动，滚动内容往下带时露出的
     /// 空隙里也是这一层虚化图，不是深色带。封面没拿到图时这一层什么都不画，
     /// 下面就是深色底兜底，同样没有硬边。
@@ -141,7 +129,7 @@ struct PlaylistView: View {
                     .clipped()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(edges: .top)
-                    .offset(y: -playlistContentScrollUp)
+                    .offset(y: -detailScroll.scrollUp)
                     .allowsHitTesting(false)
             }
         }
@@ -157,22 +145,22 @@ struct PlaylistView: View {
     /// 在这段里深色罩还是 0 到 0.25），封面图先虚化、再越往下越淡，
     /// 最后自然融入深色底，封面底边没有一条线、没有一个硬边。
     /// 下拉放大参数与我的页同套放慢后的参数：下拉量硬上限 120pt、
-    /// 放大系数 1 + coverPull/600（封顶约 1.2 倍）、框高只跟下拉量的一半走
-    /// （基线宽 + coverPull/2，封顶 +60pt），松手 response 0.9 / damping 1.0。
+    /// 放大系数 1 + 下拉量/600（封顶约 1.2 倍）、框高只跟下拉量的一半走
+    /// （基线宽 + 下拉量/2，封顶 +60pt），松手 response 0.9 / damping 1.0。
     /// 封面放大按我的页同款写法（coFixedHeaderWallpaper），不要再用顶部锚点：
-    /// 先定框（屏宽方形 + coverPull/2），再 .scaleEffect(zoom, anchor: .center)，
+    /// 先定框（屏宽方形 + 下拉量/2），再 .scaleEffect(zoom, anchor: .center)，
     /// 再 .clipped()，再 mask（最后 120pt 渐变到透明），再外框顶部对齐。
-    /// 中心缩放时：402pt 宽、coverPull=120 时框高 462、zoom 1.2，方形图在框里居中、
+    /// 中心缩放时：402pt 宽、下拉量=120 时框高 462、zoom 1.2，方形图在框里居中、
     /// 渲染高 482、框中心 231pt，渲染顶边 -10、底边 472，裁到框里后图从中间
     /// 向上下两边同时展开；旧的顶部锚点写法是渲染顶边钉在 0、全部扩张往下走，
     /// 向上的一半根本不存在，看起来就是把整个图片往下拉，不是放大。
-    /// coverPull=0 时框高 = 图高，无缝隙；coverPull>0 时渲染高
-    /// = 宽 × (1 + coverPull/600)，恒大于框高（宽 402 时每 pt 下拉多 0.17pt），
+    /// 下拉量=0 时框高 = 图高，无缝隙；下拉量>0 时渲染高
+    /// = 宽 × (1 + 下拉量/600)，恒大于框高（宽 402 时每 pt 下拉多 0.17pt），
     /// 缩放后上下无空隙，不会露出底色带。本层不响应触摸。
     private var fixedPlaylistCover: some View {
         let width = UIScreen.main.bounds.width
-        let height = width + coverPull / 2
-        let zoom = 1 + coverPull / 600
+        let height = width + detailScroll.pull / 2
+        let zoom = 1 + detailScroll.pull / 600
         let fadeStart = max(0, (height - 120) / height)
         return ZStack {
             CoverImage(url: headerData.coverURL, size: width, cornerRadius: 0)
@@ -194,7 +182,7 @@ struct PlaylistView: View {
         .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea(edges: .top)
-        .offset(y: -playlistContentScrollUp)
+        .offset(y: -detailScroll.scrollUp)
         .allowsHitTesting(false)
     }
 
@@ -352,43 +340,10 @@ struct PlaylistView: View {
                 // 而不是被导航栏 + 状态栏顶到约 134pt 才开始；导航栏背景已隐藏、
                 // 配色为深色，系统返回键仍在导航栏位置、压在封面图上、照常可点。
                 .ignoresSafeArea(edges: .top)
-                // 滚动几何读数（不是 PreferenceKey 回写链）：静止在顶部时偏移约 0，
-                // 已下滑时为正；首帧 0 同样算在顶部。基线在首帧定一次，之后不再重定，
-                // 避免从别页返回（滚动停在半途）时把半途误当成静止值。这一路读数只
-                // 供两处用：下拉放大门控（页面在顶部才放大），以及固定封面层与虚化底
-                // 的上滑跟走（上滑量 = 偏移 − 基线，钳为 >=0）。
-                .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
-                    if playlistScrollRestOffset == nil { playlistScrollRestOffset = newValue }
-                    playlistScrollOffset = newValue
-                }
-                // 下拉放大：复用我的页验证过的路子——挂在整个滚动视图上的
-                // simultaneousGesture 直接驱动，不走 PreferenceKey 回写链；
+                // 滚动几何 + 下拉放大走五页共用的 coDetailScroll（与歌手页、专辑页同一套参数）：
                 // 门控只在手势开始时定一次（页面在顶部才放大），拖动最小距离 8pt，
-                // 点按（点歌曲行、点播放、点返回）不到 8pt 不触发，不会被截获。
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 8)
-                        .onChanged { value in
-                            if !coverPullActive {
-                                coverPullActive = true
-                                coverPullStartedAtTop = playlistScrollOffset <= 20
-                            }
-                            guard coverPullStartedAtTop else {
-                                coverPull = 0
-                                return
-                            }
-                            // 下拉量硬上限 120pt，上滑、横向拖动时高度差为负，钳为 0 不放大。
-                            coverPull = min(max(0, value.translation.height), 120)
-                        }
-                        .onEnded { _ in
-                            coverPullActive = false
-                            coverPullStartedAtTop = false
-                            // 松手慢速平滑回 0：response 0.9、damping 1.0，无弹跳感，
-                            // 不是原来我的页那种 response 0.35 的快弹簧。
-                            withAnimation(.spring(response: 0.9, dampingFraction: 1.0)) {
-                                coverPull = 0
-                            }
-                        }
-                )
+                // 点按不到 8pt 不触发，不会被截获；松手 response 0.9 / damping 1.0 回 0。
+                .coDetailScroll(detailScroll)
                 }
             }
         }

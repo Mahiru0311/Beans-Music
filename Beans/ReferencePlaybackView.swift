@@ -118,13 +118,13 @@ struct ReferencePlaybackView: View {
                         } else {
                             coverPage(size: geometry.size)
                                 // 位置/尺寸交给下面的 matchedGeometryEffect 形变，不再整页滑走；
-                                // 只留淡入淡出，避免形变和滑移两层动画叠加。
-                                .transition(.opacity)
+                                // 离场带轻微缩小，与向页眉小封面的形变方向一致，不再是干巴巴的淡入淡出。
+                                .transition(.scale(scale: 0.94).combined(with: .opacity))
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // player 前端同款缓动：0.38s cubic-bezier(.32,.72,.28,1)
-                    .animation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38), value: showLyrics)
+                    // 封面切歌词不再用 0.38s 固定曲线（太僵硬），改弹簧收尾：起步跟手、结尾带一点柔和回落。
+                    .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -211,7 +211,7 @@ struct ReferencePlaybackView: View {
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
                 CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                     showLyrics = true
                 }
             }

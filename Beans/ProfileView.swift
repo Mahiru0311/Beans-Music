@@ -1983,6 +1983,8 @@ struct SettingsView: View {
     @State private var settingsCurrentHidden: [(id: Int, name: String)] = []
     @State private var settingsOtherHidden: [(userId: String, entries: [(id: Int, name: String)])] = []
     @State private var playbackExpanded = false
+    @State private var showLyricOffsetSheet = false
+    @AppStorage(LyricTiming.userOffsetKey) private var lyricOffset = 0.0
     @State private var showWallpaperPicker = false
     @State private var showProfileHeaderWallpaperPicker = false
     // 选图后先裁切、不直接存：有值时弹裁切页，点“完成”才存、点“取消”不存旧图不动。
@@ -3212,9 +3214,6 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.coComment.opacity(0.15))
 
-
-                Divider().overlay(Color.coComment.opacity(0.15))
-
                 Toggle(isOn: $hapticsEnabled) {
                     HStack(spacing: 12) {
                         Image(systemName: "iphone.radiowaves.left.and.right")
@@ -3247,11 +3246,66 @@ struct SettingsView: View {
                 .toggleStyle(.switch)
                 .tint(Color.coAmber)
 
+                Divider().overlay(Color.coComment.opacity(0.15))
+
+                Toggle(isOn: Binding(get: { equalizer.surroundEnabled }, set: { equalizer.setSurroundEnabled($0) })) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "rotate.3d")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.coAmber)
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("3D环绕")
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
+                            Text("声场加宽，听感更开阔；会多耗电")
+                                .font(CoFont.appFont(11))
+                                .foregroundStyle(Color.coComment)
+                        }
+                    }
+                }
+                .toggleStyle(.switch)
+                .tint(Color.coAmber)
+
+                Divider().overlay(Color.coComment.opacity(0.15))
+
+                Button {
+                    CoHaptics.select()
+                    showLyricOffsetSheet = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.coAmber)
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("歌词偏移")
+                                .font(CoFont.appFont(15))
+                                .foregroundStyle(Color.coLabel)
+                            Text("全部歌曲")
+                                .font(CoFont.appFont(11))
+                                .foregroundStyle(Color.coComment)
+                        }
+                        Spacer()
+                        Text(CoLyricOffsetSheet.text(for: lyricOffset))
+                            .font(CoFont.appFont(12, .medium))
+                            .foregroundStyle(Color.coAmber)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.coComment.opacity(0.6))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(GlassPressButtonStyle(scale: 0.98))
+
             }
             .padding(.horizontal, 4)
             .padding(.bottom, 14)
             .transition(.opacity.combined(with: .move(edge: .top)))
             }
+        }
+        .sheet(isPresented: $showLyricOffsetSheet) {
+            CoLyricOffsetSheet()
         }
     }
 
@@ -4765,3 +4819,70 @@ struct BackupDocumentPicker: UIViewControllerRepresentable {
     }
 }
 
+
+/// 歌词偏移编辑页：全局生效（全部歌曲），提前为正、延迟为负，范围 ±5 秒、步进 0.1 秒。
+private struct CoLyricOffsetSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(LyricTiming.userOffsetKey) private var offset = 0.0
+
+    static func text(for offset: Double) -> String {
+        if offset > 0.001 { return String(format: "提前 %.1f 秒", offset) }
+        if offset < -0.001 { return String(format: "延迟 %.1f 秒", -offset) }
+        return "不偏移"
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("全部歌曲")
+                    .font(CoFont.appFont(13))
+                    .foregroundStyle(Color.coComment)
+                HStack(spacing: 12) {
+                    Button { offset = max(-5, (offset * 10).rounded() / 10 - 0.1) } label: {
+                        Image(systemName: "minus")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                    Slider(value: $offset, in: -5...5, step: 0.1)
+                        .tint(Color.coAmber)
+                    Button { offset = min(5, (offset * 10).rounded() / 10 + 0.1) } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                }
+                HStack {
+                    Text("延迟")
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
+                    Spacer()
+                    Text(Self.text(for: offset))
+                        .font(CoFont.appFont(15, .medium))
+                        .foregroundStyle(Color.coAmber)
+                    Spacer()
+                    Text("提前")
+                        .font(CoFont.appFont(12))
+                        .foregroundStyle(Color.coComment)
+                }
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("歌词偏移")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { offset = 0 } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+    }
+}

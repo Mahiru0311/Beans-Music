@@ -40,7 +40,7 @@ func coCoverTint(from image: UIImage?) -> Color {
         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
     ) else { return coDetailDarkBackground }
     context.draw(cgImage, in: CGRect(x: 0, y: 0, width: 1, height: 1))
-    let darken: CGFloat = 0.35
+    let darken: CGFloat = 0.5
     return Color(
         red: CGFloat(pixel[0]) / 255 * darken,
         green: CGFloat(pixel[1]) / 255 * darken,

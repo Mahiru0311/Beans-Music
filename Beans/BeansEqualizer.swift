@@ -69,6 +69,8 @@ final class CoEqualizer: ObservableObject {
     static let maximumGain: Double = 12
 
     @Published private(set) var isEnabled: Bool
+    /// 3D 环绕（轻量版）：声场加宽 + 串音延迟模拟环绕感，可开关，默认关。
+    @Published private(set) var surroundEnabled: Bool
     @Published private(set) var bandGains: [Double]
     @Published private(set) var selectedPreset: CoEqualizerPreset
     @Published private(set) var selectedCustomPresetName: String?
@@ -84,9 +86,14 @@ final class CoEqualizer: ObservableObject {
     private var sampleRate: Double = 44_100
     private var coefficients: [BiquadCoefficients] = Array(repeating: .identity, count: 10)
     private var filterStates: [BiquadState] = Array(repeating: .zero, count: 80)
+    private var surroundDelayL: [Float] = []
+    private var surroundDelayR: [Float] = []
+    private var surroundDelayIndex = 0
+    private var surroundDelayCount = 0
     private var pendingPersistWorkItem: DispatchWorkItem?
 
     private static let enabledKey = "co.equalizer.enabled"
+    static let surroundKey = "co.surround3D.enabled"
     private static let gainsKey = "co.equalizer.bandGains"
     private static let presetKey = "co.equalizer.preset"
     private static let customPresetNameKey = "co.equalizer.customPresetName"
@@ -114,12 +121,13 @@ final class CoEqualizer: ObservableObject {
         }
 
         isEnabled = defaults.object(forKey: Self.enabledKey) as? Bool ?? false
+        surroundEnabled = defaults.object(forKey: Self.surroundKey) as? Bool ?? false
         bandGains = normalizedGains
         selectedPreset = storedPreset
         selectedCustomPresetName = defaults.string(forKey: Self.customPresetNameKey)
         preampGain = Self.normalizedGain((defaults.object(forKey: Self.preampKey) as? NSNumber)?.doubleValue ?? 0)
         customPresets = normalizedCustomPresets
-        processingEnabled = isEnabled
+        processingEnabled = isEnabled || surroundEnabled
         processingGains = normalizedGains
         processingPreampLinear = Self.linearGain(for: preampGain)
         rebuildCoefficientsLocked(using: normalizedGains)
@@ -129,9 +137,20 @@ final class CoEqualizer: ObservableObject {
         guard isEnabled != enabled else { return }
         isEnabled = enabled
         configurationLock.lock()
-        processingEnabled = enabled
+        processingEnabled = enabled || surroundEnabled
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.enabledKey)
+        notifySettingsChanged()
+    }
+
+    /// 3D 环绕开关：改动后经 settingsDidChange 通知，播放器会重挂音频处理。
+    func setSurroundEnabled(_ enabled: Bool) {
+        guard surroundEnabled != enabled else { return }
+        surroundEnabled = enabled
+        configurationLock.lock()
+        processingEnabled = isEnabled || enabled
+        configurationLock.unlock()
+        defaults.set(enabled, forKey: Self.surroundKey)
         notifySettingsChanged()
     }
 
@@ -340,6 +359,10 @@ final class CoEqualizer: ObservableObject {
             && format.mBitsPerChannel == 32
             && (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
         filterStates = Array(repeating: .zero, count: Self.maximumChannels * Self.bandFrequencies.count)
+        surroundDelayCount = min(max(Int(sampleRate * 0.01), 1), 4096)
+        surroundDelayL = Array(repeating: 0, count: surroundDelayCount)
+        surroundDelayR = Array(repeating: 0, count: surroundDelayCount)
+        surroundDelayIndex = 0
         rebuildCoefficientsLocked(using: processingGains)
         configurationLock.unlock()
     }
@@ -362,26 +385,53 @@ final class CoEqualizer: ObservableObject {
             let framesToProcess = min(frameCount, availableFrames)
             guard framesToProcess > 0 else { continue }
 
-            for channelOffset in 0..<channelCount {
-                let channel = min(firstChannelIndex + channelOffset, Self.maximumChannels - 1)
-                let stateOffset = channel * Self.bandFrequencies.count
-                for frame in 0..<framesToProcess {
-                    let sampleIndex = frame * channelCount + channelOffset
-                    var sample = samples[sampleIndex] * processingPreampLinear
-                    for bandIndex in coefficients.indices {
-                        let stateIndex = stateOffset + bandIndex
-                        let coefficient = coefficients[bandIndex]
-                        var state = filterStates[stateIndex]
-                        let filtered = coefficient.b0 * sample + state.z1
-                        state.z1 = coefficient.b1 * sample - coefficient.a1 * filtered + state.z2
-                        state.z2 = coefficient.b2 * sample - coefficient.a2 * filtered
-                        filterStates[stateIndex] = state
-                        sample = filtered
+            if isEnabled {
+                for channelOffset in 0..<channelCount {
+                    let channel = min(firstChannelIndex + channelOffset, Self.maximumChannels - 1)
+                    let stateOffset = channel * Self.bandFrequencies.count
+                    for frame in 0..<framesToProcess {
+                        let sampleIndex = frame * channelCount + channelOffset
+                        var sample = samples[sampleIndex] * processingPreampLinear
+                        for bandIndex in coefficients.indices {
+                            let stateIndex = stateOffset + bandIndex
+                            let coefficient = coefficients[bandIndex]
+                            var state = filterStates[stateIndex]
+                            let filtered = coefficient.b0 * sample + state.z1
+                            state.z1 = coefficient.b1 * sample - coefficient.a1 * filtered + state.z2
+                            state.z2 = coefficient.b2 * sample - coefficient.a2 * filtered
+                            filterStates[stateIndex] = state
+                            sample = filtered
+                        }
+                        // Keep processed PCM inside the normalized range expected by
+                        // the output route; values above 1.0 can become audible
+                        // clipping, especially on headphones.
+                        samples[sampleIndex] = sample.isFinite ? min(max(sample, -0.98), 0.98) : 0
                     }
-                    // Keep processed PCM inside the normalized range expected by
-                    // the output route; values above 1.0 can become audible
-                    // clipping, especially on headphones.
-                    samples[sampleIndex] = sample.isFinite ? min(max(sample, -0.98), 0.98) : 0
+                }
+            }
+            if surroundEnabled, channelCount == 2, surroundDelayCount > 0 {
+                // 轻量环绕：中置不动、两侧信号加宽 1.6 倍，再混入少量对侧延迟声
+                // （约 10ms 串音），模拟环绕感；只对立体声生效，单声道/多声道不动。
+                let width: Float = 1.6
+                let crossfeed: Float = 0.18
+                for frame in 0..<framesToProcess {
+                    let leftIndex = frame * channelCount
+                    let rightIndex = leftIndex + 1
+                    let left = samples[leftIndex]
+                    let right = samples[rightIndex]
+                    let mid = (left + right) * 0.5
+                    let side = (left - right) * 0.5
+                    let widenedLeft = mid + side * width
+                    let widenedRight = mid - side * width
+                    let delayedLeft = surroundDelayL[surroundDelayIndex]
+                    let delayedRight = surroundDelayR[surroundDelayIndex]
+                    surroundDelayL[surroundDelayIndex] = widenedLeft
+                    surroundDelayR[surroundDelayIndex] = widenedRight
+                    surroundDelayIndex = (surroundDelayIndex + 1) % surroundDelayCount
+                    let outLeft = widenedLeft + delayedRight * crossfeed
+                    let outRight = widenedRight + delayedLeft * crossfeed
+                    samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
+                    samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
             }
         }

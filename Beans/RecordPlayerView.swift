@@ -29,6 +29,7 @@ struct RecordPlayerView: View {
     @State private var showCustomCoverPicker = false
     @State private var showSoftwareVolume = false
     @AppStorage("co.audioQuality") private var playbackQualityRaw = CoAudioQuality.hires.rawValue
+    @AppStorage(LyricTiming.userOffsetKey) private var lyricOffset = 0.0
 
     init(
         song: Song?,
@@ -526,9 +527,9 @@ struct RecordPlayerView: View {
             lyrics: lyrics,
             primary: .white,
             secondary: .white.opacity(0.58),
-            lyricOffset: 0
+            lyricOffset: CGFloat(lyricOffset)
         ) { line in
-            player.seekPrecisely(to: LyricTiming.seekTime(for: line, userOffset: 0))
+            player.seekPrecisely(to: LyricTiming.seekTime(for: line, userOffset: lyricOffset))
         }
         .padding(.horizontal, 8)
         .modifier(recordLayout(.vinylLyricsText))

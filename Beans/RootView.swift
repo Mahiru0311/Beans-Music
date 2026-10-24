@@ -284,6 +284,12 @@ struct RootView: View {
         // 播放页打开/关闭走系统默认底部滑入，不再用 zoom 变形与根视图动画叠加。
         .fullScreenCover(isPresented: $showPlayer) {
             playerPresentation
+                .navigationTransition(
+                    .zoom(
+                        sourceID: CoNowPlayingTransitionID.surface,
+                        in: nowPlayingTransition
+                    )
+                )
         }
         .animation(
             rootLayoutSettled ? .easeInOut(duration: 0.22) : nil,
@@ -347,15 +353,18 @@ struct RootView: View {
 
 
     @ViewBuilder
+    /// iOS 26 走系统交互收起：打开从迷你条放大、关闭缩回迷你条（原版 zoom 过渡已恢复）。
+    private var usesSystemPlayerDismissal: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
+
     private var playerPresentation: some View {
-        // 下拉收起不能再走系统：19:16 那轮删掉 zoom 过渡后，全屏页走系统默认
-        // 底部滑入，而全屏页本身没有下滑收起手势，播放页就关不掉了。
-        // 旧版能下拉收起，靠的就是 zoom 过渡带来的系统交互收起；不恢复 zoom
-        // （用户已判它僵硬），改用本地下拉手势收起：从顶部区域下拉超过阈值
-        // 即关闭，打开仍是系统底部滑入。
+        // 打开与关闭都走原版 zoom 过渡：打开从迷你条放大，iOS 26 下拉收起由系统
+        // 交互收起完成（边下滑边缩小回迷你条）；低版本走本地下拉手势兜底。
         CoNowPlayingPresentation(
             isPresented: $showPlayer,
-            usesSystemInteractiveDismissal: false
+            usesSystemInteractiveDismissal: usesSystemPlayerDismissal
         ) {
             PlayerView(isPresented: $showPlayer)
                 .environmentObject(favorites)

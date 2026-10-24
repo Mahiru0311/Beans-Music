@@ -1360,15 +1360,10 @@ struct SearchView: View {
 
 
     private func sourceDisplayName(_ source: SongSource) -> String {
+        // 酷狗专版：搜索页不留其他平台名字，一律显示酷狗。
         switch source {
-        case .netease: return "网易云音乐"
-        case .qq: return "QQ音乐"
         case .kugou: return "酷狗音乐"
-        case .kuwo: return "酷我音乐"
-        case .migu: return "咪咕音乐"
-        case .qishui: return "汽水音乐"
-        case .bilibili: return "哔哩哔哩"
-        case .webdav: return "WebDAV"
+        default: return "酷狗音乐"
         }
     }
 
@@ -1419,15 +1414,10 @@ private struct CoSearchSongRow: View {
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
 
     private var sourceName: String {
+        // 酷狗专版：搜索页不留其他平台名字，一律显示酷狗。
         switch song.source {
-        case .netease: return "网易云"
-        case .qq: return "QQ音乐"
         case .kugou: return "酷狗"
-        case .kuwo: return "酷我"
-        case .migu: return "咪咕"
-        case .qishui: return "汽水"
-        case .bilibili: return "哔哩哔哩"
-        case .webdav: return "WebDAV"
+        default: return "酷狗"
         }
     }
 
