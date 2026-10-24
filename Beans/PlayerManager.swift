@@ -130,6 +130,9 @@ final class PlayerManager: NSObject, ObservableObject {
     private var equalizerSettingsObserver: NSObjectProtocol?
     private var customCoverObserver: NSObjectProtocol?
     private var playbackConfirmed = false
+    /// 断点续播的待补 seek：换音质/重试时新地址还没就绪，立刻 seek 会被丢掉；
+    /// 记下来等 item ready 时由状态观察者补上，播起来就不从头开始。
+    private var pendingResumeSeek: Double?
     private var sessionConfigured = false
     private var systemPlaybackPrepared = false
     private var routeObserverInstalled = false
@@ -913,13 +916,20 @@ final class PlayerManager: NSObject, ObservableObject {
         self.player = player
         configureEqualizer(for: item)
         playbackConfirmed = false
+        pendingResumeSeek = nil
         itemStatusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard let self else { return }
             self.performOnMain { [weak self] in
                 guard let self,
                       self.player === player,
                       self.currentSong?.identityKey == loadedSong.identityKey else { return }
-                if item.status == .readyToPlay { return }
+                if item.status == .readyToPlay {
+                    if let pending = self.pendingResumeSeek {
+                        self.pendingResumeSeek = nil
+                        player.seek(to: CMTime(seconds: pending, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                    }
+                    return
+                }
                 guard item.status == .failed else { return }
                 if self.retryKugouAtStandardIfNeeded(error: item.error) { return }
                 let reason = "AVPlayerItem 加载失败"
@@ -1003,9 +1013,15 @@ final class PlayerManager: NSObject, ObservableObject {
             }
         }
         if resumeAt > 0.5 {
-            let seekTime = CMTime(seconds: resumeAt, preferredTimescale: 600)
-            player.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
+            // 断点续播：新取的网络地址还没就绪时立刻 seek 会被丢掉，播起来就从 0 开始——
+            // 这就是换音质总从头播的根因。已就绪才立刻 seek；没就绪先记下来，
+            // 等 item 状态变 readyToPlay 时由状态观察者补 seek。
             progress = resumeAt
+            if item.status == .readyToPlay {
+                player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+            } else {
+                pendingResumeSeek = resumeAt
+            }
         }
         guard autoplay else {
             isBuffering = false

@@ -208,14 +208,6 @@ struct ReferencePlaybackView: View {
         }
     }
 
-    private var previewLyrics: [LyricLine] {
-        guard !lyrics.isEmpty else { return [] }
-        let current = currentPlaybackLyricIndex ?? 0
-        let start = max(current - 1, 0)
-        let end = min(start + 3, lyrics.count)
-        return Array(lyrics[start..<end])
-    }
-
     private func coverPage(size: CGSize) -> some View {
         let contentWidth = max(size.width - 64, 0)
         let artworkSize = min(contentWidth, min(size.height * 0.50, 390))
@@ -269,16 +261,6 @@ struct ReferencePlaybackView: View {
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
             .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
-
-            // 歌词预览回来了：标题下方三行（上一句/当前句/下一句），点它进歌词页；无歌词时显示“暂无歌词”。
-            MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
-                CoHaptics.tap()
-                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
-                    showLyrics = true
-                }
-            }
-            .padding(.top, 18)
-            .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.previewLyric)))
 
             Spacer(minLength: 0)
         }
@@ -1631,7 +1613,10 @@ private func persistentCover(upperSize: CGSize, fullSize: CGSize) -> some View {
 /// 前端封面过渡的百分比数学（progress 0 = 封面页，1 = 歌词页，由 showLyrics 翻转 + 同一条贝塞尔驱动插值）：
 /// left 是容器宽度的百分比、位移是自身宽度的百分比、容器本身还在缩——三个百分比互相乘，
 /// 位置走出来是弧线（先缩小往上收、后半段再往左滑进页眉），不是从右下角斜着缩到左上角。
-/// 封面页标题块在封面下方（22 间距 + 约 40.5 标题高），居中时封面顶要留出标题一半（31.25），歌词页顶为 0。
+/// 封面页标题块在封面下方（22 间距 + 约 53 标题高）。封面页内容只剩占位 + 标题时，
+/// 占位顶约 0.5H - 200.5；公式里减 40 使封面顶约 0.5H - 203，与占位基本重合，
+/// 封面底与标题顶之间留约 24pt，标题（歌名 + VIP）不再被封面盖住。
+/// 歌词页顶为 0（(1-e) 项，e=1 时不受这个常数影响）。
 private struct WebCoverProgressModifier: AnimatableModifier {
     var progress: Double
     var width: CGFloat
@@ -1648,7 +1633,7 @@ private struct WebCoverProgressModifier: AnimatableModifier {
         let size = coverSize + (48 - coverSize) * e
         // 前端 viewArea 收缩的近似：整页高 → 64px（flex 换算，e² 项）。
         let viewHeight = height * (1 - e) + 64 * e * e
-        let top = (1 - e) * (0.5 * viewHeight - size / 2 - 31.25)
+        let top = (1 - e) * (0.5 * viewHeight - size / 2 - 40)
         let left = (1 - e) * (0.5 * width - size / 2) + 24 * e
         let scale = coverSize > 0 ? size / coverSize : 1
         return content
@@ -1657,37 +1642,6 @@ private struct WebCoverProgressModifier: AnimatableModifier {
             .clipShape(RoundedRectangle(cornerRadius: 18 - 8 * e, style: .continuous))
             .shadow(color: .black.opacity(0.46 - 0.20 * e), radius: 36 - 27 * e, y: 18 - 14 * e)
             .offset(x: left, y: top)
-    }
-}
-
-/// 封面页歌词预览：三行（上一句/当前句/下一句），点它进歌词页；无歌词时显示“暂无歌词”。
-private struct MiniLyricsPreview: View {
-    let lines: [LyricLine]
-    let primary: Color
-    let secondary: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                if lines.isEmpty {
-                    Text("暂无歌词")
-                        .font(CoFont.appFont(15, .semibold))
-                        .foregroundStyle(secondary.opacity(0.54))
-                } else {
-                    ForEach(Array(lines.enumerated()), id: \.element.id) { index, line in
-                        Text(line.text.isEmpty ? " " : line.text)
-                            .font(CoFont.appFont(index == 1 ? 17 : 15, index == 1 ? .semibold : .medium))
-                            .foregroundStyle((index == 1 ? primary : secondary).opacity(index == 1 ? 0.86 : 0.5))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                    }
-                }
-            }
-            .frame(maxWidth: 420, minHeight: 92)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }
 
