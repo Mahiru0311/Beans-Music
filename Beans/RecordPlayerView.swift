@@ -704,6 +704,21 @@ struct CoAudioQualityMenu: View {
                 }
             }
         }
+        Button {
+            let wasProcessing = equalizer.isEnabled || equalizer.surroundEnabled || equalizer.headphoneBoostEnabled
+            equalizer.setHeadphoneBoostEnabled(!equalizer.headphoneBoostEnabled)
+            // 与 3D 开关同理：之前没 tap 在跑时断点续播重挂一次，立刻可听。
+            if !wasProcessing, equalizer.headphoneBoostEnabled {
+                player.retryCurrent()
+            }
+        } label: {
+            HStack {
+                Text("耳机增强")
+                if equalizer.headphoneBoostEnabled {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
     }
 }
 

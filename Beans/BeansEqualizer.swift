@@ -69,8 +69,10 @@ final class CoEqualizer: ObservableObject {
     static let maximumGain: Double = 12
 
     @Published private(set) var isEnabled: Bool
-    /// 3D 环绕（轻量版）：声场加宽 + 串音延迟模拟环绕感，可开关，默认关。
+    /// 3D 环绕（轻量版）：人声左右摆动，可开关，默认关。
     @Published private(set) var surroundEnabled: Bool
+    /// 耳机增强：低音 + 清晰度 + 声场轻微加宽，让官方音质档位在耳机上听感更好，可开关，默认关。
+    @Published private(set) var headphoneBoostEnabled: Bool
     @Published private(set) var bandGains: [Double]
     @Published private(set) var selectedPreset: CoEqualizerPreset
     @Published private(set) var selectedCustomPresetName: String?
@@ -87,12 +89,15 @@ final class CoEqualizer: ObservableObject {
     private var sampleRate: Double = 44_100
     private var coefficients: [BiquadCoefficients] = Array(repeating: .identity, count: 10)
     private var filterStates: [BiquadState] = Array(repeating: .zero, count: 80)
+    private var enhancementCoefficients: [BiquadCoefficients] = [.identity, .identity]
+    private var enhancementStates: [BiquadState] = Array(repeating: .zero, count: 16)
     /// 3D 声像摆动相位（弧度）：不随换歌清零，摆动不跳变。
     private var surroundPanPhase: Double = 0
     private var pendingPersistWorkItem: DispatchWorkItem?
 
     private static let enabledKey = "co.equalizer.enabled"
     static let surroundKey = "co.surround3D.enabled"
+    static let headphoneBoostKey = "co.headphoneBoost.enabled"
     private static let gainsKey = "co.equalizer.bandGains"
     private static let presetKey = "co.equalizer.preset"
     private static let customPresetNameKey = "co.equalizer.customPresetName"
@@ -121,22 +126,24 @@ final class CoEqualizer: ObservableObject {
 
         isEnabled = defaults.object(forKey: Self.enabledKey) as? Bool ?? false
         surroundEnabled = defaults.object(forKey: Self.surroundKey) as? Bool ?? false
+        headphoneBoostEnabled = defaults.object(forKey: Self.headphoneBoostKey) as? Bool ?? false
         bandGains = normalizedGains
         selectedPreset = storedPreset
         selectedCustomPresetName = defaults.string(forKey: Self.customPresetNameKey)
         preampGain = Self.normalizedGain((defaults.object(forKey: Self.preampKey) as? NSNumber)?.doubleValue ?? 0)
         customPresets = normalizedCustomPresets
-        processingEnabled = isEnabled || surroundEnabled
+        processingEnabled = isEnabled || surroundEnabled || headphoneBoostEnabled
         processingGains = normalizedGains
         processingPreampLinear = Self.linearGain(for: preampGain)
         rebuildCoefficientsLocked(using: normalizedGains)
+        rebuildEnhancementCoefficientsLocked()
     }
 
     func setEnabled(_ enabled: Bool) {
         guard isEnabled != enabled else { return }
         isEnabled = enabled
         configurationLock.lock()
-        processingEnabled = enabled || surroundEnabled
+        processingEnabled = enabled || surroundEnabled || headphoneBoostEnabled
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.enabledKey)
         notifySettingsChanged()
@@ -147,9 +154,20 @@ final class CoEqualizer: ObservableObject {
         guard surroundEnabled != enabled else { return }
         surroundEnabled = enabled
         configurationLock.lock()
-        processingEnabled = isEnabled || enabled
+        processingEnabled = isEnabled || enabled || headphoneBoostEnabled
         configurationLock.unlock()
         defaults.set(enabled, forKey: Self.surroundKey)
+        notifySettingsChanged()
+    }
+
+    /// 耳机增强开关：改动后经 settingsDidChange 通知，播放器会重挂音频处理。
+    func setHeadphoneBoostEnabled(_ enabled: Bool) {
+        guard headphoneBoostEnabled != enabled else { return }
+        headphoneBoostEnabled = enabled
+        configurationLock.lock()
+        processingEnabled = isEnabled || surroundEnabled || enabled
+        configurationLock.unlock()
+        defaults.set(enabled, forKey: Self.headphoneBoostKey)
         notifySettingsChanged()
     }
 
@@ -351,6 +369,13 @@ final class CoEqualizer: ObservableObject {
         }
     }
 
+    private func rebuildEnhancementCoefficientsLocked() {
+        enhancementCoefficients = [
+            BiquadCoefficients.lowShelf(frequency: 120, gain: 3, sampleRate: sampleRate),
+            BiquadCoefficients.highShelf(frequency: 8_000, gain: 2, sampleRate: sampleRate),
+        ]
+    }
+
     fileprivate func prepare(with format: AudioStreamBasicDescription) {
         configurationLock.lock()
         sampleRate = max(format.mSampleRate, 8_000)
@@ -362,6 +387,8 @@ final class CoEqualizer: ObservableObject {
             && (format.mFormatFlags & kAudioFormatFlagIsFloat) == 0
         filterStates = Array(repeating: .zero, count: Self.maximumChannels * Self.bandFrequencies.count)
         rebuildCoefficientsLocked(using: processingGains)
+        enhancementStates = Array(repeating: .zero, count: Self.maximumChannels * 2)
+        rebuildEnhancementCoefficientsLocked()
         configurationLock.unlock()
     }
 
@@ -476,11 +503,44 @@ final class CoEqualizer: ObservableObject {
                     }
                 }
             }
+            if headphoneBoostEnabled, channelCount == 2 {
+                // 耳机增强：官方音质档位是酷狗给的、再高也没有了，所以在 Co 这边补一层——
+                // 低音搁架 +3dB@120Hz、高音搁架 +2dB@8kHz、声场轻微加宽 1.25，耳机上听感更满更亮。
+                for channelOffset in 0..<2 {
+                    let channel = min(firstChannelIndex + channelOffset, Self.maximumChannels - 1)
+                    let stateOffset = channel * 2
+                    for frame in 0..<frameCount {
+                        let sampleIndex = frame * channelCount + channelOffset
+                        var sample = samples[sampleIndex]
+                        for shelfIndex in enhancementCoefficients.indices {
+                            let stateIndex = stateOffset + shelfIndex
+                            let coefficient = enhancementCoefficients[shelfIndex]
+                            var state = enhancementStates[stateIndex]
+                            let filtered = coefficient.b0 * sample + state.z1
+                            state.z1 = coefficient.b1 * sample - coefficient.a1 * filtered + state.z2
+                            state.z2 = coefficient.b2 * sample - coefficient.a2 * filtered
+                            enhancementStates[stateIndex] = state
+                            sample = filtered
+                        }
+                        samples[sampleIndex] = sample.isFinite ? min(max(sample, -0.98), 0.98) : 0
+                    }
+                }
+                for frame in 0..<frameCount {
+                    let leftIndex = frame * channelCount
+                    let rightIndex = leftIndex + 1
+                    let mid = (samples[leftIndex] + samples[rightIndex]) * 0.5
+                    let side = (samples[leftIndex] - samples[rightIndex]) * 0.5
+                    let outLeft = mid + side * 1.25
+                    let outRight = mid - side * 1.25
+                    samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
+                    samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
+                }
+            }
             if surroundEnabled, channelCount == 2 {
                 // 3D 环绕（大白话版）：声像左右摆动——戴耳机一会儿左耳响、一会儿右耳响，
-                // 不是原来那种耳机上几乎听不出来的加宽。6 秒摆一个来回，单耳最低留 0.12 不全哑；
+                // 不是原来那种耳机上几乎听不出来的加宽。10 秒摆一个来回，单耳最低留 0.12 不全哑；
                 // 只对立体声生效，单声道/多声道不动。
-                let phaseStep = 2 * Double.pi / max(sampleRate * 6, 1)
+                let phaseStep = 2 * Double.pi / max(sampleRate * 10, 1)
                 for frame in 0..<frameCount {
                     surroundPanPhase += phaseStep
                     if surroundPanPhase > 2 * Double.pi { surroundPanPhase -= 2 * Double.pi }
@@ -575,6 +635,54 @@ private struct BiquadCoefficients {
         let a0 = 1 + alpha / amplitude
         let a1 = -2 * cosine
         let a2 = 1 - alpha / amplitude
+        return BiquadCoefficients(
+            b0: Float(b0 / a0),
+            b1: Float(b1 / a0),
+            b2: Float(b2 / a0),
+            a1: Float(a1 / a0),
+            a2: Float(a2 / a0)
+        )
+    }
+
+    static func lowShelf(frequency: Double, gain: Double, sampleRate: Double) -> BiquadCoefficients {
+        shelf(frequency: frequency, gain: gain, sampleRate: sampleRate, high: false)
+    }
+
+    static func highShelf(frequency: Double, gain: Double, sampleRate: Double) -> BiquadCoefficients {
+        shelf(frequency: frequency, gain: gain, sampleRate: sampleRate, high: true)
+    }
+
+    private static func shelf(frequency: Double, gain: Double, sampleRate: Double, high: Bool) -> BiquadCoefficients {
+        guard abs(gain) > 0.001 else { return .identity }
+        let clampedFrequency = min(max(frequency, 20), sampleRate * 0.45)
+        let amplitude = pow(10, gain / 40)
+        let omega = 2 * Double.pi * clampedFrequency / sampleRate
+        let sine = sin(omega)
+        let cosine = cos(omega)
+        let slope: Double = 0.9
+        let alpha = sine / 2 * sqrt((amplitude + 1 / amplitude) * (1 / slope - 1) + 2)
+        let sqrtAmplitude = sqrt(amplitude)
+        let b0: Double
+        let b1: Double
+        let b2: Double
+        let a0: Double
+        let a1: Double
+        let a2: Double
+        if high {
+            b0 = amplitude * ((amplitude + 1) + (amplitude - 1) * cosine + 2 * sqrtAmplitude * alpha)
+            b1 = -2 * amplitude * ((amplitude - 1) + (amplitude + 1) * cosine)
+            b2 = amplitude * ((amplitude + 1) + (amplitude - 1) * cosine - 2 * sqrtAmplitude * alpha)
+            a0 = (amplitude + 1) - (amplitude - 1) * cosine + 2 * sqrtAmplitude * alpha
+            a1 = 2 * ((amplitude - 1) - (amplitude + 1) * cosine)
+            a2 = (amplitude + 1) - (amplitude - 1) * cosine - 2 * sqrtAmplitude * alpha
+        } else {
+            b0 = amplitude * ((amplitude + 1) - (amplitude - 1) * cosine + 2 * sqrtAmplitude * alpha)
+            b1 = 2 * amplitude * ((amplitude - 1) - (amplitude + 1) * cosine)
+            b2 = amplitude * ((amplitude + 1) - (amplitude - 1) * cosine - 2 * sqrtAmplitude * alpha)
+            a0 = (amplitude + 1) + (amplitude - 1) * cosine + 2 * sqrtAmplitude * alpha
+            a1 = -2 * ((amplitude - 1) + (amplitude + 1) * cosine)
+            a2 = (amplitude + 1) + (amplitude - 1) * cosine - 2 * sqrtAmplitude * alpha
+        }
         return BiquadCoefficients(
             b0: Float(b0 / a0),
             b1: Float(b1 / a0),

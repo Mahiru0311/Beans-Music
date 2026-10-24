@@ -244,7 +244,7 @@ struct ReferencePlaybackView: View {
             .frame(maxWidth: 420)
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
-            .transition(.opacity)
+            .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
@@ -392,7 +392,7 @@ struct ReferencePlaybackView: View {
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
                 }
-                .transition(.opacity)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
     }
@@ -415,6 +415,7 @@ struct ReferencePlaybackView: View {
                 HStack(spacing: 7) {
                     Text(song?.name ?? "未在播放")
                         .font(CoFont.appFont(15, .semibold))
+                        .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
                         .foregroundStyle(primaryColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
