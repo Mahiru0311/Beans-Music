@@ -43,7 +43,6 @@ struct LibraryView: View {
     @State private var pendingDelete: Playlist?
     @State private var showDeleteConfirm = false
     @AppStorage("beans.homeHeaderHideSort") private var hideSortButton = false
-    @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
     @State private var kugouPlaylists: [Playlist] = []
     @State private var kugouLoading = false
     @State private var kugouSavedAt = Date.distantPast

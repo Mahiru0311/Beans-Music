@@ -181,19 +181,6 @@ enum FavoriteMark: Equatable {
     }
 }
 
-enum FavoriteDestination: String, CaseIterable, Identifiable {
-    case local
-    case official
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .local: return "本地收藏"
-        case .official: return "官方歌单"
-        }
-    }
-}
 
 /// 决定播放器优先使用官方地址还是用户已启用的第三方音源。
 /// 自动模式保留原有体验：官方地址可用时优先官方，失败后再解析第三方音源。
@@ -854,11 +841,6 @@ enum LyricTiming {
 }
 
 /// 听歌排行条目（网易云听歌记录）
-struct PlayRecordItem: Identifiable, Hashable {
-    let song: Song
-    let playCount: Int
-    var id: Int { song.id }
-}
 
 
 // MARK: - 歌曲评论

@@ -1265,16 +1265,6 @@ private struct BeansPresentedSurfaceClearer: UIViewControllerRepresentable {
 }
 
 
-private struct ClearSheetBackground: ViewModifier {
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 16.4, *) {
-            content.presentationBackground(.clear)
-        } else {
-            content
-        }
-    }
-}
 
 @available(iOS 26.0, *)
 private struct MiniPlayerAccessoryModifier: ViewModifier {
@@ -1466,21 +1456,6 @@ private struct GlassTabBar: View {
     }
 }
 
-private struct PlatformPickerPresentation: ViewModifier {
-    let providersCount: Int
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 16.0, *) {
-            content
-                .modifier(ClearSheetBackground())
-                .presentationDetents([.height(CGFloat(116 + providersCount * 60))])
-                .presentationDragIndicator(.visible)
-        } else {
-            content
-        }
-    }
-}
 
 
 // MARK: - 系统 TabBar 清透风格（实例级配置）

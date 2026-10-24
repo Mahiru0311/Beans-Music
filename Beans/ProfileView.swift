@@ -2031,7 +2031,6 @@ struct SettingsView: View {
     @AppStorage(NetworkAudioQuality.connectionAwareKey) private var connectionAwareQuality = false
     @AppStorage(NetworkAudioQuality.wifiOfficialKey) private var wifiPlaybackAudioQualityRaw = BeansAudioQuality.hires.rawValue
     @AppStorage(NetworkAudioQuality.cellularOfficialKey) private var cellularPlaybackAudioQualityRaw = BeansAudioQuality.higher.rawValue
-    @AppStorage("beans.favoriteDestination") private var favoriteDestinationRaw = FavoriteDestination.local.rawValue
     @AppStorage(BeansHaptics.enabledKey) private var hapticsEnabled = true
     @AppStorage("beans.playback.autoResumeLast") private var autoResumeLastPlayback = false
     @AppStorage("beans.labelColorHex") private var labelColorHex = ""
@@ -2060,11 +2059,8 @@ struct SettingsView: View {
     @AppStorage("beans.homeGreetingGradient") private var homeGreetingGradient = false
     @AppStorage("beans.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
     @AppStorage("beans.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
-    @AppStorage("beans.homeGreetingFont") private var homeGreetingFontName = ""
     @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
-    @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
-    @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
     @AppStorage("beans.home.dailySongsListStyle") private var dailySongsListStyle = false
     @ObservedObject private var equalizer = BeansEqualizer.shared
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
@@ -2084,9 +2080,6 @@ struct SettingsView: View {
     // 选图格式解不出来时不要静默退出：弹提示、留在设置页、旧壁纸不动。
     @State private var showWallpaperFormatError = false
     @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
-    @State private var wallpaperAppearanceTarget: BeansWallpaperAppearance = .light
-    @State private var showFontImporter = false
-    @State private var showGreetingFontImporter = false
     /// 更新日志
     @State private var showChangelog = false
     @State private var backupDoc: BackupDocument?
@@ -2117,12 +2110,6 @@ struct SettingsView: View {
     /// 深色模式开关（2026-10-23 用户定：设置页外观区直达入口）：复用已有存储键
     /// beans.themeMode，不新发明键。开 = 深色，关 = 浅色；跟随系统仍走下方主题模式
     /// 三段选择（跟随系统/浅色/深色），开关只反映“当前是否显式深色”。
-    private var darkModeToggle: Binding<Bool> {
-        Binding(
-            get: { themeMode == .dark },
-            set: { themeModeRaw = $0 ? BeansThemeMode.dark.rawValue : BeansThemeMode.light.rawValue }
-        )
-    }
 
     private var isNativeClean: Bool {
         BeansUIStyle(rawValue: uiStyleRaw) == .nativeClean
@@ -2382,7 +2369,6 @@ struct SettingsView: View {
         .environment(\.beansSettingsPerformanceMode, false)
         .preferredColorScheme(themeMode.colorScheme)
         .onAppear {
-            wallpaperAppearanceTarget = colorScheme == .dark ? .dark : .light
             if defersSettingsContentForCompatibility {
                 DispatchQueue.main.async {
                     var transaction = Transaction()
@@ -2397,7 +2383,7 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showWallpaperPicker) {
             WallpaperPhotoPicker { data in
-                theme.addWallpaper(data, for: wallpaperAppearanceTarget.colorScheme)
+                theme.addWallpaperForBothSchemes(data)
                 BeansHaptics.success()
             }
             .ignoresSafeArea()
@@ -2446,18 +2432,6 @@ struct SettingsView: View {
             Button("好", role: .cancel) {}
         } message: {
             Text("请换一张 JPG、PNG、HEIC/HEIF 图片；GIF 取第一帧。WebP 视系统解码器而定，解不出来时也会这样提示，旧壁纸没有被换掉。")
-        }
-        .fullScreenCover(isPresented: $showFontImporter) {
-            FontDocumentPicker { url in
-                installFont(from: url)
-            }
-            .ignoresSafeArea()
-        }
-        .fullScreenCover(isPresented: $showGreetingFontImporter) {
-            FontDocumentPicker { url in
-                installGreetingFont(from: url)
-            }
-            .ignoresSafeArea()
         }
         .sheet(isPresented: $showChangelog) {
             ChangelogListView()
@@ -2579,30 +2553,28 @@ struct SettingsView: View {
         }
     }
 
-    private var showAppearanceSettings: Bool { settingsMatches("主题 外观 背景 壁纸 字体 底栏 颜色 赞助 深色 深浅") }
-    private var showPlatformSettings: Bool { false }
+    private var showAppearanceSettings: Bool { settingsMatches("主题 外观 背景 壁纸 底栏 颜色 赞助 深色 深浅") }
     private var showAudioSettings: Bool { settingsMatches("音源 音质 网络 Wi-Fi 蜂窝 导入") }
-    private var showPlaybackSettings: Bool { settingsMatches("播放 触感 锁屏 灵动岛 收藏") }
+    private var showPlaybackSettings: Bool { settingsMatches("播放 触感 锁屏 灵动岛") }
     private var showEqualizerSettings: Bool { settingsMatches("均衡器 音效") }
     private var showBackupSettings: Bool { settingsMatches("备份 恢复 导出 导入 缓存") }
     private var showChangelogSettings: Bool { settingsMatches("日志 版本") }
     private var showSupportSettings: Bool { settingsMatches("帮助 声明") }
     private var hasSettingsSearchResults: Bool {
-        showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings || showPlatformSettings
+        showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings
             || showAudioSettings || showPlaybackSettings || showEqualizerSettings
             || showBackupSettings || showChangelogSettings || showSupportSettings
     }
 
     @ViewBuilder
     private var coreSettingsGroup: some View {
-        if showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings || showPlatformSettings {
+        if showAccountSettings || showHiddenPlaylistsSettings || showAppearanceSettings {
             SettingsCatalogGroup {
                 if showAccountSettings { accountSection }
-                if showAccountSettings && (showHiddenPlaylistsSettings || showAppearanceSettings || showPlatformSettings) { catalogDivider }
-                if showHiddenPlaylistsSettings { hiddenPlaylistsSettingsSection }
-                if showHiddenPlaylistsSettings && (showAppearanceSettings || showPlatformSettings) { catalogDivider }
+                if showAccountSettings && (showAppearanceSettings || showHiddenPlaylistsSettings) { catalogDivider }
                 if showAppearanceSettings { appearanceSection }
-                if showAppearanceSettings && showPlatformSettings { catalogDivider }
+                if showAppearanceSettings && showHiddenPlaylistsSettings { catalogDivider }
+                if showHiddenPlaylistsSettings { hiddenPlaylistsSettingsSection }
             }
         }
     }
@@ -2814,11 +2786,6 @@ struct SettingsView: View {
     }
 
     /// 主题相关设置统一归组，避免平台和排行榜外观选项散落在设置页。
-    private var themeSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            appearanceSection
-        }
-    }
 
     private var accountSection: some View {
         Button {
@@ -2848,57 +2815,10 @@ struct SettingsView: View {
     }
 
     /// 校验扩展名并安装字体（asCopy 返回的 URL 已在沙盒内，可直接读取）
-    private func installFont(from url: URL) {
-        let ext = url.pathExtension.lowercased()
-        guard ["ttf", "otf", "ttc"].contains(ext) else {
-            ToastCenter.shared.show("请选择 ttf / otf 字体文件")
-            return
-        }
-        if let name = FontManager.install(from: url) {
-            BeansHaptics.success()
-            ToastCenter.shared.show("字体已应用：\(name)")
-        } else {
-            ToastCenter.shared.show("字体安装失败，请使用 ttf / otf 文件")
-        }
-    }
 
-    private func installGreetingFont(from url: URL) {
-        let ext = url.pathExtension.lowercased()
-        guard ["ttf", "otf", "ttc"].contains(ext) else {
-            ToastCenter.shared.show("请选择 ttf / otf 字体文件")
-            return
-        }
-        if let name = FontManager.installGreeting(from: url) {
-            homeGreetingFontName = name
-            BeansHaptics.success()
-            ToastCenter.shared.show("主页问候字体已应用：\(name)")
-        } else {
-            ToastCenter.shared.show("主页问候字体安装失败，请使用 ttf / otf 文件")
-        }
-    }
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // 深色模式直达开关（2026-10-23 用户定）：不折叠，打开设置页就能看到；
-            // 下方折叠区里的主题模式三段选择仍保留（跟随系统/浅色/深色）。
-            Toggle(isOn: darkModeToggle) {
-                HStack(spacing: 12) {
-                    Image(systemName: "moon.stars.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("深色模式")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                        Text("开启后全应用使用深色外观；关闭为浅色，跟随系统请用下方主题模式")
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                }
-            }
-            .tint(Color.beansAmber)
-            .accessibilityIdentifier("beans.settings.dark-mode")
             // 外观设置行：点击展开 / 收起全部外观设置
             Button {
                 BeansHaptics.select()
@@ -2911,7 +2831,7 @@ struct SettingsView: View {
                         .font(.system(size: 14))
                         .foregroundStyle(Color.beansAmber)
                         .frame(width: 28)
-                    Text("主题模式")
+                    Text("外观设置")
                         .font(BeansFont.appFont(15))
                         .foregroundStyle(Color.beansLabel)
                     Spacer()
@@ -2971,15 +2891,15 @@ struct SettingsView: View {
                 // 上一轮裁切完成反复点不到，呈现层级是嫌疑之一（嵌在折叠区
                 // 里的全屏弹窗 + 自定义顶部栏）。本轮把 sheet / 全屏弹窗移到
                 // SettingsView 根层级（见 body 处），这里只留“更换”按钮。
-                Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
-                    .tint(Color.beansAmber)
-                    .accessibilityIdentifier("beans.settings.immersive-detail")
                 Picker("主题模式", selection: $themeModeRaw) {
                     ForEach(BeansThemeMode.allCases) { mode in
                         Text(LocalizedStringKey(mode.title)).tag(mode.rawValue)
                     }
                 }
                 .pickerStyle(.segmented)
+                Toggle("沉浸详情界面", isOn: $immersiveDetailEnabled)
+                    .tint(Color.beansAmber)
+                    .accessibilityIdentifier("beans.settings.immersive-detail")
 
                 Picker("语言", selection: $languageRaw) {
                     ForEach(AppLanguage.allCases) { language in
@@ -3250,13 +3170,6 @@ struct SettingsView: View {
                             .foregroundStyle(Color.beansLabel)
                         Spacer()
                     }
-                    Picker(beansLocalized("背景模式", "Background Mode"), selection: $wallpaperAppearanceTarget) {
-                        ForEach(BeansWallpaperAppearance.allCases) { appearance in
-                            Text(appearance.title).tag(appearance)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .tint(Color.beansAmber)
                     HStack {
                         Image(systemName: "circle.lefthalf.filled")
                             .font(.system(size: 14))
@@ -3267,8 +3180,8 @@ struct SettingsView: View {
                             .foregroundStyle(Color.beansLabel)
                         Spacer()
                         ColorPicker("", selection: Binding(
-                            get: { theme.customBackground(for: wallpaperAppearanceTarget.colorScheme) ?? Color.beansBackground },
-                            set: { theme.setBackground($0.hexString, for: wallpaperAppearanceTarget.colorScheme) }
+                            get: { theme.customBackground ?? Color.beansBackground },
+                            set: { theme.setBackground($0.hexString, for: .light); theme.setBackground($0.hexString, for: .dark) }
                         ))
                         .labelsHidden()
                     }
@@ -3297,7 +3210,7 @@ struct SettingsView: View {
                     if !theme.wallpaperPaths.isEmpty {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                             ForEach(theme.wallpaperPaths, id: \.self) { path in
-                                wallpaperCell(path: path, appearance: wallpaperAppearanceTarget)
+                                wallpaperCell(path: path)
                             }
                         }
                     } else {
@@ -3312,9 +3225,9 @@ struct SettingsView: View {
                         }
                     }
                     HStack(spacing: 12) {
-                        if theme.customBackgroundImage(for: wallpaperAppearanceTarget.colorScheme) != nil {
+                        if theme.customBackgroundImage != nil {
                             Button {
-                                theme.clearBackgroundImage(for: wallpaperAppearanceTarget.colorScheme)
+                                theme.clearBackgroundImage(for: .light); theme.clearBackgroundImage(for: .dark)
                                 BeansHaptics.select()
                             } label: {
                                 Text("清除当前背景")
@@ -3327,7 +3240,7 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
                         Spacer()
-                            Text(LocalizedStringKey(theme.customBackgroundImage(for: wallpaperAppearanceTarget.colorScheme) == nil ? "当前：默认背景" : "当前：已应用壁纸"))
+                            Text(LocalizedStringKey(theme.customBackgroundImage == nil ? "当前：默认背景" : "当前：已应用壁纸"))
                             .font(BeansFont.appFont(12))
                             .foregroundStyle(Color.beansComment)
                     }
@@ -3450,191 +3363,6 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
-                // Greeting customization was removed; retain only wallpaper controls below.
-                if false {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "text.badge.star")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
-                            .frame(width: 28)
-                        Text("主页问候文字")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                        Spacer()
-                        ColorPicker("", selection: Binding(
-                            get: { Color(hex: homeGreetingColorHex) ?? Color.beansLabel },
-                            set: { homeGreetingColorHex = $0.hexString }
-                        ), supportsOpacity: false)
-                        .labelsHidden()
-                    }
-
-                    HStack {
-                        Image(systemName: "drop.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
-                            .frame(width: 28)
-                        Text("主页壁纸模糊度")
-                            .font(BeansFont.appFont(15))
-                            .foregroundStyle(Color.beansLabel)
-                        Spacer()
-                        Text("\(Int(homeWallpaperBlur))")
-                            .font(BeansFont.appFont(12))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                    Slider(value: $homeWallpaperBlur, in: 0...30, step: 1)
-                        .tint(Color.beansAmber)
-                    TextEditor(text: $homeGreetingText)
-                        .font(BeansFont.appFont(15))
-                        .frame(minHeight: 88, maxHeight: 180)
-                        .padding(6)
-                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay {
-                            if homeGreetingText.isEmpty {
-                                Text(LocalizedStringKey("留空自动显示早上好/下午好/晚上好"))
-                                    .font(BeansFont.appFont(13))
-                                    .foregroundStyle(Color.beansComment.opacity(0.8))
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 14)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text("文字大小")
-                            Spacer()
-                            Text("\(Int(homeGreetingSize))")
-                                .foregroundStyle(Color.beansComment)
-                        }
-                        Slider(value: $homeGreetingSize, in: 20...64, step: 1)
-                        HStack {
-                            Text("标题区高度")
-                            Spacer()
-                            Text(homeGreetingHeight <= 0 ? "自动" : "\(Int(homeGreetingHeight))")
-                                .foregroundStyle(Color.beansComment)
-                        }
-                        Slider(value: $homeGreetingHeight, in: 0...260, step: 1)
-                    }
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansLabel)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("开启文字背景发光", isOn: $homeGreetingGlowEnabled)
-                        HStack {
-                            Text("发光强度")
-                            Spacer()
-                            Text("\(Int(homeGreetingGlowIntensity * 100))%")
-                                .foregroundStyle(Color.beansComment)
-                        }
-                        Slider(value: $homeGreetingGlowIntensity, in: 0...2, step: 0.01)
-                            .tint(Color.beansAmber)
-                            .disabled(!homeGreetingGlowEnabled)
-                    }
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansLabel)
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Image(systemName: "textformat")
-                                .foregroundStyle(Color.beansAmber)
-                            Text("问候语专属字体")
-                            Spacer()
-                            Text(LocalizedStringKey(homeGreetingFontName.isEmpty ? "跟随全局" : "已设置"))
-                                .foregroundStyle(Color.beansComment)
-                        }
-                        HStack(spacing: 10) {
-                            Button {
-                                showGreetingFontImporter = true
-                            } label: {
-                                Label("选择字体", systemImage: "text.badge.plus")
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(Color.beansAmber)
-                            if !homeGreetingFontName.isEmpty {
-                                Button("清除专属字体") {
-                                    FontManager.clearGreeting()
-                                    homeGreetingFontName = ""
-                                    BeansHaptics.select()
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(Color.beansComment)
-                            }
-                        }
-                        Text("仅主页问候语使用该字体；清除后跟随全局字体，没有全局字体时使用系统字体。")
-                            .font(BeansFont.appFont(11))
-                            .foregroundStyle(Color.beansComment)
-                    }
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansLabel)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("显示底部横线", isOn: $homeGreetingUnderline)
-                        Toggle("开启上下渐变字", isOn: $homeGreetingGradient)
-                        if homeGreetingGradient {
-                            ColorPicker("渐变起始颜色", selection: Binding(
-                                get: { Color(hex: homeGreetingGradientStartHex) ?? (Color(hex: homeGreetingColorHex) ?? Color.beansLabel) },
-                                set: { homeGreetingGradientStartHex = $0.hexString }
-                            ), supportsOpacity: false)
-                            ColorPicker("渐变结束颜色", selection: Binding(
-                                get: { Color(hex: homeGreetingGradientEndHex) ?? (Color(hex: homeGreetingColorHex) ?? Color.beansLabel) },
-                                set: { homeGreetingGradientEndHex = $0.hexString }
-                            ), supportsOpacity: false)
-                        }
-                    }
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansLabel)
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("逐行调节")
-                            .font(BeansFont.appFont(13, .semibold))
-                            .foregroundStyle(Color.beansLabel)
-                        ForEach(Array(homeGreetingLines.prefix(3).enumerated()), id: \.offset) { index, line in
-                            VStack(alignment: .leading, spacing: 7) {
-                                HStack {
-                                    Text(String(format: NSLocalizedString("第%d行", comment: ""), index + 1))
-                                        .font(BeansFont.appFont(12, .semibold))
-                                    Text(line.isEmpty ? "空行" : line)
-                                        .font(BeansFont.appFont(11))
-                                        .foregroundStyle(Color.beansComment)
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Button("跟随全局") {
-                                        resetGreetingLineStyle(index)
-                                    }
-                                    .font(BeansFont.appFont(11, .medium))
-                                    .foregroundStyle(Color.beansAmber)
-                                    .buttonStyle(.plain)
-                                }
-                                HStack {
-                                    Text("字号")
-                                    Spacer()
-                                    Text("\(Int(greetingLineSizeBinding(index).wrappedValue))")
-                                        .foregroundStyle(Color.beansComment)
-                                }
-                                Slider(value: greetingLineSizeBinding(index), in: 12...80, step: 1)
-                                    .tint(Color.beansAmber)
-                                HStack(spacing: 12) {
-                                    ColorPicker("颜色", selection: greetingLineColorBinding(index), supportsOpacity: false)
-                                    Spacer()
-                                    Text("上下偏移 \(Int(greetingLineOffsetBinding(index).wrappedValue))")
-                                        .foregroundStyle(Color.beansComment)
-                                }
-                                Slider(value: greetingLineOffsetBinding(index), in: -80...80, step: 1)
-                                    .tint(Color.beansAmber)
-                                if homeGreetingGradient {
-                                    HStack(spacing: 12) {
-                                        ColorPicker("渐变起始", selection: greetingLineGradientStartBinding(index), supportsOpacity: false)
-                                        Spacer()
-                                        ColorPicker("渐变结束", selection: greetingLineGradientEndBinding(index), supportsOpacity: false)
-                                    }
-                                }
-                            }
-                            .padding(10)
-                            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                    }
-                    .font(BeansFont.appFont(12))
-                    .foregroundStyle(Color.beansLabel)
-                }
-
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -3651,50 +3379,8 @@ struct SettingsView: View {
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
                 appearanceToggle("隐藏所有界面排序按钮", isOn: $homeHeaderHideSort)
-                appearanceToggle("隐藏顶部平台列表", isOn: $hidePlatformPicker)
-                appearanceToggle("隐藏主页刷新按钮", isOn: $homeHeaderHideRefresh)
                 appearanceToggle("每日推荐使用旧版样式", isOn: $dailySongsListStyle)
                 
-                HStack {
-                    Image(systemName: "textformat")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.beansAmber)
-                        .frame(width: 28)
-                    Text("全局字体")
-                        .font(BeansFont.appFont(15))
-                        .foregroundStyle(Color.beansLabel)
-                    Spacer()
-                    Text(FontManager.installedFontName ?? "系统默认")
-                        .font(BeansFont.appFont(12))
-                        .foregroundStyle(Color.beansComment)
-                }
-                HStack(spacing: 12) {
-                    Button {
-                        showFontImporter = true
-                    } label: {
-                        Text("上传字体")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-                    }
-                    .buttonStyle(.plain)
-                    Button {
-                        FontManager.clear()
-                        BeansHaptics.select()
-                        ToastCenter.shared.show("已恢复系统默认字体")
-                    } label: {
-                        Text("恢复默认字体")
-                            .font(BeansFont.appFont(13, .medium))
-                            .foregroundStyle(Color.beansAmber)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                    .background { BeansSurface(shape: Capsule()) }
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                }
                     }
                 } label: {
                     Label("更多外观与主页设置", systemImage: "slider.horizontal.3")
@@ -3855,28 +3541,6 @@ struct SettingsView: View {
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
-                VStack(alignment: .leading, spacing: 9) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.beansAmber)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("收藏保存位置")
-                                .font(BeansFont.appFont(15))
-                                .foregroundStyle(Color.beansLabel)
-                            Text("QQ 音乐始终保存到本地收藏")
-                                .font(BeansFont.appFont(11))
-                                .foregroundStyle(Color.beansComment)
-                        }
-                    }
-                    Picker("收藏保存位置", selection: $favoriteDestinationRaw) {
-                        ForEach(FavoriteDestination.allCases) { destination in
-                            Text(destination.title).tag(destination.rawValue)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
 
                 Divider().overlay(Color.beansComment.opacity(0.15))
 
@@ -4108,13 +3772,6 @@ struct SettingsView: View {
             guard JSONSerialization.isValidJSONObject([key: safe]) else { continue }
             payload[key] = safe
         }
-        // 字体文件（Documents/Fonts）随备份一起导出
-        if let font = FontManager.exportFontData() {
-            payload["beans.font.restore"] = [
-                "name": font.name,
-                "data": font.data.base64EncodedString(),
-            ] as [String: Any]
-        }
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         payload["beans.backup.meta"] = [
             "app": "Beans Music",
@@ -4188,15 +3845,6 @@ struct SettingsView: View {
         theme.reloadWallpapersFromBackup()
         // 恢复歌词背景图片：路径变化时按备份的 base64 重建文件
         LyricBackgroundStore.restoreFromBackup()
-        // 恢复字体文件
-        if let fontPayload = json["beans.font.restore"] as? [String: Any],
-           let name = fontPayload["name"] as? String,
-           let b64 = fontPayload["data"] as? String,
-           let fontData = Data(base64Encoded: b64) {
-            if FontManager.restoreFont(name: name, data: fontData) {
-                count += 1
-            }
-        }
         BeansLogger.shared.log("恢复配置备份：\(count) 项设置", level: .info)
         if count > 0 {
             BeansHaptics.success()
@@ -4517,12 +4165,12 @@ struct SettingsView: View {
     }
 
     /// 壁纸格子：点击应用到所选外观；使用中的壁纸显示主题色边框+勾选；右上角删除
-    private func wallpaperCell(path: String, appearance: BeansWallpaperAppearance) -> some View {
-        let isActive = path == theme.backgroundImagePath(for: appearance.colorScheme)
+    private func wallpaperCell(path: String) -> some View {
+        let isActive = path == theme.backgroundImagePath(for: .light) || path == theme.backgroundImagePath(for: .dark)
         return ZStack(alignment: .topTrailing) {
             Button {
                 BeansHaptics.tap()
-                theme.applyWallpaper(at: path, for: appearance.colorScheme)
+                theme.applyWallpaper(at: path, for: .light); theme.applyWallpaper(at: path, for: .dark)
             } label: {
                 Group {
                     if let img = BeansImageFileCache.image(at: path) {

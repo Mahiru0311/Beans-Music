@@ -63,12 +63,9 @@ struct DiscoverView: View {
     @AppStorage("beans.homeGreetingGradient") private var homeGreetingGradient = false
     @AppStorage("beans.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
     @AppStorage("beans.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
-    @AppStorage("beans.homeGreetingFont") private var homeGreetingFontName = ""
     @AppStorage("beans.pauseHomeRendering") private var homeRenderingPaused = false
     @AppStorage("beans.homeHeaderHideSort") private var homeHeaderHideSort = false
-    @AppStorage("beans.homeHeaderHideRefresh") private var homeHeaderHideRefresh = true
     @AppStorage("beans.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
-    @AppStorage(PlatformPreferenceStore.hidePickerKey) private var hidePlatformPicker = false
     @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
     private var homeProviders: [SearchProvider] { [.kugou] }
@@ -334,12 +331,6 @@ struct DiscoverView: View {
                         GlassIconButton(systemName: "arrow.up.arrow.down") {
                             BeansHaptics.tap()
                             showSectionSort = true
-                        }
-                    }
-                    if !homeHeaderHideRefresh {
-                        GlassIconButton(systemName: "arrow.clockwise") {
-                            BeansHaptics.tap()
-                            Task { await load(force: true) }
                         }
                     }
                 }

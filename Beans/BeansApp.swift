@@ -26,8 +26,6 @@ struct BeansApp: App {
             "beans.coverPlayerStyle": BeansCoverPlayerStyle.appleMusic.rawValue,
             "beans.appleMusic.showVolume": false,
             "beans.homeHeaderHideSort": true,
-            "beans.homeHeaderHideRefresh": true,
-            PlatformPreferenceStore.hidePickerKey: true,
             "beans.homeWallpaperBlur": 0.0,
             "beans.haptics.enabled": true,
             "beans.playback.autoResumeLast": false,
@@ -65,7 +63,6 @@ struct BeansApp: App {
                 await Task.yield()
                 player.restorePersistedPlayMode()
                 player.resumePersistedPlaybackIfEnabled()
-                FontManager.reinstallIfNeeded()
                 await RemoteControlStore.shared.refreshIfNeeded(force: true)
             }
             .onChange(of: scenePhase) { _, phase in

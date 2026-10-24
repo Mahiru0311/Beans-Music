@@ -13,7 +13,6 @@ struct PlayerView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Binding var isPresented: Bool
     @AppStorage("beans.themeMode") private var themeModeRaw = BeansThemeMode.system.rawValue
-    @AppStorage("beans.favoriteDestination") private var favoriteDestinationRaw = FavoriteDestination.local.rawValue
 
     @State private var lyrics: [LyricLine] = []
     @State private var showLyrics = false
@@ -23,12 +22,6 @@ struct PlayerView: View {
     @State private var showVinylQueue = false
     @State private var showSleepTimer = false
     @State private var showAddToPlaylist = false
-    @State private var showOfficialPlaylistPicker = false
-    @State private var showOfficialFavoriteActionPicker = false
-    @State private var officialPlaylistMode: OfficialPlaylistMode = .save
-    @State private var officialPlaylists: [Playlist] = []
-    @State private var officialPlaylistLoading = false
-    @State private var favoriteCandidate: Song?
     @State private var showMoreActions = false
     @State private var showNativeMoreActions = false
     @State private var showCustomCoverPicker = false
@@ -51,18 +44,11 @@ struct PlayerView: View {
     @State private var vinylLyricsResumeTask: Task<Void, Never>?
     @State private var vinylLyricTapTask: Task<Void, Never>?
 
-    fileprivate enum OfficialPlaylistMode: Equatable {
-        case save
-        case remove
-    }
 
     private var selectedThemeMode: BeansThemeMode {
         BeansThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
-    private var favoriteDestination: FavoriteDestination {
-        FavoriteDestination(rawValue: favoriteDestinationRaw) ?? .local
-    }
 
     private var displayCoverURL: URL? {
         customCovers.url(for: song) ?? song?.coverURL
@@ -277,24 +263,7 @@ struct PlayerView: View {
         static let lyricBottomRows = 3
     }
 
-    private func toggleLocalFavorite(_ song: Song) {
-        favoriteCandidate = song
-        if usesOfficialFavoriteDestination(for: song) {
-            // Always ask first so a song can be added to another official
-            // playlist without forcing the user through the cancel flow.
-            showOfficialFavoriteActionPicker = true
-        } else {
-            if localLibrary.containsSong(song) {
-                removeLocalFavorite(song)
-            } else {
-                saveFavoriteLocally(song)
-            }
-        }
-    }
 
-    private func usesOfficialFavoriteDestination(for song: Song) -> Bool {
-        favoriteDestination == .official && song.source != .qq
-    }
 
     private func favoriteMark(for song: Song?) -> FavoriteMark {
         guard let song else { return .none }
@@ -308,51 +277,25 @@ struct PlayerView: View {
         }
     }
 
+    private func toggleLocalFavorite(_ song: Song) {
+        if localLibrary.containsSong(song) {
+            removeLocalFavorite(song)
+        } else {
+            saveFavoriteLocally(song)
+        }
+    }
+
+
     private func removeLocalFavorite(_ song: Song) {
         let removed = localLibrary.removeSongFromAllPlaylists(song)
         // 同步到我的页“我喜欢”：只写本地歌单库的话，读口（红心库）永远看不到。
         if removed > 0 { favorites.setKugouLiked(song, liked: false) }
         ToastCenter.shared.show(removed > 0 ? "已取消本地收藏" : "歌曲不在本地歌单中")
         BeansHaptics.success()
-        favoriteCandidate = nil
     }
 
-    private func beginOfficialFavorite(_ song: Song) {
-        Task { @MainActor in
-            officialPlaylistLoading = true
-            do {
-                officialPlaylists = try await officialPlaylists(for: song)
-                officialPlaylistMode = .save
-                officialPlaylistLoading = false
-                showOfficialPlaylistPicker = true
-            } catch {
-                officialPlaylistLoading = false
-                ToastCenter.shared.show("读取官方歌单失败：\(error.localizedDescription)")
-            }
-        }
-    }
 
-    private func beginRemoveOfficialFavorite(_ song: Song) {
-        Task { @MainActor in
-            officialPlaylistLoading = true
-            do {
-                officialPlaylists = try await officialPlaylists(for: song)
-                officialPlaylistMode = .remove
-                officialPlaylistLoading = false
-                showOfficialPlaylistPicker = !officialPlaylists.isEmpty
-                if officialPlaylists.isEmpty { ToastCenter.shared.show("未找到可取消的官方歌单") }
-            } catch {
-                officialPlaylistLoading = false
-                ToastCenter.shared.show("读取官方歌单失败：\(error.localizedDescription)")
-            }
-        }
-    }
 
-    private func officialPlaylists(for song: Song) async throws -> [Playlist] {
-        guard song.source == .kugou else { return [] }
-        guard KugouMusicAuth.shared.isLoggedIn else { throw CoError.unknown("请先登录酷狗音乐") }
-        return try await KugouMusicAPI.shared.userPlaylists()
-    }
 
     private func saveFavoriteLocally(_ song: Song) {
         if localLibrary.playlists.count > 1 {
@@ -367,81 +310,10 @@ struct PlayerView: View {
     }
 
     @MainActor
-    private func saveFavoriteOfficially(_ song: Song, playlist: Playlist) async {
-        guard song.source == .kugou else {
-            ToastCenter.shared.show("当前仅支持酷狗官方收藏")
-            return
-        }
-        guard KugouMusicAuth.shared.isLoggedIn else {
-            ToastCenter.shared.show("请先登录酷狗音乐")
-            return
-        }
-        do {
-            let success = try await KugouMusicAPI.shared.addToPlaylist(playlistID: playlist.id, songs: [song])
-            if success {
-                favorites.markKugouOfficial(song, liked: true)
-            }
-            ToastCenter.shared.show(success ? "已收藏到「\(playlist.name)」" : "酷狗音乐收藏失败")
-        } catch {
-            ToastCenter.shared.show("酷狗音乐收藏失败：\(error.localizedDescription)")
-        }
-    }
 
     @MainActor
-    private func removeOfficialFavorite(_ song: Song, playlist: Playlist?) async {
-        guard song.source == .kugou else {
-            ToastCenter.shared.show("当前仅支持酷狗官方收藏")
-            favoriteCandidate = nil
-            return
-        }
-        guard let playlist else { return }
-        do {
-            let success = try await KugouMusicAPI.shared.removeFromPlaylist(playlistID: playlist.id, songs: [song])
-            if success { favorites.markKugouOfficial(song, liked: false) }
-            ToastCenter.shared.show(success ? "已从「\(playlist.name)」取消收藏" : "取消酷狗收藏失败")
-        } catch {
-            ToastCenter.shared.show("取消酷狗收藏失败：\(error.localizedDescription)")
-        }
-        favoriteCandidate = nil
-    }
 
-    private func createOfficialPlaylist(_ name: String) {
-        guard let song = favoriteCandidate else { return }
-        guard song.source == .kugou else {
-            ToastCenter.shared.show("当前仅支持酷狗官方歌单")
-            return
-        }
-        Task { @MainActor in
-            do {
-                _ = try await KugouMusicAPI.shared.createPlaylist(name: name)
-                officialPlaylists = try await officialPlaylists(for: song)
-                ToastCenter.shared.show("已创建酷狗歌单")
-            } catch {
-                ToastCenter.shared.show("创建官方歌单失败：\(error.localizedDescription)")
-            }
-        }
-    }
 
-    private func deleteOfficialPlaylist(_ playlist: Playlist) {
-        guard let song = favoriteCandidate else { return }
-        guard playlist.source == .kugou else {
-            ToastCenter.shared.show("当前仅支持酷狗官方歌单")
-            return
-        }
-        Task { @MainActor in
-            do {
-                let success = try await KugouMusicAPI.shared.deletePlaylist(playlistID: playlist.id)
-                if success {
-                    officialPlaylists = try await officialPlaylists(for: song)
-                    ToastCenter.shared.show("已删除官方歌单")
-                } else {
-                    ToastCenter.shared.show("删除官方歌单失败")
-                }
-            } catch {
-                ToastCenter.shared.show("删除官方歌单失败：\(error.localizedDescription)")
-            }
-        }
-    }
 
     private var playerDustMode: BeansPlayerDustMode {
         return BeansPlayerDustMode(rawValue: playerDustModeRaw) ?? .off
@@ -898,43 +770,6 @@ struct PlayerView: View {
                 AddToPlaylistSheet(song: song)
                     .environmentObject(auth)
             }
-        }
-        .sheet(isPresented: $showOfficialPlaylistPicker) {
-            OfficialPlaylistPickerSheet(
-                source: favoriteCandidate?.source ?? .kugou,
-                mode: officialPlaylistMode,
-                playlists: officialPlaylists,
-                onSelect: { playlist in
-                    guard let song = favoriteCandidate else { return }
-                    showOfficialPlaylistPicker = false
-                    if officialPlaylistMode == .save {
-                        Task { await saveFavoriteOfficially(song, playlist: playlist) }
-                    } else {
-                        Task { await removeOfficialFavorite(song, playlist: playlist) }
-                    }
-                },
-                onCreate: { name in
-                    createOfficialPlaylist(name)
-                },
-                onDelete: { playlist in
-                    deleteOfficialPlaylist(playlist)
-                }
-            )
-        }
-        .confirmationDialog("官方歌单收藏", isPresented: $showOfficialFavoriteActionPicker, titleVisibility: .visible) {
-            Button("收藏到其他官方歌单") {
-                guard let song = favoriteCandidate else { return }
-                beginOfficialFavorite(song)
-            }
-            Button("取消官方歌单收藏", role: .destructive) {
-                guard let song = favoriteCandidate else { return }
-                beginRemoveOfficialFavorite(song)
-            }
-            Button("取消", role: .cancel) {
-                favoriteCandidate = nil
-            }
-        } message: {
-            Text("这首歌已收藏到官方歌单；可以继续保存到另一份歌单，或选择要取消的歌单。")
         }
         .sheet(isPresented: $showPlayerSettings) {
             PlayerSettingsSheet(layoutMode: $layoutMode, onDismiss: closePlayerSettings)
@@ -6820,26 +6655,6 @@ private struct LegacyLayoutSlider: UIViewRepresentable {
     }
 }
 
-private struct CompactSettingGroup<Content: View>: View {
-    @AppStorage("beans.uiStyle") private var uiStyleRaw = BeansUIStyle.liquid.rawValue
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            content
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(uiStyleRaw == BeansUIStyle.nativeClean.rawValue ? 0.025 : 0.035))
-        }
-    }
-}
 
 private struct PlayerSettingsLiquidGlass<S: Shape>: View {
     let shape: S
@@ -6857,106 +6672,6 @@ struct ShareFileItem: Identifiable {
     let url: URL
 }
 
-private struct OfficialPlaylistPickerSheet: View {
-    let source: SongSource
-    let mode: PlayerView.OfficialPlaylistMode
-    let playlists: [Playlist]
-    let onSelect: (Playlist) -> Void
-    let onCreate: (String) -> Void
-    let onDelete: (Playlist) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var showCreate = false
-    @State private var newName = ""
-
-    private var title: String {
-        mode == .save ? "选择官方歌单" : "选择要取消的歌单"
-    }
-
-    var body: some View {
-        BeansNavigationStack {
-            List {
-                Section {
-                    ForEach(playlists) { playlist in
-                        Button {
-                            onSelect(playlist)
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "music.note.list")
-                                    .foregroundStyle(Color.beansLabel)
-                                    .frame(width: 28)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(playlist.name)
-                                        .foregroundStyle(Color.beansLabel)
-                                    if playlist.trackCount > 0 {
-                                        Text("\(playlist.trackCount) 首歌曲")
-                                            .font(BeansFont.appFont(11))
-                                            .foregroundStyle(Color.beansComment)
-                                    }
-                                }
-                                Spacer(minLength: 8)
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(Color.beansComment)
-                            }
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if mode == .save {
-                                Button(role: .destructive) {
-                                    onDelete(playlist)
-                                } label: {
-                                    Label("删除", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                } header: {
-                    Text("酷狗音乐")
-                } footer: {
-                    if source == .kugou {
-                        Text(
-                            (mode == .save ? "选择后歌曲会保存到该官方歌单。" : "选择后只会取消该官方歌单中的歌曲。")
-                            + "\n\n保存或取消官方歌单后，因酷狗客户端本身的刷新限制，请完全退出官方客户端后重新打开，以刷新歌单。"
-                        )
-                    } else {
-                        Text(mode == .save ? "选择后歌曲会保存到该官方歌单。" : "选择后只会取消该官方歌单中的歌曲。")
-                    }
-                }
-            }
-            .beansScrollContentBackgroundHidden()
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        newName = ""
-                        showCreate = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .disabled(mode != .save)
-                    .opacity(mode == .save ? 1 : 0)
-                    .accessibilityLabel("新建官方歌单")
-                }
-            }
-        }
-        .alert("新建官方歌单", isPresented: $showCreate) {
-            TextField("歌单名称", text: $newName)
-            Button("创建") {
-                let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { return }
-                onCreate(name)
-            }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("创建后可以继续选择它保存歌曲。")
-        }
-        .modifier(BeansSheetModifier(detents: [.medium, .large], dragIndicator: true))
-    }
-}
 
 // MARK: - 原生系统分享面板（UIActivityViewController 封装，直接调系统自带分享）
 

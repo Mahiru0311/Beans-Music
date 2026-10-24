@@ -102,29 +102,6 @@ enum BeansThemeMode: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - 壁纸外观目标
-
-enum BeansWallpaperAppearance: String, CaseIterable, Identifiable {
-    case light
-    case dark
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .light: return beansLocalized("浅色模式", "Light Mode")
-        case .dark: return beansLocalized("深色模式", "Dark Mode")
-        }
-    }
-
-    var colorScheme: ColorScheme {
-        switch self {
-        case .light: return .light
-        case .dark: return .dark
-        }
-    }
-}
-
 // MARK: - 配色主题（多套配色，可在「我的 → 外观」中切换；全局统一生效）
 
 enum BeansAccent: String, CaseIterable, Identifiable {
@@ -663,6 +640,33 @@ final class ThemeStore: ObservableObject {
     /// 上传新壁纸：归一化后保存到壁纸库，并直接设为当前背景（覆盖保存当前壁纸）
     func addWallpaper(_ data: Data) {
         addWallpaper(data, for: Self.currentColorScheme)
+    }
+
+    /// 上传新壁纸并同时应用到浅色和深色（背景不再分深浅，单张壁纸两边同用）。
+    func addWallpaperForBothSchemes(_ data: Data) {
+        let normalized = Self.normalizedWallpaperJPEG(from: data)
+        let imageData: Data
+        if let normalized, !normalized.isEmpty {
+            imageData = normalized
+        } else if !data.isEmpty {
+            imageData = data
+        } else {
+            return
+        }
+        let url = Self.wallpaperDirectory()
+            .appendingPathComponent("wallpaper-\(UUID().uuidString).jpg")
+        do {
+            try imageData.write(to: url, options: .atomic)
+            wallpaperPaths.append(url.path)
+            saveWallpaperList()
+            setBackgroundImagePath(url.path, for: .light)
+            setBackgroundImagePath(url.path, for: .dark)
+            saveWallpaperBackup(url.path, data: imageData)
+            invalidateBackgroundCache()
+            BeansImageFileCache.remove(url.path)
+        } catch {
+            // 保存失败：静默保留当前壁纸
+        }
     }
 
     /// 上传新壁纸并应用到指定外观。
