@@ -157,18 +157,27 @@ struct PlaylistView: View {
     /// 下拉放大参数与我的页同套放慢后的参数：下拉量硬上限 120pt、
     /// 放大系数 1 + coverPull/600（封顶约 1.2 倍）、框高只跟下拉量的一半走
     /// （基线宽 + coverPull/2，封顶 +60pt），松手 response 0.9 / damping 1.0。
-    /// 图按顶部锚点缩放：上面不动、只向左右两边与下方放大，不出现第二张封面；
-    /// 框整体 .clipped() 裁到框里。本层不响应触摸。
+    /// 封面放大按我的页同款写法（coFixedHeaderWallpaper），不要再用顶部锚点：
+    /// 先定框（屏宽方形 + coverPull/2），再 .scaleEffect(zoom, anchor: .center)，
+    /// 再 .clipped()，再 mask（最后 120pt 渐变到透明），再外框顶部对齐。
+    /// 中心缩放时：402pt 宽、coverPull=120 时框高 462、zoom 1.2，方形图在框里居中、
+    /// 渲染高 482、框中心 231pt，渲染顶边 -10、底边 472，裁到框里后图从中间
+    /// 向上下两边同时展开；旧的顶部锚点写法是渲染顶边钉在 0、全部扩张往下走，
+    /// 向上的一半根本不存在，看起来就是把整个图片往下拉，不是放大。
+    /// coverPull=0 时框高 = 图高，无缝隙；coverPull>0 时渲染高
+    /// = 宽 × (1 + coverPull/600)，恒大于框高（宽 402 时每 pt 下拉多 0.17pt），
+    /// 缩放后上下无空隙，不会露出底色带。本层不响应触摸。
     private var fixedPlaylistCover: some View {
         let width = UIScreen.main.bounds.width
         let height = width + coverPull / 2
         let zoom = 1 + coverPull / 600
         let fadeStart = max(0, (height - 120) / height)
-        return ZStack(alignment: .top) {
+        return ZStack {
             CoverImage(url: headerData.coverURL, size: width, cornerRadius: 0)
-                .scaleEffect(zoom, anchor: .top)
         }
         .frame(width: width, height: height)
+        .scaleEffect(zoom, anchor: .center)
+        .clipped()
         .mask(
             LinearGradient(
                 stops: [
