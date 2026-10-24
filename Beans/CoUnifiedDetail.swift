@@ -18,8 +18,36 @@ import UIKit
 /// 沉浸开关（beans.immersiveDetail.enabled）对这些页不再起分叉作用，body 永远走统一布局；
 /// 设置页“沉浸详情界面”开关本身不动（只是页不再读它）。
 
-/// 歌单页同款深色底（PlaylistView.darkBackground 的同一数值，不跟随系统深浅）。
+/// 取色 helper 的回落深色底（旧统一深褐底的同一数值，不跟随系统深浅）。
+/// 只在没拿到图时作回落，不再是所有页统一的底色。
 let coDetailDarkBackground = Color(red: 0.14, green: 0.10, blue: 0.08)
+
+/// 封面取色共用 helper（五页唯一取色入口，PlaylistView 与共用件都调它，不给各页各写一套）：
+/// 把同一张虚化图下采样到 1×1 取平均 RGB，再与黑色按 65% 混合（各通道 × 0.35）。
+/// 压暗系数选 0.35 的理由：白字系列（歌名、副标题、控制排）必须压在深色上才可读，
+/// 原平均色直接作底会太亮；0.35 后亮封面也落在深色区，色相家族仍保留
+/// （蓝封面 → 深蓝系、红封面 → 深红系），不是换一个固定色。没图时回落旧深褐底，
+/// 图到了根部底色与虚化层最后一步同时变 tint，过渡处不产生新硬边。
+func coCoverTint(from image: UIImage?) -> Color {
+    guard let cgImage = image?.cgImage else { return coDetailDarkBackground }
+    var pixel = [UInt8](repeating: 0, count: 4)
+    guard let context = CGContext(
+        data: &pixel,
+        width: 1,
+        height: 1,
+        bitsPerComponent: 8,
+        bytesPerRow: 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else { return coDetailDarkBackground }
+    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+    let darken: CGFloat = 0.35
+    return Color(
+        red: CGFloat(pixel[0]) / 255 * darken,
+        green: CGFloat(pixel[1]) / 255 * darken,
+        blue: CGFloat(pixel[2]) / 255 * darken
+    )
+}
 
 /// PlaylistView 滚动 + 下拉状态的逐字复用（只改名）：
 /// 上滑量 = max(0, scrollOffset − restOffset)，restOffset 首帧定一次、之后不再重定；
@@ -132,6 +160,9 @@ struct CoUnifiedDetailCoverLayers: View {
     let coverURL: URL?
     let scrollUp: CGFloat
     let pull: CGFloat
+    /// 调用方根部底色：图层拿到虚化图时同步写成同一 tint，调用方不用另起下载取色；
+    /// 不传时调用方根部仍回落旧值（本轮歌手、专辑两页都传）。
+    var pageTint: Binding<Color>? = nil
 
     @State private var blurImage: UIImage?
     @State private var blurRetried = false
@@ -160,7 +191,7 @@ struct CoUnifiedDetailCoverLayers: View {
                                 .init(color: .clear, location: max(0, (width - 120) / total)),
                                 .init(color: .black.opacity(0.25), location: width / total),
                                 .init(color: .black.opacity(0.7), location: 0.85),
-                                .init(color: coDetailDarkBackground, location: 1),
+                                .init(color: coCoverTint(from: image), location: 1),
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -174,7 +205,7 @@ struct CoUnifiedDetailCoverLayers: View {
             }
         }
         .task(id: coverURL) {
-            blurImage = nil
+            setBlurImage(nil)
             blurRetried = false
             refreshBlurImage()
         }
@@ -219,16 +250,21 @@ struct CoUnifiedDetailCoverLayers: View {
         .allowsHitTesting(false)
     }
 
+    private func setBlurImage(_ image: UIImage?) {
+        blurImage = image
+        pageTint?.wrappedValue = coCoverTint(from: image)
+    }
+
     private func refreshBlurImage() {
         let url = CustomSongCoverStore.shared.resolvedURL(for: coverURL) ?? coverURL
-        guard let url else { blurImage = nil; return }
+        guard let url else { setBlurImage(nil); return }
         if let image = BeansCoverImageStore.memoryImage(for: url) {
-            blurImage = image
+            setBlurImage(image)
             return
         }
         BeansCoverImageStore.loadCachedImage(for: url) { image in
             if let image {
-                blurImage = image
+                setBlurImage(image)
             } else if !blurRetried {
                 blurRetried = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { refreshBlurImage() }

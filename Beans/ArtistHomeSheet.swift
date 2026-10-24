@@ -56,6 +56,7 @@ struct ArtistHomeSheet: View {
     // 新版统一布局（与 PlaylistView 同款，见 CoUnifiedDetail.swift）：不再读沉浸开关分叉，
     // body 永远走固定封面 + 28pt 标题 + 同款控制排；设置页开关本身不动。
     @StateObject private var detailScroll = CoDetailScrollState()
+    @State private var detailPageTint = coDetailDarkBackground
     @State private var selectedAlbum: Album?
     @State private var loadTask: Task<Void, Never>?
     @AppStorage("beans.showSongVIPBadge") private var showSongVIPBadge = true
@@ -92,10 +93,10 @@ struct ArtistHomeSheet: View {
     @ViewBuilder
     private var artistPage: some View {
         ZStack {
-            // 新版底：固定深色底（歌单页同款），整页强制深色外观；行文字不用 beansLabel/beansComment
+            // 新版底：封面取色 tint（图到了才变，没图时回落旧深褐底），整页强制深色外观；行文字不用 beansLabel/beansComment
             // （会被自定义主文字色覆盖成黑字），一律用显式白字系列；
             // 不再用主页壁纸 GlassBackdrop，歌手页不再是“主页壁纸 + 居中大封面/小头像横排”两套。
-            coDetailDarkBackground.ignoresSafeArea()
+            detailPageTint.ignoresSafeArea()
             Group {
                 if loading {
                     artistLoadingState
@@ -105,7 +106,7 @@ struct ArtistHomeSheet: View {
                     }
                 } else {
                     ZStack {
-                        CoUnifiedDetailCoverLayers(coverURL: artist?.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
+                        CoUnifiedDetailCoverLayers(coverURL: artist?.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull, pageTint: $detailPageTint)
                         ScrollView {
                             VStack(spacing: 0) {
                                 CoDetailCoverSpacer()

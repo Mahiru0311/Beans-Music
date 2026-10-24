@@ -1591,6 +1591,7 @@ struct AlbumDetailView: View {
     // 新版统一布局（与 PlaylistView 同款，见 CoUnifiedDetail.swift）：不再读沉浸开关分叉，
     // body 永远走固定封面 + 28pt 标题 + 同款控制排；设置页开关本身不动。
     @StateObject private var detailScroll = CoDetailScrollState()
+    @State private var detailPageTint = coDetailDarkBackground
     @State private var albumSearchText = ""
 
 
@@ -1635,17 +1636,17 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private var albumPage: some View {
         ZStack {
-            // 新版底：固定深色底（歌单页同款），不跟随系统深浅；整页强制深色外观，
+            // 新版底：封面取色 tint（图到了才变，没图时回落旧深褐底），不跟随系统深浅；整页强制深色外观，
             // 但 beansLabel / beansComment 会被用户自定义主文字色（黑字）覆盖，落在深色底上
             // 看不见，所以本页行文字一律用显式白字系列（SongCell 用 forceDarkText，专辑架直接写白字）。
-            coDetailDarkBackground.ignoresSafeArea()
+            detailPageTint.ignoresSafeArea()
             if isLoading {
                 albumDetailLoadingState
             } else if let errorMessage {
                 ErrorStateView(message: errorMessage, forceDarkText: true) { Task { await load() } }
             } else {
                 ZStack {
-                    CoUnifiedDetailCoverLayers(coverURL: album.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull)
+                    CoUnifiedDetailCoverLayers(coverURL: album.coverURL, scrollUp: detailScroll.scrollUp, pull: detailScroll.pull, pageTint: $detailPageTint)
                     ScrollView {
                         VStack(spacing: 0) {
                             CoDetailCoverSpacer()

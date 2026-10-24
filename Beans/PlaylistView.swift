@@ -96,8 +96,9 @@ struct PlaylistView: View {
         return playlist.source == .kugou ? KugouMusicAuth.shared.userId : ""
     }
 
-    /// 深色底（截图里的深褐底），不跟随系统深浅；虚化层没拿到封面图时用它兜底。
-    private let darkBackground = Color(red: 0.14, green: 0.10, blue: 0.08)
+    /// 底色回落值见共用 helper coCoverTint(from:)（没图时回落 0.14/0.10/0.08 旧深褐底）；
+    /// 有图时根部与虚化层最后一步都走 helper 算出的 tint，下面是各封面压暗后的颜色家族，
+    /// 不是统一深褐底。本文件不再另定义一份 darkBackground，避免两处同值来源。
 
     /// 封面下面到列表的虚化过渡层：用的就是同一张封面图（滚动内容里那张），
     /// 系统 blur（半径 28，不搞自定义模糊引擎），透明度靠上面压的深色罩控制；
@@ -131,7 +132,7 @@ struct PlaylistView: View {
                                 .init(color: .clear, location: max(0, (width - 120) / total)),
                                 .init(color: .black.opacity(0.25), location: width / total),
                                 .init(color: .black.opacity(0.7), location: 0.85),
-                                .init(color: darkBackground, location: 1),
+                                .init(color: coCoverTint(from: image), location: 1),
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -277,7 +278,7 @@ struct PlaylistView: View {
     private var unifiedBody: some View {
         let _ = theme.accent
         return ZStack {
-            darkBackground.ignoresSafeArea()
+            coCoverTint(from: coverBlurImage).ignoresSafeArea()
             if loading && tracks.isEmpty {
                 BeansDetailSongsLoadingState(coverSize: 96, rowCount: 10)
             } else if let errorMessage, tracks.isEmpty {

@@ -2737,6 +2737,11 @@ struct SettingsView: View {
             .onAppear { refreshHiddenPlaylistsSettings() }
             }
         }
+        // 73 首出框的根因：本节展开行的行本身无垂直内边距、外层 VStack 也无底部内边距，
+        // 最后一行副文案正好贴在卡片下边缘；补上与其他展开节同款的底部内边距，
+        // 让最后一行完整落在卡片内。不改铅笔、眼睛、切换逻辑，不改行高、字号、行间距。
+        .padding(.horizontal, 4)
+        .padding(.bottom, 14)
         .sheet(isPresented: $showPlaylistEditSheet) {
             CoPlaylistEditSheet(playlistID: editingPlaylistID, serverName: editingPlaylistName)
         }
