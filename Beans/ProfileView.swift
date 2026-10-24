@@ -323,12 +323,11 @@ struct ProfileView: View {
     @State private var showMyPlaylists = false
     @State private var myPlaylists: [Playlist] = []
     @State private var myPlaylistsLoading = false
-    // 我的页长按隐藏歌单（旧线 1.8.5 移植）：只藏显示、不删歌单，按酷狗账号区分存，见 CoHiddenPlaylists。
+    // 隐藏歌单只在设置里开关（2026-10-24 用户拍板）：我的页不再长按隐藏，
+    // 这里只保留隐藏记录的读取与过滤，只藏显示、不删歌单，按酷狗账号区分存，见 CoHiddenPlaylists。
     @State private var hiddenPlaylistEntries: [(id: Int, name: String)] = []
-    @State private var showHideConfirm = false
-    @State private var hideConfirmPlaylist: Playlist?
     // 旧线 1.9.4 做法：歌单行不用 NavigationLink（其内部点按手势会吞掉长按），
-    // 改用 Button 点按 + onLongPressGesture 长按，导航由下方隐藏链接驱动，仍是页面推入、不是 sheet。
+    // 改用 Button 点按，导航由下方隐藏链接驱动，仍是页面推入、不是 sheet。
     @State private var navPlaylist: Playlist?
 
     /// 统一账号登录面板（网易云 + QQ 音乐整合）
@@ -745,15 +744,6 @@ struct ProfileView: View {
             await auth.refreshAccount()
         }
         .task(id: kugouAuth.userId) { loadHiddenPlaylists() }
-        .confirmationDialog("隐藏此歌单？", isPresented: $showHideConfirm, titleVisibility: .visible) {
-            Button("隐藏此歌单", role: .destructive) {
-                if let target = hideConfirmPlaylist { hidePlaylist(target) }
-                hideConfirmPlaylist = nil
-            }
-            Button("取消", role: .cancel) { hideConfirmPlaylist = nil }
-        } message: {
-            Text("只在“我的”页隐藏，不删除酷狗里的歌单，可在设置里恢复。")
-        }
         // The avatar-presented profile is its own sheet, so its content must
         // receive the selected color scheme instead of only the backdrop.
         // 状态栏方案（见 profileStatusBarScheme）：浅色主题下也用深色方案，状态栏文字为白色；
@@ -943,7 +933,7 @@ struct ProfileView: View {
                 VStack(spacing: 0) {
                     ForEach(visiblePlaylists) { playlist in
                         ZStack {
-                            // 隐藏链接：只负责推入歌单页，本身不显示；点按走下方 Button，长按走确认弹窗。
+                            // 隐藏链接：只负责推入歌单页，本身不显示；点按走下方 Button。
                             NavigationLink(destination: PlaylistView(playlist: playlist), isActive: Binding(get: { navPlaylist?.id == playlist.id }, set: { if !$0 { navPlaylist = nil } })) {
                                 EmptyView()
                             }
@@ -955,11 +945,6 @@ struct ProfileView: View {
                                 CoPlaylistRowLabel(playlist: playlist, label: coEffectiveLabel, secondary: coEffectiveSecondary)
                             }
                             .buttonStyle(.plain)
-                            .onLongPressGesture(minimumDuration: 0.5) {
-                                BeansHaptics.select()
-                                hideConfirmPlaylist = playlist
-                                showHideConfirm = true
-                            }
                         }
                         if playlist.id != visiblePlaylists.last?.id {
                             Divider().padding(.leading, 78)
@@ -968,6 +953,15 @@ struct ProfileView: View {
                 }
                 .background(coEffectiveRowBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                // 歌单列表容器一圈边框：描边放在 clipShape 之后，不会被裁成半线；
+                // 数值复用设置页卡片描边风格（1pt，primary 0.08，深浅主题下都可见，
+                // 深色下是白 8%、浅色下是黑 8%，不自创粗黑边）。只加在列表容器上，
+                // 每行不单独套框；未登录/加载中/空态占位块保持原样。
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
             }
         }
     }
@@ -1196,16 +1190,6 @@ struct ProfileView: View {
     private var visiblePlaylists: [Playlist] { myPlaylists.filter { !hiddenPlaylistIds.contains($0.id) } }
     private func loadHiddenPlaylists() {
         hiddenPlaylistEntries = CoHiddenPlaylists.load(userId: kugouAuth.userId)
-    }
-    private func hidePlaylist(_ playlist: Playlist) {
-        var entries = hiddenPlaylistEntries
-        if !entries.contains(where: { $0.id == playlist.id }) {
-            entries.append((id: playlist.id, name: playlist.name))
-        }
-        hiddenPlaylistEntries = entries
-        CoHiddenPlaylists.save(userId: kugouAuth.userId, entries: entries)
-        BeansHaptics.select()
-        ToastCenter.shared.show("已隐藏")
     }
 
     private func coLoadMyPlaylists(force: Bool = false) async {
@@ -2081,9 +2065,11 @@ struct SettingsView: View {
 
     @State private var appearanceExpanded = false
     @State private var appearanceDetailsExpanded = false
-    // 设置里隐藏的歌单恢复入口（旧线 1.8.5 移植：我的页长按隐藏的歌单在此逐条恢复）。
+    // 设置里隐藏歌单开关（2026-10-24 用户拍板：只留设置里这一处，我的页长按已删）。
     @State private var hiddenPlaylistsExpanded = false
-    @State private var hiddenAccounts: [(userId: String, entries: [(id: Int, name: String)])] = []
+    @State private var settingsCachedPlaylists: [Playlist] = []
+    @State private var settingsCurrentHidden: [(id: Int, name: String)] = []
+    @State private var settingsOtherHidden: [(userId: String, entries: [(id: Int, name: String)])] = []
     @State private var playbackExpanded = false
     @State private var audioQualityExpanded = false
     @State private var showWallpaperPicker = false
@@ -2601,7 +2587,41 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 隐藏的歌单（旧线 1.8.5 移植：我的页长按隐藏的歌单在此逐条恢复，只藏显示、不删歌单）
+    // MARK: - 隐藏的歌单（2026-10-24 用户拍板：只留设置里的开关）
+    // 设置里显示当前账号全部歌单，点眼睛切换显示/隐藏；我的页长按隐藏已删。
+    // 数据来源是已同步歌单缓存（我的页也是先读这个缓存再联网同步），不编造歌单；
+    // 缓存为空时不显示空白列表冒充全量，给诚实提示 + 刷新按钮。
+    private var settingsCurrentHiddenKey: String { kugouAuth.userId.isEmpty ? "local" : kugouAuth.userId }
+    private var settingsAllPlaylistRows: [(id: Int, name: String, trackCount: Int?)] {
+        let cachedIds = Set(settingsCachedPlaylists.map(\.id))
+        var rows = settingsCachedPlaylists.map { (id: $0.id, name: $0.name, trackCount: $0.trackCount) }
+        // 隐藏记录里有、缓存里已没有的（例如酷狗里已删）也追加在末尾、可点恢复，
+        // 不要因为缓存里没了就把隐藏记录悄悄丢掉。
+        for entry in settingsCurrentHidden where !cachedIds.contains(entry.id) {
+            rows.append((id: entry.id, name: entry.name, trackCount: nil))
+        }
+        return rows
+    }
+    private var settingsHiddenIds: Set<Int> { Set(settingsCurrentHidden.map(\.id)) }
+    private func refreshHiddenPlaylistsSettings() {
+        settingsCachedPlaylists = SyncedPlaylistCache.shared.cachedPlaylists(source: .kugou, accountID: kugouAuth.userId)?.playlists ?? []
+        settingsCurrentHidden = CoHiddenPlaylists.load(userId: kugouAuth.userId)
+        settingsOtherHidden = CoHiddenPlaylists.allAccounts().filter { $0.userId != settingsCurrentHiddenKey }
+    }
+    private func toggleSettingsPlaylistHidden(id: Int, name: String) {
+        var entries = settingsCurrentHidden
+        if entries.contains(where: { $0.id == id }) {
+            entries.removeAll { $0.id == id }
+            ToastCenter.shared.show("已恢复显示")
+        } else {
+            entries.append((id: id, name: name))
+            ToastCenter.shared.show("已隐藏")
+        }
+        CoHiddenPlaylists.save(userId: kugouAuth.userId, entries: entries)
+        settingsCurrentHidden = entries
+        BeansHaptics.select()
+    }
+
     private var hiddenPlaylistsSettingsSection: some View {
         // 外观行用 Button + 上下箭头（只有一个指示符），隐藏行原来用 DisclosureGroup，
         // 系统会在行尾再补一个黑粗右箭头，变成“无 + 下箭头 + 右箭头”两个指示符叠加，
@@ -2610,6 +2630,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
                 BeansHaptics.select()
+                refreshHiddenPlaylistsSettings()
                 withAnimation(.easeInOut(duration: 0.25)) {
                     hiddenPlaylistsExpanded.toggle()
                 }
@@ -2623,7 +2644,7 @@ struct SettingsView: View {
                         .font(BeansFont.appFont(15))
                         .foregroundStyle(Color.beansLabel)
                     Spacer()
-                    Text(hiddenAccounts.isEmpty ? "无" : "\(hiddenAccounts.reduce(0) { $0 + $1.entries.count }) 条已隐藏")
+                    Text(settingsAllPlaylistRows.isEmpty ? "无" : "\(settingsHiddenIds.count) 条已隐藏 / 共 \(settingsAllPlaylistRows.count) 条")
                         .font(BeansFont.appFont(12))
                         .foregroundStyle(Color.beansComment)
                     Image(systemName: hiddenPlaylistsExpanded ? "chevron.up" : "chevron.down")
@@ -2637,17 +2658,43 @@ struct SettingsView: View {
             .buttonStyle(GlassPressButtonStyle(scale: 0.98))
             if hiddenPlaylistsExpanded {
             VStack(alignment: .leading, spacing: 14) {
-                Button { hiddenAccounts = CoHiddenPlaylists.allAccounts() } label: {
+                Button { refreshHiddenPlaylistsSettings() } label: {
                     Text("刷新列表").font(BeansFont.appFont(13, .medium)).foregroundStyle(Color.beansAmber)
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .background { BeansSurface(shape: Capsule()) }
                 }
                 .buttonStyle(.plain)
-                if hiddenAccounts.isEmpty {
-                    Text("暂无隐藏的歌单。在“我的”页长按一条歌单可隐藏它，隐藏后只不在“我的”页显示，歌单本身不删除。")
+                if settingsAllPlaylistRows.isEmpty {
+                    Text("暂未同步到歌单，先打开“我的”页同步一次；同步后这里会显示全部歌单，点眼睛可隐藏或显示，隐藏只不在“我的”页显示，歌单本身不删除。")
                         .font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
                 } else {
-                    ForEach(hiddenAccounts, id: \.userId) { account in
+                    ForEach(settingsAllPlaylistRows, id: \.id) { row in
+                        let hidden = settingsHiddenIds.contains(row.id)
+                        Button { toggleSettingsPlaylistHidden(id: row.id, name: row.name) } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(row.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
+                                    if let count = row.trackCount {
+                                        Text("\(count) 首").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                    } else {
+                                        Text("歌单 ID \(row.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                    }
+                                }
+                                Spacer()
+                                Text(hidden ? "已隐藏" : "显示中").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                                Image(systemName: hidden ? "eye.slash.fill" : "eye.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(hidden ? Color.beansAmber : Color.beansLabel)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                if !settingsOtherHidden.isEmpty {
+                    Text("其他账号已隐藏的歌单")
+                        .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansComment)
+                    ForEach(settingsOtherHidden, id: \.userId) { account in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(account.userId == "local" ? "本地（未登录）" : "账号 \(account.userId)")
                                 .font(BeansFont.appFont(12, .semibold)).foregroundStyle(Color.beansComment)
@@ -2661,7 +2708,7 @@ struct SettingsView: View {
                                     Button {
                                         let entries = account.entries.filter { $0.id != entry.id }
                                         CoHiddenPlaylists.save(userId: account.userId, entries: entries)
-                                        hiddenAccounts = CoHiddenPlaylists.allAccounts()
+                                        refreshHiddenPlaylistsSettings()
                                         BeansHaptics.select()
                                         ToastCenter.shared.show("已恢复显示")
                                     } label: {
@@ -2676,7 +2723,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .onAppear { hiddenAccounts = CoHiddenPlaylists.allAccounts() }
+            .onAppear { refreshHiddenPlaylistsSettings() }
             }
         }
     }
