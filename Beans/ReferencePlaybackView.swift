@@ -46,7 +46,6 @@ struct ReferencePlaybackView: View {
     @AppStorage("co.appleMusic.syncWallpaper") private var syncWallpaper = false
     @AppStorage("co.appleMusic.wallpaperBlur") private var wallpaperBlur = 14.0
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage("co.appleMusic.showLyricPreview") private var showLyricPreview = true
     @Namespace private var coverMorphNamespace
     @State private var lyricCenters: [UUID: CGFloat] = [:]
     @State private var focusedLyricID: UUID?
@@ -115,8 +114,9 @@ struct ReferencePlaybackView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 封面切歌词：封面一边均匀缩小、一边滑向左上角小封面，缩小带弹跳（弹簧收尾回弹一下）。
-                    .animation(.spring(response: 0.45, dampingFraction: 0.62), value: showLyrics)
+                    // 原版前端同款：一个状态开关，全体 0.38s 同一条贝塞尔曲线——
+                    // 封面缩进页眉左端、歌名缩小、歌词淡入上浮；原版没有弹跳，弹簧随移植取消。
+                    .animation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -206,12 +206,11 @@ struct ReferencePlaybackView: View {
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = true
                 }
             }
 
-            if showLyricPreview {
             VStack(spacing: 5) {
                 HStack(spacing: 9) {
                 Text(song?.name ?? "未在播放")
@@ -246,66 +245,10 @@ struct ReferencePlaybackView: View {
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
             .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
 
-            MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
-                CoHaptics.tap()
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
-                    showLyrics = true
-                }
-            }
-            .padding(.top, 18)
-            .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.previewLyric)))
-            .transition(.opacity)
-            } else {
-                compactTrackHeader
-                    .padding(.top, 22)
-                    .transition(.opacity)
-            }
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 32)
-    }
-
-    private var compactTrackHeader: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(song?.name ?? "未在播放")
-                    .font(CoFont.appFont(16, .semibold))
-                    .foregroundStyle(primaryColor)
-                    .lineLimit(1)
-                    .contextMenu {
-                        Button("复制歌名") {
-                            copySongTitle()
-                        }
-                    }
-                Text(subtitle)
-                    .font(CoFont.appFont(12, .medium))
-                    .foregroundStyle(secondaryColor)
-                    .lineLimit(1)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onArtist)
-            }
-            Spacer(minLength: 0)
-            favoriteActionButton()
-            Menu {
-                Button("定时关闭", action: onSleepTimer)
-                Button("添加到本地歌单", action: onAddToLocalPlaylist)
-                customCoverActions
-                Menu("播放音质") {
-                    CoAudioQualityMenu()
-                }
-                Button("播放器设置", action: onPlayerSettings)
-                Button("软件音量") {
-                    showSoftwareVolume = true
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(primaryColor.opacity(0.78))
-                    .frame(width: 38, height: 38)
-            }
-        }
-        .frame(maxWidth: 420)
     }
 
     private var lyricsPage: some View {
@@ -401,7 +344,7 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 CoHaptics.tap()
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     showLyrics = false
                 }
             } label: {
@@ -483,7 +426,7 @@ struct ReferencePlaybackView: View {
                 container: PlayerLayoutEntry()
             ),
             onLyrics: {
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
+                withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                     if showQueue {
                         showQueue = false
                         showLyrics = true
@@ -615,18 +558,10 @@ struct ReferencePlaybackView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             CoHaptics.tap()
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
+            withAnimation(.timingCurve(0.32, 0.72, 0.28, 1, duration: 0.38)) {
                 showLyrics = false
             }
         }
-    }
-
-    private var previewLyrics: [LyricLine] {
-        guard !lyrics.isEmpty else { return [] }
-        let current = currentPlaybackLyricIndex ?? 0
-        let start = max(current - 1, 0)
-        let end = min(start + 3, lyrics.count)
-        return Array(lyrics[start..<end])
     }
 
     private var currentPlaybackLyricIndex: Int? {
@@ -1631,35 +1566,5 @@ private struct ReferenceSystemVolumeView: UIViewRepresentable {
 
     private func allSubviews(in view: UIView) -> [UIView] {
         view.subviews + view.subviews.flatMap { allSubviews(in: $0) }
-    }
-}
-
-private struct MiniLyricsPreview: View {
-    let lines: [LyricLine]
-    let primary: Color
-    let secondary: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                if lines.isEmpty {
-                    Text("暂无歌词")
-                        .font(CoFont.appFont(15, .semibold))
-                        .foregroundStyle(secondary.opacity(0.54))
-                } else {
-                    ForEach(Array(lines.enumerated()), id: \.element.id) { index, line in
-                        Text(line.text.isEmpty ? " " : line.text)
-                            .font(CoFont.appFont(index == 1 ? 17 : 15, index == 1 ? .semibold : .medium))
-                            .foregroundStyle((index == 1 ? primary : secondary).opacity(index == 1 ? 0.86 : 0.5))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                    }
-                }
-            }
-            .frame(maxWidth: 420, minHeight: 92)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }

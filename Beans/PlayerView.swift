@@ -147,7 +147,6 @@ struct PlayerView: View {
     @AppStorage("co.appleMusic.syncWallpaper") private var appleSyncWallpaper = false
     @AppStorage("co.appleMusic.wallpaperBlur") private var appleWallpaperBlur = 14.0
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
-    @AppStorage("co.appleMusic.showLyricPreview") private var appleShowLyricPreview = true
     /// 侧边滑动手势当前位移（刷视频式切歌过渡）
     @State private var swipeOffset: CGFloat = 0
     @State private var coverDrag: CGSize = .zero
@@ -3732,9 +3731,6 @@ struct PlayerView: View {
             Toggle("显示音量条", isOn: $appleShowVolume)
                 .font(CoFont.appFont(12))
                 .tint(Color.coAmber)
-            Toggle("显示封面页歌词预览", isOn: $appleShowLyricPreview)
-                .font(CoFont.appFont(12))
-                .tint(Color.coAmber)
             Toggle("同步主页壁纸", isOn: $appleSyncWallpaper)
                 .font(CoFont.appFont(12))
                 .tint(Color.coAmber)
@@ -3840,7 +3836,6 @@ struct PlayerView: View {
         appleAccentHex = ""
         appleVolumeHex = ""
         appleShowVolume = false
-        appleShowLyricPreview = true
         appleSyncWallpaper = false
         appleWallpaperBlur = 14
     }
@@ -4928,7 +4923,6 @@ struct PlayerSettingsSheet: View {
     @AppStorage("co.albumTextGlow") private var albumTextGlow = false
     @AppStorage("co.albumTextGlowIntensity") private var albumTextGlowIntensity = 1.0
     @AppStorage("co.coverPlayerStyle") private var coverPlayerStyleRaw = CoCoverPlayerStyle.appleMusic.rawValue
-    @AppStorage("co.appleMusic.showLyricPreview") private var appleShowLyricPreview = true
     @Environment(\.dismiss) private var dismiss
     @AppStorage("co.playerSettings.playbackExpanded") private var playbackExpanded = false
     @AppStorage("co.playerSettings.lyricEffectExpanded") private var lyricEffectExpanded = false
