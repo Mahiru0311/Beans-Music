@@ -6,8 +6,6 @@ enum NetworkAudioQuality {
     static let connectionAwareKey = "co.audioQuality.connectionAware"
     static let wifiOfficialKey = "co.audioQuality.wifi"
     static let cellularOfficialKey = "co.audioQuality.cellular"
-    static let wifiThirdPartyKey = "co.thirdPartyAudioQuality.wifi"
-    static let cellularThirdPartyKey = "co.thirdPartyAudioQuality.cellular"
 
     /// 统一音质键是唯一写入/读取路径（2026-10-24 音质移播放页后）：
     /// 不再按 Wi-Fi/蜂窝分键选档，旧的分网络逻辑只在迁移里用一次。
@@ -29,30 +27,4 @@ enum NetworkAudioQuality {
         defaults.set(false, forKey: connectionAwareKey)
     }
 
-    static var thirdPartyPreferred: ThirdPartyAudioQuality {
-        if let raw = selectedValue(
-            wifiKey: wifiThirdPartyKey,
-            cellularKey: cellularThirdPartyKey,
-            fallbackKey: ThirdPartyAudioQuality.storageKey
-        ), let quality = ThirdPartyAudioQuality(sourceValue: raw) {
-            return quality
-        }
-        return .kb320
-    }
-
-    private static func selectedValue(wifiKey: String, cellularKey: String, fallbackKey: String) -> String? {
-        let defaults = UserDefaults.standard
-        guard defaults.bool(forKey: connectionAwareKey) else {
-            return defaults.string(forKey: fallbackKey)
-        }
-
-        switch CoNetworkStatus.shared.connectionKind {
-        case .wifi:
-            return defaults.string(forKey: wifiKey) ?? defaults.string(forKey: fallbackKey)
-        case .cellular:
-            return defaults.string(forKey: cellularKey) ?? defaults.string(forKey: fallbackKey)
-        case .other, .unavailable:
-            return defaults.string(forKey: fallbackKey)
-        }
-    }
 }

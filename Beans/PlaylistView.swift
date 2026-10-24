@@ -285,6 +285,8 @@ struct PlaylistView: View {
                 ErrorStateView(message: errorMessage) {
                     Task { await load(force: true) }
                 }
+            } else if tracks.isEmpty {
+                EmptyStateView(icon: "music.note.list", text: "这个歌单还没有歌曲")
             } else {
                 // 滚动整体架构（本轮改动，封面改回我的页同款固定层、顶边钉在 0）：
                 // 深色底 → 虚化底（blurredCoverUnderlayer）→ 固定封面层

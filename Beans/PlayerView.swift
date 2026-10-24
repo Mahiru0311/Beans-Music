@@ -21,6 +21,7 @@ struct PlayerView: View {
     @State private var showAppleMusicQueue = false
     @State private var showVinylQueue = false
     @State private var showSleepTimer = false
+    @State private var showClearQueueConfirm = false
     @State private var showAddToPlaylist = false
     @State private var showMoreActions = false
     @State private var showNativeMoreActions = false
@@ -484,7 +485,7 @@ struct PlayerView: View {
                         },
                         onComments: {
                             // Apple Music 样式：最小版只读评论（见文件末尾 CoHotCommentsSheet）。
-                            // 唱片样式的评论入口本轮不动，仍弹原提示。
+                            // 唱片样式的评论入口已接通同一只读评论页；仅布局编辑器预览里仍为占位提示。
                             if song != nil { showComments = true }
                         },
                         onSleepTimer: {
@@ -1059,7 +1060,7 @@ struct PlayerView: View {
 
                 Menu {
                     Button("清空播放列表", role: .destructive) {
-                        player.clearQueue()
+                        showClearQueueConfirm = true
                     }
                     Divider()
                     Button("定时关闭") { showSleepTimer = true }
@@ -1071,6 +1072,12 @@ struct PlayerView: View {
                         .foregroundStyle(landscapeApplePrimaryColor.opacity(0.78))
                         .frame(width: 38, height: 38)
                         .contentShape(Rectangle())
+                }
+                .alert("清空播放列表", isPresented: $showClearQueueConfirm) {
+                    Button("清空", role: .destructive) { player.clearQueue() }
+                    Button("取消", role: .cancel) { }
+                } message: {
+                    Text("将清空除正在播放外的全部歌曲。")
                 }
             }
         }
@@ -2965,29 +2972,6 @@ struct PlayerView: View {
 
     // MARK: - 播放器自定义布局工具栏（x / y / z + 恢复默认）
 
-    /// 当前选中组件的绑定（滑杆读写；歌词映射到独立存储的偏移值）
-    private var selectedLayoutEntry: Binding<PlayerLayoutEntry> {
-        Binding(
-            get: {
-                switch layoutPart {
-                case .lyric:
-                    return PlayerLayoutEntry(x: CGFloat(lyricOffsetX), y: CGFloat(lyricAnchorY), scale: CGFloat(lyricScale))
-                default:
-                    return layoutData[layoutPart.rawValue] ?? PlayerLayoutStore.defaultEntry(for: layoutPart)
-                }
-            },
-            set: { newValue in
-                switch layoutPart {
-                case .lyric:
-                    lyricOffsetX = Double(newValue.x)
-                    lyricAnchorY = Double(newValue.y)
-                    lyricScale = Double(newValue.scale)
-                default:
-                    layoutData[layoutPart.rawValue] = newValue
-                }
-            }
-        )
-    }
 
     /// 各组件 X 滑杆范围
     private var layoutXRange: ClosedRange<CGFloat> {
@@ -3130,7 +3114,7 @@ struct PlayerView: View {
                             toggleLocalFavorite(song)
                         },
                         onComments: {
-                            if song != nil { ToastCenter.shared.show("评论功能已在酷狗专版移除") }
+                            if song != nil { ToastCenter.shared.show("预览中暂不支持评论") }
                         },
                         onSleepTimer: {
                             showSleepTimer = true
@@ -3536,33 +3520,8 @@ struct PlayerView: View {
         .frame(maxWidth: 460)
     }
 
-    private func appleLayoutChip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button {
-            CoHaptics.select()
-            action()
-        } label: {
-            Text(LocalizedStringKey(title))
-                .font(CoFont.appFont(12, .semibold))
-                .foregroundStyle(isSelected ? Color.white : palette.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background {
-                    Capsule().fill(isSelected ? Color.coAmber : Color.coGlassFill)
-                }
-        }
-        .buttonStyle(.plain)
-    }
 
     @ViewBuilder
-    private var appleMusicLayoutSliders: some View {
-        VStack(spacing: 6) {
-            layoutSlider("X", value: appleMusicEntryBinding.x, range: -180...180)
-            layoutSlider("Y", value: appleMusicEntryBinding.y, range: -240...240)
-            layoutSlider("大小", value: appleMusicEntryBinding.scale, range: 0.3...1.5, step: 0.05, format: "%.2f")
-            layoutSlider("旋转", value: appleMusicEntryBinding.rotation, range: -180...180, step: 1)
-            layoutSlider("透明度", value: appleMusicEntryBinding.opacity, range: 0...1, step: 0.05, format: "%.2f")
-        }
-    }
 
     private var appleMusicEntryBinding: Binding<PlayerLayoutEntry> {
         Binding(
@@ -3571,9 +3530,6 @@ struct PlayerView: View {
         )
     }
 
-    private func resetAppleMusicCurrentLayoutPart() {
-        appleLayout.reset(appleLayoutPart)
-    }
 
     private var applePrimaryColorBinding: Binding<Color> {
         Binding(
@@ -3671,41 +3627,8 @@ struct PlayerView: View {
         )
     }
 
-    private var playerMainIconColorBinding: Binding<Color> {
-        Binding(
-            get: {
-                if playerMainIconColorHex.hasPrefix("#"), let color = Color(hex: playerMainIconColorHex) {
-                    return color
-                }
-                return palette.text
-            },
-            set: { playerMainIconColorHex = "#" + UIColor($0).hexString }
-        )
-    }
 
-    private var playerSecondaryIconColorBinding: Binding<Color> {
-        Binding(
-            get: {
-                if playerSecondaryIconColorHex.hasPrefix("#"), let color = Color(hex: playerSecondaryIconColorHex) {
-                    return color
-                }
-                return palette.secondary
-            },
-            set: { playerSecondaryIconColorHex = "#" + UIColor($0).hexString }
-        )
-    }
 
-    private var playerPrimaryButtonColorBinding: Binding<Color> {
-        Binding(
-            get: {
-                if playerPrimaryButtonColorHex.hasPrefix("#"), let color = Color(hex: playerPrimaryButtonColorHex) {
-                    return color
-                }
-                return Color.coAmber
-            },
-            set: { playerPrimaryButtonColorHex = "#" + UIColor($0).hexString }
-        )
-    }
 
     private var appleMusicAppearanceControls: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -3815,28 +3738,7 @@ struct PlayerView: View {
     }
 
 
-    private func resetAppleMusicSettings() {
-        appleLayout.resetAll()
-        applePrimaryHex = ""
-        appleSecondaryHex = ""
-        appleAccentHex = ""
-        appleVolumeHex = ""
-        appleShowVolume = false
-        appleSyncWallpaper = false
-        appleWallpaperBlur = 14
-    }
 
-    private func resetCurrentLayoutPart() {
-        switch layoutPart {
-        case .lyric:
-            lyricOffsetX = 0
-            lyricAnchorY = 0
-            lyricScale = 1
-        default:
-            layoutData.removeValue(forKey: layoutPart.rawValue)
-            PlayerLayoutStore.save(layoutData)
-        }
-    }
 
     private func layoutSlider(_ title: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat = 1, format: String = "%.0f") -> some View {
         HStack(spacing: 10) {
@@ -4862,7 +4764,6 @@ struct PlayerSettingsSheet: View {
     @AppStorage("co.playerPrimaryButtonColorHex") private var playerPrimaryButtonColorHex = ""
     @AppStorage("co.progressBarStyle") private var progressBarStyle = 0
     @AppStorage("co.progressAccentHex") private var progressAccentHex = ""
-    @AppStorage("co.lyricGlow") private var glowLevel = 1
     @AppStorage("co.lyricColor") private var currentColorRaw = "accent"
     @AppStorage("co.lyricDimColor") private var dimColorRaw = "dim"
     @AppStorage("co.lyricGradStart") private var gradStartRaw = ""
@@ -4910,39 +4811,9 @@ struct PlayerSettingsSheet: View {
         CoCoverPlayerStyle.resolved(rawValue: coverPlayerStyleRaw)
     }
 
-    private var tiltYText: String {
-        if lyricTiltY == 0 { return "关闭" }
-        return lyricTiltY > 0 ? "右倾 \(lyricTiltY)°" : "左倾 \(-lyricTiltY)°"
-    }
 
 
-    /// 当前行高亮色：色盘选色写入 hex，关闭面板后依然生效
-    private var currentColor: Binding<Color> {
-        Binding(
-            get: {
-                if currentColorRaw.hasPrefix("#"), let c = Color(hex: currentColorRaw) { return c }
-                return Color.coAmber
-            },
-            set: { newValue in
-                currentColorRaw = "#" + UIColor(newValue).hexString
-                gradMode = 1
-            }
-        )
-    }
 
-    /// 未播放歌词颜色：同上
-    private var dimColor: Binding<Color> {
-        Binding(
-            get: {
-                if dimColorRaw.hasPrefix("#"), let c = Color(hex: dimColorRaw) { return c }
-                return Color.coComment
-            },
-            set: { newValue in
-                dimColorRaw = "#" + UIColor(newValue).hexString
-                gradMode = 1
-            }
-        )
-    }
 
     /// 歌词发光颜色：留空时跟随当前行颜色 / 封面取色
     private var glowColor: Binding<Color> {
@@ -4957,28 +4828,7 @@ struct PlayerSettingsSheet: View {
         )
     }
 
-    /// 进度条单独颜色：留空时跟随播放控件颜色
-    private var progressAccentColor: Binding<Color> {
-        Binding(
-            get: {
-                if progressAccentHex.hasPrefix("#"), let c = Color(hex: progressAccentHex) { return c }
-                return Color.coAmber
-            },
-            set: { newValue in
-                progressAccentHex = "#" + UIColor(newValue).hexString
-            }
-        )
-    }
 
-    private var playerMainIconColor: Binding<Color> {
-        Binding(
-            get: {
-                if playerMainIconColorHex.hasPrefix("#"), let c = Color(hex: playerMainIconColorHex) { return c }
-                return Color.coLabel
-            },
-            set: { playerMainIconColorHex = "#" + UIColor($0).hexString }
-        )
-    }
 
     private var playerSecondaryIconColor: Binding<Color> {
         Binding(
@@ -5090,33 +4940,7 @@ struct PlayerSettingsSheet: View {
         }
     }
 
-    /// 渐变起始色：空值时自动用主题强调色
-    private var gradStart: Binding<Color> {
-        Binding(
-            get: {
-                if gradStartRaw.hasPrefix("#"), let c = Color(hex: gradStartRaw) { return c }
-                return Color.coAmber
-            },
-            set: { newValue in
-                gradStartRaw = "#" + UIColor(newValue).hexString
-                gradMode = 1
-            }
-        )
-    }
 
-    /// 渐变结束色：空值时自动用主题次色
-    private var gradEnd: Binding<Color> {
-        Binding(
-            get: {
-                if gradEndRaw.hasPrefix("#"), let c = Color(hex: gradEndRaw) { return c }
-                return Color.coComment
-            },
-            set: { newValue in
-                gradEndRaw = "#" + UIColor(newValue).hexString
-                gradMode = 1
-            }
-        )
-    }
 
     var body: some View {
         let _ = theme.accent

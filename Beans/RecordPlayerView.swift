@@ -384,17 +384,9 @@ struct RecordPlayerView: View {
     }
 
     private var sourceName: String {
-        switch song?.source {
-        case .netease: return "网易云"
-        case .qq: return "QQ音乐"
-        case .kugou: return "酷狗"
-        case .kuwo: return "酷我"
-        case .migu: return "咪咕"
-        case .qishui: return "汽水"
-        case .bilibili: return "哔哩哔哩"
-        case .webdav: return "WebDAV"
-        case nil: return "未知"
-        }
+        // 酷狗专版：只留酷狗文案，无歌时仍显示“未知”。
+        guard song != nil else { return "未知" }
+        return "酷狗"
     }
 
     private var controls: some View {

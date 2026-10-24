@@ -130,7 +130,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private var equalizerSettingsObserver: NSObjectProtocol?
     private var customCoverObserver: NSObjectProtocol?
     private var playbackConfirmed = false
-    private var pendingThirdPartyVIPNotice: ThirdPartyVIPNotice?
     private var sessionConfigured = false
     private var systemPlaybackPrepared = false
     private var routeObserverInstalled = false
@@ -180,25 +179,14 @@ final class PlayerManager: NSObject, ObservableObject {
     private var nowPlayingInfo: [String: Any] = [:]
     /// 酷狗高音质地址在部分账号/系统上会返回但无法由 AVPlayer 打开；每首歌只自动降级一次。
     private var kugouStandardFallbackSongKey: String?
-    /// 第三方地址偶发过期或节点不可用时，按失败域名重试，避免同一节点反复进入播放器。
-    private var thirdPartyRetryExcludedHostsBySong: [String: Set<String>] = [:]
-    /// 记录已经交给 AVPlayer 的第三方音质，失败后选择下一个更低档位。
-    private var attemptedThirdPartyQualitiesBySong: [String: Set<String>] = [:]
-    private var activeThirdPartyQuality: ThirdPartyAudioQuality?
-    /// 记录 QQ 官方 vkey 已经尝试过的 BR，官方地址实际打不开时继续换档位。
-    private var attemptedQQOfficialBRsBySong: [String: Set<String>] = [:]
-    private var activeQQOfficialBR: String?
     /// KVO 与 AVPlayerItemFailedToPlayToEndTime 可能同时报告同一次失败。
     private var playbackRecoveryInFlightSongKey: String?
     /// 同一首歌的多个 AVFoundation 失败回调只允许弹一次提示并自动切歌一次。
     private var finalizedFailureSongKey: String?
     /// 播放失败后安排到下一个主线程周期切歌，避免 AVFoundation 回调中同步重入。
     private var failureAutoSkipWorkItem: DispatchWorkItem?
-    /// QQ 官方地址返回成功但实际不可播放时，只切换到第三方一次，避免官方/第三方之间循环。
-    private var qqThirdPartyFallbackSongKey: String?
     private var playbackConfirmationWorkItem: DispatchWorkItem?
     private var playbackStallWorkItem: DispatchWorkItem?
-    private var thirdPartyPrefetchTask: Task<Void, Never>?
     private static let nowPlayingArtworkCache = NSCache<NSURL, UIImage>()
 
     private let historyKey = "co.history"
@@ -210,18 +198,11 @@ final class PlayerManager: NSObject, ObservableObject {
     private let playModeKey = "co.player.playMode"
     private let softwareVolumeKey = "co.player.softwareVolume.v1"
     private let autoSkipOnFailureKey = "co.playback.autoSkipOnFailure"
-    static let autoCrossPlatformFallbackKey = "co.playback.autoCrossPlatformFallback"
-    static let playbackSourcePreferenceKey = PlaybackSourcePreference.storageKey
     static let listeningDurationKey = "co.playback.listeningDuration.v1"
     private static let listeningPlayCountOffsetKey = "co.playback.listeningPlayCountOffset.v1"
     private let autoResumeLastPlaybackKey = "co.playback.autoResumeLast"
-    private let thirdPartyVIPNoticeKey = "co.showThirdPartyVIPNotice"
     private let defaults = UserDefaults.standard
     private var didAttemptAutoResume = false
-    /// 当前故障恢复链已尝试的平台，避免不同平台间反复切换同一首歌曲。
-    private var crossPlatformFallbackOriginKey: String?
-    private var crossPlatformFallbackTriedSources = Set<String>()
-    private var crossPlatformFallbackInFlightSongKey: String?
 
     static var storedListeningDuration: TimeInterval {
         max(0, UserDefaults.standard.double(forKey: listeningDurationKey))
@@ -260,11 +241,6 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private var externalSourcesEnabled: Bool { false }
-
-    private struct ThirdPartyVIPNotice {
-        let songKey: String
-        let message: String
-    }
 
     private enum PlaybackFailureCategory {
         case membership
@@ -477,7 +453,6 @@ final class PlayerManager: NSObject, ObservableObject {
         } else {
             currentIndex = (currentIndex - 1 + queue.count) % queue.count
         }
-        resetCrossPlatformFallbackState()
         loadCurrent()
     }
 
@@ -648,7 +623,6 @@ final class PlayerManager: NSObject, ObservableObject {
     func retryCurrent() {
         guard ensurePlaybackAllowed() else { return }
         loadFailed = false
-        resetCrossPlatformFallbackState()
         // 换音质 / 开关不断歌：从当前进度续播；暂停时保持暂停，缓冲中按播放处理。
         let time = player?.currentTime().seconds ?? 0
         let resume = time.isFinite ? max(0, time) : 0
@@ -753,7 +727,6 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func advance() {
-        resetCrossPlatformFallbackState()
         switch playMode {
         case .shuffle:
             guard !playOrder.isEmpty else { return }
@@ -766,7 +739,6 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func jumpToOrderPosition(_ index: Int) {
-        resetCrossPlatformFallbackState()
         currentIndex = index
         if playMode == .shuffle {
             orderPosition = 0
@@ -812,20 +784,12 @@ final class PlayerManager: NSObject, ObservableObject {
         loadGeneration += 1
         let generation = loadGeneration
         actualAudioQualityKey = nil
-        thirdPartyRetryExcludedHostsBySong.removeValue(forKey: song.identityKey)
-        attemptedThirdPartyQualitiesBySong.removeValue(forKey: song.identityKey)
-        attemptedQQOfficialBRsBySong.removeValue(forKey: song.identityKey)
-        activeThirdPartyQuality = nil
-        activeQQOfficialBR = nil
         playbackRecoveryInFlightSongKey = nil
         finalizedFailureSongKey = nil
         failureAutoSkipWorkItem?.cancel()
         failureAutoSkipWorkItem = nil
         playbackStallWorkItem?.cancel()
         playbackStallWorkItem = nil
-        thirdPartyPrefetchTask?.cancel()
-        thirdPartyPrefetchTask = nil
-        qqThirdPartyFallbackSongKey = nil
         stopListeningSegment()
         flushListeningDuration()
         resetListeningProgress()
@@ -902,7 +866,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private func retryKugouAtStandardIfNeeded(error _: Error?) -> Bool {
         guard let song = currentSong,
               song.source == .kugou,
-              PlaybackSourcePreference.current != .thirdParty,
               NetworkAudioQuality.officialPreferred != .standard,
               kugouStandardFallbackSongKey != song.identityKey else { return false }
         kugouStandardFallbackSongKey = song.identityKey
@@ -913,34 +876,14 @@ final class PlayerManager: NSObject, ObservableObject {
 
     private func setupPlayer(
         url: URL,
-        thirdPartyVIPNotice: ThirdPartyVIPNotice? = nil,
         resumeAt: Double = 0,
         autoplay: Bool = true,
-        isThirdParty: Bool = false,
-        thirdPartyQuality: ThirdPartyAudioQuality? = nil,
-        qqOfficialBR: String? = nil,
-        attemptedQQOfficialBRs: [String] = []
     ) {
         guard ensurePlaybackAllowed(), let loadedSong = currentSong else { return }
-        if isThirdParty {
-            let quality = thirdPartyQuality ?? NetworkAudioQuality.thirdPartyPreferred
-            activeThirdPartyQuality = quality
-            activeQQOfficialBR = nil
-            if let songKey = currentSong?.identityKey {
-                attemptedThirdPartyQualitiesBySong[songKey, default: []].insert(quality.rawValue)
-            }
-        } else {
-            activeThirdPartyQuality = nil
-            activeQQOfficialBR = qqOfficialBR
-            if let songKey = currentSong?.identityKey, !attemptedQQOfficialBRs.isEmpty {
-                attemptedQQOfficialBRsBySong[songKey, default: []].formUnion(attemptedQQOfficialBRs)
-            }
-        }
         prepareForSystemPlayback()
         configureAudioSession()
         UIApplication.shared.beginReceivingRemoteControlEvents()
         removeCurrentObservers()
-        pendingThirdPartyVIPNotice = thirdPartyVIPNotice
         // QQ CDN 地址需要基础请求头；第三方地址也可能落在
         // ptqqmusic.gitv.tv / aqqmusic.tc.qq.com 等 QQ CDN 域名。
         // 这些地址在低系统上如果缺少 Referer/Cookie，常见表现是先进入
@@ -1054,7 +997,6 @@ final class PlayerManager: NSObject, ObservableObject {
                           item.status == .readyToPlay,
                           !self.playbackConfirmed else { return }
                     self.playbackConfirmed = true
-                    self.showPendingThirdPartyVIPNoticeIfNeeded()
                 }
                 self.playbackConfirmationWorkItem = confirmation
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: confirmation)
@@ -1214,23 +1156,6 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
 
-    private func normalizedTrackText(_ value: String) -> String {
-        var result = value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-        for marker in ["(live)", "（live）", "live", "(remix)", "（remix）", "remix", "(dj)", "（dj）", "dj"] {
-            result = result.replacingOccurrences(of: marker, with: "", options: .caseInsensitive)
-        }
-        return result
-            .lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .joined()
-    }
-
-
-    private func resetCrossPlatformFallbackState() {
-        crossPlatformFallbackOriginKey = nil
-        crossPlatformFallbackTriedSources.removeAll()
-        crossPlatformFallbackInFlightSongKey = nil
-    }
 
     private func playbackFailureMessage(for song: Song, reason: String, english: Bool = false) -> String {
         if song.source == .bilibili || song.source == .webdav { return reason }
@@ -1347,7 +1272,6 @@ final class PlayerManager: NSObject, ObservableObject {
         playbackStallWorkItem?.cancel()
         playbackStallWorkItem = nil
         playbackConfirmed = false
-        pendingThirdPartyVIPNotice = nil
         lastPublishedProgress = -1
     }
 
@@ -1414,7 +1338,8 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func configureEqualizer(for item: AVPlayerItem) {
-        guard CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled else {
+        // 门与 CoEqualizer.processingEnabled 一致（五项全集）：只认均衡/3D 时，单独开耳机增强/人声清晰/声场加宽会静默不生效。
+        guard CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled || CoEqualizer.shared.headphoneBoostEnabled || CoEqualizer.shared.vocalBoostEnabled || CoEqualizer.shared.widenEnabled else {
             item.audioMix = nil
             return
         }
@@ -1436,34 +1361,6 @@ final class PlayerManager: NSObject, ObservableObject {
                 item.audioMix = mix
             }
         }
-    }
-
-    private func thirdPartyVIPNotice(for song: Song, sourceTitle: String) -> ThirdPartyVIPNotice? {
-        guard song.isVIP else { return nil }
-        guard defaults.object(forKey: thirdPartyVIPNoticeKey) as? Bool ?? true else { return nil }
-        guard !hasMembership(for: song.source) else { return nil }
-        let sourceName = sourceTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let suffix = sourceName.isEmpty ? "第三方音源" : "第三方音源「\(sourceName)」"
-        return ThirdPartyVIPNotice(
-            songKey: song.identityKey,
-            message: "当前账号未识别到对应会员，《\(song.name)》已通过\(suffix)播放"
-        )
-    }
-
-    private func showPendingThirdPartyVIPNoticeIfNeeded() {
-        guard let notice = pendingThirdPartyVIPNotice else { return }
-        guard currentSong?.identityKey == notice.songKey else {
-            pendingThirdPartyVIPNotice = nil
-            return
-        }
-        guard defaults.object(forKey: thirdPartyVIPNoticeKey) as? Bool ?? true else {
-            pendingThirdPartyVIPNotice = nil
-            return
-        }
-        Task { @MainActor in
-            ToastCenter.shared.show(notice.message)
-        }
-        pendingThirdPartyVIPNotice = nil
     }
 
     private func hasMembership(for source: SongSource) -> Bool {

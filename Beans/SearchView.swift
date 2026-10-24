@@ -213,7 +213,6 @@ struct SearchView: View {
                 .navigationTitle(keyword.isEmpty ? "搜索" : keyword)
         }
         .task(id: provider) {
-            if provider == .bilibili { return }
             if let cached = hotWordsCache[provider] {
                 hotLoadedProvider = provider
                 hotWords = cached
@@ -256,7 +255,6 @@ struct SearchView: View {
             playlistSearchTask?.cancel()
             searchRequestID = UUID()
             playlistSearchRequestID = UUID()
-            if provider == .bilibili, resultType == .album { resultType = .playlist }
             restoreHomeSourceSnapshot()
             let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
@@ -357,7 +355,7 @@ struct SearchView: View {
         CoUnifiedSearchField(
             text: $keyword,
             controller: searchController,
-            placeholder: provider == .bilibili ? "搜索视频、UP主或合集" : coLocalized("搜索歌曲、歌手、专辑", "Search songs, artists, or albums"),
+            placeholder: coLocalized("搜索歌曲、歌手、专辑", "Search songs, artists, or albums"),
             isSearching: searching,
             onClear: {
                 songResults = []
@@ -1034,18 +1032,7 @@ struct SearchView: View {
             do {
                 switch selectedType {
                 case .all:
-                    let partialSongHandler: (@MainActor ([Song]) -> Void)?
-                    if selectedProvider == .qishui {
-                        partialSongHandler = { partial in
-                            guard searchRequestID == requestID else { return }
-                            songResults = partial
-                            let metadata = catalogMetadata(from: partial)
-                            artistResults = metadata.artists
-                            albumResults = metadata.albums
-                        }
-                    } else {
-                        partialSongHandler = nil
-                    }
+                    let partialSongHandler: (@MainActor ([Song]) -> Void)? = nil
                     async let songsTask = catalogSongs(
                         keyword: trimmed,
                         provider: selectedProvider,
@@ -1053,22 +1040,11 @@ struct SearchView: View {
                         onPartialResults: partialSongHandler
                     )
                     async let playlistsTask = catalogPlaylists(keyword: trimmed, provider: selectedProvider, limit: 12)
-                    // 网易云单曲结果只携带关联专辑封面，且没有可用于详情页的歌手、
-                    // 专辑标识。综合页改用对应目录接口，避免把歌曲封面或拼接名称误当作
-                    // 歌手头像、专辑 ID。
-                    async let artistsTask: [Artist] = selectedProvider == .netease
-                        ? catalogArtists(keyword: trimmed, provider: selectedProvider, limit: 12)
-                        : []
-                    async let albumsTask: [Album] = selectedProvider == .netease
-                        ? catalogAlbums(keyword: trimmed, provider: selectedProvider, limit: 12)
-                        : []
                     let songs = await songsTask
                     let playlists = await playlistsTask
-                    let neteaseArtists = await artistsTask
-                    let neteaseAlbums = await albumsTask
                     let metadata = catalogMetadata(from: songs)
-                    let artists = selectedProvider == .netease ? neteaseArtists : metadata.artists
-                    let albums = selectedProvider == .netease ? neteaseAlbums : metadata.albums
+                    let artists = metadata.artists
+                    let albums = metadata.albums
                     guard !Task.isCancelled, searchRequestID == requestID else { return }
                     await MainActor.run {
                         guard searchRequestID == requestID else { return }
@@ -1086,22 +1062,10 @@ struct SearchView: View {
                     }
                 case .song:
                     let songs: [Song]
-                    if selectedProvider == .qishui {
-                        songs = await catalogSongs(
-                            keyword: trimmed,
-                            provider: selectedProvider,
-                            limit: 100,
-                            onPartialResults: { partial in
-                                guard searchRequestID == requestID else { return }
-                                songResults = partial
-                            }
-                        )
-                    } else {
-                        songs = await catalogSongs(keyword: trimmed, provider: selectedProvider, limit: 100)
-                    }
+                    songs = await catalogSongs(keyword: trimmed, provider: selectedProvider, limit: 100)
                     guard !Task.isCancelled, searchRequestID == requestID else { return }
                     let completedSongs = await MainActor.run {
-                        songs.isEmpty && selectedProvider == .qishui ? songResults : songs
+                        songs
                     }
                     await MainActor.run {
                         guard searchRequestID == requestID else { return }
@@ -1173,15 +1137,6 @@ struct SearchView: View {
     /// 歌单 tab 使用独立任务，不与“综合/单曲”等并发请求共享状态。
     /// 这条路径和精选页一样在用户切换到歌单后立即发起 QQ 歌单请求。
     private func searchPlaylistTab(_ text: String) async {
-        if provider == .bilibili {
-            searchTask?.cancel()
-            playlistSearchTask?.cancel()
-            searchRequestID = UUID()
-            playlistSearchRequestID = UUID()
-            searching = false
-            errorMessage = nil
-            return
-        }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         searchTask?.cancel()
@@ -1196,15 +1151,6 @@ struct SearchView: View {
             resultType: .playlist
         )
 
-        if selectedProvider == .qishui,
-           let cached = searchResultCache[cacheKey],
-           !cached.playlists.isEmpty {
-            playlistResults = cached.playlists
-            searching = false
-            errorMessage = nil
-            return
-        }
-
         searching = true
         errorMessage = nil
         playlistResults = []
@@ -1217,14 +1163,6 @@ struct SearchView: View {
                       resultType == .playlist,
                       provider == selectedProvider else { return }
                 playlistResults = playlists
-                if selectedProvider == .qishui, !playlists.isEmpty {
-                    searchResultCache[cacheKey] = SearchResultCacheEntry(
-                        songs: [],
-                        artists: [],
-                        albums: [],
-                        playlists: playlists
-                    )
-                }
                 searching = false
                 if !playlists.isEmpty { CoHaptics.success() }
             }
@@ -1596,6 +1534,13 @@ struct AlbumDetailView: View {
                             }
                             if displayedAlbumTracks.isEmpty, !albumSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 Text("未找到相关歌曲")
+                                    .font(CoFont.appFont(13))
+                                    .foregroundStyle(.white.opacity(0.6))
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 12)
+                            }
+                            if tracks.isEmpty {
+                                Text("暂无歌曲")
                                     .font(CoFont.appFont(13))
                                     .foregroundStyle(.white.opacity(0.6))
                                     .frame(maxWidth: .infinity, alignment: .center)

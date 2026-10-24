@@ -671,16 +671,8 @@ struct LocalPlaylistDetailSheet: View {
     }
 
     private func sourceName(for song: Song) -> String {
-        switch song.source {
-        case .netease: return "网易云音乐"
-        case .qq: return "QQ音乐"
-        case .kugou: return "酷狗音乐"
-        case .kuwo: return "酷我音乐"
-        case .migu: return "咪咕音乐"
-        case .qishui: return "汽水音乐"
-        case .bilibili: return "哔哩哔哩"
-        case .webdav: return "WebDAV"
-        }
+        // 酷狗专版：只留酷狗文案，其他平台分支已删。
+        "酷狗音乐"
     }
 }
 

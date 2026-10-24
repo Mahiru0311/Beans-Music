@@ -39,112 +39,6 @@ enum CoAudioQuality: String, CaseIterable, Identifiable {
     }
 }
 
-/// 第三方音源音质。
-enum ThirdPartyAudioQuality: String, CaseIterable, Identifiable, Sendable {
-    case kb128 = "128k"
-    case kb320 = "320k"
-    case flac = "flac"
-    case flac24bit = "flac24bit"
-    case hires = "hires"
-    case atmos = "atmos"
-    case atmosPlus = "atmos_plus"
-    case master = "master"
-
-    static let storageKey = "co.thirdPartyAudioQuality"
-
-    var id: String { rawValue }
-
-    /// 兼容第三方脚本常见的音质别名（例如 24bit / lossless）。
-    init?(sourceValue: String) {
-        let normalized = sourceValue
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        switch normalized {
-        case "128", "128k", "low", "standard": self = .kb128
-        case "320", "320k", "high", "exhigh": self = .kb320
-        case "flac", "lossless": self = .flac
-        case "24bit", "flac24", "flac24bit", "hires24": self = .flac24bit
-        case "hires", "highres", "high-resolution": self = .hires
-        case "atmos", "dolby": self = .atmos
-        case "atmosplus", "atmos_plus", "dolbyplus": self = .atmosPlus
-        case "master", "masterquality": self = .master
-        default: return nil
-        }
-    }
-
-    var displayName: String {
-        switch self {
-        case .kb128: return coLocalized("128k", "128k")
-        case .kb320: return coLocalized("320k", "320k")
-        case .flac: return coLocalized("无损 FLAC", "FLAC")
-        case .flac24bit: return coLocalized("FLAC 24 位", "FLAC 24-bit")
-        case .hires: return coLocalized("Hi-Res", "Hi-Res")
-        case .atmos: return coLocalized("Atmos", "Atmos")
-        case .atmosPlus: return coLocalized("Atmos+", "Atmos+")
-        case .master: return coLocalized("Master", "Master")
-        }
-    }
-
-    /// 当前第三方音源优先音质。
-    static var current: ThirdPartyAudioQuality {
-        UserDefaults.standard.string(forKey: storageKey)
-            .flatMap { ThirdPartyAudioQuality(sourceValue: $0) } ?? .kb320
-    }
-
-    /// 按第三方接口的平台代码返回可用档位。
-    static func supported(providerCode: String) -> [ThirdPartyAudioQuality] {
-        switch providerCode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "kw", "mg":
-            return [.kb128, .kb320, .flac, .flac24bit, .hires]
-        case "kg":
-            return [.kb128, .kb320, .flac, .flac24bit, .hires, .atmos, .master]
-        case "tx":
-            return allCases
-        case "wy":
-            return [.kb128, .kb320, .flac, .flac24bit, .hires, .atmos, .master]
-        case "git":
-            return [.kb128, .kb320, .flac]
-        default:
-            return allCases
-        }
-    }
-
-    static func supported(for source: SongSource) -> [ThirdPartyAudioQuality] {
-        switch source {
-        case .netease: return supported(providerCode: "wy")
-        case .qq: return supported(providerCode: "tx")
-        case .kugou: return supported(providerCode: "kg")
-        case .kuwo: return supported(providerCode: "kw")
-        case .migu: return supported(providerCode: "mg")
-        case .qishui: return allCases
-        case .bilibili: return [.kb128, .kb320]
-        case .webdav: return []
-        }
-    }
-
-    /// 从高到低的降级链。
-    var fallbackChain: [ThirdPartyAudioQuality] {
-        switch self {
-        case .kb128:
-            return [.kb128]
-        case .kb320:
-            return [.kb320, .kb128]
-        case .flac:
-            return [.flac, .kb320, .kb128]
-        case .flac24bit:
-            return [.flac24bit, .flac, .kb320, .kb128]
-        case .hires:
-            return [.hires, .flac24bit, .flac, .kb320, .kb128]
-        case .atmos:
-            return [.atmos, .hires, .flac24bit, .flac, .kb320, .kb128]
-        case .atmosPlus:
-            return [.atmosPlus, .atmos, .hires, .flac24bit, .flac, .kb320, .kb128]
-        case .master:
-            return [.master, .atmosPlus, .atmos, .hires, .flac24bit, .flac, .kb320, .kb128]
-        }
-    }
-}
-
 /// 歌曲来源
 enum SongSource: String, Codable, Sendable, CaseIterable {
     case netease
@@ -171,40 +65,6 @@ enum FavoriteMark: Equatable {
 
     var isLiked: Bool {
         self != .none
-    }
-}
-
-
-/// 决定播放器优先使用官方地址还是用户已启用的第三方音源。
-/// 自动模式保留原有体验：官方地址可用时优先官方，失败后再解析第三方音源。
-enum PlaybackSourcePreference: String, CaseIterable, Identifiable {
-    case automatic
-    case official
-    case thirdParty
-
-    static let storageKey = "co.playback.sourcePreference"
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .automatic: return "自动"
-        case .official: return "官方"
-        case .thirdParty: return "第三方"
-        }
-    }
-
-    var detail: String {
-        switch self {
-        case .automatic: return "优先官方，失败后尝试已启用音源"
-        case .official: return "只使用当前平台官方播放地址"
-        case .thirdParty: return "只使用已启用的第三方音源"
-        }
-    }
-
-    static var current: PlaybackSourcePreference {
-        UserDefaults.standard.string(forKey: storageKey)
-            .flatMap(PlaybackSourcePreference.init(rawValue:)) ?? .automatic
     }
 }
 
@@ -294,11 +154,7 @@ struct Song: Identifiable, Hashable, Codable {
             return fee != 0
         case .kugou:
             return fee != 0
-        case .kuwo, .migu:
-            return fee != 0
-        case .qishui:
-            return fee != 0
-        case .bilibili:
+        case .kuwo, .migu, .qishui, .bilibili:
             return fee != 0
         }
     }

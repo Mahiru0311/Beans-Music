@@ -235,70 +235,6 @@ private struct CoProfileThemeRevealOverlay: View {
     }
 }
 
-private struct CoExclusiveIDBadgeSurface: View {
-    let style: CoExclusiveIDBadgeStyle
-
-    var body: some View {
-        Group {
-            if style == .classicGold {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.42, green: 0.23, blue: 0.03), Color(red: 0.96, green: 0.66, blue: 0.12), Color(red: 0.50, green: 0.29, blue: 0.04)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay {
-                        Capsule().strokeBorder(Color(red: 1, green: 0.90, blue: 0.55).opacity(0.9), lineWidth: 1)
-                    }
-                    .shadow(color: Color(red: 0.94, green: 0.59, blue: 0.06).opacity(0.36), radius: 5, y: 1)
-            } else {
-                TimelineView(.periodic(from: .now, by: 1.0 / 12.0)) { timeline in
-                    let phase = Angle.degrees((timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 12)) * 30)
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.035, green: 0.025, blue: 0.075),
-                                    Color(red: 0.16, green: 0.055, blue: 0.25),
-                                    Color(red: 0.055, green: 0.03, blue: 0.10)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(
-                                    AngularGradient(
-                                        colors: [
-                                            Color(red: 0.43, green: 0.24, blue: 0.74),
-                                            Color(red: 1.0, green: 0.84, blue: 0.36),
-                                            Color(red: 0.68, green: 0.43, blue: 0.10),
-                                            Color(red: 0.43, green: 0.24, blue: 0.74)
-                                        ],
-                                        center: .center,
-                                        angle: phase
-                                    ),
-                                    lineWidth: 1
-                                )
-                        }
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.45)
-                                .padding(1.2)
-                        }
-                        .shadow(color: Color(red: 0.52, green: 0.26, blue: 0.90).opacity(0.42), radius: 5, y: 1)
-                        .shadow(color: Color(red: 1.0, green: 0.72, blue: 0.16).opacity(0.24), radius: 3, y: 1)
-                }
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}
-
 struct ProfileView: View {
     /// 由主页头像以 sheet 打开时，使用主页同一套壁纸背景。
     var forceHomeBackdrop = false
@@ -313,9 +249,6 @@ struct ProfileView: View {
     @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     @AppStorage("co.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("co.pauseHomeRendering") private var homeRenderingPaused = false
-    @AppStorage(CoBackendSettings.exclusiveIDKey) private var hasExclusiveID = false
-    @AppStorage(CoBackendSettings.exclusiveIDBadgeStyleKey) private var exclusiveBadgeStyleRaw = CoExclusiveIDBadgeStyle.blackPurpleGold.rawValue
-    @AppStorage(CoBackendSettings.publicIDRevisionKey) private var publicIDRevision = 0
 
     @State private var showHistory = false
     @State private var showFavorites = false
@@ -364,14 +297,6 @@ struct ProfileView: View {
         CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
-    private var usesExclusiveIDBadge: Bool {
-        DeviceIdentity.isDeveloperInstallation || hasExclusiveID
-    }
-
-    private var exclusiveBadgeStyle: CoExclusiveIDBadgeStyle {
-        CoExclusiveIDBadgeStyle(rawValue: exclusiveBadgeStyleRaw) ?? .blackPurpleGold
-    }
-
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
 
     private var displayPlatformSummary: String {
@@ -384,10 +309,6 @@ struct ProfileView: View {
             return isEnglish ? "Kugou Music Logged In" : "酷狗已登录"
         }
         return isEnglish ? "Sign in to sync \(displayPlatformSummary) playlists" : "登录后可同步 \(displayPlatformSummary) 歌单"
-    }
-
-    private var hasVisibleAccountLogin: Bool {
-        kugouAuth.isLoggedIn
     }
 
     /// 白卡是否已滑到状态栏区域（卡顶全局 y <= 28pt，约状态栏文字中心高度）。
@@ -707,7 +628,7 @@ struct ProfileView: View {
                 profileNameBackgroundStore.save(data: selection.data, fileExtension: selection.fileExtension)
             }
         }
-        .sheet(isPresented: $showSettings) {
+        .sheet(isPresented: $showSettings, onDismiss: { loadHiddenPlaylists() }) {
             settingsScreen(SettingsView(onClose: { showSettings = false }))
                 .modifier(CoSheetModifier(detents: [.fraction(0.62), .large], dragIndicator: true))
                 .modifier(SettingsLiquidSheetPresentation())
@@ -1106,41 +1027,6 @@ struct ProfileView: View {
         myPlaylistsLoading = false
     }
 
-
-    /// 酷狗登录状态展示
-    private var platformStatusRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if kugouAuth.isLoggedIn {
-                platformChip(imageName: "BrandKugou", name: "酷狗音乐", status: kugouAuth.nickname.isEmpty ? "已登录" : kugouAuth.nickname, badge: kugouAuth.vipBadge)
-            }
-        }
-        .padding(.top, 2)
-    }
-
-    private func platformChip(imageName: String, name: String, status: String, badge: String?) -> some View {
-        HStack(spacing: 6) {
-            Image(imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-            Text(name)
-                .font(CoFont.appFont(12, .semibold))
-                .foregroundStyle(Color.coLabel)
-            Text(status)
-                .font(CoFont.appFont(11))
-                .foregroundStyle(Color.coComment)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            if let badge {
-                VIPBadgeView(text: badge)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background { CoSurface(shape: Capsule()) }
-    }
-
-
     /// 壁纸格子：点击应用为当前背景；使用中的壁纸显示主题色边框+勾选；右上角删除
     private func wallpaperCell(path: String) -> some View {
         let isActive = path == theme.backgroundImagePath
@@ -1190,43 +1076,6 @@ struct ProfileView: View {
             .zIndex(2)
         }
     }
-
-
-    private func featureCell(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button {
-            CoHaptics.tap()
-            action()
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 15))
-                    .foregroundStyle(Color.coAmber)
-                    .frame(width: 34, height: 34)
-                    .background(Color.coGlassFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey(title))
-                        .font(CoFont.appFont(14, .semibold))
-                        .foregroundStyle(Color.coLabel)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.82)
-                    Text(subtitle)
-                        .font(CoFont.appFont(11))
-                        .foregroundStyle(Color.coComment)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.78)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-            .background {
-                                CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.97))
-    }
-
 }
 
 private extension ProfileView {
@@ -1932,7 +1781,6 @@ struct SettingsView: View {
     @AppStorage("co.tabLabelsVisible") private var tabLabelsVisible = true
     @AppStorage("co.tabIconStyle") private var tabIconStyleRaw = CoTabIconStyle.sfSymbols.rawValue
     /// 第三方音源播放会员歌成功时提醒，默认开启
-    @AppStorage("co.showThirdPartyVIPNotice") private var showThirdPartyVIPNotice = true
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
     @AppStorage(CoHaptics.enabledKey) private var hapticsEnabled = true
     @AppStorage("co.playback.autoResumeLast") private var autoResumeLastPlayback = false
@@ -2345,7 +2193,7 @@ struct SettingsView: View {
             if hiddenPlaylistsExpanded {
             VStack(alignment: .leading, spacing: 14) {
                 Button { refreshHiddenPlaylistsSettings() } label: {
-                    Text("刷新列表").font(CoFont.appFont(13, .medium)).foregroundStyle(Color.coAmber)
+                    Text("刷新缓存列表").font(CoFont.appFont(13, .medium)).foregroundStyle(Color.coAmber)
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .background { CoSurface(shape: Capsule()) }
                 }
@@ -3175,24 +3023,6 @@ struct SettingsView: View {
                         Text(coLocalized("触感反馈", "Haptic Feedback"))
                             .font(CoFont.appFont(15))
                             .foregroundStyle(Color.coLabel)
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(Color.coAmber)
-
-                Divider().overlay(Color.coComment.opacity(0.15))
-
-                Toggle(isOn: $showThirdPartyVIPNotice) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "bell.badge.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.coAmber)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(coLocalized("第三方播放会员歌提醒", "VIP song notice for third-party playback"))
-                                .font(CoFont.appFont(15))
-                                .foregroundStyle(Color.coLabel)
-                        }
                     }
                 }
                 .toggleStyle(.switch)

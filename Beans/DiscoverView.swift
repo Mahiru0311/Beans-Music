@@ -34,7 +34,6 @@ struct DiscoverView: View {
     /// 主页只保留每日推荐和排行榜；歌单广场位于独立底栏页面。
     private var availableSections: [String] { SectionOrderStore.homeDefaults }
     /// 首页数据源：记住上次选择，下次打开仍保持该平台（默认哔哩哔哩）
-    @AppStorage("co.homeSource") private var homeSourceRaw = SearchProvider.kugou.rawValue
     /// 每日推荐的旧版横向歌曲卡样式，默认使用新版推荐卡片。
     @AppStorage("co.home.dailySongsListStyle") private var dailySongsListStyle = false
     @AppStorage("co.homeGreetingText") private var homeGreetingText = ""
@@ -67,16 +66,13 @@ struct DiscoverView: View {
     @AppStorage("co.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
     @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
-    private var homeProviders: [SearchProvider] { [.kugou] }
     private var source: SearchProvider { .kugou }
     private var isNativeClean: Bool { CoUIStyle(rawValue: uiStyleRaw) == .nativeClean }
 
     @State private var kugouTopLists: [KugouTopInfo] = []
-    @State private var playlistCats: [String] = []
     /// 排行榜展开状态：收起显示前 3，展开显示前 10
     @State private var ranksExpanded = false
     /// 歌单广场展开状态：收起显示前 6，展开显示全部
-    @State private var playlistsExpanded = false
     /// 首页加载去重：SwiftUI 视图刷新时 .task 可能被重复触发，避免网络请求风暴。
     @State private var activeLoadKey: String?
     /// 当前请求令牌：登录切换触发强制刷新时，旧请求即使晚返回也不能覆盖新账号结果。
@@ -91,11 +87,6 @@ struct DiscoverView: View {
     /// 网易云歌单广场当前分类（「全部」展示官方精品歌单）
     /// 官方歌单分类列表
     /// 网易云歌单广场搜索状态；搜索结果沿用现有歌单卡片和详情路由
-    @State private var playlistSearchText = ""
-    @State private var playlistSearchResults: [Playlist] = []
-    @State private var playlistSearchActive = false
-    @State private var playlistSearchLoading = false
-    @State private var playlistSearchTask: Task<Void, Never>?
 
     init() {
         let savedRaw = UserDefaults.standard.string(forKey: "co.homeSource")
@@ -182,7 +173,6 @@ struct DiscoverView: View {
             }
             .onChange(of: source) { _ in
                 guard !homeRenderingPaused else { return }
-                clearPlaylistSearch()
                 homeOrder = SectionOrderStore.load(SectionOrderStore.homeKey, defaults: availableSections)
             }
             .onChange(of: disclaimerAccepted) { accepted in
@@ -934,293 +924,6 @@ struct DiscoverView: View {
         }
     }
 
-    @ViewBuilder
-    private var catChips: [String] {
-        if playlistCats.isEmpty {
-            return ["全部", "华语", "流行", "经典", "摇滚", "民谣", "电子", "影视原声", "ACG", "怀旧", "欧美", "日韩", "粤语", "古风", "轻音乐", "治愈", "学习", "运动", "夜晚"]
-        }
-        return ["全部"] + Array(playlistCats.prefix(18))
-    }
-
-    private var personalizedSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: playlistSectionTitle)
-            if playlistSearchLoading && visiblePersonalizedPlaylists.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, minHeight: 88)
-                    .tint(Color.coAmber)
-            } else if visiblePersonalizedPlaylists.isEmpty {
-                EmptyStateView(icon: "music.note.list", text: playlistEmptyText)
-            } else if isNativeClean && !playlistsExpanded {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 16) {
-                        ForEach(visiblePersonalizedPlaylists, id: \.id) { (playlist: Playlist) in
-                            Button {
-                                CoHaptics.tap()
-                                openRoute(DiscoverRoute.playlist(playlist))
-                            } label: {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    CoverImage(url: playlist.coverURL, size: 166, cornerRadius: 6)
-                                    Text(playlist.name)
-                                        .font(CoFont.appFont(15, .bold))
-                                        .foregroundStyle(Color.primary)
-                                        .lineLimit(2)
-                                        .multilineTextAlignment(.leading)
-                                        .frame(width: 166, alignment: .leading)
-                                    if playlist.trackCount > 0 {
-                                        Text(coSongCountText(playlist.trackCount))
-                                            .font(CoFont.appFont(12, .medium))
-                                            .foregroundStyle(Color.secondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                .frame(width: 166, alignment: .leading)
-                            }
-                            .buttonStyle(GlassPressButtonStyle(scale: 0.96))
-                        }
-                        Color.clear.frame(width: isNativeClean ? 0 : 8, height: 1)
-                    }
-                    .padding(.vertical, 2)
-                    .frame(height: 238)
-                    .coCompatScrollClipDisabled()
-                }
-            } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(visiblePersonalizedPlaylists) { playlist in
-                        Button {
-                            openRoute(DiscoverRoute.playlist(playlist))
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                CoverImage(url: playlist.coverURL, size: 144, cornerRadius: 6)
-                                    .frame(maxWidth: .infinity)
-                                Text(playlist.name)
-                                    .font(CoFont.appFont(12, .medium))
-                                    .foregroundStyle(Color.coLabel)
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.leading)
-                            }
-                            .padding(8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                if isNativeClean {
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color.primary.opacity(0.04))
-                                } else {
-                                    CoGlass(shape: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                                }
-                            }
-                        }
-                        .buttonStyle(GlassPressButtonStyle(scale: 0.96))
-                    }
-                }
-            }
-            if playlistDisplayItems.count > collapsedPlaylistCount {
-                Button {
-                    CoHaptics.select()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        playlistsExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(playlistsExpanded
-                             ? coLocalized("收起歌单广场", "Collapse Playlist Square")
-                             : coLocalized("展开全部（\(playlistDisplayItems.count)）", "Show all (\(playlistDisplayItems.count))"))
-                            .font(CoFont.appFont(13, .semibold))
-                        Image(systemName: playlistsExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundStyle(Color.coAmber)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background {
-                        if isNativeClean {
-                            Capsule().fill(Color.primary.opacity(0.045))
-                        } else {
-                            CoGlass(shape: Capsule())
-                        }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(GlassPressButtonStyle(scale: 0.97))
-            }
-        }
-    }
-
-    private var playlistSectionTitle: String {
-        if playlistSearchActive {
-            return coLocalized("歌单搜索结果", "Playlist Search Results")
-        }
-        return "歌单广场" 
-    }
-
-    private var playlistEmptyText: String {
-        if playlistSearchActive {
-            return coLocalized("没有找到相关歌单", "No matching playlists found")
-        }
-        return "歌单广场暂时没有内容" 
-    }
-
-    private var collapsedPlaylistCount: Int { 6 }
-
-    private var playlistDisplayItems: [Playlist] {
-        playlistSearchActive ? playlistSearchResults : personalized
-    }
-
-    private var visiblePersonalizedPlaylists: [Playlist] {
-        playlistsExpanded ? playlistDisplayItems : Array(playlistDisplayItems.prefix(collapsedPlaylistCount))
-    }
-
-    @ViewBuilder
-    private var playlistSearchField: some View {
-        GlassEffectContainer {
-            playlistSearchFieldContent
-                .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        }
-    }
-
-    // MARK: - 新碟与歌手
-
-    private var newAlbumsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: coLocalized("新碟上架", "New Releases"))
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 14) {
-                    ForEach(newAlbums) { album in
-                        Button {
-                            CoHaptics.tap()
-                            openRoute(.album(album))
-                        } label: {
-                            VStack(alignment: .leading, spacing: 7) {
-                                CoverImage(url: album.coverURL, size: isNativeClean ? 148 : 124, cornerRadius: 6)
-                                Text(album.name)
-                                    .font(CoFont.appFont(isNativeClean ? 14 : 12, .semibold))
-                                    .foregroundStyle(Color.coLabel)
-                                    .lineLimit(1)
-                                    .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
-                                Text(album.artistName.isEmpty ? coLocalized("未知歌手", "Unknown artist") : album.artistName)
-                                    .font(CoFont.appFont(11))
-                                    .foregroundStyle(Color.coComment)
-                                    .lineLimit(1)
-                                    .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
-                            }
-                        }
-                        .buttonStyle(GlassPressButtonStyle(scale: 0.95))
-                    }
-                    Color.clear.frame(width: isNativeClean ? 0 : 8, height: 1)
-                }
-                .padding(.vertical, 2)
-                .frame(height: isNativeClean ? 198 : 170)
-            }
-            .coCompatScrollClipDisabled()
-            .padding(.trailing, isNativeClean ? -24 : 0)
-        }
-    }
-
-    private var artistsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: coLocalized("歌手", "Artists"))
-            if topArtists.isEmpty {
-                Text(coLocalized("暂无音乐人", "No artists available"))
-                    .font(CoFont.appFont(13))
-                    .foregroundStyle(Color.coComment)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 18)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 16) {
-                        ForEach(topArtists) { artist in
-                            Button {
-                                CoHaptics.tap()
-                                openRoute(.artist(artist))
-                            } label: {
-                                VStack(spacing: 8) {
-                                    CoverImage(url: artist.coverURL, size: isNativeClean ? 136 : 116, cornerRadius: isNativeClean ? 68 : 58)
-                                    Text(artist.name)
-                                        .font(CoFont.appFont(isNativeClean ? 14 : 12, .semibold))
-                                        .foregroundStyle(Color.coLabel)
-                                        .lineLimit(1)
-                                        .frame(width: isNativeClean ? 136 : 116)
-                                }
-                            }
-                            .buttonStyle(GlassPressButtonStyle(scale: 0.95))
-                        }
-                        Color.clear.frame(width: isNativeClean ? 0 : 8, height: 1)
-                    }
-                    .padding(.vertical, 2)
-                    .frame(height: isNativeClean ? 168 : 146)
-                }
-                .coCompatScrollClipDisabled()
-                .padding(.trailing, isNativeClean ? -24 : 0)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var playlistSearchFieldContent: some View {
-        ZStack(alignment: .trailing) {
-            NativeSearchBar(
-                text: $playlistSearchText,
-                placeholder: playlistSearchPrompt,
-                onTextChange: { value in
-                    if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, playlistSearchActive {
-                        clearPlaylistSearch()
-                    }
-                },
-                onSubmit: { _ in submitPlaylistSearch() }
-            )
-            if playlistSearchLoading {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(Color.coAmber)
-                    .padding(.trailing, 14)
-                    .allowsHitTesting(false)
-            }
-        }
-        .frame(height: 46)
-    }
-
-    @MainActor
-    private func submitPlaylistSearch() {
-        let keyword = playlistSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        playlistSearchTask?.cancel()
-        guard !keyword.isEmpty else {
-            clearPlaylistSearch()
-            return
-        }
-
-        playlistSearchActive = true
-        playlistSearchLoading = true
-        playlistSearchResults = []
-        playlistsExpanded = true
-
-        playlistSearchTask = Task {
-            do {
-                let results: [Playlist] = []
-                guard !Task.isCancelled else { return }
-                playlistSearchResults = results
-            } catch {
-                guard !Task.isCancelled else { return }
-                playlistSearchResults = []
-            }
-            playlistSearchLoading = false
-        }
-    }
-
-    private var playlistSearchPrompt: String {
-        ""
-    }
-
-    @MainActor
-    private func clearPlaylistSearch() {
-        playlistSearchTask?.cancel()
-        playlistSearchTask = nil
-        playlistSearchText = ""
-        playlistSearchResults = []
-        playlistSearchActive = false
-        playlistSearchLoading = false
-        playlistsExpanded = false
-    }
-
     // MARK: - 动作
 
     @MainActor
@@ -1360,11 +1063,7 @@ struct DiscoverView: View {
         // 登录态会改变推荐内容和会员状态，先切到对应平台，再绕过旧快照刷新。
         forceHomeReload = true
         homeReloadToken += 1
-        if source == provider {
-            // 刷新令牌会重启 .task，避免在当前视图生命周期中遗留旧缓存。
-        } else {
-            homeSourceRaw = provider.rawValue
-        }
+        // 刷新令牌会重启 .task，避免在当前视图生命周期中遗留旧缓存。
     }
 
     @MainActor

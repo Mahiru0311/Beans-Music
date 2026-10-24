@@ -51,6 +51,7 @@ struct ReferencePlaybackView: View {
     /// 封面过渡进度：0 = 封面页，1 = 歌词页。由 @State 持有、不再直接派生自 showLyrics——
     /// 派生值在分支切换时可能丢终态（歌词页里封面弹回大图），@State 跨重建保留，稳态一定对。
     @State private var coverProgress: Double = 0
+    @State private var showClearQueueConfirm = false
     @State private var focusedLyricID: UUID?
     @State private var selectedLyricID: UUID?
     @State private var lyricsViewportHeight: CGFloat = 0
@@ -513,7 +514,7 @@ struct ReferencePlaybackView: View {
 
             Menu {
                 Button("清空播放列表", role: .destructive) {
-                    player.clearQueue()
+                    showClearQueueConfirm = true
                 }
                 Divider()
                 Button("定时关闭", action: onSleepTimer)
@@ -532,6 +533,12 @@ struct ReferencePlaybackView: View {
                     .foregroundStyle(primaryColor.opacity(0.78))
                     .frame(width: 38, height: 38)
                     .contentShape(Rectangle())
+            }
+            .alert("清空播放列表", isPresented: $showClearQueueConfirm) {
+                Button("清空", role: .destructive) { player.clearQueue() }
+                Button("取消", role: .cancel) { }
+            } message: {
+                Text("将清空除正在播放外的全部歌曲。")
             }
         }
     }
@@ -956,7 +963,7 @@ struct AppleMusicCompactQueueContent: View {
                     .font(CoFont.appFont(20, .bold))
                     .foregroundStyle(.white)
                 Spacer()
-                Text("\(player.upcomingQueue.count) 首")
+                Text(player.upcomingQueue.count > 100 ? "\(player.upcomingQueue.count) 首，仅显示前 100 首" : "\(player.upcomingQueue.count) 首")
                     .font(CoFont.appFont(12, .regular, .default))
                     .foregroundStyle(.white.opacity(0.46))
             }

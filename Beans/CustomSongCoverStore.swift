@@ -222,26 +222,6 @@ final class CustomSongCoverStore: ObservableObject {
         return host + path
     }
 
-    private func preparedJPEG(from data: Data) -> Data? {
-        guard let source = UIImage(data: data) else { return nil }
-        let longestSide = max(source.size.width, source.size.height)
-        let targetSize: CGSize
-        if longestSide > 1600 {
-            let scale = 1600 / longestSide
-            targetSize = CGSize(width: source.size.width * scale, height: source.size.height * scale)
-        } else {
-            targetSize = source.size
-        }
-        let image: UIImage
-        if targetSize != source.size {
-            image = UIGraphicsImageRenderer(size: targetSize).image { _ in
-                source.draw(in: CGRect(origin: .zero, size: targetSize))
-            }
-        } else {
-            image = source
-        }
-        return image.jpegData(compressionQuality: 0.84)
-    }
 }
 
 enum CustomSongCoverError: LocalizedError {
