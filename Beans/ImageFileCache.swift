@@ -204,29 +204,6 @@ final class BeansProfileNameBackgroundStore: ObservableObject {
     }
 }
 
-struct BeansProfileNameBackgroundView: View {
-    let url: URL
-    var isMuted = true
-
-    @ObservedObject private var store = BeansProfileNameBackgroundStore.shared
-
-    var body: some View {
-        Group {
-            if CustomCoverMedia.usesAnimatedRenderer(for: url) {
-                CustomCoverMediaView(url: url, isMuted: isMuted)
-            } else if let image = BeansImageFileCache.image(at: url.path) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Color.clear
-            }
-        }
-        .clipped()
-        .allowsHitTesting(false)
-        .id(store.revision)
-    }
-}
 
 struct BeansAvatarView: View {
     let remoteURL: URL?

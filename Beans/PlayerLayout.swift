@@ -69,48 +69,6 @@ enum PlayerPreviewDevice: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct PlayerPreviewDeviceFrame<Content: View>: View {
-    let device: PlayerPreviewDevice
-    let landscape: Bool
-    let content: Content
-
-    init(
-        device: PlayerPreviewDevice,
-        landscape: Bool = false,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.device = device
-        self.landscape = landscape
-        self.content = content()
-    }
-
-    var body: some View {
-        GeometryReader { geometry in
-            let aspect: CGFloat = device == .iPhone
-                ? 1419.0 / 2796.0
-                : (landscape ? 1.42 : 0.75)
-            let availableWidth = max(1, geometry.size.width - 20)
-            let availableHeight = max(1, geometry.size.height - 20)
-            let height = min(availableHeight, availableWidth / aspect)
-            let width = height * aspect
-            let radius = device == .iPhone ? min(50, width * 0.09) : min(30, width * 0.055)
-
-            ZStack {
-                content
-                    .frame(width: width, height: height)
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-                if device == .iPhone && !landscape {
-                    Image("iPhonePreviewShell")
-                        .resizable()
-                        .scaledToFit()
-                        .allowsHitTesting(false)
-                }
-            }
-            .frame(width: width, height: height)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
 
 /// 单个组件的自定义位置（相对默认位置的偏移）、缩放、旋转和透明度
 struct PlayerLayoutEntry: Codable, Equatable {

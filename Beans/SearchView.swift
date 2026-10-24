@@ -205,29 +205,6 @@ struct BeansUnifiedSearchField: View {
     }
 }
 
-/// 仅在 iOS 26 及以上使用系统搜索栏，保证入口与设置页由同一套系统组件负责布局和交互。
-struct BeansSystemSearchModifier: ViewModifier {
-    @Binding var text: String
-    let prompt: String
-    let onSubmit: (String) -> Void
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content
-                .searchable(
-                    text: $text,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: prompt
-                )
-                .onSubmit(of: .search) {
-                    onSubmit(text)
-                }
-        } else {
-            content
-        }
-    }
-}
 
 struct SearchView: View {
     @EnvironmentObject private var theme: ThemeStore

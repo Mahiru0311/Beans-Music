@@ -9,11 +9,6 @@ struct PlaylistSquareCategory: Identifiable, Hashable {
     static let all = PlaylistSquareCategory(id: "all", name: "全部", remoteID: nil)
 }
 
-struct PlaylistSquarePage {
-    let playlists: [Playlist]
-    let hasMore: Bool
-    let nextOffset: Int
-}
 
 /// 歌单广场缓存：按平台、分类和网易云登录态隔离，避免切换页面重复刷新。
 final class PlaylistSquareCache {

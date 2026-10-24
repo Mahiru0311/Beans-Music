@@ -46,7 +46,7 @@ enum CustomCoverMedia {
     /// to Now Playing so portrait source dimensions do not leak into the compact artwork layout.
     static func systemArtworkImage(at url: URL) -> UIImage? {
         guard let source = previewImage(at: url) else { return nil }
-        let normalized = normalizedImage(source)
+        let normalized = CoProfileHeaderWallpaper.normalizedImage(source)
         let sourceSize = normalized.size
         guard sourceSize.width > 0, sourceSize.height > 0 else { return normalized }
 
@@ -66,15 +66,6 @@ enum CustomCoverMedia {
         }
     }
 
-    private static func normalizedImage(_ image: UIImage) -> UIImage {
-        guard image.imageOrientation != .up else { return image }
-        let format = UIGraphicsImageRendererFormat.default()
-        format.opaque = false
-        format.scale = image.scale
-        return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
-            image.draw(in: CGRect(origin: .zero, size: image.size))
-        }
-    }
 
     static func animatedGIF(at url: URL) -> UIImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }

@@ -475,77 +475,8 @@ struct BeansSurface<S: Shape>: View {
     }
 }
 
-// MARK: - 通用卡片（跟随全局 UI 样式）
 
-struct GlassCard<Content: View>: View {
-    var cornerRadius: CGFloat = 24
-    @AppStorage("beans.disableLiquidGlass") private var disableLiquidGlass = false
-    @ObservedObject private var theme = ThemeStore.shared
-    @ViewBuilder var content: () -> Content
 
-    private var uiStyle: BeansUIStyle {
-        theme.uiStyle
-    }
-
-    private var isLiquid: Bool {
-        !disableLiquidGlass && (uiStyle == .liquid || uiStyle == .nativeClean)
-    }
-
-    private var resolvedCornerRadius: CGFloat {
-        if uiStyle == .compact { return min(cornerRadius, 16) }
-        if uiStyle == .nativeClean { return min(cornerRadius, 18) }
-        return cornerRadius
-    }
-
-    private var resolvedPadding: CGFloat {
-        if uiStyle == .compact { return 12 }
-        if uiStyle == .nativeClean { return 13 }
-        return 16
-    }
-
-    var body: some View {
-        if isLiquid {
-            if #available(iOS 26, *) {
-                GlassEffectContainer {
-                    content()
-                        .padding(resolvedPadding)
-                        .glassEffect(.clear, in: .rect(cornerRadius: resolvedCornerRadius))
-                }
-                .beansCardShadow(radius: 9, y: 3)
-            } else {
-                content()
-                    .padding(resolvedPadding)
-                    .background(RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous).fill(.ultraThinMaterial))
-                    .clipShape(RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous))
-                    .beansCardShadow(radius: 9, y: 3)
-            }
-        } else {
-            content()
-                .padding(resolvedPadding)
-                .background {
-                    RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous)
-                        .fill(uiStyle == .compact ? Color.beansGlassFill.opacity(0.72) : Color.clear)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous))
-                }
-                .clipShape(RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous))
-                .beansCardShadow(radius: 9, y: 3)
-        }
-    }
-}
-
-/// 播放/暂停图标切换过渡：iOS 17+ 使用符号替换动画，低版本回退透明度过渡
-struct BeansSymbolReplace: ViewModifier {
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 17, *) {
-            content.contentTransition(.symbolEffect(.replace))
-        } else if #available(iOS 16, *) {
-            content.contentTransition(.opacity)
-        } else {
-            content
-        }
-    }
-}
 
 /// 播放/暂停 morph 图标：三角播放态与双竖线暂停态共享一个固定画布，避免按钮尺寸跳动。
 struct PlayPauseMorphIcon: View {
@@ -1785,50 +1716,7 @@ struct NowPlayingIndicator: View {
     }
 }
 
-// MARK: - 播放进度线（迷你播放器用）
 
-struct ProgressLine: View {
-    @EnvironmentObject private var theme: ThemeStore
-    let progress: Double
-    let duration: Double
-
-    private var ratio: Double {
-        guard duration > 0.001 else { return 0 }
-        return min(max(progress / duration, 0), 1)
-    }
-
-    var body: some View {
-        let _ = theme.accent
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.beansComment.opacity(0.25))
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.beansAmber, Color.beansAmber.opacity(0.5)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: max(geo.size.width * ratio, 6))
-                    .shadow(color: Color.beansAmber.opacity(0.5), radius: 3, y: 1)
-                    .overlay(alignment: .trailing) {
-                        ZStack {
-                            // 柔圆光晕（替代生硬方边阴影）
-                            Circle()
-                                .fill(Color.beansAmber.opacity(0.45))
-                                .blur(radius: 4)
-                                .frame(width: 14, height: 14)
-                            Circle()
-                                .fill(Color.beansAmber)
-                                .frame(width: 5, height: 5)
-                                .shadow(color: Color.beansAmber.opacity(0.8), radius: 2)
-                        }
-                    }
-            }
-        }
-    }
-}
 // MARK: - 板块进入动画（首页错落渐入，纯视觉不影响布局）
 
 struct SectionEntrance: ViewModifier {

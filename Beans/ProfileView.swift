@@ -3,11 +3,6 @@ import UIKit
 import PhotosUI
 import UniformTypeIdentifiers
 
-/// 自动下载新版 IPA 的结果
-enum DownloadOutcome {
-    case success(fileName: String)
-    case failure(message: String)
-}
 
 private struct BeansProfileGlobalFrameKey: PreferenceKey {
     static let defaultValue = CGRect.zero
@@ -326,7 +321,6 @@ struct ProfileView: View {
     @State private var showFavorites = false
     @State private var showTopPlayed = false
     @State private var showMyPlaylists = false
-    @State private var playlistsScrollRequest = 0
     @State private var myPlaylists: [Playlist] = []
     @State private var myPlaylistsLoading = false
     // 我的页长按隐藏歌单（旧线 1.8.5 移植）：只藏显示、不删歌单，按酷狗账号区分存，见 CoHiddenPlaylists。
@@ -648,84 +642,79 @@ struct ProfileView: View {
             if !forceHomeBackdrop {
                 coFixedHeaderWallpaper
             }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 0) {
-                    // 拉动恢复：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层）。
-                    // 顶部读数器已删：放大不再走 PreferenceKey 回写链，改由下面挂在
-                    // 整个滚动视图上的同时识别拖动手势直接驱动；内容位移仍靠系统回弹，
-                    // 从头部、白卡、歌单区任何地方下拉，只要页面在顶部，系统回弹都会
-                    // 把内容往下带，固定壁纸层只放大、不跟着头部走，顶部就不再留黑边。
-                    // 头像按钮点按不受手势影响（拖动最小距离 8pt，点按不到 8pt 不触发拖动）。
-                    coNeteaseHeader
-                    // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
-                    // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
-                    if !forceHomeBackdrop {
-                        coNeteaseMainCard
-                            .padding(.top, -24)
-                    }
-                }
-                // 底部留白返工：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；
-                // 300pt → 240pt，仍比叠层高约 75pt 余量，最后一行能完整滑出；不收到 190pt 以下（上一轮 190pt 时底部行曾被盖过）。
-                .padding(.bottom, 240)
-                .beansAdaptiveContentWidth()
-                }
-                .beansScrollIndicatorsHidden()
-                // 拉动恢复：回弹改回始终可回弹（.always），不是按尺寸。
-                // .basedOnSize 在我的页只有 1 条歌单、内容不满屏时直接关了
-                // 回弹，是 zoom6“拉不动”的第二环：从白卡/歌单区下拉、
-                // 从头部下拉（头部手势又被截获）全都拉不动。
-                // .always 让内容不满屏时也能拉动，拉动本身先恢复；
-                // 壁纸效果仍封顶在 120pt：超过 120pt 后固定壁纸层不再
-                // 继续放大、不再继续变高，顶部黑边不会再变大。
-                // 注意：这个上限封的是壁纸效果，不是系统回弹本身——
-                // 系统回弹位移本身用最简单逻辑截断不了，内容本身在
-                // 超过 120pt 后仍会随系统回弹往下走，但壁纸顶边固定、
-                // 缩放封顶，顶部不会再留更大的黑边。
-                .scrollBounceBehavior(.always, axes: .vertical)
-                .coordinateSpace(name: "coProfileScroll")
-                .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
-                // 上滑读数第二路：滚动几何的内容偏移，正常滚动时确实更新，
-                // 与头部 frame 上报互为备份，两路取大值（见 wallpaperScrollUp）。
-                // 首帧就是静止偏移，之后不再重定，理由同 headerRestMinY。
-                .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
-                    if scrollRestOffset == nil { scrollRestOffset = newValue }
-                    scrollContentOffset = newValue
-                }
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 8)
-                        .onChanged { value in
-                            guard !forceHomeBackdrop else { return }
-                            // 门控只在手势开始时定一次：头部在顶部才放大。
-                            // profileHeaderFrame 是状态栏已在用的头部全局 frame，
-                            // 静止在顶部时 minY 约 0，已下滑时 minY 为负；首帧
-                            // frame 为空时 minY 为 0，同样算在顶部，不会把第一次
-                            // 下拉挡住。门控定了以后，全程只看手指位移。
-                            if !pullGestureActive {
-                                pullGestureActive = true
-                                pullGestureStartedAtTop = profileHeaderFrame.minY >= -20
-                            }
-                            guard pullGestureStartedAtTop else {
-                                headerDragPull = 0
-                                return
-                            }
-                            // 手指位移直接驱动：往下走多少就放大多少，封顶 120pt；
-                            // 上滑、横向拖动时高度差为负，钳为 0 不放大。
-                            headerDragPull = min(max(0, value.translation.height), 120)
-                        }
-                        .onEnded { _ in
-                            pullGestureActive = false
-                            pullGestureStartedAtTop = false
-                            // 松手一次弹回静态大小，不用连续动画引擎。
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                headerDragPull = 0
-                            }
-                        }
-                )
-                .onChange(of: playlistsScrollRequest) { _ in
-                    withAnimation { proxy.scrollTo("coMyPlaylistsSection", anchor: .top) }
+            ScrollView {
+                VStack(spacing: 0) {
+                // 拉动恢复：头部本身不再带壁纸层（壁纸在滚动视图之外的固定层）。
+                // 顶部读数器已删：放大不再走 PreferenceKey 回写链，改由下面挂在
+                // 整个滚动视图上的同时识别拖动手势直接驱动；内容位移仍靠系统回弹，
+                // 从头部、白卡、歌单区任何地方下拉，只要页面在顶部，系统回弹都会
+                // 把内容往下带，固定壁纸层只放大、不跟着头部走，顶部就不再留黑边。
+                // 头像按钮点按不受手势影响（拖动最小距离 8pt，点按不到 8pt 不触发拖动）。
+                coNeteaseHeader
+                // 头像界面精简：白卡（含数据行与歌单）只在我的 tab 里渲染，头像 sheet 里整张白卡都不出现——
+                // 不是留一张空白卡占位，sheet 下面直接是主页延伸背景，头像界面只剩头部（头像/昵称/VIP/状态/黑白切换/设置）。
+                if !forceHomeBackdrop {
+                    coNeteaseMainCard
+                        .padding(.top, -24)
                 }
             }
+            // 底部留白返工：迷你播放器约 50pt + 底栏约 57pt + 底部间距/安全区，合计约 165pt；
+            // 300pt → 240pt，仍比叠层高约 75pt 余量，最后一行能完整滑出；不收到 190pt 以下（上一轮 190pt 时底部行曾被盖过）。
+            .padding(.bottom, 240)
+            .beansAdaptiveContentWidth()
+            }
+            .beansScrollIndicatorsHidden()
+            // 拉动恢复：回弹改回始终可回弹（.always），不是按尺寸。
+            // .basedOnSize 在我的页只有 1 条歌单、内容不满屏时直接关了
+            // 回弹，是 zoom6“拉不动”的第二环：从白卡/歌单区下拉、
+            // 从头部下拉（头部手势又被截获）全都拉不动。
+            // .always 让内容不满屏时也能拉动，拉动本身先恢复；
+            // 壁纸效果仍封顶在 120pt：超过 120pt 后固定壁纸层不再
+            // 继续放大、不再继续变高，顶部黑边不会再变大。
+            // 注意：这个上限封的是壁纸效果，不是系统回弹本身——
+            // 系统回弹位移本身用最简单逻辑截断不了，内容本身在
+            // 超过 120pt 后仍会随系统回弹往下走，但壁纸顶边固定、
+            // 缩放封顶，顶部不会再留更大的黑边。
+            .scrollBounceBehavior(.always, axes: .vertical)
+            .coordinateSpace(name: "coProfileScroll")
+            .modifier(CoMyTabScrollTopInset(enabled: !forceHomeBackdrop, topSafeArea: profileTopSafeArea))
+            // 上滑读数第二路：滚动几何的内容偏移，正常滚动时确实更新，
+            // 与头部 frame 上报互为备份，两路取大值（见 wallpaperScrollUp）。
+            // 首帧就是静止偏移，之后不再重定，理由同 headerRestMinY。
+            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
+                if scrollRestOffset == nil { scrollRestOffset = newValue }
+                scrollContentOffset = newValue
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { value in
+                        guard !forceHomeBackdrop else { return }
+                        // 门控只在手势开始时定一次：头部在顶部才放大。
+                        // profileHeaderFrame 是状态栏已在用的头部全局 frame，
+                        // 静止在顶部时 minY 约 0，已下滑时 minY 为负；首帧
+                        // frame 为空时 minY 为 0，同样算在顶部，不会把第一次
+                        // 下拉挡住。门控定了以后，全程只看手指位移。
+                        if !pullGestureActive {
+                            pullGestureActive = true
+                            pullGestureStartedAtTop = profileHeaderFrame.minY >= -20
+                        }
+                        guard pullGestureStartedAtTop else {
+                            headerDragPull = 0
+                            return
+                        }
+                        // 手指位移直接驱动：往下走多少就放大多少，封顶 120pt；
+                        // 上滑、横向拖动时高度差为负，钳为 0 不放大。
+                        headerDragPull = min(max(0, value.translation.height), 120)
+                    }
+                    .onEnded { _ in
+                        pullGestureActive = false
+                        pullGestureStartedAtTop = false
+                        // 松手一次弹回静态大小，不用连续动画引擎。
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            headerDragPull = 0
+                        }
+                    }
+            )
 
             if let themeRevealSnapshot {
                 BeansProfileThemeRevealOverlay(
@@ -959,25 +948,7 @@ struct ProfileView: View {
                                 BeansHaptics.tap()
                                 navPlaylist = playlist
                             } label: {
-                                HStack(spacing: 12) {
-                                    CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(playlist.name)
-                                            .font(.system(size: 16))
-                                            .foregroundStyle(coEffectiveLabel)
-                                            .lineLimit(1)
-                                        Text(beansSongCountText(playlist.trackCount))
-                                            .font(.system(size: 13))
-                                            .foregroundStyle(coEffectiveSecondary)
-                                    }
-                                    Spacer(minLength: 8)
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(coEffectiveSecondary)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .contentShape(Rectangle())
+                                CoPlaylistRowLabel(playlist: playlist, label: coEffectiveLabel, secondary: coEffectiveSecondary)
                             }
                             .buttonStyle(.plain)
                             .onLongPressGesture(minimumDuration: 0.5) {
@@ -1189,7 +1160,6 @@ struct ProfileView: View {
             coNeteaseStatsInCard
             if !forceHomeBackdrop {
                 coPlaylistsSection
-                    .id("coMyPlaylistsSection")
             }
         }
         .padding(.horizontal, 16)
@@ -1618,6 +1588,54 @@ private extension ProfileView {
 /// 不是假详情；返回键回到本弹窗列表、再下滑关闭回我的页。
 /// 新建歌单走真实酷狗接口 KugouMusicAPI.createPlaylist（不是本地歌单），建完强制刷新
 /// 我的歌单列表；新建的歌单先本地补进本弹窗列表（防服务端刷新延迟），点进去也是真歌单页。
+/// 歌单行共用行 UI：下方歌单区与歌单弹窗各写各的行是重复，抽成一个只负责
+/// 行内布局的组件，颜色由调用方传（下方行用我的页显式色、弹窗行用系统色），
+/// 行外是 Button 还是 NavigationLink、背景与分隔线仍由调用方定，行为不变。
+private struct CoPlaylistRowLabel: View {
+    let playlist: Playlist
+    let label: Color
+    let secondary: Color
+    var body: some View {
+        HStack(spacing: 12) {
+            CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(playlist.name)
+                    .font(.system(size: 16))
+                    .foregroundStyle(label)
+                    .lineLimit(1)
+                Text(beansSongCountText(playlist.trackCount))
+                    .font(.system(size: 13))
+                    .foregroundStyle(secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+}
+
+/// 歌单弹窗的图标+文字空状态（未同步/暂无歌单两处共用，文案不同而已）。
+private struct CoPlaylistEmptyState: View {
+    let text: String
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "music.note.list")
+                .font(.system(size: 28))
+                .foregroundStyle(Color.beansSecondary)
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundStyle(Color.beansSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 struct CoMyPlaylistsSheet: View {
     let playlists: [Playlist]
     let isLoading: Bool
@@ -1643,51 +1661,15 @@ struct CoMyPlaylistsSheet: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if !hasAnyPlaylists {
-                    VStack(spacing: 8) {
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 28))
-                            .foregroundStyle(Color.beansSecondary)
-                        Text("暂未同步到酷狗歌单，请稍后重试")
-                            .font(.system(size: 15))
-                            .foregroundStyle(Color.beansSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    CoPlaylistEmptyState(text: "暂未同步到酷狗歌单，请稍后重试")
                 } else if displayed.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 28))
-                            .foregroundStyle(Color.beansSecondary)
-                        Text("暂无歌单")
-                            .font(.system(size: 15))
-                            .foregroundStyle(Color.beansSecondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    CoPlaylistEmptyState(text: "暂无歌单")
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
                             ForEach(displayed) { playlist in
                                 NavigationLink(destination: PlaylistView(playlist: playlist)) {
-                                    HStack(spacing: 12) {
-                                        CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text(playlist.name)
-                                                .font(.system(size: 16))
-                                                .foregroundStyle(Color.beansLabel)
-                                                .lineLimit(1)
-                                            Text(beansSongCountText(playlist.trackCount))
-                                                .font(.system(size: 13))
-                                                .foregroundStyle(Color.beansSecondary)
-                                        }
-                                        Spacer(minLength: 8)
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .foregroundStyle(Color.beansSecondary)
-                                    }
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .contentShape(Rectangle())
+                                    CoPlaylistRowLabel(playlist: playlist, label: Color.beansLabel, secondary: Color.beansSecondary)
                                 }
                                 .buttonStyle(.plain)
                                 if playlist.id != displayed.last?.id {
@@ -5498,38 +5480,6 @@ struct AvatarMediaPicker: UIViewControllerRepresentable {
     }
 }
 
-/// 赞助排行前三名的动态边框高光，不参与交互，也不影响列表布局。
-private struct SponsorRankHighlight: View {
-    let color: Color
-    let rank: Int
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
-            GeometryReader { proxy in
-                let phase = proxy.size.width > 1
-                    ? timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2.8) / 2.8
-                    : 0
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(
-                        AngularGradient(
-                            colors: [
-                                color.opacity(0.05),
-                                color.opacity(0.86),
-                                Color.white.opacity(rank == 0 ? 0.88 : 0.56),
-                                color.opacity(0.05)
-                            ],
-                            center: .center,
-                            angle: .degrees(phase * 360 + Double(rank * 80))
-                        ),
-                        lineWidth: rank == 0 ? 1.7 : 1.25
-                    )
-                    .shadow(color: color.opacity(rank == 0 ? 0.42 : 0.28), radius: rank == 0 ? 10 : 7)
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}
 
 // MARK: - 字体文件选择器（UIDocumentPicker 包装，比 SwiftUI fileImporter 稳定：所有文件可选，系统 asCopy 复制到沙盒）
 

@@ -1282,32 +1282,3 @@ private struct RecordModeTonearmPath: Shape {
     }
 }
 
-private struct RecordModeRotationState: Equatable, Sendable {
-    let degreesPerSecond: Double
-    private(set) var isAnimating = false
-    private var baseAngle = 0.0
-    private var startedAt = Date(timeIntervalSinceReferenceDate: 0)
-    private var stoppedAngle = 0.0
-
-    init(degreesPerSecond: Double = 24) {
-        self.degreesPerSecond = degreesPerSecond
-    }
-
-    mutating func start(at date: Date = Date()) {
-        guard !isAnimating else { return }
-        baseAngle = stoppedAngle
-        startedAt = date
-        isAnimating = true
-    }
-
-    mutating func stop(at date: Date = Date()) {
-        guard isAnimating else { return }
-        stoppedAngle = currentAngle(at: date)
-        isAnimating = false
-    }
-
-    func currentAngle(at date: Date) -> Double {
-        guard isAnimating else { return stoppedAngle }
-        return baseAngle + max(0, date.timeIntervalSince(startedAt)) * degreesPerSecond
-    }
-}

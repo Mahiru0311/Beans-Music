@@ -1264,42 +1264,6 @@ private struct BeansPresentedSurfaceClearer: UIViewControllerRepresentable {
     }
 }
 
-struct PlatformPickerSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let current: SearchProvider
-    let providers: [SearchProvider]
-    let onSelect: (SearchProvider) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("选择主页平台")
-                .font(BeansFont.appFont(19, .bold))
-                .foregroundStyle(Color.beansLabel)
-            ForEach(providers) { provider in
-                Button {
-                    onSelect(provider)
-                    dismiss()
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: provider == current ? "checkmark.circle.fill" : provider.icon)
-                            .foregroundStyle(provider == current ? Color.beansAmber : Color.beansComment)
-                        Text(LocalizedStringKey(provider.rawValue))
-                            .font(BeansFont.appFont(15, .medium))
-                            .foregroundStyle(Color.beansLabel)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background { BeansGlass(shape: RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(20)
-        .background(Color.clear)
-        .modifier(PlatformPickerPresentation(providersCount: providers.count))
-    }
-}
 
 private struct ClearSheetBackground: ViewModifier {
     @ViewBuilder
@@ -1518,17 +1482,6 @@ private struct PlatformPickerPresentation: ViewModifier {
     }
 }
 
-private struct VisualEffectBlur: UIViewRepresentable {
-    var style: UIBlurEffect.Style
-
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        UIVisualEffectView(effect: UIBlurEffect(style: style))
-    }
-
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
-        uiView.effect = UIBlurEffect(style: style)
-    }
-}
 
 // MARK: - 系统 TabBar 清透风格（实例级配置）
 // 系统 TabView 创建之后，`UITabBar.appearance()` 全局代理对已存在的实例不再生效，
@@ -1645,19 +1598,4 @@ private struct LegacyTabBarPlatformShadow: ViewModifier {
     }
 }
 
-struct AnnouncementVideoView: View {
-    let url: URL
-    @State private var player: AVPlayer
-
-    init(url: URL) {
-        self.url = url
-        _player = State(initialValue: AVPlayer(url: url))
-    }
-
-    var body: some View {
-        VideoPlayer(player: player)
-            .onAppear { player.play() }
-            .onDisappear { player.pause() }
-    }
-}
 
