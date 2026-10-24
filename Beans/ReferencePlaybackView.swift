@@ -109,15 +109,16 @@ struct ReferencePlaybackView: View {
                                 .transition(.opacity)
                         } else if showLyrics {
                             lyricsPage
-                                // 歌词页本身不带转场：页眉小封面淡入，文字与列表各自淡入淡出。
+                                // 整页淡入；封面页整页四边同时均匀缩放加淡入，同一弹簧。
+                                .transition(.opacity)
                         } else {
                             coverPage(size: geometry.size)
-                                // 封面页本身不带转场：大封面原地缩放淡入淡出，标题与预览各自淡入淡出。
+                                .transition(.scale(scale: 0.55).combined(with: .opacity))
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 封面切歌词用唱片同款淡入淡出（0.22s easeInOut），不再缩放、不再弹簧。
-                    .animation(.easeInOut(duration: 0.22), value: showLyrics)
+                    // 封面切歌词：整页缩放淡入淡出，同一弹簧；子项不再各自带转场。
+                    .animation(.spring(response: 0.55, dampingFraction: 0.85), value: showLyrics)
                     .animation(.easeInOut(duration: 0.22), value: showQueue)
 
                     playbackControls(bottomInset: geometry.safeAreaInsets.bottom)
@@ -197,8 +198,7 @@ struct ReferencePlaybackView: View {
                 playsCoverVideoAudio: true
             )
             .frame(width: artworkSize, height: artworkSize)
-            // 封面切歌词用唱片同款纯淡入淡出，不缩放。
-            .transition(.opacity)
+            // 转场在整页上，不在封面子项上。
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .shadow(color: .black.opacity(0.46), radius: 36, y: 18)
             .scaleEffect(player.isPlaying ? 1 : 0.965)
@@ -208,7 +208,7 @@ struct ReferencePlaybackView: View {
             .onTapGesture {
                 // player 前端同款：点封面进歌词；歌词页眉的小封面点回封面（见 lyricsHeader）。
                 CoHaptics.tap()
-                withAnimation(.easeInOut(duration: 0.22)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                     showLyrics = true
                 }
             }
@@ -246,21 +246,18 @@ struct ReferencePlaybackView: View {
             .frame(maxWidth: 420)
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
-            .transition(.opacity)
 
             MiniLyricsPreview(lines: previewLyrics, primary: primaryColor, secondary: secondaryColor) {
                 CoHaptics.tap()
-                withAnimation(.easeInOut(duration: 0.22)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                     showLyrics = true
                 }
             }
             .padding(.top, 18)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.previewLyric)))
-            .transition(.opacity)
             } else {
                 compactTrackHeader
                     .padding(.top, 22)
-                    .transition(.opacity)
             }
 
             Spacer(minLength: 0)
@@ -318,7 +315,6 @@ struct ReferencePlaybackView: View {
 
             if lyrics.isEmpty {
                 emptyLyricsView
-                    .transition(.opacity)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
@@ -394,7 +390,6 @@ struct ReferencePlaybackView: View {
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
                 }
-                .transition(.opacity)
             }
         }
     }
@@ -403,13 +398,12 @@ struct ReferencePlaybackView: View {
         HStack(spacing: 12) {
             Button {
                 CoHaptics.tap()
-                withAnimation(.easeInOut(duration: 0.22)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                     showLyrics = false
                 }
             } label: {
                 CoverImage(url: displayCoverURL, size: 48, cornerRadius: 10)
                     .shadow(color: .black.opacity(0.26), radius: 9, y: 4)
-                    .transition(.opacity)
             }
             .buttonStyle(GlassPressButtonStyle(scale: 0.94))
 
@@ -434,7 +428,6 @@ struct ReferencePlaybackView: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onArtist)
             }
-            .transition(.opacity)
             Spacer(minLength: 0)
             HStack(spacing: 0) {
                 favoriteActionButton()
@@ -460,7 +453,6 @@ struct ReferencePlaybackView: View {
                         .contentShape(Rectangle())
                 }
             }
-            .transition(.opacity)
         }
     }
 
@@ -484,7 +476,7 @@ struct ReferencePlaybackView: View {
                 container: PlayerLayoutEntry()
             ),
             onLyrics: {
-                withAnimation(.easeInOut(duration: 0.22)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                     if showQueue {
                         showQueue = false
                         showLyrics = true
@@ -616,7 +608,7 @@ struct ReferencePlaybackView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             CoHaptics.tap()
-            withAnimation(.easeInOut(duration: 0.22)) {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
                 showLyrics = false
             }
         }

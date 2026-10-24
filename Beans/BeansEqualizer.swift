@@ -83,6 +83,7 @@ final class CoEqualizer: ObservableObject {
     private var processingGains: [Double] = Array(repeating: 0, count: 10)
     private var processingPreampLinear: Float = 1
     private var processingFormatIsFloat32 = false
+    private var processingFormatIsInt16 = false
     private var sampleRate: Double = 44_100
     private var coefficients: [BiquadCoefficients] = Array(repeating: .identity, count: 10)
     private var filterStates: [BiquadState] = Array(repeating: .zero, count: 80)
@@ -356,6 +357,9 @@ final class CoEqualizer: ObservableObject {
         processingFormatIsFloat32 = format.mFormatID == kAudioFormatLinearPCM
             && format.mBitsPerChannel == 32
             && (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
+        processingFormatIsInt16 = format.mFormatID == kAudioFormatLinearPCM
+            && format.mBitsPerChannel == 16
+            && (format.mFormatFlags & kAudioFormatFlagIsFloat) == 0
         filterStates = Array(repeating: .zero, count: Self.maximumChannels * Self.bandFrequencies.count)
         rebuildCoefficientsLocked(using: processingGains)
         configurationLock.unlock()
@@ -365,7 +369,8 @@ final class CoEqualizer: ObservableObject {
         guard frameCount > 0 else { return }
         configurationLock.lock()
         defer { configurationLock.unlock() }
-        guard processingEnabled, processingFormatIsFloat32 else { return }
+        // tap 可能是 Float32 也可能是 Int16（不同解码格式）：只认 Float32 会让另一路全程静默。
+        guard processingEnabled, processingFormatIsFloat32 || processingFormatIsInt16 else { return }
 
         let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
         var firstChannelIndex = 0
@@ -374,16 +379,41 @@ final class CoEqualizer: ObservableObject {
             defer { firstChannelIndex += channelCount }
             guard let rawData = buffer.mData else { continue }
 
-            let samples = rawData.assumingMemoryBound(to: Float.self)
-            let availableFrames = Int(buffer.mDataByteSize) / (MemoryLayout<Float>.size * channelCount)
-            let framesToProcess = min(frameCount, availableFrames)
-            guard framesToProcess > 0 else { continue }
+            if processingFormatIsFloat32 {
+                let samples = rawData.assumingMemoryBound(to: Float.self)
+                let availableFrames = Int(buffer.mDataByteSize) / (MemoryLayout<Float>.size * channelCount)
+                let framesToProcess = min(frameCount, availableFrames)
+                guard framesToProcess > 0 else { continue }
+                processFloatSamples(samples, frameCount: framesToProcess, channelCount: channelCount, firstChannelIndex: firstChannelIndex)
+            } else {
+                let intSamples = rawData.assumingMemoryBound(to: Int16.self)
+                let availableFrames = Int(buffer.mDataByteSize) / (MemoryLayout<Int16>.size * channelCount)
+                let framesToProcess = min(frameCount, availableFrames)
+                guard framesToProcess > 0 else { continue }
+                var floatSamples = [Float](repeating: 0, count: framesToProcess * channelCount)
+                for i in 0..<(framesToProcess * channelCount) {
+                    floatSamples[i] = Float(intSamples[i]) / 32768
+                }
+                floatSamples.withUnsafeMutableBufferPointer { pointer in
+                    guard let base = pointer.baseAddress else { return }
+                    processFloatSamples(base, frameCount: framesToProcess, channelCount: channelCount, firstChannelIndex: firstChannelIndex)
+                }
+                for i in 0..<(framesToProcess * channelCount) {
+                    let clamped = max(-1, min(1, floatSamples[i]))
+                    intSamples[i] = Int16(clamping: Int(clamped * 32767))
+                }
+            }
+        }
+    }
+
+    /// Float32 采样的均衡 + 3D 处理本体；Int16 先转 Float 走同一套，效果与 Float 路一致。
+    private func processFloatSamples(_ samples: UnsafeMutablePointer<Float>, frameCount: Int, channelCount: Int, firstChannelIndex: Int) {
 
             if isEnabled {
                 for channelOffset in 0..<channelCount {
                     let channel = min(firstChannelIndex + channelOffset, Self.maximumChannels - 1)
                     let stateOffset = channel * Self.bandFrequencies.count
-                    for frame in 0..<framesToProcess {
+                    for frame in 0..<frameCount {
                         let sampleIndex = frame * channelCount + channelOffset
                         var sample = samples[sampleIndex] * processingPreampLinear
                         for bandIndex in coefficients.indices {
@@ -408,7 +438,7 @@ final class CoEqualizer: ObservableObject {
                 // 不是原来那种耳机上几乎听不出来的加宽。6 秒摆一个来回，单耳最低留 0.12 不全哑；
                 // 只对立体声生效，单声道/多声道不动。
                 let phaseStep = 2 * Double.pi / max(sampleRate * 6, 1)
-                for frame in 0..<framesToProcess {
+                for frame in 0..<frameCount {
                     surroundPanPhase += phaseStep
                     if surroundPanPhase > 2 * Double.pi { surroundPanPhase -= 2 * Double.pi }
                     let pan = sin(surroundPanPhase) // -1 全左 … +1 全右
@@ -422,7 +452,6 @@ final class CoEqualizer: ObservableObject {
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
             }
-        }
     }
 
 }
