@@ -263,7 +263,7 @@ struct CoProfileShortcutButton: View {
                 .buttonStyle(GlassPressButtonStyle(scale: 0.92))
                 .frame(width: 46, height: 46)
                 .fixedSize()
-                .accessibilityLabel(beansLocalized("我的", "Profile"))
+                .accessibilityLabel(coLocalized("我的", "Profile"))
             case .themeToggle:
                 CoThemeToggleButton(colorScheme: colorScheme)
             case .hidden:
@@ -323,7 +323,7 @@ struct CoThemeToggleButton: View {
                     }
                 }
         )
-        .accessibilityLabel(beansLocalized("切换浅深色模式", "Toggle light and dark mode"))
+        .accessibilityLabel(coLocalized("切换浅深色模式", "Toggle light and dark mode"))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
             CoHaptics.tap()

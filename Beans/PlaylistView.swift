@@ -249,7 +249,7 @@ struct PlaylistView: View {
                 title: "今日推荐",
                 sourceName: "酷狗音乐",
                 coverURL: tracks.first?.coverURL,
-                description: beansLocalized(
+                description: coLocalized(
                     "为你整理的每日推荐歌曲，随时发现新的喜欢。",
                     "Daily recommendations picked to help you discover your next favorite songs."
                 ),
@@ -259,7 +259,7 @@ struct PlaylistView: View {
         case .topList(let info):
             let description = (info.chartDescription ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return CoPlaylistHeaderData(
-                title: beansChartName(info.name),
+                title: coChartName(info.name),
                 sourceName: "酷狗音乐",
                 coverURL: info.coverURL,
                 description: description.isEmpty ? nil : description,
@@ -435,7 +435,7 @@ struct PlaylistView: View {
                 .font(CoFont.appFont(16, .medium))
                 .foregroundStyle(.white.opacity(0.85))
             // 首数读已加载的真实歌曲数，不读歌单宣称的首数、不编数字。
-            Text(beansSongCountText(tracks.count))
+            Text(coSongCountText(tracks.count))
                 .font(CoFont.appFont(14))
                 .foregroundStyle(.white.opacity(0.6))
         }
@@ -542,7 +542,7 @@ struct PlaylistView: View {
                 // 所以用空 prompt + 叠加的白色提示，输入后文字仍是纯白。
                 ZStack(alignment: .leading) {
                     if searchText.isEmpty {
-                        Text(beansLocalized("搜索歌曲", "Search songs"))
+                        Text(coLocalized("搜索歌曲", "Search songs"))
                             .font(CoFont.appFont(16))
                             .foregroundStyle(.white.opacity(0.6))
                             .allowsHitTesting(false)

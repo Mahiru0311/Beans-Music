@@ -337,7 +337,7 @@ struct LibraryView: View {
                                         .font(CoFont.appFont(15, .medium))
                                         .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
-                                    Text(beansSongCountText(playlist.trackCount))
+                                    Text(coSongCountText(playlist.trackCount))
                                         .font(CoFont.appFont(12))
                                         .foregroundStyle(Color.coComment)
                                 }

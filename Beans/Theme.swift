@@ -5,75 +5,75 @@ import CoreImage
 // MARK: - 动态主题色（跟随系统外观或手动切换）
 
 extension UIColor {
-    static func beansDynamic(light: UIColor, dark: UIColor) -> UIColor {
+    static func coDynamic(light: UIColor, dark: UIColor) -> UIColor {
         UIColor { traits in
             traits.userInterfaceStyle == .dark ? dark : light
         }
     }
 
-    static let beansBackground = beansDynamic(
+    static let coBackground = coDynamic(
         light: UIColor(red: 0.949, green: 0.949, blue: 0.961, alpha: 1),  // #F2F2F7
         dark: UIColor(red: 0.039, green: 0.039, blue: 0.047, alpha: 1)    // #0A0A0C
     )
-    static let beansCard = beansDynamic(
+    static let coCard = coDynamic(
         light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),
         dark: UIColor(red: 0.110, green: 0.110, blue: 0.118, alpha: 1)    // #1C1C1E
     )
-    private static let beansDefaultLabel = beansDynamic(
+    private static let coDefaultLabel = coDynamic(
         light: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1),
         dark: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1)
     )
-    static var beansLabel: UIColor {
+    static var coLabel: UIColor {
         if let raw = UserDefaults.standard.string(forKey: "co.labelColorHex"),
            let custom = UIColor(hex: raw) {
             return custom
         }
-        return beansDefaultLabel
+        return coDefaultLabel
     }
-    static let beansSecondary = beansDynamic(
+    static let coSecondary = coDynamic(
         light: UIColor(red: 0.424, green: 0.424, blue: 0.439, alpha: 1),  // #6C6C70
         dark: UIColor(red: 0.596, green: 0.596, blue: 0.624, alpha: 1)    // #98989F
     )
     /// 全局着色（跟随配色主题：浅色用深色调保证对比度，深色用亮色调保证可读性）
-    static var beansAmber: UIColor {
+    static var coAmber: UIColor {
         if let custom = ThemeStore.shared.customAccentHex, let c = UIColor(hex: custom) {
-            return beansDynamic(light: c.shaded(0.25), dark: c)
+            return coDynamic(light: c.shaded(0.25), dark: c)
         }
         let accent = ThemeStore.shared.accent
-        return beansDynamic(light: accent.tintLight, dark: accent.tintDark)
+        return coDynamic(light: accent.tintLight, dark: accent.tintDark)
     }
-    static let beansSage = beansDynamic(
+    static let coSage = coDynamic(
         light: UIColor(red: 0.384, green: 0.482, blue: 0.310, alpha: 1),
         dark: UIColor(red: 0.560, green: 0.650, blue: 0.480, alpha: 1)
     )
     /// 液态玻璃基底填充：修复 `.glassEffect` 配 `Color.clear` 时玻璃无内容可采样、
     /// 渲染成灰糊块/模糊失效的问题（玻璃效果需要一个非透明基底色）。
-    static let beansGlassFill = beansDynamic(
+    static let coGlassFill = coDynamic(
         light: UIColor(white: 0.96, alpha: 0.55),
         dark: UIColor(white: 0.07, alpha: 0.55)
     )
 }
 
 extension Color {
-    static let beansBackground = Color(uiColor: .coBackground)
-    static let beansCard = Color(uiColor: .coCard)
-    static var beansLabel: Color { Color(uiColor: .coLabel) }
-    static let beansSecondary = Color(uiColor: .coSecondary)
+    static let coBackground = Color(uiColor: .coBackground)
+    static let coCard = Color(uiColor: .coCard)
+    static var coLabel: Color { Color(uiColor: .coLabel) }
+    static let coSecondary = Color(uiColor: .coSecondary)
 
     /// 全局说明文字（注释）颜色：可在「我的 → 外观」中自定义；默认跟随次要文字色
-    static var beansComment: Color {
+    static var coComment: Color {
         if let raw = UserDefaults.standard.string(forKey: "co.commentColorHex"),
            let c = Color(hex: raw) { return c }
         return .coSecondary
     }
     /// 全局着色：跟随当前配色主题即时变化（所有页面统一生效）
-    static var beansAmber: Color { Color(uiColor: .coAmber) }
-    static let beansSage = Color(uiColor: .coSage)
-    static let beansGlassFill = Color(uiColor: .coGlassFill)
-    static let beansThemeRed = Color(red: 0.93, green: 0.25, blue: 0.22)
-    static let beansAppleMusicAccentFallback = Color(red: 1.0, green: 0.28, blue: 0.36)
+    static var coAmber: Color { Color(uiColor: .coAmber) }
+    static let coSage = Color(uiColor: .coSage)
+    static let coGlassFill = Color(uiColor: .coGlassFill)
+    static let coThemeRed = Color(red: 0.93, green: 0.25, blue: 0.22)
+    static let coAppleMusicAccentFallback = Color(red: 1.0, green: 0.28, blue: 0.36)
     /// 当前配色主题的高亮色（播放器进度点 / 光斑 / 歌词高亮等）
-    static var beansHighlight: Color {
+    static var coHighlight: Color {
         ThemeStore.shared.customAccent ?? AccentTheme.current.highlight
     }
 }
@@ -310,16 +310,16 @@ enum CoCoverPlayerStyle: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .appleMusic: return "Apple Music"
-        case .vinyl: return beansLocalized("黑胶唱盘", "Vinyl Turntable")
-        case .record: return beansLocalized("唱片模式", "Record Mode")
+        case .vinyl: return coLocalized("黑胶唱盘", "Vinyl Turntable")
+        case .record: return coLocalized("唱片模式", "Record Mode")
         }
     }
 
     var subtitle: String {
         switch self {
         case .appleMusic: return "大封面、细进度条和简洁播放控制"
-        case .vinyl: return beansLocalized("黑胶唱片、唱臂和旋转唱盘", "Vinyl record, tonearm, and spinning turntable")
-        case .record: return beansLocalized("参考唱片界面、歌词、队列和播放控制", "Reference record interface with lyrics, queue, and playback controls")
+        case .vinyl: return coLocalized("黑胶唱片、唱臂和旋转唱盘", "Vinyl record, tonearm, and spinning turntable")
+        case .record: return coLocalized("参考唱片界面、歌词、队列和播放控制", "Reference record interface with lyrics, queue, and playback controls")
         }
     }
 
@@ -902,7 +902,7 @@ enum AccentTheme {
 
 extension LinearGradient {
     /// 暖调咖啡色系背景
-    static let beansBackdrop = LinearGradient(
+    static let coBackdrop = LinearGradient(
         colors: [
             Color(uiColor: .coBackground),
             Color(uiColor: .coBackground).opacity(0.72),
@@ -912,7 +912,7 @@ extension LinearGradient {
     )
 
     /// 强调色渐变（跟随配色主题）
-    static var beansAccent: LinearGradient {
+    static var coAccent: LinearGradient {
         LinearGradient(
             colors: AccentTheme.current.gradientColors,
             startPoint: .topLeading,
@@ -939,7 +939,7 @@ struct CoCardShadowModifier: ViewModifier {
 
 extension View {
     /// 卡片阴影：浅色模式柔和阴影提升层次，深色模式轻微阴影保持立体
-    func beansCardShadow(radius: CGFloat = 9, y: CGFloat = 3) -> some View {
+    func coCardShadow(radius: CGFloat = 9, y: CGFloat = 3) -> some View {
         modifier(CoCardShadowModifier(radius: radius, y: y))
     }
 }

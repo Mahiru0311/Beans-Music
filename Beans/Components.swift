@@ -8,7 +8,7 @@ private struct CoSharedRootBackdropKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var beansUsesSharedRootBackdrop: Bool {
+    var coUsesSharedRootBackdrop: Bool {
         get { self[CoSharedRootBackdropKey.self] }
         set { self[CoSharedRootBackdropKey.self] = newValue }
     }
@@ -37,13 +37,13 @@ import CoreImage.CIFilterBuiltins
 
 extension View {
     /// 在紧凑宽度保持手机排版，在规则宽度适当放宽内容区域。
-    func beansAdaptiveContentWidth(compact: CGFloat = 860, regular: CGFloat = 1100) -> some View {
+    func coAdaptiveContentWidth(compact: CGFloat = 860, regular: CGFloat = 1100) -> some View {
         modifier(CoAdaptiveContentWidthModifier(compact: compact, regular: regular))
     }
 
     /// 横向卡片列表的滚动裁剪：卡片自然延伸。
     @ViewBuilder
-    func beansCompatScrollClipDisabled() -> some View {
+    func coCompatScrollClipDisabled() -> some View {
         scrollClipDisabled()
     }
 }
@@ -63,15 +63,15 @@ private struct CoAdaptiveContentWidthModifier: ViewModifier {
 
 // MARK: - 工具
 
-func beansSongCountText(_ count: Int) -> String {
-    beansLocalized("\(count) 首", "\(count) songs")
+func coSongCountText(_ count: Int) -> String {
+    coLocalized("\(count) 首", "\(count) songs")
 }
 
-func beansLocalSongCountText(_ count: Int) -> String {
-    beansLocalized("\(count) 首 · 本机", "\(count) songs · On device")
+func coLocalSongCountText(_ count: Int) -> String {
+    coLocalized("\(count) 首 · 本机", "\(count) songs · On device")
 }
 
-func beansTimeString(_ seconds: Double) -> String {
+func coTimeString(_ seconds: Double) -> String {
     let total = max(0, Int(seconds))
     return String(format: "%d:%02d", total / 60, total % 60)
 }
@@ -144,10 +144,6 @@ struct GlassBackdrop: View {
     var ignoreCustomBackground: Bool = false
     /// 主页壁纸额外模糊半径
     var wallpaperBlur: CGFloat = 0
-    /// 是否在这个背景宿主中渲染动态壁纸。设置页使用静态背景，避免
-    /// iOS 17+ 的 layerEffect 把 Water 的源图层带入设置页命中测试。
-    var includeDynamicWallpaper: Bool = true
-
     /// 当前页面是否启用自定义背景：同步开启时全部页面生效，关闭时仅主页生效
     private var showCustomBackground: Bool {
         !ignoreCustomBackground && (theme.backgroundSyncAll || homeMode)
@@ -164,21 +160,12 @@ struct GlassBackdrop: View {
         theme.uiStyle
     }
 
-    private var isDynamicWallpaperActive: Bool { false }
-
-    @ViewBuilder
-    private var dynamicWallpaperLayer: some View {
-        Color.clear
-    }
-
     var body: some View {
         let _ = theme.accent
         let activeBackgroundColor = theme.customBackground(for: colorScheme) ?? customColor
         let activeBackgroundImage = theme.customBackgroundImage(for: colorScheme)
         ZStack {
-            if isDynamicWallpaperActive {
-                dynamicWallpaperLayer
-            } else if uiStyle == .nativeClean, !showCustomBackground || (activeBackgroundImage == nil && activeBackgroundColor == nil) {
+            if uiStyle == .nativeClean, !showCustomBackground || (activeBackgroundImage == nil && activeBackgroundColor == nil) {
                 Color(UIColor.systemBackground)
             } else if let image = activeBackgroundImage, showCustomBackground {
                 WallpaperImage(image: image, blurRadius: wallpaperBlur)
@@ -191,7 +178,7 @@ struct GlassBackdrop: View {
             } else {
                 LinearGradient.coBackdrop
             }
-            if uiStyle != .nativeClean, !isDynamicWallpaperActive {
+            if uiStyle != .nativeClean {
                 Circle()
                     .fill(Color.coAmber.opacity(0.14))
                     .frame(width: 340, height: 340)
@@ -497,7 +484,7 @@ struct CoNavigationStackWithPath<Route: Hashable, Content: View>: View {
     }
 }
 
-private var beansScrollFadeObserverAssociationKey: UInt8 = 0
+private var coScrollFadeObserverAssociationKey: UInt8 = 0
 
 private final class CoScrollFadeObserver: NSObject {
     private weak var scrollView: UIScrollView?
@@ -574,13 +561,13 @@ private enum CoScrollFadeInstaller {
 
         func visit(_ view: UIView) {
             if let scrollView = view as? UIScrollView {
-                if let observer = objc_getAssociatedObject(scrollView, &beansScrollFadeObserverAssociationKey) as? CoScrollFadeObserver {
+                if let observer = objc_getAssociatedObject(scrollView, &coScrollFadeObserverAssociationKey) as? CoScrollFadeObserver {
                     observer.refresh()
                 } else {
                     let observer = CoScrollFadeObserver(scrollView: scrollView)
                     objc_setAssociatedObject(
                         scrollView,
-                        &beansScrollFadeObserverAssociationKey,
+                        &coScrollFadeObserverAssociationKey,
                         observer,
                         .OBJC_ASSOCIATION_RETAIN_NONATOMIC
                     )
@@ -647,7 +634,7 @@ private struct CoNavigationSurfaceClearer: UIViewControllerRepresentable {
 
 extension View {
     /// 类型化导航目的地。
-    func beansNavigationDestination<Route: Hashable, Destination: View>(
+    func coNavigationDestination<Route: Hashable, Destination: View>(
         for route: Route.Type,
         @ViewBuilder destination: @escaping (Route) -> Destination
     ) -> some View {
@@ -730,25 +717,25 @@ struct CoSheetPresentationSurfaceClearer: UIViewControllerRepresentable {
 extension View {
     /// 主页在 iOS 26+ 使用透明导航栏，让壁纸和内容可延伸到顶部安全区域。
     @ViewBuilder
-    func beansHomeNavigationBarTransparent() -> some View {
+    func coHomeNavigationBarTransparent() -> some View {
         self.toolbarBackground(.hidden, for: .navigationBar)
     }
 
     /// 隐藏滚动条
     @ViewBuilder
-    func beansScrollIndicatorsHidden() -> some View {
+    func coScrollIndicatorsHidden() -> some View {
         self.scrollIndicators(.hidden)
     }
 
     /// 滚动时收起键盘
     @ViewBuilder
-    func beansScrollDismissesKeyboard() -> some View {
+    func coScrollDismissesKeyboard() -> some View {
         self.scrollDismissesKeyboard(.interactively)
     }
 
     /// 隐藏滚动内容默认背景
     @ViewBuilder
-    func beansScrollContentBackgroundHidden() -> some View {
+    func coScrollContentBackgroundHidden() -> some View {
         self.scrollContentBackground(.hidden)
     }
 

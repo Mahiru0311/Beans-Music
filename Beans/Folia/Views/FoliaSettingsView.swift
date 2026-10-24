@@ -71,7 +71,7 @@ struct FoliaSettingsView: View {
                         set: { theme.setLiquidGlassColor("#" + UIColor($0).hexString) }
                     ), supportsOpacity: false)
                     Button("恢复清透颜色") { theme.clearLiquidGlassColor() }
-                    Text("与 Co 设置共用，动态壁纸的颜色、速度和扰动参数仍在原设置页调整。")
+                    Text("与 Co 设置共用。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

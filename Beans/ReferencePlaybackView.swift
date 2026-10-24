@@ -671,7 +671,7 @@ struct ReferencePlaybackView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if isSelected {
                     Spacer(minLength: 8)
-                    Text(beansTimeString(line.time))
+                    Text(coTimeString(line.time))
                         .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondaryColor.opacity(0.82))
                     Button {
@@ -1174,7 +1174,7 @@ struct ReferenceScrubber: View {
                 )
                 .overlay(alignment: .topLeading) {
                     if scrubbing {
-                        Text(beansTimeString(scrubValue))
+                        Text(coTimeString(scrubValue))
                             .font(CoFont.appFont(11, .semibold, .default))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 9)
@@ -1188,9 +1188,9 @@ struct ReferenceScrubber: View {
             .frame(height: 30)
 
             HStack {
-                Text(beansTimeString(scrubbing ? scrubValue : clock.progress))
+                Text(coTimeString(scrubbing ? scrubValue : clock.progress))
                 Spacer()
-                Text(beansTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
+                Text(coTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
             }
             .font(CoFont.appFont(11, .regular, .default))
             .foregroundStyle(.white.opacity(0.52))
@@ -1365,7 +1365,7 @@ struct AppleMusicLyricsSection: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if isSelected {
                     Spacer(minLength: 8)
-                    Text(beansTimeString(line.time))
+                    Text(coTimeString(line.time))
                         .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondary.opacity(0.82))
                     Button {

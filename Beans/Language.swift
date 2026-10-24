@@ -16,12 +16,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var locale: Locale { Locale(identifier: rawValue) }
 }
 
-func beansLocalized(_ chinese: String, _ english: String) -> String {
+func coLocalized(_ chinese: String, _ english: String) -> String {
     UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue ? english : chinese
 }
 
 
-func beansChartName(_ name: String) -> String {
+func coChartName(_ name: String) -> String {
     guard UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue else { return name }
     let replacements: [(String, String)] = [
         ("巅峰榜·流行指数", "Peak Chart · Popularity"),
@@ -99,7 +99,7 @@ func beansChartName(_ name: String) -> String {
     return result
 }
 
-func beansChartSubtitle(_ subtitle: String) -> String {
+func coChartSubtitle(_ subtitle: String) -> String {
     guard !subtitle.isEmpty else { return subtitle }
     guard UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue else { return subtitle }
     let replacements: [(String, String)] = [
@@ -126,18 +126,3 @@ func beansChartSubtitle(_ subtitle: String) -> String {
     return result
 }
 
-func beansLocalizedSettingValue(_ value: String) -> String {
-    guard UserDefaults.standard.string(forKey: "co.language") == AppLanguage.english.rawValue else { return value }
-    switch value {
-    case "关闭": return "Off"
-    case "开启": return "On"
-    case "跟随": return "Follow"
-    case "自动": return "Automatic"
-    case "默认": return "Default"
-    default:
-        if value.hasSuffix(" 行") { return String(value.dropLast(2)) + " lines" }
-        if value.hasPrefix("提前 ") { return "Advance " + String(value.dropFirst(3)) }
-        if value.hasPrefix("延后 ") { return "Delay " + String(value.dropFirst(3)) }
-        return value
-    }
-}

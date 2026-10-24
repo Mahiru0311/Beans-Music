@@ -302,7 +302,7 @@ enum CustomSongCoverError: LocalizedError {
 }
 
 extension Notification.Name {
-    static let beansCustomSongCoverDidChange = Notification.Name("co.customSongCoverDidChange")
+    static let coCustomSongCoverDidChange = Notification.Name("co.customSongCoverDidChange")
 }
 
 struct CustomSongCoverPicker: View {

@@ -93,7 +93,7 @@ struct ArtistHomeSheet: View {
     @ViewBuilder
     private var artistPage: some View {
         ZStack {
-            // 新版底：封面取色 tint（图到了才变，没图时回落旧深褐底），整页强制深色外观；行文字不用 beansLabel/beansComment
+            // 新版底：封面取色 tint（图到了才变，没图时回落旧深褐底），整页强制深色外观；行文字不用 coLabel/coComment
             // （会被自定义主文字色覆盖成黑字），一律用显式白字系列；
             // 不再用主页壁纸 GlassBackdrop，歌手页不再是“主页壁纸 + 居中大封面/小头像横排”两套。
             detailPageTint.ignoresSafeArea()
@@ -122,7 +122,7 @@ struct ArtistHomeSheet: View {
                                 // 不再用导航栏抽屉（抽屉在滚动时改变导航栏高度，是上滑脱节的嫌疑点之一）。
                                 // 无热门歌曲时不显示（搜了也没东西可筛）。
                                 if !hotSongs.isEmpty {
-                                    CoDetailSearchRow(prompt: beansLocalized("搜索歌手歌曲", "Search artist songs"), text: $searchText)
+                                    CoDetailSearchRow(prompt: coLocalized("搜索歌手歌曲", "Search artist songs"), text: $searchText)
                                 }
                                 hotSongsSection
                                 albumsSection
@@ -157,7 +157,7 @@ struct ArtistHomeSheet: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .padding(.horizontal, 24)
-            Text(beansLocalized("热门歌曲 \(hotSongs.count) 首 · 专辑 \(albums.count) 张", "Popular songs: \(hotSongs.count) · Albums: \(albums.count)"))
+            Text(coLocalized("热门歌曲 \(hotSongs.count) 首 · 专辑 \(albums.count) 张", "Popular songs: \(hotSongs.count) · Albums: \(albums.count)"))
                 .font(CoFont.appFont(14))
                 .foregroundStyle(.white.opacity(0.6))
         }

@@ -13,10 +13,10 @@ enum CoAudioQuality: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .standard: return beansLocalized("标准", "Standard")
-        case .higher: return beansLocalized("更高", "Higher")
-        case .exhigh: return beansLocalized("极高", "Very High")
-        case .lossless: return beansLocalized("无损", "Lossless")
+        case .standard: return coLocalized("标准", "Standard")
+        case .higher: return coLocalized("更高", "Higher")
+        case .exhigh: return coLocalized("极高", "Very High")
+        case .lossless: return coLocalized("无损", "Lossless")
         case .hires: return "Hi-Res"
         case .master: return "Master"
         }
@@ -74,14 +74,14 @@ enum ThirdPartyAudioQuality: String, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
-        case .kb128: return beansLocalized("128k", "128k")
-        case .kb320: return beansLocalized("320k", "320k")
-        case .flac: return beansLocalized("无损 FLAC", "FLAC")
-        case .flac24bit: return beansLocalized("FLAC 24 位", "FLAC 24-bit")
-        case .hires: return beansLocalized("Hi-Res", "Hi-Res")
-        case .atmos: return beansLocalized("Atmos", "Atmos")
-        case .atmosPlus: return beansLocalized("Atmos+", "Atmos+")
-        case .master: return beansLocalized("Master", "Master")
+        case .kb128: return coLocalized("128k", "128k")
+        case .kb320: return coLocalized("320k", "320k")
+        case .flac: return coLocalized("无损 FLAC", "FLAC")
+        case .flac24bit: return coLocalized("FLAC 24 位", "FLAC 24-bit")
+        case .hires: return coLocalized("Hi-Res", "Hi-Res")
+        case .atmos: return coLocalized("Atmos", "Atmos")
+        case .atmosPlus: return coLocalized("Atmos+", "Atmos+")
+        case .master: return coLocalized("Master", "Master")
         }
     }
 
@@ -441,7 +441,7 @@ struct Album: Identifiable, Hashable, Codable {
     var releaseCaption: String {
         if let releaseDate, !releaseDate.isEmpty { return releaseDate }
         if let releaseType, !releaseType.isEmpty { return releaseType }
-        return trackCount.map(beansSongCountText) ?? ""
+        return trackCount.map(coSongCountText) ?? ""
     }
 
 

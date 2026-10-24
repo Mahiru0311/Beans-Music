@@ -110,7 +110,7 @@ struct LocalMusicSection: View {
                                         .foregroundStyle(Color.coLabel)
                                         .lineLimit(1)
                                     Text([
-                                        beansLocalSongCountText(playlist.songs.count),
+                                        coLocalSongCountText(playlist.songs.count),
                                         playlist.sourceName
                                     ].compactMap { $0 }.joined(separator: " · "))
                                         .font(CoFont.appFont(12))
@@ -240,7 +240,7 @@ private struct LocalPlaylistOrderSheet: View {
                         Text(playlist.name)
                             .foregroundStyle(Color.coLabel)
                         Spacer()
-                        Text(beansLocalSongCountText(playlist.songs.count))
+                        Text(coLocalSongCountText(playlist.songs.count))
                             .font(CoFont.appFont(12))
                             .foregroundStyle(Color.coComment)
                     }
@@ -351,7 +351,7 @@ struct LocalPlaylistDetailSheet: View {
                         // + 控制排同款尺寸（播放胶囊 168×50pt、圆键 48×48pt、间距 12pt），
                         // 且不再按沉浸开关分叉。颜色仍走本页 GlassBackdrop 自适应体系
                         // （不像歌单页那样强制深色底），保证浅色下也可读；
-                        // 随机键的圆键因此用自适应玻璃 + beansLabel 图标，而不是歌单页
+                        // 随机键的圆键因此用自适应玻璃 + coLabel 图标，而不是歌单页
                         // 那支深色底专用的白图标圆键（浅色下白图标会看不见）。
                         // 与歌单页逻辑的差异点（不要含糊说“已统一”）：封面/标题/控制排/
                         // 搜索行都是 List 里的行，随列表一起滚动，上滑时它们与歌曲行是
@@ -384,7 +384,7 @@ struct LocalPlaylistDetailSheet: View {
                                     .foregroundStyle(Color.coLabel)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
-                                Text(beansSongCountText(playlist.songs.count))
+                                Text(coSongCountText(playlist.songs.count))
                                     .font(CoFont.appFont(14))
                                     .foregroundStyle(Color.coComment)
                             }
@@ -419,7 +419,7 @@ struct LocalPlaylistDetailSheet: View {
                             .listRowSeparator(.hidden)
                             // 搜索行在播放全部下面（页内行，不是导航栏抽屉）：与歌手/专辑页
                             // 同一条规则，只是本页是自适应 GlassBackdrop、不是强制深色底，
-                            // 所以提示/文字用 beansComment/beansLabel，不用强制深色页的白字。
+                            // 所以提示/文字用 coComment/coLabel，不用强制深色页的白字。
                             // 过滤逻辑不动，仍是下面的 visibleSongs 按 playlistSearchText 筛。
                             HStack(spacing: 8) {
                                 Image(systemName: "magnifyingglass")
@@ -599,9 +599,6 @@ struct LocalPlaylistDetailSheet: View {
         store.playlists.contains { $0.id != playlistID }
     }
 
-    private var selectedSongs: [Song] {
-        playlist?.songs.filter { selectedSongKeys.contains($0.identityKey) } ?? []
-    }
 
     private func toggleSelection(_ song: Song) {
         CoHaptics.select()
@@ -707,7 +704,7 @@ struct LocalSearchAddSheet: View {
             VStack(spacing: 0) {
                 NativeSearchBar(
                     text: $keyword,
-                    placeholder: beansLocalized("输入歌名搜索", "Search by song title"),
+                    placeholder: coLocalized("输入歌名搜索", "Search by song title"),
                     onSubmit: { _ in runSearch() }
                 )
                 .frame(height: 46)
@@ -816,7 +813,7 @@ struct AddToLocalPlaylistSheet: View {
                                             .font(CoFont.appFont(15, .medium))
                                             .foregroundStyle(Color.coLabel)
                                             .lineLimit(1)
-                                        Text(beansLocalSongCountText(playlist.songs.count))
+                                        Text(coLocalSongCountText(playlist.songs.count))
                                             .font(CoFont.appFont(11))
                                             .foregroundStyle(Color.coComment)
                                     }

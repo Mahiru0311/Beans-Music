@@ -799,9 +799,9 @@ private struct RecordModeScrubber: View {
             }
             .frame(height: 14)
             HStack {
-                Text(beansTimeString(isDragging ? dragProgress : clock.progress))
+                Text(coTimeString(isDragging ? dragProgress : clock.progress))
                 Spacer()
-                Text(beansTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
+                Text(coTimeString(max(clock.duration, player.currentSong?.duration ?? 0)))
             }
             .font(CoFont.appFont(10.5, .regular, .default))
             .foregroundStyle(.white.opacity(0.55))

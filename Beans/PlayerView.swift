@@ -233,7 +233,6 @@ struct PlayerView: View {
     }
 
 
-
     private func favoriteMark(for song: Song?) -> FavoriteMark {
         guard let song else { return .none }
         let local = localLibrary.containsSong(song)
@@ -262,8 +261,6 @@ struct PlayerView: View {
         ToastCenter.shared.show(removed > 0 ? "已取消本地收藏" : "歌曲不在本地歌单中")
         CoHaptics.success()
     }
-
-
 
 
     private func saveFavoriteLocally(_ song: Song) {
@@ -1945,7 +1942,7 @@ struct PlayerView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if isSelected {
                     Spacer(minLength: 8)
-                    Text(beansTimeString(line.time))
+                    Text(coTimeString(line.time))
                         .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(albumArtistForeground.opacity(0.82))
                     Button {
@@ -2083,30 +2080,6 @@ struct PlayerView: View {
         }
     }
 
-    private var vinylSelectionGuide: some View {
-        HStack(spacing: 8) {
-            Canvas { context, size in
-                var path = Path()
-                path.move(to: CGPoint(x: 0, y: size.height / 2))
-                path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
-                context.stroke(
-                    path,
-                    with: .color(.white.opacity(0.45)),
-                    style: StrokeStyle(lineWidth: 1, dash: [5, 4])
-                )
-            }
-            .frame(height: 1)
-
-            if let index = vinylCurrentVisualIndex, lyrics.indices.contains(index) {
-                Text(beansTimeString(lyrics[index].time))
-                    .font(CoFont.appFont(11, .semibold, .default))
-                    .foregroundStyle(albumArtistForeground.opacity(0.8))
-                    .offset(x: 25)
-            }
-        }
-        .padding(.horizontal, 2)
-        .allowsHitTesting(false)
-    }
 
     private func appleMusicAlbumPanel(geo: GeometryProxy) -> some View {
         let size = coverSize(in: geo)
@@ -2386,7 +2359,7 @@ struct PlayerView: View {
                             .truncationMode(.tail)
                             .contentShape(Rectangle())
                             .onTapGesture { openArtistHome() }
-                        Text(beansTimeString(clock.progress))
+                        Text(coTimeString(clock.progress))
                             .font(CoFont.appFont(11, .medium))
                             .foregroundStyle(palette.secondary.opacity(0.78))
                             .monospacedDigit()
@@ -2492,16 +2465,6 @@ struct PlayerView: View {
 
     private var deckInset: CGFloat { 102 }
 
-    private var iPadLandscapeControlsReservedHeight: CGFloat {
-        switch layoutRenderingStyle {
-        case .appleMusic:
-            return appleShowVolume ? 294 : 238
-        case .vinyl:
-            return 136
-        case .record:
-            return 136
-        }
-    }
 
     @ViewBuilder
     private func controlDeck(bottomInset: CGFloat, appliesPortraitLayout: Bool = true) -> some View {
@@ -2719,12 +2682,12 @@ struct PlayerView: View {
                 if !isAppleMusicStyle {
                     seekPillButton("gobackward.15") { player.seekBy(-15) }
                 }
-                Text(beansTimeString(clock.progress))
+                Text(coTimeString(clock.progress))
                     .font(CoFont.appFont(10, .regular, .default))
                     .foregroundStyle(timeColor)
                     .frame(minWidth: 34, alignment: .leading)
                 Spacer(minLength: 0)
-                Text(beansTimeString(clock.duration))
+                Text(coTimeString(clock.duration))
                     .font(CoFont.appFont(10, .regular, .default))
                     .foregroundStyle(timeColor)
                     .frame(minWidth: 34, alignment: .trailing)
@@ -3060,213 +3023,6 @@ struct PlayerView: View {
         }
     }
 
-    private var layoutToolbar: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Text("自定义布局")
-                    .font(CoFont.appFont(15, .bold))
-                Spacer()
-                Button {
-                    CoHaptics.select()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { layoutMode = false }
-                } label: {
-                    Text("完成")
-                        .font(CoFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.coAmber)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 7)
-                        .background { CoSurface(shape: Capsule()) }
-                }
-                .buttonStyle(.plain)
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(PlayerLayoutPart.editableCases) { part in
-                        Button {
-                            CoHaptics.select()
-                            layoutPart = part
-                            layoutPartRaw = part.rawValue
-                        } label: {
-                            Text(LocalizedStringKey(part.rawValue))
-                                .font(CoFont.appFont(12, .semibold))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .foregroundStyle(layoutPart == part ? Color.white : palette.secondary)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 7)
-                                .background {
-                                    Capsule().fill(layoutPart == part ? Color.coAmber : Color.coGlassFill)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            layoutSlider("X", value: selectedLayoutEntry.x, range: layoutXRange)
-            layoutSlider("Y", value: selectedLayoutEntry.y, range: layoutYRange)
-            layoutSlider("大小", value: selectedLayoutEntry.scale, range: 0.3...1.5, step: 0.05, format: "%.2f")
-            HStack(spacing: 10) {
-                Button {
-                    resetCurrentLayoutPart()
-                    CoHaptics.success()
-                } label: {
-                    Label("恢复默认", systemImage: "arrow.counterclockwise")
-                        .font(CoFont.appFont(13, .medium))
-                        .foregroundStyle(Color.coAmber)
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                Text("编辑模式：顶部栏、封面、歌词和底部控件都可调")
-                    .font(CoFont.appFont(11))
-                    .foregroundStyle(palette.secondary)
-            }
-        }
-        .padding(14)
-        .background {
-            CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .padding(.horizontal, 12)
-    }
-
-    private var appleMusicLayoutToolbar: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Text("Apple Music 实时布局")
-                    .font(CoFont.appFont(15, .bold))
-                Spacer()
-                Button {
-                    CoHaptics.select()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { layoutMode = false }
-                } label: {
-                    Text("完成")
-                        .font(CoFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.coAmber)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 7)
-                        .background { CoSurface(shape: Capsule()) }
-                }
-                .buttonStyle(.plain)
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(AppleMusicLayoutPart.allCases) { part in
-                        appleLayoutChip(part.rawValue, isSelected: appleLayoutPart == part) {
-                            appleLayoutPart = part
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 10) {
-                    appleMusicLayoutSliders
-                    appleMusicAppearanceControls
-                    HStack(spacing: 10) {
-                        Button {
-                            resetAppleMusicCurrentLayoutPart()
-                            CoHaptics.success()
-                        } label: {
-                            Label("恢复当前", systemImage: "arrow.counterclockwise")
-                                .font(CoFont.appFont(13, .medium))
-                                .foregroundStyle(Color.coAmber)
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                        Button {
-                            resetAppleMusicSettings()
-                            CoHaptics.success()
-                        } label: {
-                            Label("恢复全部", systemImage: "arrow.counterclockwise.circle")
-                                .font(CoFont.appFont(13, .medium))
-                                .foregroundStyle(Color.coAmber)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Text("X / Y / 大小和 Apple Music 外观会立即同步到当前播放页")
-                        .font(CoFont.appFont(11))
-                        .foregroundStyle(palette.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .frame(maxHeight: 430)
-        }
-        .padding(14)
-        .background {
-            CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .padding(.horizontal, 12)
-    }
-
-    /// 低系统使用独立调整页，保留完整播放器比例，避免控制条覆盖在播放页上导致误触。
-    private var playerLayoutToolbar: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Text("自定义布局")
-                    .font(CoFont.appFont(15, .bold))
-                Spacer()
-                Button {
-                    CoHaptics.select()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { layoutMode = false }
-                } label: {
-                    Text("完成")
-                        .font(CoFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.coAmber)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 7)
-                        .background { CoSurface(shape: Capsule()) }
-                }
-                .buttonStyle(.plain)
-            }
-
-            playerLayoutPreview
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(PlayerLayoutPart.editableCases) { part in
-                        Button {
-                            CoHaptics.select()
-                            layoutPart = part
-                            layoutPartRaw = part.rawValue
-                        } label: {
-                            Text(LocalizedStringKey(part.rawValue))
-                                .font(CoFont.appFont(12, .semibold))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .foregroundStyle(layoutPart == part ? Color.white : palette.secondary)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 7)
-                                .background {
-                                    Capsule().fill(layoutPart == part ? Color.coAmber : Color.coGlassFill)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            layoutSlider("X", value: selectedLayoutEntry.x, range: layoutXRange)
-            layoutSlider("Y", value: selectedLayoutEntry.y, range: layoutYRange)
-            layoutSlider("大小", value: selectedLayoutEntry.scale, range: 0.3...1.5, step: 0.05, format: "%.2f")
-
-            HStack(spacing: 10) {
-                Button {
-                    resetCurrentLayoutPart()
-                    CoHaptics.success()
-                } label: {
-                    Label("恢复默认", systemImage: "arrow.counterclockwise")
-                        .font(CoFont.appFont(13, .medium))
-                        .foregroundStyle(Color.coAmber)
-                }
-                .buttonStyle(.plain)
-            }
-            .frame(height: 52)
-        }
-        .padding(14)
-        .background {
-            CoGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .padding(.horizontal, 12)
-    }
 
     /// 经典与黑胶样式共用的完整播放器预览，使用实际播放器视口的宽高比例。
     private var playerLayoutPreview: some View {
@@ -4057,31 +3813,6 @@ struct PlayerView: View {
         .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private var lyricDisplayEditorControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("歌词显示")
-                .font(CoFont.appFont(13, .semibold))
-                .foregroundStyle(palette.text)
-            layoutDebugSlider("歌词字号", valueText: "\(lyricFontSize) pt", value: Binding(get: { CGFloat(lyricFontSize) }, set: { lyricFontSize = Int($0) }), range: 12...28, step: 1)
-            layoutDebugSlider("歌词行距", valueText: "\(lyricLineSpacing) pt", value: Binding(get: { CGFloat(lyricLineSpacing) }, set: { lyricLineSpacing = Int($0) }), range: 14...40, step: 1)
-            // 翻译开关已删：歌词数据里翻译本就是空的，这开关永远不起作用。
-        }
-    }
-
-    private var lyricEffectEditorControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("歌词效果")
-                .font(CoFont.appFont(13, .semibold))
-                .foregroundStyle(palette.text)
-            layoutDebugSlider("模糊起始距离", valueText: "\(lyricBlurStart) 行", value: Binding(get: { CGFloat(lyricBlurStart) }, set: { lyricBlurStart = Int($0) }), range: 0...4, step: 1)
-            layoutDebugSlider("模糊强度", valueText: String(format: "%.1f", lyricBlurAmount), value: Binding(get: { CGFloat(lyricBlurAmount) }, set: { lyricBlurAmount = Double($0) }), range: 0...6, step: 0.1)
-            layoutDebugSlider("歌词发光", valueText: glowName(lyricGlowLevel), value: Binding(get: { CGFloat(lyricGlowLevel) }, set: { lyricGlowLevel = Int($0) }), range: 0...5, step: 1)
-            layoutDebugSlider("3D 倾斜", valueText: "\(lyricTilt)°", value: Binding(get: { CGFloat(lyricTilt) }, set: { lyricTilt = Int($0) }), range: 0...45, step: 1)
-            layoutDebugSlider("左右倾斜", valueText: "\(lyricTiltY)°", value: Binding(get: { CGFloat(lyricTiltY) }, set: { lyricTiltY = Int($0) }), range: -45...45, step: 1)
-            layoutDebugToggle("保持自定义配色", isOn: Binding(get: { lyricGradMode == 1 }, set: { lyricGradMode = $0 ? 1 : 0 }),
-                              caption: "关闭后歌词自动跟随封面取色")
-        }
-    }
 
     private func layoutDebugToggle(_ title: String, isOn: Binding<Bool>, caption: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -4096,20 +3827,6 @@ struct PlayerView: View {
         }
     }
 
-    private func layoutDebugSlider(_ title: String, valueText: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat) -> some View {
-        VStack(spacing: 4) {
-            HStack {
-                Text(LocalizedStringKey(title))
-                    .font(CoFont.appFont(12))
-                    .foregroundStyle(palette.secondary)
-                Spacer()
-                Text(valueText)
-                    .font(CoFont.appFont(11, .semibold, .default))
-                    .foregroundStyle(Color.coAmber)
-            }
-            layoutValueSlider(title: title, value: value, range: range, step: step)
-        }
-    }
 
     private func resetAppleMusicSettings() {
         appleLayout.resetAll()
@@ -4410,9 +4127,9 @@ private struct VinylScrubber: View {
             .frame(height: 14)
 
             HStack {
-                Text(beansTimeString(currentProgress))
+                Text(coTimeString(currentProgress))
                 Spacer(minLength: 0)
-                Text(beansTimeString(clock.duration))
+                Text(coTimeString(clock.duration))
             }
             .font(CoFont.appFont(10, .regular, .default))
             .foregroundStyle(.white.opacity(0.55))
@@ -4559,7 +4276,7 @@ struct SeekBar: View {
                 }
 
                 if scrubbing {
-                    Text(beansTimeString(scrubValue))
+                    Text(coTimeString(scrubValue))
                         .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 9)
@@ -4774,7 +4491,7 @@ struct LyricsSection: View {
                                 GeometryReader { rowGeometry in
                                     Color.clear.preference(
                                         key: LyricCenterPreferenceKey.self,
-                                        value: [index: rowGeometry.frame(in: .named("beansLyricsViewport")).midY]
+                                        value: [index: rowGeometry.frame(in: .named("coLyricsViewport")).midY]
                                     )
                                 }
                             }
@@ -4828,7 +4545,7 @@ struct LyricsSection: View {
             }
             .frame(maxWidth: .infinity)
             .offset(x: offsetX)
-            .coordinateSpace(name: "beansLyricsViewport")
+            .coordinateSpace(name: "coLyricsViewport")
             .coScrollIndicatorsHidden()
             .rotation3DEffect(.degrees(Double(tilt)), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
             .rotation3DEffect(.degrees(Double(tiltY)), axis: (x: 0, y: 1, z: 0), anchor: .center, perspective: 0.5)
@@ -5003,7 +4720,7 @@ struct LyricsSection: View {
         .overlay(alignment: .trailing) {
             if selectedLyricIndex == index || (isUserScrolling && isFocused) {
                 HStack(spacing: 6) {
-                    Text(beansTimeString(line.time))
+                    Text(coTimeString(line.time))
                         .font(CoFont.appFont(11, .semibold, .default))
                         .foregroundStyle(secondary.opacity(0.82))
                     Button {
@@ -5166,17 +4883,14 @@ struct PlayerSettingsSheet: View {
     @EnvironmentObject private var player: PlayerManager
     private let onDismiss: (() -> Void)?
     // Shared values remain available to the existing settings helpers; style-specific controls are rendered by the layout editor.
-    @AppStorage("co.playerBreath") private var breath = 0.6
     @AppStorage("co.playerDustMode") private var playerDustModeRaw = CoPlayerDustMode.off.rawValue
     @AppStorage("co.playerDustDensity") private var playerDustDensity = 1.0
     @AppStorage("co.playerDustSize") private var playerDustSize = 1.0
-    @AppStorage("co.playerControlsUseCoverColor") private var controlsUseCoverColor = true
     @AppStorage("co.playerMainIconColorHex") private var playerMainIconColorHex = ""
     @AppStorage("co.playerSecondaryIconColorHex") private var playerSecondaryIconColorHex = ""
     @AppStorage("co.playerPrimaryButtonColorHex") private var playerPrimaryButtonColorHex = ""
     @AppStorage("co.progressBarStyle") private var progressBarStyle = 0
     @AppStorage("co.progressAccentHex") private var progressAccentHex = ""
-    @AppStorage("co.playback.autoSkipOnFailure") private var autoSkipOnFailure = true
     @AppStorage("co.lyricGlow") private var glowLevel = 1
     @AppStorage("co.lyricColor") private var currentColorRaw = "accent"
     @AppStorage("co.lyricDimColor") private var dimColorRaw = "dim"
@@ -5184,13 +4898,11 @@ struct PlayerSettingsSheet: View {
     @AppStorage("co.lyricGradEnd") private var gradEndRaw = ""
     @AppStorage("co.lyricGradMode") private var gradMode = 0
     @Binding private var layoutMode: Bool
-    @AppStorage("co.playerLayoutSelectedPart") private var layoutPartRaw = PlayerLayoutPart.progress.rawValue
     @AppStorage("co.lyricAlignRaw") private var lyricAlignRaw = "center"
     @AppStorage("co.lyricOffsetX") private var lyricOffsetX = 0.0
     @AppStorage("co.lyricAnchorY") private var lyricAnchorY = 0.0
     @AppStorage("co.circularCover") private var circularCover = true
     @AppStorage("co.circularCoverSpin") private var circularCoverSpin = true
-    @AppStorage("co.djVisual") private var djVisualEnabled = false
     @AppStorage("co.djVisualIntensity") private var djVisualIntensity = 0.8
     @AppStorage("co.lyricGlowColorRaw") private var glowColorRaw = ""
     @AppStorage("co.swipeSwitchSong") private var swipeSwitchSong = true
@@ -5548,264 +5260,6 @@ struct PlayerSettingsSheet: View {
             }
     }
 
-    /// 开关行（标题 + 可选的短说明）
-    private func settingToggle(_ title: String, isOn: Binding<Bool>, caption: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Toggle(LocalizedStringKey(title), isOn: isOn)
-                .tint(Color.coAmber)
-                .font(CoFont.appFont(14))
-            if let caption {
-                Text(LocalizedStringKey(caption))
-                    .font(CoFont.appFont(12))
-                    .foregroundStyle(Color.coComment)
-            }
-        }
-    }
-
-    /// 滑块行（标题 + 数值内联显示）
-    private func settingSlider<L: View>(_ title: String, valueText: String, @ViewBuilder slider: () -> L) -> some View {
-        VStack(spacing: 5) {
-            HStack {
-                Text(LocalizedStringKey(title))
-                    .font(CoFont.appFont(13))
-                    .foregroundStyle(Color.coLabel)
-                Spacer()
-                Text(beansLocalizedSettingValue(valueText))
-                    .font(CoFont.appFont(12, .semibold))
-                    .foregroundStyle(Color.coAmber)
-            }
-            slider()
-                .frame(minHeight: 32)
-                .contentShape(Rectangle())
-                .allowsHitTesting(true)
-        }
-    }
-
-    /// 播放器按钮样式选择
-    private var playerButtonStyleSelector: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("播放器按钮样式")
-                        .font(CoFont.appFont(13, .semibold))
-                        .foregroundStyle(Color.coLabel)
-                    Text("只换按钮外观，不改变播放逻辑")
-                        .font(CoFont.appFont(12))
-                        .foregroundStyle(Color.coComment)
-                }
-                Spacer()
-                Image(systemName: "circle.grid.2x2")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.coAmber)
-                    .frame(width: 30, height: 30)
-                    .background(Color.coAmber.opacity(0.12), in: Circle())
-            }
-            ForEach(CoPlayerButtonStyle.allCases) { style in
-                let selected = playerButtonStyleRaw == style.rawValue
-                Button {
-                    playerButtonStyleRaw = style.rawValue
-                    CoHaptics.select()
-                } label: {
-                    HStack(spacing: 10) {
-                        ZStack {
-                            Circle()
-                                .fill(selected ? Color.coAmber : Color.primary.opacity(0.06))
-                                .frame(width: 32, height: 32)
-                            Image(systemName: style.previewIcon)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(selected ? Color.white : Color.coLabel)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(LocalizedStringKey(style.title))
-                                .font(CoFont.appFont(13, .semibold))
-                                .foregroundStyle(Color.coLabel)
-                            Text(LocalizedStringKey(style.subtitle))
-                                .font(CoFont.appFont(11))
-                                .foregroundStyle(Color.coComment)
-                                .lineLimit(1)
-                        }
-                        Spacer()
-                        if selected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Color.coAmber)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 9)
-                    .background(
-                        selected ? Color.coAmber.opacity(0.12) : Color.primary.opacity(0.035),
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(selected ? Color.coAmber.opacity(0.42) : Color.coComment.opacity(0.10), lineWidth: 0.8)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var appleMusicCard: some View {
-        settingCard("Apple Music 样式", isExpanded: $appleMusicExpanded) {
-            Toggle("显示封面页歌词预览", isOn: $appleShowLyricPreview)
-                .font(CoFont.appFont(13, .medium))
-                .tint(Color.coAmber)
-        }
-    }
-
-    /// 进度条样式四宫格图标选择
-    private var progressStyleGrid: some View {
-        let styles: [(Int, String, String)] = [
-            (0, "流光", "rays"),
-            (1, "辉光", "sun.max"),
-            (2, "极光", "sparkles"),
-            (3, "波浪", "waveform"),
-        ]
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-            ForEach(styles, id: \.0) { idx, name, icon in
-                Button {
-                    progressBarStyle = idx
-                    CoHaptics.select()
-                } label: {
-                    VStack(spacing: 5) {
-                        Image(systemName: icon)
-                            .font(.system(size: 15, weight: .medium))
-                        Text(name)
-                            .font(CoFont.appFont(11, .medium))
-                    }
-                    .foregroundStyle(progressBarStyle == idx ? Color.coAmber : Color.coLabel)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        (progressBarStyle == idx ? Color.coAmber.opacity(0.16) : Color.primary.opacity(0.05)),
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(progressBarStyle == idx ? Color.coAmber.opacity(0.5) : .clear, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    /// 歌词效果卡片：模糊 / 发光 / 渐变预设 / 配色
-    private var lyricEffectCard: some View {
-        settingCard("歌词效果", isExpanded: $lyricEffectExpanded) {
-            settingSlider("模糊起始距离", valueText: "\(lyricBlurStart) 行") {
-                Slider(value: Binding(get: { Double(lyricBlurStart) }, set: { lyricBlurStart = Int($0) }), in: 0...4, step: 1)
-                    .tint(Color.coAmber)
-            }
-            settingSlider("模糊强度", valueText: lyricBlurAmount < 0.05 ? "关闭" : String(format: "%.1f", lyricBlurAmount)) {
-                Slider(value: $lyricBlurAmount, in: 0...6, step: 0.1)
-                    .tint(Color.coAmber)
-            }
-            Divider().opacity(0.5)
-            settingSlider("3D 倾斜", valueText: lyricTilt == 0 ? "关闭" : "\(lyricTilt)°") {
-                Slider(value: Binding(get: { Double(lyricTilt) }, set: { lyricTilt = Int($0) }), in: 0...45, step: 1)
-                    .tint(Color.coAmber)
-            }
-            Divider().opacity(0.5)
-            settingSlider("左右倾斜", valueText: tiltYText) {
-                Slider(value: Binding(get: { Double(lyricTiltY) }, set: { lyricTiltY = Int($0) }), in: -45...45, step: 1)
-                    .tint(Color.coAmber)
-            }
-            Divider().opacity(0.5)
-            settingSlider("歌词发光", valueText: glowName(glowLevel)) {
-                Slider(
-                    value: Binding(get: { Double(glowLevel) }, set: { glowLevel = Int($0) }),
-                    in: 0...5,
-                    step: 1
-                )
-                .tint(Color.coAmber)
-            }
-            Divider().opacity(0.5)
-            settingToggle("保持自定义配色", isOn: Binding(get: { gradMode == 1 }, set: { gradMode = $0 ? 1 : 0 }),
-                          caption: "关闭时自动跟随歌曲封面取色调整")
-            ColorPicker("当前行颜色", selection: currentColor, supportsOpacity: false)
-                .font(CoFont.appFont(14))
-            ColorPicker("未播放行颜色", selection: dimColor, supportsOpacity: false)
-                .font(CoFont.appFont(14))
-            ColorPicker("歌词发光颜色", selection: glowColor, supportsOpacity: false)
-                .font(CoFont.appFont(14))
-            Divider().opacity(0.5)
-            ColorPicker("渐变起始色", selection: gradStart, supportsOpacity: false)
-                .font(CoFont.appFont(14))
-            ColorPicker("渐变结束色", selection: gradEnd, supportsOpacity: false)
-                .font(CoFont.appFont(14))
-            Divider().opacity(0.5)
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("歌词界面背景")
-                        .font(CoFont.appFont(13))
-                        .foregroundStyle(Color.coLabel)
-                    Text(LocalizedStringKey(lyricBackgroundImagePath.isEmpty ? "未设置" : "已使用自定义图片"))
-                        .font(CoFont.appFont(12))
-                        .foregroundStyle(Color.coComment)
-                }
-                Spacer()
-                Button {
-                    showLyricBackgroundPicker = true
-                    CoHaptics.tap()
-                } label: {
-                    Text("上传")
-                        .font(CoFont.appFont(12, .semibold))
-                        .foregroundStyle(Color.coAmber)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background { CoSurface(shape: Capsule()) }
-                }
-                .buttonStyle(.plain)
-                if !lyricBackgroundImagePath.isEmpty {
-                    Button {
-                        LyricBackgroundStore.clear()
-                        lyricBackgroundImagePath = ""
-                        CoHaptics.select()
-                    } label: {
-                        Text("清除")
-                            .font(CoFont.appFont(12, .semibold))
-                            .foregroundStyle(Color.red)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background { CoSurface(shape: Capsule()) }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            if !lyricBackgroundImagePath.isEmpty {
-                settingSlider("背景模糊", valueText: "\(Int(lyricBackgroundBlur))") {
-                    Slider(value: $lyricBackgroundBlur, in: 0...30, step: 1)
-                        .tint(Color.coAmber)
-                }
-                settingToggle("同步到封面页背景", isOn: $lyricBackgroundSyncCover,
-                              caption: "开启后播放器封面界面也使用这张自定义背景")
-            }
-            HStack {
-                Button("恢复默认颜色") {
-                    currentColorRaw = ""
-                    dimColorRaw = ""
-                    glowColorRaw = ""
-                    gradMode = 0
-                    CoHaptics.select()
-                }
-                .font(CoFont.appFont(13))
-                .foregroundStyle(Color.coAmber)
-                Spacer()
-                Button("恢复默认渐变") {
-                    gradStartRaw = ""
-                    gradEndRaw = ""
-                    gradMode = 0
-                    CoHaptics.select()
-                }
-                .font(CoFont.appFont(13))
-                .foregroundStyle(Color.coAmber)
-            }
-        }
-    }
 
     /// 布局卡片：播放器自定义布局 / 指示线 / 歌词对齐
     private var layoutCard: some View {
@@ -5843,44 +5297,6 @@ struct PlayerSettingsSheet: View {
         }
     }
 
-    private var dustModeSelector: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("背景浮尘")
-                    .font(CoFont.appFont(13, .semibold))
-                    .foregroundStyle(Color.coLabel)
-                Text("关闭可隐藏播放页小白点，动态轻雪只在播放时运动")
-                    .font(CoFont.appFont(12))
-                    .foregroundStyle(Color.coComment)
-            }
-            HStack(spacing: 8) {
-                ForEach(CoPlayerDustMode.allCases) { mode in
-                    let selected = playerDustModeRaw == mode.rawValue
-                    Button {
-                        playerDustModeRaw = mode.rawValue
-                        CoHaptics.select()
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName: mode.icon)
-                                .font(.system(size: 14, weight: .semibold))
-                            Text(LocalizedStringKey(mode.title))
-                                .font(CoFont.appFont(11, .semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.78)
-                        }
-                        .foregroundStyle(selected ? Color.white : Color.coLabel)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(
-                            selected ? Color.coAmber : Color.primary.opacity(0.045),
-                            in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
 
     private func glowName(_ level: Int) -> String {
         switch level {

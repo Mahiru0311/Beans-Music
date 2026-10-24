@@ -20,7 +20,7 @@ struct SongCell: View {
     /// 覆盖默认封面与行高，用于排行榜等紧凑但需要大封面的列表。
     var coverSize: CGFloat = 46
     var fixedRowHeight: CGFloat?
-    /// 强制深色页专用：专辑页整页是深色底，beansLabel/beansComment 会被用户自定义主文字色
+    /// 强制深色页专用：专辑页整页是深色底，coLabel/coComment 会被用户自定义主文字色
     /// （黑字）覆盖，落在深色底上看不见；此时改用显式白字系列。默认 false，其他页不动。
     var forceDarkText = false
     var playbackContext: [Song] = []

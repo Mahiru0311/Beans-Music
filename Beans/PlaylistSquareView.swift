@@ -50,7 +50,7 @@ struct PlaylistSquareView: View {
                                     }
                                     .frame(minHeight: 220)
                                 } else if playlists.isEmpty {
-                                    EmptyStateView(icon: "music.note.list", text: beansLocalized("酷狗歌单广场暂时没有内容", "No Kugou playlists available"))
+                                    EmptyStateView(icon: "music.note.list", text: coLocalized("酷狗歌单广场暂时没有内容", "No Kugou playlists available"))
                                         .frame(maxWidth: .infinity, minHeight: 220)
                                 } else {
                                     playlistGrid
@@ -73,7 +73,7 @@ struct PlaylistSquareView: View {
                 .task {
                     await loadCategories()
                 }
-                .navigationTitle(beansLocalized("精选", "Curated"))
+                .navigationTitle(coLocalized("精选", "Curated"))
                 .navigationBarTitleDisplayMode(.inline)
             }
             .coHomeNavigationBarTransparent()
@@ -145,7 +145,7 @@ struct PlaylistSquareView: View {
             ProgressView()
                 .controlSize(.regular)
                 .tint(Color.coAmber)
-            Text(beansLocalized("正在加载歌单", "Loading playlists"))
+            Text(coLocalized("正在加载歌单", "Loading playlists"))
                 .font(CoFont.appFont(12))
                 .foregroundStyle(Color.coComment)
         }
@@ -166,7 +166,7 @@ struct PlaylistSquareView: View {
                 }
                 if playlist.trackCount > 0 {
                     if playlist.playCount > 0 { Text("·") }
-                    Text(beansSongCountText(playlist.trackCount))
+                    Text(coSongCountText(playlist.trackCount))
                 }
                 if !playlist.creatorName.isEmpty {
                     if playlist.trackCount > 0 { Text("·") }
@@ -225,8 +225,8 @@ struct PlaylistSquareView: View {
         } label: {
             HStack(spacing: 6) {
                 Text(expanded
-                     ? beansLocalized("收起歌单", "Collapse playlists")
-                     : beansLocalized("展开全部（\(playlists.count)）", "Show all (\(playlists.count))"))
+                     ? coLocalized("收起歌单", "Collapse playlists")
+                     : coLocalized("展开全部（\(playlists.count)）", "Show all (\(playlists.count))"))
                 Image(systemName: expanded ? "chevron.up" : "chevron.down")
             }
             .font(CoFont.appFont(13, .semibold))

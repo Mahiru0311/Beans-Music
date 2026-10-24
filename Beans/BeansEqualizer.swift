@@ -18,15 +18,15 @@ enum CoEqualizerPreset: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .flat: return beansLocalized("默认", "Default")
-        case .bass: return beansLocalized("低音增强", "Bass Boost")
-        case .vocal: return beansLocalized("人声", "Vocal")
-        case .pop: return beansLocalized("流行", "Pop")
-        case .rock: return beansLocalized("摇滚", "Rock")
-        case .classical: return beansLocalized("古典", "Classical")
-        case .jazz: return beansLocalized("爵士", "Jazz")
-        case .electronic: return beansLocalized("电子", "Electronic")
-        case .custom: return beansLocalized("自定义", "Custom")
+        case .flat: return coLocalized("默认", "Default")
+        case .bass: return coLocalized("低音增强", "Bass Boost")
+        case .vocal: return coLocalized("人声", "Vocal")
+        case .pop: return coLocalized("流行", "Pop")
+        case .rock: return coLocalized("摇滚", "Rock")
+        case .classical: return coLocalized("古典", "Classical")
+        case .jazz: return coLocalized("爵士", "Jazz")
+        case .electronic: return coLocalized("电子", "Electronic")
+        case .custom: return coLocalized("自定义", "Custom")
         }
     }
 

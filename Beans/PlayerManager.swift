@@ -873,7 +873,7 @@ final class PlayerManager: NSObject, ObservableObject {
                     self.isBuffering = false
                     self.loadFailed = true
                     let reason = "解析播放地址失败"
-                    let failureMessage = beansLocalized(
+                    let failureMessage = coLocalized(
                         "播放失败：\(self.playbackFailureMessage(for: song, reason: reason))",
                         "Playback failed: \(self.playbackFailureMessage(for: song, reason: reason, english: true))"
                     )
@@ -894,18 +894,6 @@ final class PlayerManager: NSObject, ObservableObject {
                 )
             }
         }
-    }
-
-    private var nextSongForPrefetch: Song? {
-        guard !queue.isEmpty else { return nil }
-        let nextIndex: Int
-        if playMode == .shuffle, !playOrder.isEmpty {
-            nextIndex = playOrder[(orderPosition + 1) % playOrder.count]
-        } else {
-            nextIndex = (currentIndex + 1) % queue.count
-        }
-        guard queue.indices.contains(nextIndex), nextIndex != currentIndex else { return nil }
-        return queue[nextIndex]
     }
 
 
@@ -1196,12 +1184,12 @@ final class PlayerManager: NSObject, ObservableObject {
         let shouldAutoSkip = defaults.object(forKey: autoSkipOnFailureKey) as? Bool ?? true
         let failureMessage: String
         if shouldAutoSkip && queue.count > 1 {
-            failureMessage = beansLocalized(
+            failureMessage = coLocalized(
                 "播放失败：\(playbackFailureMessage(for: failedSong, reason: reason))，已自动切换到下一首",
                 "Playback failed: \(playbackFailureMessage(for: failedSong, reason: reason, english: true)). Switched to the next song automatically."
             )
         } else {
-            failureMessage = message ?? beansLocalized(
+            failureMessage = message ?? coLocalized(
                 "播放失败：\(playbackFailureMessage(for: failedSong, reason: reason))",
                 "Playback failed: \(playbackFailureMessage(for: failedSong, reason: reason, english: true))"
             )
@@ -1239,12 +1227,6 @@ final class PlayerManager: NSObject, ObservableObject {
             .joined()
     }
 
-    private func artistTokens(_ value: String) -> Set<String> {
-        Set(value
-            .components(separatedBy: ["/", "&", "、", ",", "，", ";", "；", "\\"])
-            .map(normalizedTrackText)
-            .filter { !$0.isEmpty })
-    }
 
     private func resetCrossPlatformFallbackState() {
         crossPlatformFallbackOriginKey = nil

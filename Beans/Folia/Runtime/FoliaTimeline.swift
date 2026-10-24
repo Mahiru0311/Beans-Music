@@ -25,11 +25,6 @@ enum FoliaTimeline {
         return Array(lines.dropFirst(activeIndex + 1).prefix(count))
     }
 
-    static func shouldPreheat(_ line: FoliaLine?, time: Double, minLead: Double, maxLead: Double) -> Bool {
-        guard let line else { return false }
-        let lead = line.startTime - time
-        return lead >= minLead && lead <= maxLead
-    }
 
     // Still holds its displayed center line during silent gaps, as the source renderer does.
     static func stillIndex(previous: Int, activeIndex: Int, lineCount: Int) -> Int {

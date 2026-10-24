@@ -510,11 +510,6 @@ struct ProfileView: View {
         DispatchQueue.main.async { apply() }
     }
 
-    private var resolvedThemeToggleTarget: CoThemeMode {
-        if themeMode == .dark { return .light }
-        if themeMode == .light { return .dark }
-        return colorScheme == .dark ? .light : .dark
-    }
 
     @ViewBuilder
     private var profileThemeToggleButton: some View {
@@ -543,8 +538,6 @@ struct ProfileView: View {
             .environmentObject(player)
             .environmentObject(auth)
     }
-
-
 
 
     var body: some View {
@@ -779,41 +772,6 @@ struct ProfileView: View {
         if !customNickname.isEmpty { return customNickname }
         return "未登录"
     }
-
-    private var coAccountCard: some View {
-        Button {
-            CoHaptics.tap()
-            showAccountHub = true
-        } label: {
-            HStack(spacing: 14) {
-                CoAvatarView(remoteURL: kugouAuth.avatarURL, size: 64, useCustom: true)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(coDisplayName)
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(Color.coLabel)
-                            .lineLimit(1)
-                        if kugouAuth.isLoggedIn, let badge = kugouAuth.vipBadge {
-                            VIPBadgeView(text: badge)
-                        }
-                    }
-                    Text(accountStatusLine)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.coSecondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.coSecondary)
-            }
-            .padding(16)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
 
 
     private var coPlaylistsSection: some View {
@@ -1073,7 +1031,7 @@ struct ProfileView: View {
     }
 
     /// 数据行（白卡版）：从黑头移到白卡里、“我的歌单”标题上方，跳转功能与黑头版一致。
-    /// 颜色改回深色（数字 beansLabel、标签 beansSecondary），白卡上不再用白字。
+    /// 颜色改回深色（数字 coLabel、标签 coSecondary），白卡上不再用白字。
     private var coNeteaseStatsInCard: some View {
         HStack(spacing: 0) {
             coNeteaseStatButton(title: "我喜欢", value: "\(favorites.allLikedSongs.count)") { showFavorites = true }
@@ -1149,96 +1107,6 @@ struct ProfileView: View {
     }
 
 
-    private var compactIdentityButton: some View {
-        let _ = publicIDRevision
-        let isExclusive = usesExclusiveIDBadge
-        return Button {
-            UIPasteboard.general.string = DeviceIdentity.publicID
-            CoHaptics.tap()
-            ToastCenter.shared.show("用户 ID 已复制")
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: isExclusive ? "crown.fill" : "number.circle.fill")
-                    .font(.system(size: 9, weight: .bold))
-                Text(isExclusive ? "专属 ID · \(DeviceIdentity.publicID)" : "ID · \(DeviceIdentity.publicID)")
-                    .font(.system(size: 10, weight: .medium, design: .default))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 8, weight: .semibold))
-            }
-            .foregroundStyle(isExclusive ? Color(red: 1.0, green: 0.89, blue: 0.52) : Color(red: 0.30, green: 0.34, blue: 0.40))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background {
-                if isExclusive {
-                    CoExclusiveIDBadgeSurface(style: exclusiveBadgeStyle)
-                } else {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.82), Color(red: 0.62, green: 0.66, blue: 0.73).opacity(0.72)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Capsule().strokeBorder(Color.white.opacity(0.72), lineWidth: 0.7)
-                        }
-                        .shadow(color: Color.black.opacity(0.10), radius: 4, y: 2)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("用户 ID \(DeviceIdentity.publicID)，点击复制")
-    }
-    private var userCard: some View {
-        VStack(spacing: 16) {
-            Button {
-                CoHaptics.tap()
-                // 统一账号面板：酷狗音乐登录
-                showAccountHub = true
-            } label: {
-                HStack(spacing: 14) {
-                    // 头像：主题渐变描边环
-                    CoAvatarView(remoteURL: auth.user?.avatarURL, size: 64, useCustom: true)
-                    .background(Color.coGlassFill, in: Circle())
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text(auth.user?.nickname ?? (auth.isLoggedIn ? (isEnglish ? "Kugou Music Logged In" : "酷狗音乐已登录") : (isEnglish ? "Guest · Tap to Sign In" : "免登录 · 点击登录")))
-                                .font(CoFont.appFont(20, .bold))
-                                .foregroundStyle(Color.coLabel)
-                                .lineLimit(1)
-                            if auth.isLoggedIn, let badge = auth.user?.vipBadge {
-                                VIPBadgeView(text: badge)
-                            }
-                        }
-                        Text(accountStatusLine)
-                            .font(CoFont.appFont(12, .regular, .default))
-                            .foregroundStyle(Color.coComment)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.coComment.opacity(0.7))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if kugouAuth.isLoggedIn {
-                platformStatusRow
-            }
-        }
-        .padding(16)
-        .background {
-                        CoGlass(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        }
-        .coCardShadow(radius: 10, y: 4)
-    }
-
     /// 酷狗登录状态展示
     private var platformStatusRow: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1271,7 +1139,6 @@ struct ProfileView: View {
         .padding(.vertical, 6)
         .background { CoSurface(shape: Capsule()) }
     }
-
 
 
     /// 壁纸格子：点击应用为当前背景；使用中的壁纸显示主题色边框+勾选；右上角删除
@@ -1324,21 +1191,6 @@ struct ProfileView: View {
         }
     }
 
-    /// 功能宫格：常用功能统一整合排版
-    private var featuresGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "我的功能")
-            VStack(spacing: 12) {
-                featureCell(icon: "clock.arrow.circlepath", title: "播放历史", subtitle: String(format: NSLocalizedString("最近播放 %d 首", comment: ""), player.history.count)) {
-                    showHistory = true
-                }
-                featureCell(icon: hasVisibleAccountLogin ? "checkmark.seal.fill" : "globe", title: isEnglish ? "Accounts and Sign-in" : "账号与登录", subtitle: hasVisibleAccountLogin ? accountStatusLine : (isEnglish ? "Sign in to \(displayPlatformSummary)" : "登录 \(displayPlatformSummary)")) {
-                    CoHaptics.tap()
-                    showAccountHub = true
-                }
-            }
-        }
-    }
 
     private func featureCell(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button {
@@ -1513,7 +1365,7 @@ private struct CoPlaylistRowLabel: View {
                     .font(.system(size: 16))
                     .foregroundStyle(label)
                     .lineLimit(1)
-                Text(beansSongCountText(playlist.trackCount))
+                Text(coSongCountText(playlist.trackCount))
                     .font(.system(size: 13))
                     .foregroundStyle(secondary)
             }
@@ -2173,9 +2025,6 @@ struct SettingsView: View {
         CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
     }
 
-    private var usesCustomWallpaper: Bool {
-        theme.backgroundSyncAll && theme.customBackgroundImage(for: colorScheme) != nil
-    }
 
     /// iOS/iPadOS 26 and earlier can tear down a large full-screen SwiftUI tree
     /// while its presenting tab is being recomputed.  Present a stable shell
@@ -2191,17 +2040,6 @@ struct SettingsView: View {
         return terms.joined(separator: " ").localizedCaseInsensitiveContains(query)
     }
 
-    private var homeGreetingLines: [String] {
-        let custom = homeGreetingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if custom.isEmpty { return ["自动问候"] }
-        return custom.components(separatedBy: .newlines)
-    }
-
-
-
-
-
-
 
     var body: some View {
         ZStack {
@@ -2210,8 +2048,7 @@ struct SettingsView: View {
             // turn into a milky white surface at either sheet detent.
             GlassBackdrop(
                 customColor: theme.customBackground,
-                homeMode: true,
-                includeDynamicWallpaper: false
+                homeMode: true
             )
             SettingsCompactGlassSurface()
             if settingsContentReady {
@@ -2649,7 +2486,7 @@ struct SettingsView: View {
                     .foregroundStyle(Color.coAmber)
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(beansLocalized("账号登录", "Account sign-in"))
+                    Text(coLocalized("账号登录", "Account sign-in"))
                         .font(CoFont.appFont(15, .semibold))
                         .foregroundStyle(Color.coLabel)
                 }
@@ -3012,7 +2849,7 @@ struct SettingsView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
-                        Text(beansLocalized("主页背景色", "Home Background Color"))
+                        Text(coLocalized("主页背景色", "Home Background Color"))
                             .font(CoFont.appFont(15))
                             .foregroundStyle(Color.coLabel)
                         Spacer()
@@ -3022,7 +2859,7 @@ struct SettingsView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
-                        Text(beansLocalized("背景颜色", "Background Color"))
+                        Text(coLocalized("背景颜色", "Background Color"))
                             .font(CoFont.appFont(15))
                             .foregroundStyle(Color.coLabel)
                         Spacer()
@@ -3264,12 +3101,12 @@ struct SettingsView: View {
                     .foregroundStyle(Color.coAmber)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(beansLocalized("均衡器", "Equalizer"))
+                    Text(coLocalized("均衡器", "Equalizer"))
                         .font(CoFont.appFont(15))
                         .foregroundStyle(Color.coLabel)
                 }
                 Spacer()
-                Text(equalizer.isEnabled ? beansLocalized("已开启", "On") : beansLocalized("已关闭", "Off"))
+                Text(equalizer.isEnabled ? coLocalized("已开启", "On") : coLocalized("已关闭", "Off"))
                     .font(CoFont.appFont(12, .medium))
                     .foregroundStyle(equalizer.isEnabled ? Color.coAmber : Color.coComment)
                 Image(systemName: "chevron.right")
@@ -3342,7 +3179,7 @@ struct SettingsView: View {
                             .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(beansLocalized("显示锁屏与灵动岛播放器", "Show Lock Screen and Dynamic Island player"))
+                            Text(coLocalized("显示锁屏与灵动岛播放器", "Show Lock Screen and Dynamic Island player"))
                                 .font(CoFont.appFont(15))
                                 .foregroundStyle(Color.coLabel)
                         }
@@ -3374,10 +3211,10 @@ struct SettingsView: View {
                             .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(beansLocalized("启动时自动播放上次歌曲", "Auto-play the last song on launch"))
+                            Text(coLocalized("启动时自动播放上次歌曲", "Auto-play the last song on launch"))
                                 .font(CoFont.appFont(15))
                                 .foregroundStyle(Color.coLabel)
-                            Text(beansLocalized("打开软件后自动恢复上次未播放完的歌曲", "Automatically resume the last unfinished song when the app starts."))
+                            Text(coLocalized("打开软件后自动恢复上次未播放完的歌曲", "Automatically resume the last unfinished song when the app starts."))
                                 .font(CoFont.appFont(11))
                                 .foregroundStyle(Color.coComment)
                         }
@@ -3397,7 +3234,7 @@ struct SettingsView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
-                        Text(beansLocalized("触感反馈", "Haptic Feedback"))
+                        Text(coLocalized("触感反馈", "Haptic Feedback"))
                             .font(CoFont.appFont(15))
                             .foregroundStyle(Color.coLabel)
                     }
@@ -3414,7 +3251,7 @@ struct SettingsView: View {
                             .foregroundStyle(Color.coAmber)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(beansLocalized("第三方播放会员歌提醒", "VIP song notice for third-party playback"))
+                            Text(coLocalized("第三方播放会员歌提醒", "VIP song notice for third-party playback"))
                                 .font(CoFont.appFont(15))
                                 .foregroundStyle(Color.coLabel)
                         }
@@ -3712,8 +3549,6 @@ struct SettingsView: View {
             backupMessage = "备份中未找到可恢复的设置"
         }
     }
-
-
 
 
     private func layoutSettingSlider(
@@ -4181,32 +4016,32 @@ struct EqualizerSettingsView: View {
                 }
                 .coScrollIndicatorsHidden()
             }
-            .navigationTitle(beansLocalized("均衡器", "Equalizer"))
+            .navigationTitle(coLocalized("均衡器", "Equalizer"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(beansLocalized("完成", "Done")) { dismiss() }
+                    Button(coLocalized("完成", "Done")) { dismiss() }
                 }
             }
             .alert(
-                beansLocalized("保存自定义预设", "Save custom preset"),
+                coLocalized("保存自定义预设", "Save custom preset"),
                 isPresented: $showPresetNamePrompt
             ) {
                 TextField(
-                    beansLocalized("预设名称", "Preset name"),
+                    coLocalized("预设名称", "Preset name"),
                     text: $newPresetName
                 )
-                Button(beansLocalized("保存", "Save")) {
+                Button(coLocalized("保存", "Save")) {
                     if equalizer.saveCustomPreset(name: newPresetName) {
                         CoHaptics.select()
                     }
                     newPresetName = ""
                 }
-                Button(beansLocalized("取消", "Cancel"), role: .cancel) {
+                Button(coLocalized("取消", "Cancel"), role: .cancel) {
                     newPresetName = ""
                 }
             } message: {
-                Text(beansLocalized("保存当前频段和前级增益，之后可以一键恢复。", "Save the current bands and preamp for one-tap recall later."))
+                Text(coLocalized("保存当前频段和前级增益，之后可以一键恢复。", "Save the current bands and preamp for one-tap recall later."))
             }
         }
     }
@@ -4220,7 +4055,7 @@ struct EqualizerSettingsView: View {
                         .foregroundStyle(Color.coAmber)
                         .frame(width: 24)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(beansLocalized("启用均衡器", "Enable Equalizer"))
+                        Text(coLocalized("启用均衡器", "Enable Equalizer"))
                             .font(CoFont.appFont(15, .semibold))
                             .foregroundStyle(Color.coLabel)
                     }
@@ -4233,7 +4068,7 @@ struct EqualizerSettingsView: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 HStack {
-                    Text(beansLocalized("前级增益", "Preamp"))
+                    Text(coLocalized("前级增益", "Preamp"))
                         .font(CoFont.appFont(13, .medium))
                         .foregroundStyle(Color.coLabel)
                     Spacer()
@@ -4248,7 +4083,7 @@ struct EqualizerSettingsView: View {
                 HStack {
                     Text("-12")
                     Spacer()
-                    Text(beansLocalized("不增益", "Unity"))
+                    Text(coLocalized("不增益", "Unity"))
                     Spacer()
                     Text("+12")
                 }
@@ -4263,7 +4098,7 @@ struct EqualizerSettingsView: View {
     private var presetCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(beansLocalized("预设", "Preset"))
+                Text(coLocalized("预设", "Preset"))
                     .font(CoFont.appFont(14, .semibold))
                     .foregroundStyle(Color.coLabel)
                 Spacer()
@@ -4317,7 +4152,7 @@ struct EqualizerSettingsView: View {
 
             if !equalizer.customPresets.isEmpty {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(beansLocalized("我的预设", "My presets"))
+                    Text(coLocalized("我的预设", "My presets"))
                         .font(CoFont.appFont(12, .semibold))
                         .foregroundStyle(Color.coComment)
                     ForEach(equalizer.customPresets) { preset in
@@ -4356,7 +4191,7 @@ struct EqualizerSettingsView: View {
                     newPresetName = equalizer.selectedCustomPresetName ?? ""
                     showPresetNamePrompt = true
                 } label: {
-                    Label(beansLocalized("保存当前预设", "Save current preset"), systemImage: "square.and.arrow.down")
+                    Label(coLocalized("保存当前预设", "Save current preset"), systemImage: "square.and.arrow.down")
                         .font(CoFont.appFont(12.5, .medium))
                         .foregroundStyle(Color.coAmber)
                         .frame(maxWidth: .infinity)
@@ -4376,7 +4211,7 @@ struct EqualizerSettingsView: View {
                         .background { CoSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(beansLocalized("重置调节", "Reset adjustments"))
+                .accessibilityLabel(coLocalized("重置调节", "Reset adjustments"))
             }
         }
         .padding(14)
@@ -4387,10 +4222,10 @@ struct EqualizerSettingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(beansLocalized("自定义调节", "Custom tuning"))
+                    Text(coLocalized("自定义调节", "Custom tuning"))
                         .font(CoFont.appFont(14, .semibold))
                         .foregroundStyle(Color.coLabel)
-                    Text(beansLocalized("范围 -12 dB 至 +12 dB", "Range: -12 dB to +12 dB"))
+                    Text(coLocalized("范围 -12 dB 至 +12 dB", "Range: -12 dB to +12 dB"))
                         .font(CoFont.appFont(11))
                         .foregroundStyle(Color.coComment)
                 }
@@ -4453,10 +4288,10 @@ private struct EqualizerResponseView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(beansLocalized("频响预览", "Response preview"))
+                    Text(coLocalized("频响预览", "Response preview"))
                         .font(CoFont.appFont(14, .semibold))
                         .foregroundStyle(Color.coLabel)
-                    Text(beansLocalized("拖动下方频段，实时塑造声音", "Shape the sound in real time by tuning each band below"))
+                    Text(coLocalized("拖动下方频段，实时塑造声音", "Shape the sound in real time by tuning each band below"))
                         .font(CoFont.appFont(11))
                         .foregroundStyle(Color.coComment)
                 }

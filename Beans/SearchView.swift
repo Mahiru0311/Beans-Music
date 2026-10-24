@@ -198,9 +198,6 @@ struct SearchView: View {
     /// UIKit 输入框控制器（提交拼音、收起键盘等由它统一处理）
     @State private var searchController = SearchFieldController()
 
-    private var isNativeClean: Bool {
-        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
 
     private var usesTabletHotSearchLayout: Bool {
         horizontalSizeClass == .regular
@@ -360,7 +357,7 @@ struct SearchView: View {
         CoUnifiedSearchField(
             text: $keyword,
             controller: searchController,
-            placeholder: provider == .bilibili ? "搜索视频、UP主或合集" : beansLocalized("搜索歌曲、歌手、专辑", "Search songs, artists, or albums"),
+            placeholder: provider == .bilibili ? "搜索视频、UP主或合集" : coLocalized("搜索歌曲、歌手、专辑", "Search songs, artists, or albums"),
             isSearching: searching,
             onClear: {
                 songResults = []
@@ -819,7 +816,7 @@ struct SearchView: View {
                 VStack {
                     LazyVStack(spacing: 8) {
                         HStack(spacing: 8) {
-                            Text(beansLocalized("找到 \(songResults.count) 首 · \(provider.rawValue)", "Found \(songResults.count) songs · \(provider.englishName)"))
+                            Text(coLocalized("找到 \(songResults.count) 首 · \(provider.rawValue)", "Found \(songResults.count) songs · \(provider.englishName)"))
                                 .font(CoFont.appFont(12))
                                 .foregroundStyle(Color.coComment)
                                 .lineLimit(1)
@@ -884,7 +881,7 @@ struct SearchView: View {
                 EmptyStateView(icon: "person.crop.circle", text: "\(provider.rawValue)未找到相关歌手")
             } else {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(beansLocalized("找到 \(artistResults.count) 位 · \(provider.rawValue)", "Found \(artistResults.count) artists · \(provider.englishName)"))
+                    Text(coLocalized("找到 \(artistResults.count) 位 · \(provider.rawValue)", "Found \(artistResults.count) artists · \(provider.englishName)"))
                         .font(CoFont.appFont(12))
                         .foregroundStyle(Color.coComment)
                         .lineLimit(1)
@@ -926,7 +923,7 @@ struct SearchView: View {
                 EmptyStateView(icon: "square.stack", text: "\(provider.rawValue)未找到相关专辑")
             } else {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(beansLocalized("找到 \(albumResults.count) 张 · \(provider.rawValue)", "Found \(albumResults.count) albums · \(provider.englishName)"))
+                    Text(coLocalized("找到 \(albumResults.count) 张 · \(provider.rawValue)", "Found \(albumResults.count) albums · \(provider.englishName)"))
                         .font(CoFont.appFont(12))
                         .foregroundStyle(Color.coComment)
                         .lineLimit(1)
@@ -1557,7 +1554,7 @@ struct AlbumDetailView: View {
     private var albumPage: some View {
         ZStack {
             // 新版底：封面取色 tint（图到了才变，没图时回落旧深褐底），不跟随系统深浅；整页强制深色外观，
-            // 但 beansLabel / beansComment 会被用户自定义主文字色（黑字）覆盖，落在深色底上
+            // 但 coLabel / coComment 会被用户自定义主文字色（黑字）覆盖，落在深色底上
             // 看不见，所以本页行文字一律用显式白字系列（SongCell 用 forceDarkText，专辑架直接写白字）。
             detailPageTint.ignoresSafeArea()
             if isLoading {
@@ -1605,7 +1602,7 @@ struct AlbumDetailView: View {
                             // 样式与歌手页搜索行一致（提示白 0.6、输入后纯白、放大镜白 0.6、不加玻璃）。
                             // 无歌曲时不显示；搜不到时给一句白字提示，不留空白。
                             if !tracks.isEmpty {
-                                CoDetailSearchRow(prompt: beansLocalized("搜索歌曲", "Search songs"), text: $albumSearchText)
+                                CoDetailSearchRow(prompt: coLocalized("搜索歌曲", "Search songs"), text: $albumSearchText)
                             }
                             if displayedAlbumTracks.isEmpty, !albumSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 Text("未找到相关歌曲")
@@ -1685,7 +1682,7 @@ struct AlbumDetailView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("打开 \(album.artistName) 的歌手主页")
             }
-            Text([beansSongCountText(tracks.count), album.releaseCaption]
+            Text([coSongCountText(tracks.count), album.releaseCaption]
                 .filter { !$0.isEmpty }
                 .joined(separator: " · "))
                 .font(CoFont.appFont(14))
@@ -1877,8 +1874,6 @@ struct AlbumDetailView: View {
         }
         return Array((matching.isEmpty ? candidates : matching).filter { $0.id != album.id }.prefix(12))
     }
-
-
 
 
     private func searchFallbackSongs(

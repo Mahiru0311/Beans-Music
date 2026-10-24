@@ -83,7 +83,7 @@ struct CoThemeToggleRequest {
 }
 
 extension Notification.Name {
-    static let beansThemeToggleRequested = Notification.Name("co.themeToggleRequested")
+    static let coThemeToggleRequested = Notification.Name("co.themeToggleRequested")
 }
 
 private struct SidebarPlaylistGroup: Identifiable {
@@ -234,12 +234,6 @@ struct RootView: View {
         CoThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
-
-
-
-    private var isNativeClean: Bool {
-        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
 
     private var usesPadSidebar: Bool {
         UIDevice.current.userInterfaceIdiom == .pad
@@ -685,7 +679,7 @@ struct RootView: View {
                         .font(CoFont.appFont(13, .medium))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
-                    Text(beansSongCountText(playlist.songs.count))
+                    Text(coSongCountText(playlist.songs.count))
                         .font(CoFont.appFont(10))
                         .foregroundStyle(Color.primary.opacity(0.48))
                 }
@@ -711,7 +705,7 @@ struct RootView: View {
                         .font(CoFont.appFont(13, .medium))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
-                    Text(beansSongCountText(playlist.trackCount))
+                    Text(coSongCountText(playlist.trackCount))
                         .font(CoFont.appFont(10))
                         .foregroundStyle(Color.primary.opacity(0.48))
                 }
@@ -1106,7 +1100,6 @@ private struct CoPresentedSurfaceClearer: UIViewControllerRepresentable {
 }
 
 
-
 private struct MiniPlayerAccessoryModifier: ViewModifier {
     let isActive: Bool
     @Binding var showPlayer: Bool
@@ -1155,8 +1148,6 @@ private struct RootMiniPlayerAccessory: View {
         placement.map { $0 == .inline } == true ? .inlineAccessory : .accessory
     }
 }
-
-
 
 
 // MARK: - 系统 TabBar 清透风格（实例级配置）
@@ -1251,6 +1242,4 @@ struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
         }
     }
 }
-
-
 

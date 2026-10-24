@@ -126,7 +126,7 @@ private struct RemotePlatforms: Decodable {
 }
 
 private extension JSONDecoder {
-    static var beansSnakeCase: JSONDecoder {
+    static var coSnakeCase: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder

@@ -598,7 +598,7 @@ struct DiscoverView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
                     ForEach(Array(kugouTopLists.prefix(min(visibleRankCount, 10)).enumerated()), id: \.element.id) { index, info in
-                        nativeRankCard(index: index, name: beansChartName(info.name), subtitle: beansChartSubtitle(info.updateFrequency), coverURL: info.coverURL) {
+                        nativeRankCard(index: index, name: coChartName(info.name), subtitle: coChartSubtitle(info.updateFrequency), coverURL: info.coverURL) {
                             openRoute(DiscoverRoute.kugouTopList(info))
                         }
                     }
@@ -644,7 +644,7 @@ struct DiscoverView: View {
     @ViewBuilder
     private var rankRowsContent: some View {
         ForEach(Array(kugouTopLists.prefix(displayedRankCount).enumerated()), id: \.element.id) { index, info in
-            rankRow(index: index, name: beansChartName(info.name), subtitle: beansChartSubtitle(info.updateFrequency), coverURL: info.coverURL) {
+            rankRow(index: index, name: coChartName(info.name), subtitle: coChartSubtitle(info.updateFrequency), coverURL: info.coverURL) {
                 CoHaptics.tap()
                 openRoute(DiscoverRoute.kugouTopList(info))
             }
@@ -825,9 +825,9 @@ struct DiscoverView: View {
 
     private var dailyRecommendationSubtitle: String {
         if dailySongs.isEmpty {
-            return beansLocalized("每天 6:00 更新", "Refreshes at 6:00 daily")
+            return coLocalized("每天 6:00 更新", "Refreshes at 6:00 daily")
         }
-        return String(format: beansLocalized("%d 首 · 每天 6:00 更新", "%d songs · refreshes at 6:00 daily"), dailySongs.count)
+        return String(format: coLocalized("%d 首 · 每天 6:00 更新", "%d songs · refreshes at 6:00 daily"), dailySongs.count)
     }
 
     @ViewBuilder
@@ -968,7 +968,7 @@ struct DiscoverView: View {
                                         .multilineTextAlignment(.leading)
                                         .frame(width: 166, alignment: .leading)
                                     if playlist.trackCount > 0 {
-                                        Text(beansSongCountText(playlist.trackCount))
+                                        Text(coSongCountText(playlist.trackCount))
                                             .font(CoFont.appFont(12, .medium))
                                             .foregroundStyle(Color.secondary)
                                             .lineLimit(1)
@@ -1023,8 +1023,8 @@ struct DiscoverView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text(playlistsExpanded
-                             ? beansLocalized("收起歌单广场", "Collapse Playlist Square")
-                             : beansLocalized("展开全部（\(playlistDisplayItems.count)）", "Show all (\(playlistDisplayItems.count))"))
+                             ? coLocalized("收起歌单广场", "Collapse Playlist Square")
+                             : coLocalized("展开全部（\(playlistDisplayItems.count)）", "Show all (\(playlistDisplayItems.count))"))
                             .font(CoFont.appFont(13, .semibold))
                         Image(systemName: playlistsExpanded ? "chevron.up" : "chevron.down")
                             .font(.system(size: 11, weight: .semibold))
@@ -1048,14 +1048,14 @@ struct DiscoverView: View {
 
     private var playlistSectionTitle: String {
         if playlistSearchActive {
-            return beansLocalized("歌单搜索结果", "Playlist Search Results")
+            return coLocalized("歌单搜索结果", "Playlist Search Results")
         }
         return "歌单广场" 
     }
 
     private var playlistEmptyText: String {
         if playlistSearchActive {
-            return beansLocalized("没有找到相关歌单", "No matching playlists found")
+            return coLocalized("没有找到相关歌单", "No matching playlists found")
         }
         return "歌单广场暂时没有内容" 
     }
@@ -1082,7 +1082,7 @@ struct DiscoverView: View {
 
     private var newAlbumsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: beansLocalized("新碟上架", "New Releases"))
+            SectionHeader(title: coLocalized("新碟上架", "New Releases"))
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
                     ForEach(newAlbums) { album in
@@ -1097,7 +1097,7 @@ struct DiscoverView: View {
                                     .foregroundStyle(Color.coLabel)
                                     .lineLimit(1)
                                     .frame(width: isNativeClean ? 148 : 124, alignment: .leading)
-                                Text(album.artistName.isEmpty ? beansLocalized("未知歌手", "Unknown artist") : album.artistName)
+                                Text(album.artistName.isEmpty ? coLocalized("未知歌手", "Unknown artist") : album.artistName)
                                     .font(CoFont.appFont(11))
                                     .foregroundStyle(Color.coComment)
                                     .lineLimit(1)
@@ -1118,9 +1118,9 @@ struct DiscoverView: View {
 
     private var artistsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: beansLocalized("歌手", "Artists"))
+            SectionHeader(title: coLocalized("歌手", "Artists"))
             if topArtists.isEmpty {
-                Text(beansLocalized("暂无音乐人", "No artists available"))
+                Text(coLocalized("暂无音乐人", "No artists available"))
                     .font(CoFont.appFont(13))
                     .foregroundStyle(Color.coComment)
                     .frame(maxWidth: .infinity, alignment: .leading)

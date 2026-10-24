@@ -116,14 +116,6 @@ final class CoLogger: ObservableObject {
         logDirectory.appendingPathComponent("co-\(Self.fileStampFormatter.string(from: Date())).log")
     }
 
-    /// 导出日志文件（不存在则先生成一份完整日志）
-    func exportLogURL() -> URL {
-        let url = currentFileURL
-        if !FileManager.default.fileExists(atPath: url.path) {
-            try? fullText.write(to: url, atomically: true, encoding: .utf8)
-        }
-        return url
-    }
 
     private func write(_ line: String) {
         let url = currentFileURL

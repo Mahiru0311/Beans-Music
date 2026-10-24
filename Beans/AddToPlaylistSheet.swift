@@ -31,7 +31,7 @@ struct AddToPlaylistSheet: View {
                                             .font(CoFont.appFont(15))
                                             .foregroundStyle(Color.coLabel)
                                             .lineLimit(1)
-                                        Text(beansSongCountText(playlist.trackCount))
+                                        Text(coSongCountText(playlist.trackCount))
                                             .font(CoFont.appFont(11))
                                             .foregroundStyle(Color.coComment)
                                     }

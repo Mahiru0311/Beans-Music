@@ -6,8 +6,6 @@ final class CoverImagePrefetcher {
     static let shared = CoverImagePrefetcher()
 
     private var scheduledURLs = Set<URL>()
-    private var didStartStartupPrefetch = false
-
     private init() {}
 
 
