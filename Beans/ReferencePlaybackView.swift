@@ -217,8 +217,7 @@ struct ReferencePlaybackView: View {
                 }
             }
 
-            // 前端同款：歌名/歌手靠左（前端 #meta 没有 text-align，默认就是靠左；封面居中、标题靠左）。
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(spacing: 5) {
                 HStack(spacing: 9) {
                 Text(song?.name ?? "未在播放")
                     .font(CoFont.appFont(showLyrics ? 15 : 22, .bold))
@@ -247,7 +246,7 @@ struct ReferencePlaybackView: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onArtist)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: 420)
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
             .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
