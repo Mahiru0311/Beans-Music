@@ -1,52 +1,30 @@
 import Foundation
 
-// Folia 舞台效果表：15 个 folia-major 原版（按原版 order 排）+ 涌现（QQ 音乐式，Co 自加，放最后）。
-// 设置页按 order 排序显示；rawValue 是存档身份，order 只管排序，改 order 不影响已存偏好。
+// Folia 舞台效果表（2026-10-25 精简后）：只留 5 个——绘光、流光、云阶、浮名、静止，
+// 其余 11 个（商籁、凝彩、花火、心象、倾诉、回环、莫奈、时计、群唱、镜台、涌现）已删，
+// 存档里已删的效果名由 availableMode 回落到静止，不会崩。
 enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
-    case sonnet, tempera, lumiere, hanabi, classic, cadenza, partita, fume,
-         tilt, claddagh, monet, pendolo, cappella, diorama, still, rise
+    case lumiere, classic, partita, fume, still
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .sonnet: return "商籁"
-        case .tempera: return "凝彩"
         case .lumiere: return "绘光"
-        case .hanabi: return "花火"
         case .classic: return "流光"
-        case .cadenza: return "心象"
         case .partita: return "云阶"
         case .fume: return "浮名"
-        case .tilt: return "倾诉"
-        case .claddagh: return "回环"
-        case .monet: return "莫奈"
-        case .pendolo: return "时计"
-        case .cappella: return "群唱"
-        case .diorama: return "镜台"
         case .still: return "静止"
-        case .rise: return "涌现"
         }
     }
 
     var order: Int {
         switch self {
-        case .sonnet: return 10
-        case .tempera: return 20
         case .lumiere: return 25
-        case .hanabi: return 26
         case .classic: return 30
-        case .cadenza: return 40
         case .partita: return 50
         case .fume: return 60
-        case .tilt: return 70
-        case .claddagh: return 80
-        case .monet: return 90
-        case .pendolo: return 100
-        case .cappella: return 110
-        case .diorama: return 120
         case .still: return 130
-        case .rise: return 140
         }
     }
 
