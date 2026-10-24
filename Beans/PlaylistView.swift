@@ -187,13 +187,17 @@ struct PlaylistView: View {
         .allowsHitTesting(false)
     }
 
-    /// 滚动内容里的封面占位区：高度就是固定封面的基线高（屏宽正方形），
-    /// 静止时歌名紧贴封面底边（标题区顶部内边距 0），歌名、控制排、
-    /// 歌曲行的位置和封面在滚动内容里时完全一致；下拉时占位区高度不动，
-    /// 固定封面框高增长被虚化层盖住，歌名不再被框高增长往下推。
+    /// 滚动内容里的封面占位区：高度是固定封面基线高（屏宽正方形）减 60pt。
+    /// 歌名块 + 控制排作为一个整体往上移 60pt、压到封面底部 120pt 渐变淡出
+    /// + 虚化层那段里，而不是坐在封面底边下面很远的深色区里；歌名顶边比
+    /// 封面底边高 60pt（屏宽约 402pt 时歌名顶边约 342pt），后面仍是虚化底
+    /// 不是亮封面原图，白字可读。不收满 120pt：收满会把歌名压到封面原图
+    /// 亮区，白字可能看不清。占位收了，下面简介、搜索行、歌曲行全跟着往上走，
+    /// 不给简介、搜索行单独加反向偏移。下拉时占位区高度不动，固定封面
+    /// 框高增长被虚化层盖住，歌名不再被框高增长往下推。
     private var playlistCoverSpacer: some View {
         Color.clear
-            .frame(height: UIScreen.main.bounds.width)
+            .frame(height: UIScreen.main.bounds.width - 60)
     }
 
     /// 虚化层用图刷新：图只从 BeansCoverImageStore 已有的缓存里读（内存优先，
@@ -441,8 +445,13 @@ struct PlaylistView: View {
         // 胶囊约 168pt、圆键约 48pt、间距约 12pt。按参考图改：圆键 48pt、
         // 胶囊 168×50pt、间距 12pt，整排 288pt、左右各留约 57pt。
         // 上下内边距本轮收紧到上 20pt、下 12pt（纵向收紧的一部分，横向对齐数值不动）；
-        // 控制排三个键本轮改液态玻璃，见各键 background 里的 glassEffect。
-        GlassEffectContainer {
+        // 控制排三个键改液态玻璃，见各键 background 里的 glassEffect。
+        // 注意不要再包液态玻璃容器：上一轮整排包在容器里，容器会把
+        // 玻璃层提到标签前面，中间胶囊白色着色 0.92 把黑色的播放图标和
+        // “播放”两个字全盖住了，真机截图里就是一个空白白色胶囊；左右键
+        // 的白图标也被同一层洗淡了。玻璃只做各键的 background 层，标签
+        // （图标、文字）是按钮内容本身、压在 background 上面，清晰可见。
+        // 左右键、胶囊的玻璃参数、随机琥珀色高亮、模式切换循环一律不动。
         HStack(spacing: 12) {
             // 播放模式切换键（之前是死图标：写死的 shuffle 图，点它只播一次
             // 随机、图标永远不变）。现在图标读 PlayerManager.playMode.icon，
@@ -519,7 +528,6 @@ struct PlaylistView: View {
         }
         .padding(.top, 20)
         .padding(.bottom, 12)
-        }
     }
 
     private var unifiedSearchRow: some View {
