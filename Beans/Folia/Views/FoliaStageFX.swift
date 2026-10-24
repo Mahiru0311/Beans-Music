@@ -127,7 +127,7 @@ private struct FXEngine {
                     for _ in 0..<8 {
                         let life = Double.random(in: 0.3...0.8)
                         splashDots.append(SplashDot(x: x, y: height, vx: Double.random(in: -70...70),
-                                                    vy: Double.random(in: -260...-80),
+                                                    vy: Double.random(in: -260 ... -80),
                                                     radius: Double.random(in: 2...5), age: 0, life: life))
                     }
                     ripples.append(Ripple(x: x, age: 0, life: 0.9))
