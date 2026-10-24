@@ -1554,11 +1554,12 @@ private struct CoPlaylistRowLabel: View {
     let playlist: Playlist
     let label: Color
     let secondary: Color
+    @ObservedObject private var overrides = CoPlaylistOverrides.shared
     var body: some View {
         HStack(spacing: 12) {
-            CoverImage(url: playlist.coverURL, size: 52, cornerRadius: 10)
+            CoverImage(url: overrides.coverURL(for: playlist), size: 52, cornerRadius: 10)
             VStack(alignment: .leading, spacing: 3) {
-                Text(playlist.name)
+                Text(overrides.displayName(for: playlist))
                     .font(.system(size: 16))
                     .foregroundStyle(label)
                     .lineLimit(1)
@@ -1595,6 +1596,125 @@ private struct CoPlaylistEmptyState: View {
     }
 }
 
+/// 酷狗歌单本地编辑页（设置隐藏列表铅笔 + 新建歌单后编辑共用，不新增板块）：
+/// 只有两项——名字输入框、封面区；改名、改封面只在 Co 里生效，不会同步到酷狗官方 App。
+struct CoPlaylistEditSheet: View {
+    let playlistID: Int
+    let serverName: String
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var overrides = CoPlaylistOverrides.shared
+    @State private var nameText: String = ""
+    @State private var showCoverPicker = false
+    @State private var showFormatError = false
+    @State private var showSaveError = false
+
+    var body: some View {
+        BeansNavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    if let image = overrides.coverImage(for: playlistID) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    } else {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.beansGlassFill)
+                            .frame(width: 64, height: 64)
+                            .overlay {
+                                Image(systemName: "music.note.list")
+                                    .foregroundStyle(Color.beansComment)
+                            }
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button("更换封面") { showCoverPicker = true }
+                            .font(BeansFont.appFont(13, .medium))
+                            .foregroundStyle(Color.beansAmber)
+                        if overrides.hasCustomCover(for: playlistID) {
+                            Button("恢复原封面") {
+                                overrides.clearCover(id: playlistID)
+                                BeansHaptics.select()
+                                ToastCenter.shared.show("已恢复原封面")
+                            }
+                            .font(BeansFont.appFont(13, .medium))
+                            .foregroundStyle(.red)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("歌单名字")
+                        .font(BeansFont.appFont(13, .semibold))
+                        .foregroundStyle(Color.beansComment)
+                    TextField("歌单名字", text: $nameText)
+                        .font(BeansFont.appFont(15))
+                        .foregroundStyle(Color.beansLabel)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background { BeansSurface(shape: RoundedRectangle(cornerRadius: 10, style: .continuous)) }
+                    if overrides.customName(for: playlistID) != nil {
+                        Button("恢复原名（\(serverName)）") {
+                            overrides.clearName(id: playlistID)
+                            nameText = serverName
+                            BeansHaptics.select()
+                        }
+                        .font(BeansFont.appFont(13, .medium))
+                        .foregroundStyle(.red)
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text("改名、改封面只在 Co 里生效，不会同步到酷狗官方 App（酷狗接口没有这个接口）。")
+                    .font(BeansFont.appFont(12))
+                    .foregroundStyle(Color.beansComment)
+                Spacer()
+            }
+            .padding(16)
+            .navigationTitle("编辑歌单")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        let trimmed = nameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty, trimmed != serverName {
+                            overrides.setName(id: playlistID, name: trimmed)
+                        }
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                nameText = overrides.customName(for: playlistID) ?? serverName
+            }
+            .sheet(isPresented: $showCoverPicker) {
+                WallpaperImagePicker(
+                    onPicked: { image in
+                        if overrides.setCover(id: playlistID, image: image) {
+                            BeansHaptics.success()
+                            ToastCenter.shared.show("已更换封面")
+                        } else {
+                            showSaveError = true
+                        }
+                    },
+                    onFailed: { showFormatError = true }
+                )
+            }
+            .alert("此图片格式不支持", isPresented: $showFormatError) {
+                Button("确定", role: .cancel) {}
+            }
+            .alert("封面保存失败", isPresented: $showSaveError) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text("请稍后重试，旧封面未变。")
+            }
+        }
+    }
+}
+
 struct CoMyPlaylistsSheet: View {
     let playlists: [Playlist]
     let isLoading: Bool
@@ -1607,6 +1727,9 @@ struct CoMyPlaylistsSheet: View {
     @State private var isCreating = false
     @State private var createError: String? = nil
     @State private var showCreateError = false
+    // 新建时先选的封面（可选）：创建仍走酷狗接口（无 cover 参数），建完后写入本地覆盖层。
+    @State private var pendingCoverImage: UIImage? = nil
+    @State private var showCreateCoverPicker = false
 
     var body: some View {
         BeansNavigationStack {
@@ -1657,10 +1780,26 @@ struct CoMyPlaylistsSheet: View {
             }
             .alert("新建歌单", isPresented: $showCreatePrompt) {
                 TextField("歌单名称", text: $newName)
+                Button(pendingCoverImage == nil ? "选封面（可选）" : "已选封面，点按更换") {
+                    showCreatePrompt = false
+                    showCreateCoverPicker = true
+                }
                 Button("创建") { Task { await createPlaylist() } }
-                Button("取消", role: .cancel) {}
+                Button("取消", role: .cancel) { pendingCoverImage = nil }
             } message: {
-                Text("新建的歌单会同步到酷狗音乐，创建后会出现在列表里。")
+                Text("新建的歌单会同步到酷狗音乐，创建后会出现在列表里。封面只在 Co 里生效，不会同步到酷狗官方 App。")
+            }
+            .sheet(isPresented: $showCreateCoverPicker) {
+                WallpaperImagePicker(
+                    onPicked: { image in
+                        pendingCoverImage = image
+                        showCreatePrompt = true
+                    },
+                    onFailed: {
+                        ToastCenter.shared.show("此图片格式不支持")
+                        showCreatePrompt = true
+                    }
+                )
             }
             .alert("新建歌单失败", isPresented: $showCreateError) {
                 Button("确定", role: .cancel) { createError = nil }
@@ -1706,6 +1845,10 @@ struct CoMyPlaylistsSheet: View {
             if !displayed.contains(where: { $0.id == created.id }) {
                 displayed.append(created)
             }
+            if let cover = pendingCoverImage {
+                _ = CoPlaylistOverrides.shared.setCover(id: created.id, image: cover)
+            }
+            pendingCoverImage = nil
             newName = ""
             await onRefresh()
             ToastCenter.shared.show("已创建")
@@ -1829,6 +1972,17 @@ struct CoSongListSheet: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // 我喜欢播放全部（只在没传 onClear 的我喜欢 sheet 里出现，与其他歌单一样）：
+                // 从第一首开始播，播完像点单首一样关闭 sheet，不留着挡播放器。
+                // 常听 sheet 传了 onClear，不加播放全部（常听是按次数排的实时列表，口径会变）。
+                if onClear == nil, !displaySongs.isEmpty {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("播放全部") {
+                            player.play(songs: displaySongs, startAt: 0)
+                            dismiss()
+                        }
+                    }
+                }
                 // 常听清除入口（只在传了 onClear 的常听 sheet 里出现）：
                 // 放在详情页顶部工具栏，不放在我的页数据格上。
                 if onClear != nil {
@@ -2024,6 +2178,10 @@ struct SettingsView: View {
     @State private var appearanceDetailsExpanded = false
     // 设置里隐藏歌单开关（2026-10-24 用户拍板：只留设置里这一处，我的页长按已删）。
     @State private var hiddenPlaylistsExpanded = false
+    @State private var showPlaylistEditSheet = false
+    @State private var editingPlaylistID = 0
+    @State private var editingPlaylistName = ""
+    @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
     @State private var settingsCachedPlaylists: [Playlist] = []
     @State private var settingsCurrentHidden: [(id: Int, name: String)] = []
     @State private var settingsOtherHidden: [(userId: String, entries: [(id: Int, name: String)])] = []
@@ -2504,25 +2662,44 @@ struct SettingsView: View {
                 } else {
                     ForEach(settingsAllPlaylistRows, id: \.id) { row in
                         let hidden = settingsHiddenIds.contains(row.id)
-                        Button { toggleSettingsPlaylistHidden(id: row.id, name: row.name) } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(row.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
-                                    if let count = row.trackCount {
-                                        Text("\(count) 首").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
-                                    } else {
-                                        Text("歌单 ID \(row.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                        HStack(spacing: 10) {
+                            // 左半行点按仍是切换显示/隐藏；铅笔是独立按钮，不抢整行点按。
+                            Button { toggleSettingsPlaylistHidden(id: row.id, name: row.name) } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(playlistOverrides.customName(for: row.id) ?? row.name).font(BeansFont.appFont(14)).foregroundStyle(Color.beansLabel).lineLimit(1)
+                                        if let count = row.trackCount {
+                                            Text("\(count) 首").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                        } else {
+                                            Text("歌单 ID \(row.id)").font(BeansFont.appFont(11)).foregroundStyle(Color.beansComment)
+                                        }
                                     }
+                                    Spacer()
+                                    Text(hidden ? "已隐藏" : "显示中").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
                                 }
-                                Spacer()
-                                Text(hidden ? "已隐藏" : "显示中").font(BeansFont.appFont(12)).foregroundStyle(Color.beansComment)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            // 铅笔只占一个图标位：打开本地编辑页（改名、改封面，只在 Co 里生效）。
+                            Button {
+                                BeansHaptics.select()
+                                editingPlaylistID = row.id
+                                editingPlaylistName = row.name
+                                showPlaylistEditSheet = true
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Color.beansLabel)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("编辑歌单")
+                            Button { toggleSettingsPlaylistHidden(id: row.id, name: row.name) } label: {
                                 Image(systemName: hidden ? "eye.slash.fill" : "eye.fill")
                                     .font(.system(size: 16))
                                     .foregroundStyle(hidden ? Color.beansAmber : Color.beansLabel)
                             }
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 if !settingsOtherHidden.isEmpty {
@@ -2559,6 +2736,9 @@ struct SettingsView: View {
             }
             .onAppear { refreshHiddenPlaylistsSettings() }
             }
+        }
+        .sheet(isPresented: $showPlaylistEditSheet) {
+            CoPlaylistEditSheet(playlistID: editingPlaylistID, serverName: editingPlaylistName)
         }
     }
 

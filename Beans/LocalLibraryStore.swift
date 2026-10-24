@@ -94,6 +94,11 @@ final class LocalLibraryStore: ObservableObject {
         playlists[idx].name = name
     }
 
+    func setCoverURL(id: UUID, url: URL?) {
+        guard let idx = playlists.firstIndex(where: { $0.id == id }) else { return }
+        playlists[idx].coverURL = url
+    }
+
     /// 调整本地歌单顺序，顺序会随歌单一起持久化。
     func movePlaylist(id: UUID, offset: Int) {
         guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }

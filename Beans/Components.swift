@@ -846,6 +846,137 @@ struct CoHiddenPlaylists {
     }
 }
 
+// MARK: - 歌单本地覆盖层（只在 Co 里生效，不同步到酷狗官方 App）
+// 原因：酷狗接口里只有 createPlaylist(name:)（/v5/add_list，name only，无 cover 参数），
+// 没有重命名、没有改封面的接口，编一个“已同步到酷狗”就是假功能。所以改名、改封面
+// 只存本机：名字存 UserDefaults JSON（按酷狗歌单 id），封面存沙盒文件（按歌单 id 命名，
+// 最长边 1600、JPEG 0.85，与我的页头部壁纸同规格）。显示时优先读覆盖层，没有就回落
+// 服务端原值；服务端刷新（SyncedPlaylistCache）只换缓存，不动覆盖层，所以刷新后不丢。
+// 封面文件本身不上传、不进公开仓库。
+final class CoPlaylistOverrides: ObservableObject {
+    static let shared = CoPlaylistOverrides()
+    @Published private(set) var revision = 0
+
+    private struct Entry: Codable {
+        var name: String?
+        var hasCover: Bool
+    }
+
+    private static let defaultsKey = "beans.playlistOverrides.v1"
+    private var entries: [String: Entry] = [:]
+
+    private init() { load() }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: Self.defaultsKey),
+              let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else { return }
+        entries = decoded
+    }
+
+    private func save() {
+        if let data = try? JSONEncoder().encode(entries) {
+            UserDefaults.standard.set(data, forKey: Self.defaultsKey)
+        }
+        revision &+= 1
+    }
+
+    func customName(for id: Int) -> String? {
+        guard let name = entries[String(id)]?.name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return name
+    }
+
+    func hasCustomCover(for id: Int) -> Bool {
+        guard entries[String(id)]?.hasCover == true else { return false }
+        return FileManager.default.fileExists(atPath: CoPlaylistCoverFiles.fileURL(forKugouID: id).path)
+    }
+
+    func displayName(for playlist: Playlist) -> String {
+        customName(for: playlist.id) ?? playlist.name
+    }
+
+    func coverURL(for playlist: Playlist) -> URL? {
+        hasCustomCover(for: playlist.id) ? CoPlaylistCoverFiles.fileURL(forKugouID: playlist.id) : playlist.coverURL
+    }
+
+    func coverImage(for id: Int) -> UIImage? {
+        guard hasCustomCover(for: id) else { return nil }
+        return UIImage(contentsOfFile: CoPlaylistCoverFiles.fileURL(forKugouID: id).path)
+    }
+
+    func setName(id: Int, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var entry = entries[String(id)] ?? Entry(name: nil, hasCover: false)
+        entry.name = trimmed.isEmpty ? nil : trimmed
+        if entry.name == nil && !entry.hasCover {
+            entries.removeValue(forKey: String(id))
+        } else {
+            entries[String(id)] = entry
+        }
+        save()
+    }
+
+    func clearName(id: Int) {
+        setName(id: id, name: "")
+    }
+
+    @discardableResult
+    func setCover(id: Int, image: UIImage) -> Bool {
+        guard let url = CoPlaylistCoverFiles.save(image: image, fileName: "kugou-\(id).jpg") else { return false }
+        _ = url
+        var entry = entries[String(id)] ?? Entry(name: nil, hasCover: false)
+        entry.hasCover = true
+        entries[String(id)] = entry
+        save()
+        return true
+    }
+
+    func clearCover(id: Int) {
+        try? FileManager.default.removeItem(at: CoPlaylistCoverFiles.fileURL(forKugouID: id))
+        var entry = entries[String(id)] ?? Entry(name: nil, hasCover: false)
+        entry.hasCover = false
+        if entry.name == nil {
+            entries.removeValue(forKey: String(id))
+        } else {
+            entries[String(id)] = entry
+        }
+        save()
+    }
+}
+
+enum CoPlaylistCoverFiles {
+    private static var directory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CoPlaylistCovers", isDirectory: true)
+    }
+
+    static func fileURL(forKugouID id: Int) -> URL {
+        directory.appendingPathComponent("kugou-\(id).jpg")
+    }
+
+    /// 与我的页头部壁纸同规格存一张图：最长边 1600、JPEG 0.85。返回写好的文件 URL，写失败返回 nil。
+    static func save(image raw: UIImage, fileName: String) -> URL? {
+        let maxSide: CGFloat = 1600
+        let scale = min(1, maxSide / max(raw.size.width, raw.size.height))
+        let img: UIImage
+        if scale < 1 {
+            let size = CGSize(width: raw.size.width * scale, height: raw.size.height * scale)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            img = renderer.image { _ in raw.draw(in: CGRect(origin: .zero, size: size)) }
+        } else {
+            img = raw
+        }
+        let url = directory.appendingPathComponent(fileName)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            guard let jpeg = img.jpegData(compressionQuality: 0.85) else { return nil }
+            try jpeg.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
+}
+
 // MARK: - 封面图
 
 /// 固定尺寸的扫光骨架，占位期间不改变父布局尺寸。

@@ -28,6 +28,7 @@ struct PlaylistView: View {
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var theme: ThemeStore
     @ObservedObject private var favorites = FavoritesStore.shared
+    @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
 
     private let loadMode: CoPlaylistLoadMode
     @State private var tracks: [Song] = []
@@ -233,10 +234,10 @@ struct PlaylistView: View {
         case .userPlaylist(let playlist):
             let description = playlist.playlistDescription.trimmingCharacters(in: .whitespacesAndNewlines)
             return CoPlaylistHeaderData(
-                title: playlist.name,
+                title: playlistOverrides.displayName(for: playlist),
                 sourceName: playlist.creatorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     ? "酷狗音乐" : playlist.creatorName,
-                coverURL: playlist.coverURL,
+                coverURL: playlistOverrides.coverURL(for: playlist),
                 description: description.isEmpty ? nil : description,
                 creatorAvatarURL: playlist.creatorAvatarURL,
                 playCount: playlist.playCount

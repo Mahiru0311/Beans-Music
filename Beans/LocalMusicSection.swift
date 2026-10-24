@@ -23,8 +23,6 @@ struct LocalMusicSection: View {
     @State private var selected: LocalPlaylist?
     @State private var syncing = false
     @State private var syncMessage = ""
-    @State private var showSyncPicker = false
-    @State private var selectedSyncTargets: Set<SyncTarget> = []
 
     private var emptyLocalPlaylistText: String {
         if languageRaw == AppLanguage.english.rawValue {
@@ -68,10 +66,10 @@ struct LocalMusicSection: View {
                     systemName: "arrow.triangle.2.circlepath",
                     prominent: true
                 ) {
-                    showSyncPicker = true
+                    Task { await sync(targets: [.kugou]) }
                 }
                 .disabled(syncing)
-                Text("选择两个或三个平台，合并同步到一个本地歌单")
+                Text(languageRaw == AppLanguage.english.rawValue ? "Sync your Kugou liked songs to a local playlist" : "同步酷狗喜欢歌曲到本地歌单")
                     .font(BeansFont.appFont(11))
                     .foregroundStyle(Color.beansComment)
             }
@@ -169,19 +167,6 @@ struct LocalMusicSection: View {
         } message: {
             Text("本地歌单保存在设备上，覆盖安装不会丢失，不依赖平台账号")
         }
-        .sheet(isPresented: $showSyncPicker) {
-            SyncPlatformPicker(
-                selectedTargets: $selectedSyncTargets,
-                onCancel: {
-                    showSyncPicker = false
-                },
-                onConfirm: {
-                    let targets = selectedSyncTargets
-                    showSyncPicker = false
-                    Task { await sync(targets: targets) }
-                }
-            )
-        }
         .sheet(isPresented: $showPlaylistOrder) {
             LocalPlaylistOrderSheet()
                 .environmentObject(theme)
@@ -195,10 +180,6 @@ struct LocalMusicSection: View {
 
     private func sync(targets: Set<SyncTarget>) async {
         guard !syncing else { return }
-        guard !targets.isEmpty else {
-            ToastCenter.shared.show("至少选择一个平台")
-            return
-        }
         syncing = true
         syncMessage = ""
         var songs: [Song] = []
@@ -282,62 +263,6 @@ private struct LocalPlaylistOrderSheet: View {
     }
 }
 
-fileprivate struct SyncPlatformPicker: View {
-    @Binding var selectedTargets: Set<LocalMusicSection.SyncTarget>
-    let onCancel: () -> Void
-    let onConfirm: () -> Void
-
-    private var canConfirm: Bool {
-        !selectedTargets.isEmpty
-    }
-
-    var body: some View {
-        BeansNavigationStack {
-            List {
-                Section {
-                    ForEach(LocalMusicSection.SyncTarget.allCases) { target in
-                        Toggle(isOn: Binding(
-                            get: { selectedTargets.contains(target) },
-                            set: { isSelected in
-                                if isSelected {
-                                    selectedTargets.insert(target)
-                                } else {
-                                    selectedTargets.remove(target)
-                                }
-                            }
-                        )) {
-                            Label(target.rawValue, systemImage: icon(for: target))
-                        }
-                    }
-                } header: {
-                    Text("同步平台")
-                } footer: {
-                    Text(LocalizedStringKey(canConfirm ? "可同步单个平台，也可以同时合并多个平台的喜欢歌曲。" : "至少选择一个平台。"))
-                }
-            }
-            .navigationTitle("一键同步歌单")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消", action: onCancel)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("开始同步", action: onConfirm)
-                        .disabled(!canConfirm)
-                }
-            }
-        }
-        .onAppear {
-            selectedTargets = []
-        }
-        .modifier(BeansSheetModifier(detents: [.fraction(0.5)], dragIndicator: true))
-    }
-
-    private func icon(for target: LocalMusicSection.SyncTarget) -> String {
-        "dog"
-    }
-}
-
 // MARK: - 本地歌单详情（播放全部 / 单曲播放 / 移除歌曲 / 添加歌曲）
 
 struct LocalPlaylistDetailSheet: View {
@@ -350,6 +275,8 @@ struct LocalPlaylistDetailSheet: View {
     let playlistID: UUID
 
     @State private var showSearchAdd = false
+    @State private var showCoverPicker = false
+    @State private var showCoverFormatError = false
     @State private var showRename = false
     @State private var renameText = ""
     @State private var playlistSearchText = ""
@@ -605,6 +532,11 @@ struct LocalPlaylistDetailSheet: View {
                         } label: {
                             Label("重命名歌单", systemImage: "pencil")
                         }
+                        Button {
+                            showCoverPicker = true
+                        } label: {
+                            Label("更换封面", systemImage: "photo")
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.system(size: 17, weight: .semibold))
@@ -616,6 +548,23 @@ struct LocalPlaylistDetailSheet: View {
             LocalSearchAddSheet(playlistID: playlistID)
                 .environmentObject(player)
                 .environmentObject(auth)
+        }
+        .sheet(isPresented: $showCoverPicker) {
+            WallpaperImagePicker(
+                onPicked: { image in
+                    if let url = CoPlaylistCoverFiles.save(image: image, fileName: "local-\(playlistID.uuidString).jpg") {
+                        store.setCoverURL(id: playlistID, url: url)
+                        BeansHaptics.success()
+                        ToastCenter.shared.show("已更换封面")
+                    } else {
+                        showCoverFormatError = true
+                    }
+                },
+                onFailed: { showCoverFormatError = true }
+            )
+        }
+        .alert("此图片格式不支持", isPresented: $showCoverFormatError) {
+            Button("确定", role: .cancel) {}
         }
         .sheet(item: $exportFile) { item in
             ShareSheet(items: [item.url])
