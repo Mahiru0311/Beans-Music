@@ -165,7 +165,23 @@ struct ReferencePlaybackView: View {
                 .ignoresSafeArea()
             } else {
                 CoverBlurBackground(url: displayCoverURL, scheme: colorScheme)
-                    .overlay(Color.black.opacity(colorScheme == .dark ? 0.48 : 0.14))
+                    .overlay {
+                        // 前端同款：背景罩不是整块黑 0.48，而是黑色渐变（上 0.22、中 0.10、下 0.42），
+                        // 封面颜色透得出来，整体亮到前端那个程度；浅色模式保持原样，保证文字可读。
+                        if colorScheme == .dark {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black.opacity(0.22), location: 0),
+                                    .init(color: .black.opacity(0.10), location: 0.40),
+                                    .init(color: .black.opacity(0.42), location: 1),
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        } else {
+                            Color.black.opacity(0.14)
+                        }
+                    }
                     .ignoresSafeArea()
             }
         }
@@ -201,7 +217,8 @@ struct ReferencePlaybackView: View {
                 }
             }
 
-            VStack(spacing: 5) {
+            // 前端同款：歌名/歌手靠左（前端 #meta 没有 text-align，默认就是靠左；封面居中、标题靠左）。
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 9) {
                 Text(song?.name ?? "未在播放")
                     .font(CoFont.appFont(showLyrics ? 15 : 22, .bold))
@@ -230,7 +247,7 @@ struct ReferencePlaybackView: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onArtist)
             }
-            .frame(maxWidth: 420)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 22)
             .modifier(AppleMusicLayoutTransform(entry: layoutEntry(.title)))
             .matchedGeometryEffect(id: "appleMusicTitle", in: coverMorphNamespace)
