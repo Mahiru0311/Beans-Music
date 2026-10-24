@@ -30,6 +30,8 @@ struct RecordPlayerView: View {
     @State private var showLyricOffsetSheet = false
     @AppStorage("co.audioQuality") private var playbackQualityRaw = CoAudioQuality.hires.rawValue
     @AppStorage(LyricTiming.userOffsetKey) private var lyricOffset = 0.0
+    /// 封面歌词预览开关（与自定义布局编辑器共用同一键）：开 = 隐藏封面页歌词预览。
+    @AppStorage("co.coverLyricsHidden") private var hideCoverLyrics = true
 
     init(
         song: Song?,
@@ -146,8 +148,14 @@ struct RecordPlayerView: View {
                         .frame(maxWidth: .infinity)
                     trackMetadata
                         .modifier(recordLayout(.vinylTitle))
-                    RecordModeMiniLyrics(lyrics: lyrics) {
-                        withAnimation(.easeInOut(duration: 0.22)) { showLyrics = true }
+                    Group {
+                        if hideCoverLyrics {
+                            Color.clear
+                        } else {
+                            RecordModeMiniLyrics(lyrics: lyrics) {
+                                withAnimation(.easeInOut(duration: 0.22)) { showLyrics = true }
+                            }
+                        }
                     }
                     // Keep the lyric preview's footprint stable while the next
                     // song's lyrics are being resolved, so the scrubber never jumps.
@@ -189,8 +197,14 @@ struct RecordPlayerView: View {
                     .frame(maxWidth: .infinity)
                 trackMetadata
                     .modifier(recordLayout(.vinylTitle))
-                RecordModeMiniLyrics(lyrics: lyrics) {
-                    withAnimation(.easeInOut(duration: 0.22)) { showLyrics = true }
+                Group {
+                    if hideCoverLyrics {
+                        Color.clear
+                    } else {
+                        RecordModeMiniLyrics(lyrics: lyrics) {
+                            withAnimation(.easeInOut(duration: 0.22)) { showLyrics = true }
+                        }
+                    }
                 }
                 .frame(maxWidth: 620)
                 .frame(height: 84)
