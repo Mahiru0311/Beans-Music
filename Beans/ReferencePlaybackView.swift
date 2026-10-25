@@ -1262,7 +1262,7 @@ struct AppleMusicLyricsSection: View {
     let primary: Color
     let secondary: Color
     let lyricOffset: CGFloat
-    let centered: Bool = false
+    let centered: Bool
     let onTapLine: (LyricLine) -> Void
 
     init(
