@@ -1725,7 +1725,7 @@ final class KugouMusicAPI {
             capacity *= 2
         }
         guard let text = String(data: output, encoding: .utf8), !text.isEmpty else { return nil }
-        return (text, text.contains("(") ? text : nil)
+        return (text, text.contains("<") ? text : nil)
     }
 
     // MARK: - 酷狗评论
