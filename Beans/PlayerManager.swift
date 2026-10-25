@@ -843,7 +843,9 @@ final class PlayerManager: NSObject, ObservableObject {
         abrStallEpisodes = []
         if next == .standard { kugouStandardFallbackSongKey = song.identityKey }
         UserDefaults.standard.set(next.rawValue, forKey: "co.audioQuality")
-        ToastCenter.shared.show("网络较慢，已切换到\(next.displayName)音质", duration: 3)
+        Task { @MainActor in
+            ToastCenter.shared.show("网络较慢，已切换到\(next.displayName)音质", duration: 3)
+        }
         loadCurrent(resumeAt: progress)
         return true
     }
