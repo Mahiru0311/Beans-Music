@@ -402,6 +402,7 @@ final class PlayerManager: NSObject, ObservableObject {
         // 不等待 AVPlayer 回调，也不使用回调中的旧 currentTime 覆盖目标位置。
         let clamped = max(0, min(seconds, max(duration, currentSong?.duration ?? seconds)))
         progress = clamped
+        lastPublishedProgress = clamped
         resetListeningProgress()
         seekRevision &+= 1
         player?.seek(
@@ -425,6 +426,7 @@ final class PlayerManager: NSObject, ObservableObject {
         seekRevision &+= 1
         let revision = seekRevision
         progress = target
+        lastPublishedProgress = target
         resetListeningProgress()
         player?.seek(
             to: CMTime(seconds: target, preferredTimescale: 600),
@@ -833,6 +835,8 @@ final class PlayerManager: NSObject, ObservableObject {
         } else {
             item = AVPlayerItem(url: url)
         }
+        // 前向多备 15 秒：启动仍不等缓冲（waits=false 不变），网络抖动时靠缓冲顶过去，不一卡一卡。
+        item.preferredForwardBufferDuration = 15
         let player = AVPlayer(playerItem: item)
         // QQ CDN 返回的首包较小，避免 AVPlayer 为了预缓冲过久而表现为
         // “点击后没反应”；真正不可播放时仍由 item 失败回调触发音质降级。
@@ -967,11 +971,11 @@ final class PlayerManager: NSObject, ObservableObject {
             bumpPlayCount(song)
             countedLoadGeneration = loadGeneration
         }
-        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.2, preferredTimescale: 600), queue: .main) { [weak self] time in
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.05, preferredTimescale: 600), queue: .main) { [weak self] time in
             guard let self, let player = self.player else { return }
             if time.seconds.isFinite {
                 self.recordListeningProgress(at: time.seconds, player: player)
-                if abs(time.seconds - self.lastPublishedProgress) >= 0.18 {
+                if abs(time.seconds - self.lastPublishedProgress) >= 0.05 {
                     self.lastPublishedProgress = time.seconds
                     self.progress = time.seconds
                     if abs(time.seconds - self.lastPersistedProgress) >= 5.0 {
