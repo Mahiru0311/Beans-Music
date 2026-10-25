@@ -140,7 +140,7 @@ struct RecordPlayerView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .transition(.opacity)
                 } else if showLyrics {
-                    lyricsColumn
+                    lyricsColumn()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .transition(.opacity)
                 } else {
@@ -189,7 +189,7 @@ struct RecordPlayerView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
             } else if showLyrics {
-                lyricsColumn
+                lyricsColumn()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
             } else {
@@ -244,7 +244,7 @@ struct RecordPlayerView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .center, spacing: 4) {
                         Text(song?.name ?? "")
                             .font(CoFont.appFont(21, .bold))
                             .foregroundStyle(.white)
@@ -254,7 +254,8 @@ struct RecordPlayerView: View {
                             .foregroundStyle(.white.opacity(0.65))
                             .lineLimit(1)
                     }
-                    lyricsColumn
+                    .frame(maxWidth: .infinity)
+                    lyricsColumn(centered: true)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if showLandscapeControls {
                         HStack {
@@ -298,7 +299,7 @@ struct RecordPlayerView: View {
                     }
                     .padding(.trailing, 30)
                     .frame(maxWidth: .infinity)
-                    lyricsColumn
+                    lyricsColumn()
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -535,12 +536,13 @@ struct RecordPlayerView: View {
         .padding(.horizontal, 8)
     }
 
-    private var lyricsColumn: some View {
+    private func lyricsColumn(centered: Bool = false) -> some View {
         AppleMusicLyricsSection(
             lyrics: lyrics,
             primary: .white,
             secondary: .white.opacity(0.58),
-            lyricOffset: CGFloat(lyricOffset)
+            lyricOffset: CGFloat(lyricOffset),
+            centered: centered
         ) { line in
             player.seekPrecisely(to: LyricTiming.seekTime(for: line, userOffset: lyricOffset))
         }

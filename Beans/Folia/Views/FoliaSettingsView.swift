@@ -9,6 +9,8 @@ struct FoliaSettingsView: View {
     // 翻译已删：歌词数据里翻译本就是空的（translation: nil），
     // 显示翻译/翻译字号/翻译颜色三行是永远不起作用的死开关。
     @AppStorage(FoliaPreferences.daylightKey) private var daylight = false
+    @AppStorage(LyricTiming.userOffsetKey) private var lyricOffset = 0.0
+    @State private var showLyricOffsetSheet = false
     @AppStorage(FoliaPreferences.showTextKey) private var showText = true
     @AppStorage(FoliaPreferences.primaryColorKey) private var primaryHex = "#FFFFFF"
     @AppStorage(FoliaPreferences.accentColorKey) private var accentHex = "#A5B4FC"
@@ -30,6 +32,14 @@ struct FoliaSettingsView: View {
                     }
                     Toggle("显示歌词", isOn: $showText)
                     Toggle("日间舞台", isOn: $daylight)
+                    Button { showLyricOffsetSheet = true } label: {
+                        HStack {
+                            Text("歌词偏移")
+                            Spacer()
+                            Text(CoLyricOffsetSheet.text(for: lyricOffset))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                     Text("静止模式显示上一句、当前句和下一句，句间停顿保持当前位置。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
@@ -77,6 +87,7 @@ struct FoliaSettingsView: View {
         .background { GlassBackdrop(customColor: theme.backgroundSyncAll ? theme.customBackground : nil) }
         .navigationTitle("Folia")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showLyricOffsetSheet) { CoLyricOffsetSheet() }
     }
 
     private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
