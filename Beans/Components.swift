@@ -1830,10 +1830,12 @@ struct ToastView: View {
 }
 
 
-// 横屏底部涟漪：一条随音乐起伏的波浪（不是三条杠、没有填充条带，背景透明）。
-// 高度跟音乐走：整体高度由音频 tap 的真实电平定（起得快、落得慢，暂停时归于平静），
-// 沿波浪各处再叠一个缓慢移动的包络，让同一时刻波浪各处有高有低、且高低位置一直在走；
-// 安静时也有 5pt 左右的起伏，不会塌成直线。颜色自适应背景（调用方传本页的主色）。
+// 横屏底部涟漪：借用 GitHub 上 SwiftUI 版 Siri 波形（noahchalifour/swiftui-siri-waveform-view，
+// 源自经典 SCSiriWaveformView）的做法，改成 Co 的一条线形式。
+// 一条线、不是三条杠：线是 3 条正弦曲线之和（振幅/频率/相位各不相同），
+// 每条曲线再乘一个中间高、两边低的包络（Siri 的 g 函数），所以波浪中间起伏大、两边收拢，
+// 像水面涟漪，不是一条通栏的杠；整体高度由音频 tap 的真实电平定（起快落慢，暂停归平静），
+// 安静时有保底高度，不会塌成直线。颜色自适应背景（调用方传本页的主色）。
 struct CoLandscapeRippleView: View {
     var isPlaying: Bool
     var color: Color
@@ -1848,21 +1850,26 @@ struct CoLandscapeRippleView: View {
             TimelineView(.animation(minimumInterval: 1 / 30)) { context in
                 Canvas { ctx, size in
                     let width = size.width, height = size.height
-                    // 整体高度：安静时 5pt 保底，音乐越响越高（最高约 17pt，波浪不出 44pt 的框）。
-                    let baseAmp = 5 + displayedLevel * 12
-                    let breathing = 0.85 + 0.15 * sin(phase * 0.3)
+                    let midX = width / 2
+                    // Siri 的保底：安静时也有波形，不塌成直线；音乐越响越高（最高约 19pt，不出 44pt 的框）。
+                    let amp = (0.35 + displayedLevel) * 14
                     var path = Path()
                     var x: CGFloat = 0
                     var first = true
                     while x <= width {
-                        let t = Double(x / max(1, width))
-                        // 沿波浪的包络：让不同位置的高度不一样，且随时间缓慢移动。
-                        let envelope = 0.65 + 0.35 * sin(t * .pi * 2 * 1.3 + phase * 0.5)
-                        // 波形：两组波长不同的正弦，速度不同，形状一直在变，不僵硬。
-                        // 全用 Double 算（t 先转 Double，CGFloat 与 Double 混写会让编译器推断超时），最后再转回 CGFloat。
-                        let wave = sin(t * .pi * 2 * 2.2 + phase * 1.0) * 0.6
-                            + sin(t * .pi * 2 * 3.9 + phase * 1.7 + 1.3) * 0.4
-                        let y = height - 18 - CGFloat(wave * envelope * baseAmp * breathing)
+                        // Siri 的横轴缩放：把 [-midX, midX] 映射到 [-9, 9]，再算正弦与包络。
+                        let scaledX = Double((x - midX) / (midX / 9))
+                        var wave = 0.0
+                        // 3 条曲线之和（Siri 的做法）：振幅 A、频率 k、相位速度各不相同，振幅和为 1，波形不会超出框。
+                        for (a, k, speed, offset) in [(0.5, 0.7, 1.0, 0.0), (0.3, 0.8, 1.6, 1.3), (0.2, 0.65, 0.7, 2.1)] {
+                            let t = phase * speed + offset
+                            let sine = a * sin(k * scaledX - t)
+                            // Siri 的包络 g：中间高、两边低，K=4，中心比正弦相位晚 π/2。
+                            let d = k * scaledX - (t - .pi / 2)
+                            let g = pow(4 / (4 + d * d), 4)
+                            wave += sine * g
+                        }
+                        let y = height - 19 - CGFloat(wave * amp)
                         if first {
                             path.move(to: CGPoint(x: x, y: y))
                             first = false
