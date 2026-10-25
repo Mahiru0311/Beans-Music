@@ -380,7 +380,7 @@ struct ReferencePlaybackView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        LazyVStack(alignment: centered ? .center : .leading, spacing: 26) {
+                        LazyVStack(alignment: .leading, spacing: 26) {
                             Color.clear.frame(height: max(88, lyricsViewportHeight * 0.30))
                             ForEach(lyrics) { line in
                                 lyricLine(line, isFocused: line.id == currentVisualLyricID, proxy: proxy)
@@ -716,12 +716,11 @@ struct ReferencePlaybackView: View {
     private func lyricLine(_ line: LyricLine, isFocused: Bool, proxy: ScrollViewProxy) -> some View {
         let isSelected = selectedLyricID == line.id || (isDraggingLyrics && isFocused)
         let visualFocus = isFocused || isSelected
-        return VStack(alignment: centered ? .center : .leading, spacing: 5) {
+        return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(line.text.isEmpty ? " " : line.text)
                     .font(CoFont.appFont(visualFocus ? 27 : 23, visualFocus ? .bold : .semibold))
                     .foregroundStyle(primaryColor.opacity(visualFocus ? 1 : 0.36))
-                    .multilineTextAlignment(centered ? .center : .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 if isSelected {
                     Spacer(minLength: 8)
@@ -745,13 +744,12 @@ struct ReferencePlaybackView: View {
                 Text(translation)
                     .font(CoFont.appFont(15, .medium))
                     .foregroundStyle(secondaryColor.opacity(0.72))
-                    .multilineTextAlignment(centered ? .center : .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .scaleEffect(visualFocus ? 1.06 : 0.84, anchor: centered ? .center : .leading)
+        .scaleEffect(visualFocus ? 1.06 : 0.84, anchor: .leading)
         .blur(radius: visualFocus ? 0 : 0.7)
         .onTapGesture {
             scheduleLyricSelection(line.id, proxy: proxy)
@@ -1264,8 +1262,8 @@ struct AppleMusicLyricsSection: View {
     let primary: Color
     let secondary: Color
     let lyricOffset: CGFloat
-    let onTapLine: (LyricLine) -> Void
     let centered: Bool = false
+    let onTapLine: (LyricLine) -> Void
 
     @State private var lyricCenters: [UUID: CGFloat] = [:]
     @State private var focusedLyricID: UUID?
@@ -1318,7 +1316,7 @@ struct AppleMusicLyricsSection: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 26) {
+                        LazyVStack(alignment: centered ? .center : .leading, spacing: 26) {
                             Color.clear.frame(height: max(88, viewportHeight * 0.30))
                             ForEach(lyrics) { line in
                                 lyricLine(line, isFocused: line.id == currentVisualLyricID, proxy: proxy)
@@ -1406,7 +1404,7 @@ struct AppleMusicLyricsSection: View {
         let isSelected = selectedLyricID == line.id || (isDraggingLyrics && isFocused)
         let visualFocus = isFocused || isSelected
         let isActive = line.id == currentPlaybackLyricID
-        return VStack(alignment: .leading, spacing: 5) {
+        return VStack(alignment: centered ? .center : .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 KaraokeLyricText(
                     line: line,
@@ -1441,12 +1439,13 @@ struct AppleMusicLyricsSection: View {
                 Text(translation)
                     .font(CoFont.appFont(15, .medium))
                     .foregroundStyle(secondary.opacity(0.72))
+                    .multilineTextAlignment(centered ? .center : .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
         .contentShape(Rectangle())
-        .scaleEffect(visualFocus ? 1.06 : 0.84, anchor: .leading)
+        .scaleEffect(visualFocus ? 1.06 : 0.84, anchor: centered ? .center : .leading)
         .blur(radius: visualFocus ? 0 : 0.7)
         .onTapGesture {
             scheduleLyricSelection(line.id, proxy: proxy)
