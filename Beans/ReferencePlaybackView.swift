@@ -170,8 +170,10 @@ struct ReferencePlaybackView: View {
         }
     }
 
-    // 横屏（手机）：封面在左、其余在右。控制不做悬浮胶囊，直接长在布局里：
-    // 进度条在封面下边，三颗播放键在右栏底部最靠右边；点空白处切换显隐（透明度显隐，位置不动）。
+    // 横屏（手机）：封面在左、其余在右。控制直接长在布局里，不做悬浮胶囊：
+    // 进度条在封面下边（留空隙，不紧挨着），三颗播放键在右栏底部最靠右边（与歌词留空隙）。
+    // 点空白处切换显隐：隐藏后控制占位消失、歌词展开填满（不是留空白），出现/消失带滑出+淡出动画；
+    // 左右两栏顶对齐，封面与歌名在显隐时不动。
     private func landscapeBody(size: CGSize) -> some View {
         let artworkSize = min(size.height - 64, size.width * 0.42)
         let duration = clock.duration.isFinite ? max(1, clock.duration) : 1
@@ -180,19 +182,20 @@ struct ReferencePlaybackView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { showLandscapeControls.toggle() }
-            HStack(spacing: 24) {
-                VStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 24) {
+                VStack(spacing: 16) {
                     CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
                         .frame(width: artworkSize, height: artworkSize)
-                    Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
-                           in: 0...duration, onEditingChanged: { editing in
-                        if editing { landscapeScrubTime = clock.progress }
-                        landscapeDragging = editing
-                        if !editing { player.seekPrecisely(to: landscapeScrubTime) }
-                    })
-                    .tint(primaryColor)
-                    .opacity(showLandscapeControls ? 1 : 0)
-                    .allowsHitTesting(showLandscapeControls)
+                    if showLandscapeControls {
+                        Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
+                               in: 0...duration, onEditingChanged: { editing in
+                            if editing { landscapeScrubTime = clock.progress }
+                            landscapeDragging = editing
+                            if !editing { player.seekPrecisely(to: landscapeScrubTime) }
+                        })
+                        .tint(primaryColor)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -214,18 +217,20 @@ struct ReferencePlaybackView: View {
                         player.seekPrecisely(to: LyricTiming.seekTime(for: line, userOffset: lyricOffset))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    HStack {
-                        Spacer()
-                        HStack(spacing: 36) {
-                            Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
-                            Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
-                            Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
+                    if showLandscapeControls {
+                        HStack {
+                            Spacer()
+                            HStack(spacing: 36) {
+                                Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
+                                Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
+                                Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
+                            }
+                            .font(.title3)
+                            .foregroundStyle(primaryColor)
                         }
-                        .font(.title3)
-                        .foregroundStyle(primaryColor)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .opacity(showLandscapeControls ? 1 : 0)
-                    .allowsHitTesting(showLandscapeControls)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

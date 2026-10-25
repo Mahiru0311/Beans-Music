@@ -224,21 +224,24 @@ struct RecordPlayerView: View {
         .padding(.vertical, 12)
     }
 
-    // 横屏（手机）：左边是唱片本身（转盘），右边只留歌名、歌手、歌词。控制不做悬浮胶囊，直接长在布局里：
-    // 进度条在唱片下边，三颗播放键在右栏底部最靠右边；点空白处切换显隐（透明度显隐，位置不动）。
+    // 横屏（手机）：左边是唱片本身（转盘），右边只留歌名、歌手、歌词。控制直接长在布局里，不做悬浮胶囊：
+    // 进度条在唱片下边（留空隙，不紧挨着），三颗播放键在右栏底部最靠右边（与歌词留空隙）。
+    // 点空白处切换显隐：隐藏后控制占位消失、歌词展开填满（不是留空白），出现/消失带滑出+淡出动画；
+    // 左右两栏顶对齐，唱片与歌名在显隐时不动。
     private func landscapeLayout(size: CGSize) -> some View {
         let artworkDimension = min(220, max(140, size.height - 140))
         return ZStack {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { showLandscapeControls.toggle() }
-            HStack(spacing: 24) {
-                VStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 24) {
+                VStack(spacing: 16) {
                     turntable(size: artworkDimension, allowsLyrics: false)
                         .modifier(recordLayout(.vinylCover))
-                    RecordModeScrubber()
-                        .opacity(showLandscapeControls ? 1 : 0)
-                        .allowsHitTesting(showLandscapeControls)
+                    if showLandscapeControls {
+                        RecordModeScrubber()
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -253,12 +256,14 @@ struct RecordPlayerView: View {
                     }
                     lyricsColumn
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    HStack {
-                        Spacer()
-                        transportControls.frame(maxWidth: 280)
+                    if showLandscapeControls {
+                        HStack {
+                            Spacer()
+                            transportControls.frame(maxWidth: 280)
+                        }
+                        .padding(.top, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .opacity(showLandscapeControls ? 1 : 0)
-                    .allowsHitTesting(showLandscapeControls)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

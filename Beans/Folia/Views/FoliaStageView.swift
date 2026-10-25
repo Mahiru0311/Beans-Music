@@ -91,8 +91,9 @@ struct FoliaStageView: View {
     // 横屏：整屏就是歌词舞台（不分左右栏——这就是 Folia 的样子，与 Apple Music 的两栏不同）。
     // 顶部只留歌名歌手（没有返回/设置键），中间是歌词效果，最底部是随音乐电平的轻柔涟漪。
     // 横屏：整屏就是歌词舞台。顶部只留歌名歌手（没有返回/设置键），中间是歌词效果。
-    // Folia 没有封面，进度条直接放底部（不做胶囊，就是页面底部的 plain 进度条），三颗播放键在底部最靠右边；
-    // 点空白处切换显隐（透明度显隐，位置不动）。
+    // Folia 没有封面，进度条直接放底部（不做胶囊，就是页面底部的 plain 进度条，与歌词留空隙），
+    // 三颗播放键在底部最靠右边（与进度条留空隙）；点空白处切换显隐：隐藏后控制占位消失、
+    // 歌词舞台展开填满（不是留空白），出现/消失带滑出+淡出动画；歌名在显隐时不动。
     private func landscapeBody() -> some View {
         let duration = clock.duration.isFinite ? max(1, clock.duration) : 1
         return ZStack {
@@ -116,27 +117,29 @@ struct FoliaStageView: View {
                 .padding(.top, 16)
                 lyricSurface
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                VStack(spacing: 8) {
-                    Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
-                           in: 0...duration, onEditingChanged: { editing in
-                        if editing { landscapeScrubTime = clock.progress }
-                        landscapeDragging = editing
-                        if !editing { player.seekPrecisely(to: landscapeScrubTime) }
-                    })
-                    .tint(daylight ? .black : .white)
-                    HStack {
-                        Spacer()
-                        HStack(spacing: 36) {
-                            Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
-                            Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
-                            Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
+                if showControls {
+                    VStack(spacing: 14) {
+                        Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
+                               in: 0...duration, onEditingChanged: { editing in
+                            if editing { landscapeScrubTime = clock.progress }
+                            landscapeDragging = editing
+                            if !editing { player.seekPrecisely(to: landscapeScrubTime) }
+                        })
+                        .tint(daylight ? .black : .white)
+                        HStack {
+                            Spacer()
+                            HStack(spacing: 36) {
+                                Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
+                                Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
+                                Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
+                            }
+                            .font(.title3)
+                            .foregroundStyle(daylight ? .black : .white)
                         }
-                        .font(.title3)
-                        .foregroundStyle(daylight ? .black : .white)
                     }
+                    .padding(.top, 4)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .opacity(showControls ? 1 : 0)
-                .allowsHitTesting(showControls)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
