@@ -1860,9 +1860,12 @@ struct CoLandscapeRippleView: View {
                         while x <= width {
                             let t = x / max(1, width)
                             // 三组正弦叠加：波长、速度、相位各不相同，形状不重复、不僵硬。
-                            let wave = sin(t * .pi * 2 * 2.2 + phase * 1.0) * 0.55
-                                + sin(t * .pi * 2 * 3.7 + phase * 1.6 + 1.3) * 0.30
-                                + sin(t * .pi * 2 * 5.1 + phase * 0.7 + 2.1) * 0.15
+                            // 全用 Double 算（t 先转 Double，CGFloat 与 Double 混在一个表达式里会让编译器推断超时），
+                            // 最后再转回 CGFloat。
+                            let td = Double(t)
+                            let wave = sin(td * .pi * 4.4 + phase) * 0.55
+                                + sin(td * .pi * 7.4 + phase * 1.6 + 1.3) * 0.30
+                                + sin(td * .pi * 10.2 + phase * 0.7 + 2.1) * 0.15
                             let y = baseline - CGFloat(wave) * CGFloat(amp)
                             if first {
                                 path.move(to: CGPoint(x: x, y: y))
