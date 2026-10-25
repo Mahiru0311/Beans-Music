@@ -170,19 +170,30 @@ struct ReferencePlaybackView: View {
         }
     }
 
-    // 横屏（手机）：封面在左、其余在右，只留封面、歌名、歌手、歌词 + 悬浮的进度条与三颗播放键。
-    // 控制是悬浮层（不占布局，出现/消失不推内容，位置固定在右栏底部）；点空白处切换显隐，
-    // 歌词列表、封面、按钮自己接手势，不会误触切换。最底部是自适应背景色的细线涟漪。
+    // 横屏（手机）：封面在左、其余在右。控制不做悬浮胶囊，直接长在布局里：
+    // 进度条在封面下边，三颗播放键在右栏底部最靠右边；点空白处切换显隐（透明度显隐，位置不动）。
     private func landscapeBody(size: CGSize) -> some View {
         let artworkSize = min(size.height - 64, size.width * 0.42)
+        let duration = clock.duration.isFinite ? max(1, clock.duration) : 1
         return ZStack {
             playerBackground
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { showLandscapeControls.toggle() }
             HStack(spacing: 24) {
-                CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
-                    .frame(width: artworkSize, height: artworkSize)
+                VStack(spacing: 10) {
+                    CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
+                        .frame(width: artworkSize, height: artworkSize)
+                    Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
+                           in: 0...duration, onEditingChanged: { editing in
+                        if editing { landscapeScrubTime = clock.progress }
+                        landscapeDragging = editing
+                        if !editing { player.seekPrecisely(to: landscapeScrubTime) }
+                    })
+                    .tint(primaryColor)
+                    .opacity(showLandscapeControls ? 1 : 0)
+                    .allowsHitTesting(showLandscapeControls)
+                }
                 VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(song?.name ?? "未在播放")
@@ -203,47 +214,26 @@ struct ReferencePlaybackView: View {
                         player.seekPrecisely(to: LyricTiming.seekTime(for: line, userOffset: lyricOffset))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 36) {
+                            Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
+                            Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
+                            Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
+                        }
+                        .font(.title3)
+                        .foregroundStyle(primaryColor)
+                    }
+                    .opacity(showLandscapeControls ? 1 : 0)
+                    .allowsHitTesting(showLandscapeControls)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .bottom) {
-                    if showLandscapeControls {
-                        landscapeControls
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-                .animation(.easeOut(duration: 0.3), value: showLandscapeControls)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
             .frame(width: size.width, height: size.height)
+            .animation(.easeOut(duration: 0.3), value: showLandscapeControls)
         }
-        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying, color: primaryColor) }
-        .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
-        .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
-    }
-
-    // 横屏控制：只有进度条 + 上一首/播放/下一首三颗键（不带收藏、菜单等其他入口）。
-    private var landscapeControls: some View {
-        let duration = clock.duration.isFinite ? max(1, clock.duration) : 1
-        return VStack(spacing: 10) {
-            Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
-                   in: 0...duration, onEditingChanged: { editing in
-                if editing { landscapeScrubTime = clock.progress }
-                landscapeDragging = editing
-                if !editing { player.seekPrecisely(to: landscapeScrubTime) }
-            })
-            .tint(primaryColor)
-            HStack(spacing: 36) {
-                Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
-                Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
-                Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
-            }
-            .font(.title3)
-            .foregroundStyle(primaryColor)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
     @ViewBuilder

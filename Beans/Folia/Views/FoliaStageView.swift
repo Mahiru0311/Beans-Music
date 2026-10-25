@@ -16,6 +16,8 @@ struct FoliaStageView: View {
     @State private var document = FoliaLyricDocument(trackIdentity: "empty", lines: [])
     @State private var showControls = true
     @State private var hideControlsTask: Task<Void, Never>?
+    @State private var landscapeDragging = false
+    @State private var landscapeScrubTime = 0.0
 
     /// 沉浸式：点一下出来、再点一下消失（与横屏同一套点按切换逻辑）；3 秒不动仍自动藏起
     ///（只藏底部控制框，顶部栏一直在，退出路不断）。
@@ -88,11 +90,12 @@ struct FoliaStageView: View {
 
     // 横屏：整屏就是歌词舞台（不分左右栏——这就是 Folia 的样子，与 Apple Music 的两栏不同）。
     // 顶部只留歌名歌手（没有返回/设置键），中间是歌词效果，最底部是随音乐电平的轻柔涟漪。
-    // 横屏：整屏就是歌词舞台。顶部只留歌名歌手（没有返回/设置键），中间是歌词效果，
-    // 底部悬浮 Folia 自己的进度条与三颗播放键（出现/消失不推内容，位置固定在底部）；点空白处切换显隐。
-    // 最底部是自适应背景色的细线涟漪（日间黑、夜间白）。
+    // 横屏：整屏就是歌词舞台。顶部只留歌名歌手（没有返回/设置键），中间是歌词效果。
+    // Folia 没有封面，进度条直接放底部（不做胶囊，就是页面底部的 plain 进度条），三颗播放键在底部最靠右边；
+    // 点空白处切换显隐（透明度显隐，位置不动）。
     private func landscapeBody() -> some View {
-        ZStack {
+        let duration = clock.duration.isFinite ? max(1, clock.duration) : 1
+        return ZStack {
             (daylight ? Color.white : Color.black).ignoresSafeArea()
             CoverBlurBackground(url: displayCoverURL, scheme: daylight ? .light : .dark)
                 .ignoresSafeArea()
@@ -113,21 +116,33 @@ struct FoliaStageView: View {
                 .padding(.top, 16)
                 lyricSurface
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 8) {
+                    Slider(value: Binding(get: { landscapeDragging ? landscapeScrubTime : clock.progress }, set: { landscapeScrubTime = $0 }),
+                           in: 0...duration, onEditingChanged: { editing in
+                        if editing { landscapeScrubTime = clock.progress }
+                        landscapeDragging = editing
+                        if !editing { player.seekPrecisely(to: landscapeScrubTime) }
+                    })
+                    .tint(daylight ? .black : .white)
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 36) {
+                            Button { player.previous() } label: { Image(systemName: "backward.fill").frame(width: 44, height: 44) }
+                            Button { player.togglePlayPause() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 44, height: 44) }
+                            Button { player.next() } label: { Image(systemName: "forward.fill").frame(width: 44, height: 44) }
+                        }
+                        .font(.title3)
+                        .foregroundStyle(daylight ? .black : .white)
+                    }
+                }
+                .opacity(showControls ? 1 : 0)
+                .allowsHitTesting(showControls)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
-            .overlay(alignment: .bottom) {
-                if showControls {
-                    FoliaStageTransport(player: player, clock: clock, onInteract: {})
-                        .padding(.horizontal, 24)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
             .animation(.easeOut(duration: 0.3), value: showControls)
         }
-        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying, color: daylight ? .black : .white) }
-        .onAppear { hideControlsTask?.cancel(); CoEqualizer.shared.landscapeRippleActive = true }
-        .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
+        .onAppear { hideControlsTask?.cancel() }
     }
 
     @ViewBuilder private var lyricSurface: some View {

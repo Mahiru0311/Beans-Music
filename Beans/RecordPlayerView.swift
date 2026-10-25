@@ -224,8 +224,8 @@ struct RecordPlayerView: View {
         .padding(.vertical, 12)
     }
 
-    // 横屏（手机）：左边是唱片本身（转盘），右边只留歌名、歌手、歌词 + 悬浮的进度条与三颗播放键。
-    // 控制是悬浮层（不占布局，出现/消失不推内容，位置固定在右栏底部）；点空白处切换显隐。
+    // 横屏（手机）：左边是唱片本身（转盘），右边只留歌名、歌手、歌词。控制不做悬浮胶囊，直接长在布局里：
+    // 进度条在唱片下边，三颗播放键在右栏底部最靠右边；点空白处切换显隐（透明度显隐，位置不动）。
     private func landscapeLayout(size: CGSize) -> some View {
         let artworkDimension = min(220, max(140, size.height - 140))
         return ZStack {
@@ -233,8 +233,13 @@ struct RecordPlayerView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { showLandscapeControls.toggle() }
             HStack(spacing: 24) {
-                turntable(size: artworkDimension, allowsLyrics: false)
-                    .modifier(recordLayout(.vinylCover))
+                VStack(spacing: 10) {
+                    turntable(size: artworkDimension, allowsLyrics: false)
+                        .modifier(recordLayout(.vinylCover))
+                    RecordModeScrubber()
+                        .opacity(showLandscapeControls ? 1 : 0)
+                        .allowsHitTesting(showLandscapeControls)
+                }
                 VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(song?.name ?? "")
@@ -248,26 +253,19 @@ struct RecordPlayerView: View {
                     }
                     lyricsColumn
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    HStack {
+                        Spacer()
+                        transportControls.frame(maxWidth: 280)
+                    }
+                    .opacity(showLandscapeControls ? 1 : 0)
+                    .allowsHitTesting(showLandscapeControls)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .bottom) {
-                    if showLandscapeControls {
-                        VStack(spacing: 4) {
-                            RecordModeScrubber()
-                            transportControls.frame(maxWidth: 360)
-                        }
-                        .padding(.horizontal, 8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-                .animation(.easeOut(duration: 0.3), value: showLandscapeControls)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
+            .animation(.easeOut(duration: 0.3), value: showLandscapeControls)
         }
-        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying, color: .white) }
-        .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
-        .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
     }
 
     private func regularLayout(size: CGSize) -> some View {

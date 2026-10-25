@@ -86,16 +86,6 @@ final class CoEqualizer: ObservableObject {
     private let defaults = UserDefaults.standard
     private let configurationLock = NSLock()
     private var processingEnabled = false
-    /// 横屏涟漪开关：横屏页出现时置 true，播放器经 settingsDidChange 重挂 tap（即使没开任何音效也挂一个只采电平的 tap）。
-    var landscapeRippleActive = false {
-        didSet {
-            if oldValue != landscapeRippleActive {
-                NotificationCenter.default.post(name: Self.settingsDidChange, object: self)
-            }
-        }
-    }
-    /// 横屏涟漪用的音乐电平（真实采样 RMS，0–1）：音频线程写、主线程读，configurationLock 保护。
-    private var audioLevelValue = 0.0
     private var processingGains: [Double] = Array(repeating: 0, count: 10)
     private var processingPreampLinear: Float = 1
     private var processingFormatIsFloat32 = false
@@ -340,7 +330,7 @@ final class CoEqualizer: ObservableObject {
     /// the whole app lifetime, so the tap's unretained callback context is stable.
     func makeAudioMix(for track: AVAssetTrack) -> AVAudioMix? {
         configurationLock.lock()
-        let shouldProcess = processingEnabled || landscapeRippleActive
+        let shouldProcess = processingEnabled
         configurationLock.unlock()
         guard shouldProcess else { return nil }
 
@@ -479,55 +469,11 @@ final class CoEqualizer: ObservableObject {
         configurationLock.unlock()
     }
 
-    /// 主线程读电平（涟漪视图每帧读一次）。
-    func audioLevel() -> Double {
-        configurationLock.lock()
-        defer { configurationLock.unlock() }
-        return audioLevelValue
-    }
-
-    /// 横屏涟漪电平：取第一个 buffer 的采样算 RMS（只读，不改采样；Float32 直接算，Int16 除 32768）。
-    /// 调用时已持有 configurationLock（process 里），所以这里直接写 audioLevelValue。
-    private func updateLevel(from bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: Int) {
-        let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
-        guard let first = buffers.first, let rawData = first.mData, first.mDataByteSize > 0 else { return }
-        let channels = max(Int(first.mNumberChannels), 1)
-        var sum: Double = 0
-        var count = 0
-        if processingFormatIsFloat32 {
-            let samples = rawData.assumingMemoryBound(to: Float.self)
-            let total = min(Int(first.mDataByteSize) / MemoryLayout<Float>.size, frameCount * channels)
-            guard total > 0 else { return }
-            for i in 0..<total {
-                let v = Double(samples[i])
-                sum += v * v
-            }
-            count = total
-        } else if processingFormatIsInt16 {
-            let samples = rawData.assumingMemoryBound(to: Int16.self)
-            let total = min(Int(first.mDataByteSize) / MemoryLayout<Int16>.size, frameCount * channels)
-            guard total > 0 else { return }
-            for i in 0..<total {
-                let v = Double(samples[i]) / 32768
-                sum += v * v
-            }
-            count = total
-        } else {
-            return
-        }
-        guard count > 0 else { return }
-        audioLevelValue = min(1, (sum / Double(count)).squareRoot())
-    }
-
     fileprivate func process(bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: Int) {
         guard frameCount > 0 else { return }
         configurationLock.lock()
         defer { configurationLock.unlock() }
         // tap 可能是 Float32 也可能是 Int16（不同解码格式）：只认 Float32 会让另一路全程静默。
-        // 横屏涟漪电平：只要 tap 挂着就采（只读不改），没开音效时也采——电平专用 tap 就靠这个。
-        if processingFormatIsFloat32 || processingFormatIsInt16 {
-            updateLevel(from: bufferList, frameCount: frameCount)
-        }
         guard processingEnabled, processingFormatIsFloat32 || processingFormatIsInt16 else { return }
 
         let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
