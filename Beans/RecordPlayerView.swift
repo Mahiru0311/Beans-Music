@@ -227,14 +227,14 @@ struct RecordPlayerView: View {
     // 横屏（手机）：左边是唱片本身（转盘），右边只留歌名、歌手、歌词。控制直接长在布局里，不做悬浮胶囊：
     // 进度条在唱片下边（留空隙，不紧挨着），三颗播放键在右栏底部最靠右边（与歌词留空隙）。
     // 点空白处切换显隐：隐藏后控制占位消失、歌词展开填满（不是留空白），出现/消失带滑出+淡出动画；
-    // 左右两栏顶对齐，唱片与歌名在显隐时不动。
+    // 内容上下居中：隐藏时不再全堆在上面、底部不再空一大块；显隐时整体平滑移动，唱片大小不变。
     private func landscapeLayout(size: CGSize) -> some View {
         let artworkDimension = min(220, max(140, size.height - 140))
         return ZStack {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { showLandscapeControls.toggle() }
-            HStack(alignment: .top, spacing: 24) {
+            HStack(spacing: 24) {
                 VStack(spacing: 16) {
                     turntable(size: artworkDimension, allowsLyrics: false)
                         .modifier(recordLayout(.vinylCover))

@@ -173,7 +173,7 @@ struct ReferencePlaybackView: View {
     // 横屏（手机）：封面在左、其余在右。控制直接长在布局里，不做悬浮胶囊：
     // 进度条在封面下边（留空隙，不紧挨着），三颗播放键在右栏底部最靠右边（与歌词留空隙）。
     // 点空白处切换显隐：隐藏后控制占位消失、歌词展开填满（不是留空白），出现/消失带滑出+淡出动画；
-    // 左右两栏顶对齐，封面与歌名在显隐时不动。
+    // 内容上下居中：隐藏时不再全堆在上面、底部不再空一大块；显隐时整体平滑移动，封面大小不变。
     private func landscapeBody(size: CGSize) -> some View {
         let artworkSize = min(size.height - 64, size.width * 0.42)
         let duration = clock.duration.isFinite ? max(1, clock.duration) : 1
@@ -182,7 +182,7 @@ struct ReferencePlaybackView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { showLandscapeControls.toggle() }
-            HStack(alignment: .top, spacing: 24) {
+            HStack(spacing: 24) {
                 VStack(spacing: 16) {
                     CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
                         .frame(width: artworkSize, height: artworkSize)
