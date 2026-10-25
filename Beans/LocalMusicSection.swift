@@ -13,7 +13,6 @@ struct LocalMusicSection: View {
     @ObservedObject private var store = LocalLibraryStore.shared
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
-    @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var theme: ThemeStore
     @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
 
@@ -681,14 +680,12 @@ struct LocalPlaylistDetailSheet: View {
 struct LocalSearchAddSheet: View {
     @ObservedObject private var store = LocalLibraryStore.shared
     @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var auth: AuthStore
     @Environment(\.dismiss) private var dismiss
 
     let playlistID: UUID
     @State private var keyword = ""
     @State private var results: [Song] = []
     @State private var searching = false
-    @State private var provider: SearchProvider = .kugou
     @State private var task: Task<Void, Never>?
 
     var body: some View {

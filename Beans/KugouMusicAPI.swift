@@ -1319,10 +1319,6 @@ final class KugouMusicAPI {
         return result
     }
 
-    func songURL(song: Song, quality: CoAudioQuality? = nil) async throws -> String? {
-        try await songURLWithActual(song: song, quality: quality).url
-    }
-
     /// 带实际档位回传的播放地址：actualKey 是命中的 hash 档位键
     ///（hires/lossless/exhigh/standard），主 hash 或网页兜底命中时为 nil，
     /// 调用方此时诚实显示偏好名，不编档位。降级链、vipType 探测、
@@ -1345,10 +1341,6 @@ final class KugouMusicAPI {
         let candidates = Self.qualityHashCandidatesWithKeys(primary: primary, qualityHashes: qualityHashes, quality: requestedQuality)
         guard !candidates.isEmpty else { return (nil, nil) }
         return try await songURL(candidates: candidates, albumAudioId: albumAudioId, albumId: albumId, quality: requestedQuality)
-    }
-
-    func songURL(hash: String, albumAudioId: String?, albumId: String?) async throws -> String? {
-        try await songURL(candidates: [(nil, hash)], albumAudioId: albumAudioId, albumId: albumId, quality: NetworkAudioQuality.officialPreferred).url
     }
 
     private func songURL(candidates: [(key: String?, hash: String)], albumAudioId: String?, albumId: String?, quality: CoAudioQuality) async throws -> (url: String?, actualKey: String?) {

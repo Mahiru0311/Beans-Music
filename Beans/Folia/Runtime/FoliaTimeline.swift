@@ -12,14 +12,6 @@ enum FoliaTimeline {
         return lines.last { time > $0.endTime }
     }
 
-    static func upcoming(lines: [FoliaLine], activeIndex: Int, time: Double) -> FoliaLine? {
-        if lines.indices.contains(activeIndex) {
-            let next = activeIndex + 1
-            return lines.indices.contains(next) ? lines[next] : nil
-        }
-        return lines.first { $0.startTime > time }
-    }
-
     static func upcomingLines(lines: [FoliaLine], activeIndex: Int, count: Int = 2) -> [FoliaLine] {
         guard lines.indices.contains(activeIndex), count > 0 else { return [] }
         return Array(lines.dropFirst(activeIndex + 1).prefix(count))

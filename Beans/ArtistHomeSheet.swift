@@ -460,9 +460,6 @@ struct ArtistHomeSheet: View {
         if !songs.isEmpty {
             hotSongs = songs
         }
-        if songs.isEmpty, !primarySongs.isEmpty {
-            hotSongs = primarySongs
-        }
         if !hotSongs.isEmpty {
             hotSongs = Array(hotSongs.prefix(1_000))
         }

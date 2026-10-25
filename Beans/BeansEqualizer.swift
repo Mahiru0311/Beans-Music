@@ -97,7 +97,7 @@ final class CoEqualizer: ObservableObject {
     private var enhancementStates: [BiquadState] = Array(repeating: .zero, count: 16)
     /// 3D 声像摆动相位（弧度）：不随换歌清零，摆动不跳变。
     private var surroundPanPhase: Double = 0
-    /// 3D 混响状态：每声道 4 个梳状 + 2 个全通（Freeverb 精简版），给 3D 那种“整个大脑里回荡”的空间感。
+    /// 3D 混响状态：每声道 8 个梳状 + 4 个全通（完整 Freeverb），给 3D 那种“整个大脑里回荡”的空间感。
     private var reverbCombDelays: [Int] = []
     private var reverbAllpassDelays: [Int] = []
     /// 左右声道去相关：右声道梳状延迟 +23 采样（Freeverb stereo spread），同单声道输入进、左右出来不一样宽。
@@ -114,6 +114,23 @@ final class CoEqualizer: ObservableObject {
     /// 3D 早期反射：单声道延迟线上的 6 个抽头（15/25/38/52/68/82ms），只进混响输入，给房间尺寸线索。
     private var earlyReflectionBuffer: [Float] = []
     private var earlyReflectionIndex = 0
+    /// 末端软限幅：5ms 前视延迟线（立体声交错）+ 包络增益，天花板 0.95，释放 50ms。
+    private var limiterDelayBuffer: [Float] = []
+    private var limiterDelayIndex = 0
+    private var limiterDelayFrames = 1
+    private var limiterEnvelope: Float = 1
+    private var limiterReleaseCoeff: Float = 0
+    /// 耳机串音：对侧信号历史（64 帧）+ 一阶低通状态（左/右各一路），Bauer 式串音。
+    private var crossfeedHistoryLeft: [Float] = []
+    private var crossfeedHistoryRight: [Float] = []
+    private var crossfeedHistoryIndex = 0
+    private var crossfeedDelaySamples = 1
+    private var crossfeedLPAlpha: Float = 0
+    private var crossfeedLPLeft: Float = 0
+    private var crossfeedLPRight: Float = 0
+    /// 加宽分频：一阶低通在 Side 上分出的低频分量状态（250Hz 分频点）。
+    private var widenSideLow: Float = 0
+    private var widenCrossoverAlpha: Float = 0
     /// 人声清晰系数与状态：单段峰值滤波，每声道 1 组状态。
     private var vocalCoefficients: BiquadCoefficients = .identity
     private var vocalStates: [BiquadState] = Array(repeating: .zero, count: 8)
@@ -450,21 +467,35 @@ final class CoEqualizer: ObservableObject {
         vocalStates = Array(repeating: .zero, count: Self.maximumChannels)
         rebuildVocalCoefficientsLocked()
         let reverbScale = sampleRate / 44_100
-        reverbCombDelays = [1557, 1617, 1491, 1422].map { max(1, Int(Double($0) * reverbScale)) }
-        reverbAllpassDelays = [556, 441].map { max(1, Int(Double($0) * reverbScale)) }
+        reverbCombDelays = [1557, 1617, 1491, 1422, 1277, 1356, 1188, 1116].map { max(1, Int(Double($0) * reverbScale)) }
+        reverbAllpassDelays = [556, 441, 341, 225].map { max(1, Int(Double($0) * reverbScale)) }
         reverbSpread = max(1, Int(23 * reverbScale))
         reverbCombBuffers = (0..<2).map { channel in
             reverbCombDelays.map { delay in Array(repeating: 0, count: delay + (channel == 1 ? reverbSpread : 0)) }
         }
-        reverbCombIndices = Array(repeating: Array(repeating: 0, count: 4), count: 2)
-        reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: 4), count: 2)
+        reverbCombIndices = Array(repeating: Array(repeating: 0, count: reverbCombDelays.count), count: 2)
+        reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: reverbCombDelays.count), count: 2)
         reverbAllpassBuffers = (0..<2).map { _ in reverbAllpassDelays.map { delay in Array(repeating: 0, count: delay) } }
-        reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: 2), count: 2)
+        reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: reverbAllpassDelays.count), count: 2)
         let itdSize = max(64, Int(sampleRate * 0.001))
         itdBuffers = [Array(repeating: 0, count: itdSize), Array(repeating: 0, count: itdSize)]
         itdIndex = 0
         earlyReflectionBuffer = Array(repeating: 0, count: max(1024, Int(sampleRate * 0.1)))
         earlyReflectionIndex = 0
+        limiterDelayFrames = max(1, Int(sampleRate * 0.005))
+        limiterDelayBuffer = Array(repeating: 0, count: limiterDelayFrames * 2)
+        limiterDelayIndex = 0
+        limiterEnvelope = 1
+        limiterReleaseCoeff = Float(1 - exp(-1 / (0.05 * sampleRate)))
+        crossfeedHistoryLeft = Array(repeating: 0, count: 64)
+        crossfeedHistoryRight = Array(repeating: 0, count: 64)
+        crossfeedHistoryIndex = 0
+        crossfeedDelaySamples = max(1, min(63, Int(sampleRate * 0.0002)))
+        crossfeedLPAlpha = Float(1 - exp(-2 * Double.pi * 700 / sampleRate))
+        crossfeedLPLeft = 0
+        crossfeedLPRight = 0
+        widenSideLow = 0
+        widenCrossoverAlpha = Float(1 - exp(-2 * Double.pi * 250 / sampleRate))
         reverbNeedsReset = false
         configurationLock.unlock()
     }
@@ -582,7 +613,7 @@ final class CoEqualizer: ObservableObject {
             }
             if headphoneBoostEnabled, channelCount == 2 {
                 // 耳机增强：官方音质档位是酷狗给的、再高也没有了，所以在 Co 这边补一层——
-                // 低音搁架 +6dB@100Hz、高音搁架 +2dB@8kHz、声场加宽 1.6（原来 1.25 在阈值附近听不出来）。
+                // 低音搁架 +6dB@100Hz、高音搁架 +2dB@8kHz，再加一层耳机串音（见下）。
                 for channelOffset in 0..<2 {
                     let channel = min(firstChannelIndex + channelOffset, Self.maximumChannels - 1)
                     let stateOffset = channel * 2
@@ -602,13 +633,25 @@ final class CoEqualizer: ObservableObject {
                         samples[sampleIndex] = sample.isFinite ? min(max(sample, -0.98), 0.98) : 0
                     }
                 }
+                // 串音（Bauer 式，bs2b 思路）：对侧信号先一阶低通（700Hz）再微延迟（0.2ms）、按 0.35 混入——
+                // 耳机声场收窄、不发空；原来 side ×1.6 是加宽，和加宽开关打架，现分开：串音只管耳机，加宽只管喇叭。
                 for frame in 0..<frameCount {
                     let leftIndex = frame * channelCount
                     let rightIndex = leftIndex + 1
-                    let mid = (samples[leftIndex] + samples[rightIndex]) * 0.5
-                    let side = (samples[leftIndex] - samples[rightIndex]) * 0.5
-                    let outLeft = mid + side * 1.6
-                    let outRight = mid - side * 1.6
+                    let inLeft = samples[leftIndex]
+                    let inRight = samples[rightIndex]
+                    crossfeedHistoryLeft[crossfeedHistoryIndex] = inLeft
+                    crossfeedHistoryRight[crossfeedHistoryIndex] = inRight
+                    var readIndex = crossfeedHistoryIndex - crossfeedDelaySamples
+                    if readIndex < 0 { readIndex += 64 }
+                    let delayedLeft = crossfeedHistoryLeft[readIndex]
+                    let delayedRight = crossfeedHistoryRight[readIndex]
+                    crossfeedLPLeft += crossfeedLPAlpha * (delayedLeft - crossfeedLPLeft)
+                    crossfeedLPRight += crossfeedLPAlpha * (delayedRight - crossfeedLPRight)
+                    let outLeft = inLeft + crossfeedLPRight * 0.35
+                    let outRight = inRight + crossfeedLPLeft * 0.35
+                    crossfeedHistoryIndex += 1
+                    if crossfeedHistoryIndex >= 64 { crossfeedHistoryIndex = 0 }
                     samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
@@ -633,15 +676,18 @@ final class CoEqualizer: ObservableObject {
                 vocalStates[0] = midState
             }
             if widenEnabled, channelCount == 2 {
-                // 声场加宽：Mid/Side 法，side ×1.8，声场一耳朵撑开；mid 完全不动，
-                // 单声道求和时 side 抵消、原混音分毫不差（不用 Haas 延迟，避免单声道梳状滤波）。
+                // 声场加宽：Mid/Side 法，但只加宽 250Hz 以上；250Hz 以下 side ×1.0 不动——
+                // 全频段 ×1.8 会让低音在单声道/小喇叭上塌掉。一阶低通分出 side 低频，高频 = side - 低频，
+                // 两路相加恒等于原 side，单声道求和仍抵消（不用 Haas 延迟，避免单声道梳状滤波）。
                 for frame in 0..<frameCount {
                     let leftIndex = frame * channelCount
                     let rightIndex = leftIndex + 1
                     let mid = (samples[leftIndex] + samples[rightIndex]) * 0.5
                     let side = (samples[leftIndex] - samples[rightIndex]) * 0.5
-                    let outLeft = mid + side * 1.8
-                    let outRight = mid - side * 1.8
+                    widenSideLow += widenCrossoverAlpha * (side - widenSideLow)
+                    let widenedSide = widenSideLow + (side - widenSideLow) * 1.8
+                    let outLeft = mid + widenedSide
+                    let outRight = mid - widenedSide
                     samples[leftIndex] = outLeft.isFinite ? min(max(outLeft, -0.98), 0.98) : 0
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
@@ -655,16 +701,16 @@ final class CoEqualizer: ObservableObject {
                 if reverbNeedsReset {
                     reverbNeedsReset = false
                     for channel in 0..<2 {
-                        for comb in 0..<4 where channel < reverbCombBuffers.count && comb < reverbCombBuffers[channel].count {
+                        for comb in 0..<reverbCombDelays.count where channel < reverbCombBuffers.count && comb < reverbCombBuffers[channel].count {
                             reverbCombBuffers[channel][comb] = Array(repeating: 0, count: reverbCombBuffers[channel][comb].count)
                         }
-                        for ap in 0..<2 where channel < reverbAllpassBuffers.count && ap < reverbAllpassBuffers[channel].count {
+                        for ap in 0..<reverbAllpassDelays.count where channel < reverbAllpassBuffers.count && ap < reverbAllpassBuffers[channel].count {
                             reverbAllpassBuffers[channel][ap] = Array(repeating: 0, count: reverbAllpassBuffers[channel][ap].count)
                         }
                     }
-                    reverbCombIndices = Array(repeating: Array(repeating: 0, count: 4), count: 2)
-                    reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: 4), count: 2)
-                    reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: 2), count: 2)
+                    reverbCombIndices = Array(repeating: Array(repeating: 0, count: reverbCombDelays.count), count: 2)
+                    reverbCombFilterStores = Array(repeating: Array(repeating: 0, count: reverbCombDelays.count), count: 2)
+                    reverbAllpassIndices = Array(repeating: Array(repeating: 0, count: reverbAllpassDelays.count), count: 2)
                     if itdBuffers.count == 2 {
                         itdBuffers[0] = Array(repeating: 0, count: itdBuffers[0].count)
                         itdBuffers[1] = Array(repeating: 0, count: itdBuffers[1].count)
@@ -676,7 +722,7 @@ final class CoEqualizer: ObservableObject {
                     earlyReflectionIndex = 0
                 }
                 let phaseStep = 2 * Double.pi / max(sampleRate * 8, 1)
-                let hasReverb = reverbCombBuffers.count >= 2 && reverbCombDelays.count == 4 && reverbAllpassDelays.count == 2
+                let hasReverb = reverbCombBuffers.count >= 2 && reverbCombDelays.count == 8 && reverbAllpassDelays.count == 4
                 let hasITD = itdBuffers.count == 2 && !itdBuffers[0].isEmpty && !itdBuffers[1].isEmpty
                 let itdSize = hasITD ? itdBuffers[0].count : 1
                 let erSize = earlyReflectionBuffer.count
@@ -728,6 +774,32 @@ final class CoEqualizer: ObservableObject {
                     samples[rightIndex] = outRight.isFinite ? min(max(outRight, -0.98), 0.98) : 0
                 }
             }
+            if channelCount == 2, !limiterDelayBuffer.isEmpty {
+                // 末端软限幅（FFmpeg alimiter 思路）：EQ + 3D + 加宽叠起来会把大动态顶到 ±0.98 硬削波，听感发劈；
+                // 5ms 前视延迟 + 包络增益：峰值到来之前增益已经压下去，天花板 0.95，50ms 平滑释放，
+                // 既不断波形、也不抽动态。无音效时 tap 根本不挂，不影响原声。
+                for frame in 0..<frameCount {
+                    let leftIndex = frame * channelCount
+                    let rightIndex = leftIndex + 1
+                    let inLeft = samples[leftIndex]
+                    let inRight = samples[rightIndex]
+                    let peak = max(abs(inLeft), abs(inRight))
+                    let target: Float = peak > 0.95 ? 0.95 / peak : 1.0
+                    if target < limiterEnvelope {
+                        limiterEnvelope = target
+                    } else {
+                        limiterEnvelope += (1 - limiterEnvelope) * limiterReleaseCoeff
+                    }
+                    let delayedLeft = limiterDelayBuffer[limiterDelayIndex * 2]
+                    let delayedRight = limiterDelayBuffer[limiterDelayIndex * 2 + 1]
+                    limiterDelayBuffer[limiterDelayIndex * 2] = inLeft
+                    limiterDelayBuffer[limiterDelayIndex * 2 + 1] = inRight
+                    limiterDelayIndex += 1
+                    if limiterDelayIndex >= limiterDelayFrames { limiterDelayIndex = 0 }
+                    samples[leftIndex] = delayedLeft * limiterEnvelope
+                    samples[rightIndex] = delayedRight * limiterEnvelope
+                }
+            }
     }
 
     /// 延迟线线性插值读数：writeIndex 是刚写入的位置，delay 为采样数（可含小数），读数点在过去。
@@ -742,26 +814,26 @@ final class CoEqualizer: ObservableObject {
         return buffer[i0] * (1 - frac) + buffer[i1] * frac
     }
 
-    /// 单声道混响（Freeverb 精简版）：4 梳状并联 + 2 全通串联，只出湿声，由调用方按 0.2 混入。
+    /// 单声道混响（完整 Freeverb）：8 梳状并联 + 4 全通串联，只出湿声，由调用方按 0.2 混入。
     private func reverbSample(input: Float, channel: Int) -> Float {
         guard channel < reverbCombBuffers.count,
-              reverbCombDelays.count == 4, reverbAllpassDelays.count == 2 else { return 0 }
+              reverbCombDelays.count == 8, reverbAllpassDelays.count == 4 else { return 0 }
         var combSum: Float = 0
-        for comb in 0..<4 {
+        for comb in 0..<reverbCombDelays.count {
             let delay = reverbCombDelays[comb] + (channel == 1 ? reverbSpread : 0)
             var index = reverbCombIndices[channel][comb]
             let output = reverbCombBuffers[channel][comb][index]
             var filterStore = reverbCombFilterStores[channel][comb]
             filterStore = output * 0.8 + filterStore * 0.2
             reverbCombFilterStores[channel][comb] = filterStore
-            reverbCombBuffers[channel][comb][index] = input + filterStore * 0.75
+            reverbCombBuffers[channel][comb][index] = input + filterStore * 0.84
             index += 1
             if index >= delay { index = 0 }
             reverbCombIndices[channel][comb] = index
             combSum += output
         }
-        var signal = combSum * 0.25
-        for ap in 0..<2 {
+        var signal = combSum * 0.125
+        for ap in 0..<reverbAllpassDelays.count {
             let delay = reverbAllpassDelays[ap]
             var index = reverbAllpassIndices[channel][ap]
             let bufferOut = reverbAllpassBuffers[channel][ap][index]

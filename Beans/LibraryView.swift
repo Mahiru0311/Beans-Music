@@ -9,14 +9,6 @@ enum LibraryProvider: String, CaseIterable, Identifiable {
     case kugou = "酷狗音乐"
 
     var id: String { rawValue }
-
-    var tint: LinearGradient {
-        LinearGradient(colors: [Color(red: 0.12, green: 0.58, blue: 0.95), Color(red: 0.02, green: 0.32, blue: 0.72)], startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
-
-    var icon: String { "music.note" }
-
-    var brandImageName: String? { "BrandKugou" }
 }
 
 private extension LibraryProvider {

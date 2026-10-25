@@ -17,11 +17,9 @@ struct DiscoverView: View {
     @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
 
-    @State private var topLists: [TopList] = []
     @State private var dailySongs: [Song] = []
     @State private var newAlbums: [Album] = []
     @State private var topArtists: [Artist] = []
-    @State private var personalized: [Playlist] = []
 
     @State private var loading = true
     @State private var errorMessage: String?
@@ -93,11 +91,9 @@ struct DiscoverView: View {
             ?? SearchProvider.kugou.rawValue
         let savedSource = SearchProvider(rawValue: savedRaw) ?? .kugou
         let snapshot = DiscoverCache.shared.cached(for: savedSource)
-        _topLists = State(initialValue: snapshot?.topLists ?? [])
         _dailySongs = State(initialValue: snapshot?.dailySongs ?? [])
         _newAlbums = State(initialValue: snapshot?.newAlbums ?? [])
         _topArtists = State(initialValue: snapshot?.topArtists ?? [])
-        _personalized = State(initialValue: snapshot?.personalized ?? [])
         _kugouTopLists = State(initialValue: snapshot?.kugouTopLists ?? [])
         _loading = State(initialValue: snapshot == nil || snapshot?.isEmpty == true)
     }
@@ -184,7 +180,7 @@ struct DiscoverView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .coKugouLoginDidUpdate)) { _ in
                 guard !homeRenderingPaused else { return }
-                reloadAfterLoginUpdate(.kugou)
+                reloadAfterLoginUpdate()
             }
             .sheet(isPresented: $showSectionSort) {
                 SectionOrderSheet(
@@ -1047,7 +1043,7 @@ struct DiscoverView: View {
         }
 
         do {
-            let snapshot = try await fetchSnapshot(for: requestedSource, neteaseCat: requestedCat)
+            let snapshot = try await fetchSnapshot()
             guard !Task.isCancelled, activeLoadToken == loadToken, requestedSource == source else { return }
             apply(snapshot)
             if cacheable, !snapshot.isEmpty {
@@ -1134,8 +1130,8 @@ struct DiscoverView: View {
     }
 
     @MainActor
-    private func reloadAfterLoginUpdate(_ provider: SearchProvider) {
-        // 登录态会改变推荐内容和会员状态，先切到对应平台，再绕过旧快照刷新。
+    private func reloadAfterLoginUpdate() {
+        // 登录态会改变推荐内容和会员状态，绕过旧快照刷新。
         forceHomeReload = true
         homeReloadToken += 1
         // 刷新令牌会重启 .task，避免在当前视图生命周期中遗留旧缓存。
@@ -1156,7 +1152,7 @@ struct DiscoverView: View {
         return Color.coLabel
     }
 
-    private func fetchSnapshot(for source: SearchProvider, neteaseCat: String) async throws -> DiscoverCache.Snapshot {
+    private func fetchSnapshot() async throws -> DiscoverCache.Snapshot {
         var snapshot = DiscoverCache.Snapshot()
         snapshot.savedAt = Date()
         async let songs = loadKugouDailySongs(limit: 30)
@@ -1185,14 +1181,12 @@ struct DiscoverView: View {
         dailySongs = snapshot.dailySongs
         newAlbums = snapshot.newAlbums
         topArtists = snapshot.topArtists
-        topLists = []
-        personalized = snapshot.personalized
         kugouTopLists = snapshot.kugouTopLists
         CoverImagePrefetcher.shared.prefetch(snapshot: snapshot)
     }
 
     private var hasAnyData: Bool {
         !dailySongs.isEmpty || !newAlbums.isEmpty || !topArtists.isEmpty
-            || !personalized.isEmpty || !kugouTopLists.isEmpty
+            || !kugouTopLists.isEmpty
     }
 }

@@ -6,7 +6,6 @@ struct PlayerView: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var clock: PlaybackClock
-    @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var favorites: FavoritesStore
     @ObservedObject private var localLibrary = LocalLibraryStore.shared
     @ObservedObject private var customCovers = CustomSongCoverStore.shared
@@ -22,9 +21,7 @@ struct PlayerView: View {
     @State private var showVinylQueue = false
     @State private var showSleepTimer = false
     @State private var showClearQueueConfirm = false
-    @State private var showAddToPlaylist = false
     @State private var showMoreActions = false
-    @State private var showNativeMoreActions = false
     @State private var showSoftwareVolume = false
     @State private var showLyricOffsetSheet = false
     @State private var showAddToLocalPlaylist = false
@@ -439,15 +436,6 @@ struct PlayerView: View {
         return Color(red: r1 * (1 - a) + r2 * a, green: g1 * (1 - a) + g2 * a, blue: b1 * (1 - a) + b2 * a)
     }
 
-    private func glowName(_ level: Int) -> String {
-        switch level {
-        case 0: return "关闭"
-        case 1: return "柔和"
-        case 2: return "标准"
-        default: return "强烈"
-        }
-    }
-
     /// 发光强度对应的 shadow 半径（0 关闭，最大 32，叠双层光晕更亮）
     private var lyricGlowRadius: CGFloat {
         switch lyricGlowLevel {
@@ -526,7 +514,6 @@ struct PlayerView: View {
                 RecordPlayerView(
                     song: song,
                     lyrics: lyrics,
-                    isPresented: $isPresented,
                     layoutData: vinylLayoutData,
                     isFavorite: song.map { localLibrary.containsSong($0) } ?? false,
                     favoriteMark: favoriteMark(for: song),
@@ -714,12 +701,6 @@ struct PlayerView: View {
                 .environmentObject(player)
                 .environmentObject(theme)
         }
-        .sheet(isPresented: $showAddToPlaylist) {
-            if let song {
-                AddToPlaylistSheet(song: song)
-                    .environmentObject(auth)
-            }
-        }
         .sheet(isPresented: $showPlayerSettings) {
             PlayerSettingsSheet(layoutMode: $layoutMode, onDismiss: closePlayerSettings)
                 .environmentObject(theme)
@@ -762,22 +743,6 @@ struct PlayerView: View {
             }
             Button("取消", role: .cancel) {}
         }
-        .confirmationDialog("更多操作", isPresented: $showNativeMoreActions, titleVisibility: .visible) {
-            Button("定时关闭") {
-                showSleepTimer = true
-            }
-            Button("添加到本地歌单") {
-                showAddToLocalPlaylist = true
-            }
-            customCoverActions
-            Button("播放器设置") {
-                openPlayerSettings()
-            }
-            Button("软件音量") {
-                showSoftwareVolume = true
-            }
-            Button("取消", role: .cancel) {}
-        }
         .overlay(alignment: .bottom) {
             ToastView(center: ToastCenter.shared)
         }
@@ -792,28 +757,25 @@ struct PlayerView: View {
 
     private var background: some View {
         ZStack {
-            if false {
-            } else {
-                // 静态渐变：随封面主色取色，不流动（用户要求封面外液态 UI 飘动效果暂停，保持静止）
+            // 静态渐变：随封面主色取色，不流动（用户要求封面外液态 UI 飘动效果暂停，保持静止）
+            LinearGradient(
+                colors: [palette.backgroundTop, palette.backgroundBottom],
+                startPoint: .top, endPoint: .bottom
+            )
+            if !lyricBackgroundImagePath.isEmpty && (layoutRenderingShowLyrics || lyricBackgroundSyncCover) {
+                lyricPlayerBackgroundLayer
+            } else if theme.backgroundSyncAll, let image = theme.customBackgroundImage(for: colorScheme) {
+                WallpaperImage(image: image)
                 LinearGradient(
-                    colors: [palette.backgroundTop, palette.backgroundBottom],
-                    startPoint: .top, endPoint: .bottom
+                    colors: colorScheme == .dark
+                        ? [.black.opacity(0.40), .black.opacity(0.58)]
+                        : [.white.opacity(0.12), .black.opacity(0.24)],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                if !lyricBackgroundImagePath.isEmpty && (layoutRenderingShowLyrics || lyricBackgroundSyncCover) {
-                    lyricPlayerBackgroundLayer
-                } else if theme.backgroundSyncAll, let image = theme.customBackgroundImage(for: colorScheme) {
-                    WallpaperImage(image: image)
-                    LinearGradient(
-                        colors: colorScheme == .dark
-                            ? [.black.opacity(0.40), .black.opacity(0.58)]
-                            : [.white.opacity(0.12), .black.opacity(0.24)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                } else {
-                    CoverBlurBackground(url: displayCoverURL, scheme: colorScheme)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+            } else {
+                CoverBlurBackground(url: displayCoverURL, scheme: colorScheme)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             AmbientGlowView(
                 accent: palette.accent,
@@ -1320,32 +1282,11 @@ struct PlayerView: View {
                     onPreviousTrack: { player.previous() }
                 )
             } else {
-                let isCircular = false // 经典已删，原条件对剩余样式恒假
-                let cornerRadius = isCircular ? size / 2 : 18
-                if isCircular {
-                    ZStack {
-                        Circle()
-                            .fill(palette.accent.opacity(0.20))
-                            .frame(width: size * 1.38, height: size * 1.38)
-                            .blur(radius: 34)
-
-                        CoGlass(shape: Circle())
-                            .frame(width: size * 1.10, height: size * 1.10)
-                            .shadow(color: .black.opacity(0.28), radius: 22, y: 10)
-
-                        CoverImage(url: displayCoverURL, size: size, cornerRadius: cornerRadius, playsCoverVideoAudio: true)
-                            .frame(width: size, height: size)
-                            .clipShape(Circle())
-                            .modifier(CoverSpin(enabled: circularCoverSpin, isPlaying: playerVisualsActive))
-                            .shadow(color: .black.opacity(0.38), radius: 24, y: 12)
-                    }
-                    .frame(width: size * 1.10, height: size * 1.10)
-                } else {
-                    CoverImage(url: displayCoverURL, size: size, cornerRadius: cornerRadius, playsCoverVideoAudio: true)
-                        .frame(width: size, height: size)
-                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                        .shadow(color: .black.opacity(0.38), radius: 24, y: 12)
-                }
+                let cornerRadius: CGFloat = 18
+                CoverImage(url: displayCoverURL, size: size, cornerRadius: cornerRadius, playsCoverVideoAudio: true)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.38), radius: 24, y: 12)
             }
 
             VStack(spacing: 4) {
@@ -3028,7 +2969,6 @@ struct PlayerView: View {
                                 RecordPlayerView(
                                     song: song,
                                     lyrics: lyrics,
-                                    isPresented: .constant(true),
                                     layoutData: vinylLayoutData,
                                     initialShowsLyrics: layoutRenderingShowLyrics,
                                     isFavorite: song.map { localLibrary.containsSong($0) } ?? false,
@@ -3518,7 +3458,6 @@ struct PlayerView: View {
                     RecordPlayerView(
                         song: song,
                         lyrics: lyrics,
-                        isPresented: .constant(true),
                         layoutData: vinylLayoutData,
                         initialShowsLyrics: layoutRenderingShowLyrics,
                         isFavorite: song.map { localLibrary.containsSong($0) } ?? false,
@@ -3767,7 +3706,7 @@ struct PlayerView: View {
                 .font(CoFont.appFont(12, .medium))
                 .foregroundStyle(palette.secondary)
                 .frame(width: 56, alignment: .leading)
-            layoutValueSlider(title: title, value: value, range: range, step: step)
+            layoutValueSlider(value: value, range: range, step: step)
             Text(String(format: format, value.wrappedValue))
                 .font(CoFont.appFont(11, .regular, .default))
                 .foregroundStyle(palette.secondary)
@@ -3776,7 +3715,7 @@ struct PlayerView: View {
     }
 
     @ViewBuilder
-    private func layoutValueSlider(title: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat) -> some View {
+    private func layoutValueSlider(value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat) -> some View {
         Slider(value: value, in: range, step: step)
             .tint(Color.coAmber)
             .transaction { transaction in transaction.animation = nil }
@@ -4774,53 +4713,12 @@ struct LyricPreset {
 
 struct PlayerSettingsSheet: View {
     @EnvironmentObject private var theme: ThemeStore
-    @EnvironmentObject private var player: PlayerManager
     private let onDismiss: (() -> Void)?
-    // Shared values remain available to the existing settings helpers; style-specific controls are rendered by the layout editor.
-    @AppStorage("co.playerDustMode") private var playerDustModeRaw = CoPlayerDustMode.off.rawValue
-    @AppStorage("co.playerDustDensity") private var playerDustDensity = 1.0
-    @AppStorage("co.playerDustSize") private var playerDustSize = 1.0
-    @AppStorage("co.playerMainIconColorHex") private var playerMainIconColorHex = ""
-    @AppStorage("co.playerSecondaryIconColorHex") private var playerSecondaryIconColorHex = ""
-    @AppStorage("co.playerPrimaryButtonColorHex") private var playerPrimaryButtonColorHex = ""
-    @AppStorage("co.progressBarStyle") private var progressBarStyle = 0
-    @AppStorage("co.progressAccentHex") private var progressAccentHex = ""
-    @AppStorage("co.lyricColor") private var currentColorRaw = "accent"
-    @AppStorage("co.lyricDimColor") private var dimColorRaw = "dim"
-    @AppStorage("co.lyricGradStart") private var gradStartRaw = ""
-    @AppStorage("co.lyricGradEnd") private var gradEndRaw = ""
-    @AppStorage("co.lyricGradMode") private var gradMode = 0
     @Binding private var layoutMode: Bool
-    @AppStorage("co.lyricAlignRaw") private var lyricAlignRaw = "center"
-    @AppStorage("co.lyricOffsetX") private var lyricOffsetX = 0.0
-    @AppStorage("co.lyricAnchorY") private var lyricAnchorY = 0.0
-    @AppStorage("co.circularCover") private var circularCover = true
-    @AppStorage("co.circularCoverSpin") private var circularCoverSpin = true
-    @AppStorage("co.djVisualIntensity") private var djVisualIntensity = 0.8
-    @AppStorage("co.lyricGlowColorRaw") private var glowColorRaw = ""
-    @AppStorage("co.swipeSwitchSong") private var swipeSwitchSong = true
-    @AppStorage("co.lyricBlurStart") private var lyricBlurStart = 1
-    @AppStorage("co.lyricBlurAmount") private var lyricBlurAmount = 1.1
-    @AppStorage("co.lyricTilt") private var lyricTilt = 0
-    @AppStorage("co.lyricTiltY") private var lyricTiltY = 0
-    @AppStorage("co.lyricOffset") private var lyricOffset = 0.0
     @AppStorage("co.lyricBackground.image") private var lyricBackgroundImagePath = ""
-    @AppStorage("co.lyricBackground.blur") private var lyricBackgroundBlur = 12.0
-    @AppStorage("co.lyricBackground.syncCover") private var lyricBackgroundSyncCover = false
-    @AppStorage("co.playerButtonStyle") private var playerButtonStyleRaw = CoPlayerButtonStyle.glass.rawValue
-    @AppStorage("co.albumTitleColorHex") private var albumTitleColorHex = ""
-    @AppStorage("co.albumArtistColorHex") private var albumArtistColorHex = ""
-    @AppStorage("co.albumPreviewLyricColorHex") private var albumPreviewLyricColorHex = ""
-    @AppStorage("co.albumPreviewDimColorHex") private var albumPreviewDimColorHex = ""
-    @AppStorage("co.albumTextGradient") private var albumTextGradient = false
-    @AppStorage("co.albumTextGlow") private var albumTextGlow = false
-    @AppStorage("co.albumTextGlowIntensity") private var albumTextGlowIntensity = 1.0
     @AppStorage("co.coverPlayerStyle") private var coverPlayerStyleRaw = CoCoverPlayerStyle.appleMusic.rawValue
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("co.playerSettings.playbackExpanded") private var playbackExpanded = false
-    @AppStorage("co.playerSettings.lyricEffectExpanded") private var lyricEffectExpanded = false
     @AppStorage("co.playerSettings.coverExpanded") private var coverExpanded = true
-    @AppStorage("co.playerSettings.appleMusicExpanded") private var appleMusicExpanded = false
     @State private var showLyricBackgroundPicker = false
 
     init(layoutMode: Binding<Bool>, onDismiss: (() -> Void)? = nil) {
@@ -4835,81 +4733,6 @@ struct PlayerSettingsSheet: View {
 
 
 
-
-    /// 歌词发光颜色：留空时跟随当前行颜色 / 封面取色
-    private var glowColor: Binding<Color> {
-        Binding(
-            get: {
-                if glowColorRaw.hasPrefix("#"), let c = Color(hex: glowColorRaw) { return c }
-                return Color.coAmber
-            },
-            set: { newValue in
-                glowColorRaw = "#" + UIColor(newValue).hexString
-            }
-        )
-    }
-
-
-
-    private var playerSecondaryIconColor: Binding<Color> {
-        Binding(
-            get: {
-                if playerSecondaryIconColorHex.hasPrefix("#"), let c = Color(hex: playerSecondaryIconColorHex) { return c }
-                return Color.coComment
-            },
-            set: { playerSecondaryIconColorHex = "#" + UIColor($0).hexString }
-        )
-    }
-
-    private var playerPrimaryButtonColor: Binding<Color> {
-        Binding(
-            get: {
-                if playerPrimaryButtonColorHex.hasPrefix("#"), let c = Color(hex: playerPrimaryButtonColorHex) { return c }
-                return Color.coAmber
-            },
-            set: { playerPrimaryButtonColorHex = "#" + UIColor($0).hexString }
-        )
-    }
-
-    private var albumTitleColor: Binding<Color> {
-        Binding(
-            get: {
-                if albumTitleColorHex.hasPrefix("#"), let c = Color(hex: albumTitleColorHex) { return c }
-                return Color.coLabel
-            },
-            set: { albumTitleColorHex = "#" + UIColor($0).hexString }
-        )
-    }
-
-    private var albumArtistColor: Binding<Color> {
-        Binding(
-            get: {
-                if albumArtistColorHex.hasPrefix("#"), let c = Color(hex: albumArtistColorHex) { return c }
-                return Color.coComment
-            },
-            set: { albumArtistColorHex = "#" + UIColor($0).hexString }
-        )
-    }
-
-    private var albumPreviewLyricColor: Binding<Color> {
-        Binding(
-            get: {
-                if albumPreviewLyricColorHex.hasPrefix("#"), let c = Color(hex: albumPreviewLyricColorHex) { return c }
-                return Color.coLabel
-            },
-            set: { albumPreviewLyricColorHex = "#" + UIColor($0).hexString }
-        )
-    }
-
-    private var albumPreviewDimColor: Binding<Color> {
-        Binding(
-            get: {
-                if albumPreviewDimColorHex.hasPrefix("#"), let c = Color(hex: albumPreviewDimColorHex) { return c }
-                return Color.coComment
-            },
-            set: { albumPreviewDimColorHex = "#" + UIColor($0).hexString }
-        )
-    }
 
     private var coverPlayerStyleSelector: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -5109,18 +4932,24 @@ struct PlayerSettingsSheet: View {
     private var coverCard: some View {
         settingCard("封面", isExpanded: $coverExpanded) {
             coverPlayerStyleSelector
-        }
-    }
-
-
-    private func glowName(_ level: Int) -> String {
-        switch level {
-        case 0: return "关闭"
-        case 1: return "柔和"
-        case 2: return "标准"
-        case 3: return "强烈"
-        case 4: return "明亮"
-        default: return "极亮"
+            Button {
+                showLyricBackgroundPicker = true
+                CoHaptics.select()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo")
+                    Text(lyricBackgroundImagePath.isEmpty ? "选择歌词背景图" : "更换歌词背景图")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .font(CoFont.appFont(13, .semibold))
+                .foregroundStyle(Color.coLabel)
+                .padding(.horizontal, 12)
+                .frame(height: 42)
+                .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(GlassPressButtonStyle(scale: 0.98))
         }
     }
 }

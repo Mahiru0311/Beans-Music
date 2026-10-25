@@ -4,7 +4,6 @@ import Combine
 struct SongCell: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var auth: AuthStore
     @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     @AppStorage("co.showSongVIPBadge") private var showSongVIPBadge = true
 
@@ -19,7 +18,6 @@ struct SongCell: View {
     var compactAlbumRow = false
     /// 覆盖默认封面与行高，用于排行榜等紧凑但需要大封面的列表。
     var coverSize: CGFloat = 46
-    var fixedRowHeight: CGFloat?
     /// 强制深色页专用：专辑页整页是深色底，coLabel/coComment 会被用户自定义主文字色
     /// （黑字）覆盖，落在深色底上看不见；此时改用显式白字系列。默认 false，其他页不动。
     var forceDarkText = false
@@ -86,7 +84,7 @@ struct SongCell: View {
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, leadingIndex == nil ? 0 : 16)
         .padding(.vertical, 6)
-        .frame(height: fixedRowHeight ?? (compactAlbumRow ? 54 : nil))
+        .frame(height: compactAlbumRow ? 54 : nil)
         .contentShape(Rectangle())
         .scaleEffect(isCurrent ? 1.012 : 1)
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isCurrent)

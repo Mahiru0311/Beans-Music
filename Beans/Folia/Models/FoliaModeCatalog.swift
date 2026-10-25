@@ -28,8 +28,5 @@ enum FoliaVisualizerMode: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    /// 重构后全部效果都有原生渲染器，不再有待移植项。
-    var hasNativeRenderer: Bool { true }
-
     static var ordered: [Self] { allCases.sorted { $0.order < $1.order } }
 }

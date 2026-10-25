@@ -173,7 +173,6 @@ struct RootView: View {
     @AppStorage("co.tabIconStyle") private var tabIconStyleRaw = CoTabIconStyle.sfSymbols.rawValue
     @State private var tabVisibility = CoTabVisibility.load()
     @AppStorage("co.queueOverlayPresented") private var queueOverlayPresented = false
-    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
     @AppStorage("co.homeWallpaperBlur") private var homeWallpaperBlur = 0.0
     @State private var showWhatsNew = false
@@ -1165,10 +1164,8 @@ private struct RootMiniPlayerAccessory: View {
 // 拿到当前 UITabBar 实例，直接设置固定清透外观（全透明、无阴影）。
 
 struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
-    var onHomeLongPress: (() -> Void)?
-
     func makeCoordinator() -> Coordinator {
-        Coordinator(onHomeLongPress: onHomeLongPress)
+        Coordinator()
     }
 
     func makeUIViewController(context: Context) -> UIViewController {
@@ -1186,7 +1183,6 @@ struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        context.coordinator.onHomeLongPress = onHomeLongPress
         DispatchQueue.main.async {
             Self.apply(
                 from: uiViewController,
@@ -1238,16 +1234,10 @@ struct TabBarAppearanceConfigurator: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject {
         static let gestureName = "co.homePlatformLongPress"
-        var onHomeLongPress: (() -> Void)?
-
-        init(onHomeLongPress: (() -> Void)?) {
-            self.onHomeLongPress = onHomeLongPress
-        }
 
         @objc func handleHomeLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began else { return }
             CoHaptics.select()
-            onHomeLongPress?()
         }
     }
 }

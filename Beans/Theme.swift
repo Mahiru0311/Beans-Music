@@ -519,11 +519,6 @@ final class ThemeStore: ObservableObject {
         UserDefaults.standard.set(style.rawValue, forKey: uiStyleKey)
     }
 
-    func set(_ newAccent: CoAccent) {
-        guard accent != newAccent else { return }
-        accent = newAccent
-        UserDefaults.standard.set(newAccent.rawValue, forKey: AccentTheme.key)
-    }
 
     /// 自定义强调色（色盘选色）
     func setCustomAccent(_ hex: String?) {
@@ -643,10 +638,6 @@ final class ThemeStore: ObservableObject {
         cachedBackgroundImagePath = nil
     }
 
-    /// 上传新壁纸：归一化后保存到壁纸库，并直接设为当前背景（覆盖保存当前壁纸）
-    func addWallpaper(_ data: Data) {
-        addWallpaper(data, for: Self.currentColorScheme)
-    }
 
     /// 上传新壁纸并同时应用到浅色和深色（背景不再分深浅，单张壁纸两边同用）。
     func addWallpaperForBothSchemes(_ data: Data) {
@@ -675,34 +666,6 @@ final class ThemeStore: ObservableObject {
         }
     }
 
-    /// 上传新壁纸并应用到指定外观。
-    func addWallpaper(_ data: Data, for colorScheme: ColorScheme) {
-        let normalized = Self.normalizedWallpaperJPEG(from: data)
-        let imageData: Data
-        if let normalized, !normalized.isEmpty {
-            imageData = normalized
-        } else if !data.isEmpty {
-            // 归一化失败（如超内存的极端大图）：兜底保存原图，保证上传必生效
-            imageData = data
-        } else {
-            return
-        }
-        // A UUID keeps rapid multi-selection uploads distinct even when all
-        // assets finish loading in the same second.
-        let url = Self.wallpaperDirectory()
-            .appendingPathComponent("wallpaper-\(UUID().uuidString).jpg")
-        do {
-            try imageData.write(to: url, options: .atomic)
-            wallpaperPaths.append(url.path)
-            saveWallpaperList()
-            setBackgroundImagePath(url.path, for: colorScheme)
-            saveWallpaperBackup(url.path, data: imageData)
-            invalidateBackgroundCache()
-            CoImageFileCache.remove(url.path)
-        } catch {
-            // 保存失败：静默保留当前壁纸
-        }
-    }
 
     /// 从壁纸库选择壁纸应用为当前背景（无需再去相册）
     func applyWallpaper(at path: String) {
@@ -746,10 +709,6 @@ final class ThemeStore: ObservableObject {
         invalidateBackgroundCache()
     }
 
-    /// 清除当前背景（保留壁纸库，可随时重新选择）
-    func clearBackgroundImage() {
-        clearBackgroundImage(for: Self.currentColorScheme)
-    }
 
     /// 清除指定外观的壁纸；若另一侧有壁纸，该外观会自动回退到另一侧。
     func clearBackgroundImage(for colorScheme: ColorScheme) {
@@ -897,9 +856,6 @@ enum AccentTheme {
         ThemeStore.shared.accent
     }
 
-    static func set(_ accent: CoAccent) {
-        ThemeStore.shared.set(accent)
-    }
 }
 
 // MARK: - 背景氛围渐变（让液态玻璃始终有内容可采样）

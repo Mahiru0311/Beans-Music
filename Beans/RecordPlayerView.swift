@@ -3,7 +3,6 @@ import UIKit
 
 // Adapted under LGPL-3.0. See THIRD_PARTY_NOTICES.md.
 struct RecordPlayerView: View {
-    @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var clock: PlaybackClock
     @Environment(\.colorScheme) private var colorScheme
@@ -11,7 +10,6 @@ struct RecordPlayerView: View {
 
     let song: Song?
     let lyrics: [LyricLine]
-    @Binding var isPresented: Bool
     let layoutData: [String: PlayerLayoutEntry]
     let initialShowsLyrics: Bool
     let isFavorite: Bool
@@ -37,7 +35,6 @@ struct RecordPlayerView: View {
     init(
         song: Song?,
         lyrics: [LyricLine],
-        isPresented: Binding<Bool>,
         layoutData: [String: PlayerLayoutEntry] = [:],
         initialShowsLyrics: Bool = false,
         isFavorite: Bool = false,
@@ -52,7 +49,6 @@ struct RecordPlayerView: View {
     ) {
         self.song = song
         self.lyrics = lyrics
-        self._isPresented = isPresented
         self.layoutData = layoutData
         self.initialShowsLyrics = initialShowsLyrics
         self.isFavorite = isFavorite
@@ -108,21 +104,18 @@ struct RecordPlayerView: View {
 
     private var backdrop: some View {
         ZStack {
-            if false {
-            } else {
-                CoverBlurBackground(url: displayCoverURL, scheme: colorScheme, animationsEnabled: visualsActive)
-                RadialGradient(
-                    colors: [.white.opacity(0.12), .clear],
-                    center: .topLeading,
-                    startRadius: 0,
-                    endRadius: 700
-                )
-                LinearGradient(
-                    colors: [.clear, .black.opacity(0.35)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
+            CoverBlurBackground(url: displayCoverURL, scheme: colorScheme, animationsEnabled: visualsActive)
+            RadialGradient(
+                colors: [.white.opacity(0.12), .clear],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 700
+            )
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.35)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
         .ignoresSafeArea()
     }

@@ -107,7 +107,6 @@ struct PlayerLayoutEntry: Codable, Equatable {
 
 /// 播放器底部布局调整存储（UserDefaults JSON，持久化）
 enum PlayerLayoutStore {
-    static let modeKey = "co.playerLayoutMode"
     static let dataKey = "co.playerLayoutData"
     private static var pendingSave: DispatchWorkItem?
 
@@ -169,10 +168,6 @@ enum PlayerLayoutStore {
         }
     }
 
-    static func reset() {
-        UserDefaults.standard.removeObject(forKey: dataKey)
-    }
-
     /// 各组件默认位置 / 大小（相对原始布局的偏移与缩放）
     static func defaultEntry(for part: PlayerLayoutPart) -> PlayerLayoutEntry {
         switch part {
@@ -231,11 +226,6 @@ enum VinylPlayerLayoutStore {
         }
         pendingSave = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
-    }
-
-    static func reset() {
-        pendingSave?.cancel()
-        UserDefaults.standard.removeObject(forKey: dataKey)
     }
 
     static func defaultEntry(for part: PlayerLayoutPart) -> PlayerLayoutEntry {
@@ -323,10 +313,6 @@ enum IPadLandscapeLayoutStore {
         )
     }
 
-    static func reset() {
-        pendingSave?.cancel()
-        UserDefaults.standard.removeObject(forKey: dataKey)
-    }
 }
 
 /// Apple Music 播放页布局存储。

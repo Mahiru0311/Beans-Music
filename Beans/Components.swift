@@ -90,13 +90,6 @@ enum CoHaptics {
         UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
     }
 
-    static func prepare() {
-        guard isEnabled else { return }
-        lightImpact.prepare()
-        mediumImpact.prepare()
-        selection.prepare()
-    }
-
     static func tap() {
         guard isEnabled else { return }
         lightImpact.impactOccurred()
@@ -1083,33 +1076,6 @@ final class CoCoverImageStore {
         )
         return URLSession(configuration: configuration)
     }()
-
-    /// Read decoded memory or disk-backed URLCache data synchronously.
-    /// CoverImage uses this during its first body evaluation to avoid a
-    /// skeleton flash when the cover was already cached.
-    static func cachedImage(for url: URL?) -> UIImage? {
-        guard let url else { return nil }
-        if url.isFileURL {
-            return CustomCoverMedia.previewImage(at: url)
-        }
-        if let image = memoryCache.object(forKey: url as NSURL) {
-            return image
-        }
-        let fileURL = diskFileURL(for: url)
-        if let data = try? Data(contentsOf: fileURL, options: .mappedIfSafe),
-           let image = UIImage(data: data) {
-            memoryCache.setObject(image, forKey: url as NSURL)
-            try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: fileURL.path)
-            return image
-        }
-        var request = URLRequest(url: url)
-        request.cachePolicy = .returnCacheDataElseLoad
-        guard let response = session.configuration.urlCache?.cachedResponse(for: request),
-              let image = UIImage(data: response.data) else { return nil }
-        persist(data: response.data, for: url)
-        memoryCache.setObject(image, forKey: url as NSURL)
-        return image
-    }
 
     /// Return only the decoded in-memory image. This is intentionally cheap
     /// enough to use during SwiftUI body evaluation; disk rehydration remains

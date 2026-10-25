@@ -12,11 +12,9 @@ final class FoliaTimelineTests: XCTestCase {
     func testGapsAreNotActiveLines() {
         XCTAssertEqual(FoliaTimeline.activeIndex(lines: lines, time: 4), -1)
         XCTAssertEqual(FoliaTimeline.recentCompleted(lines: lines, activeIndex: -1, time: 4)?.id, "a")
-        XCTAssertEqual(FoliaTimeline.upcoming(lines: lines, activeIndex: -1, time: 4)?.id, "b")
     }
 
     func testUpcomingUsesArrayOrderWhileActive() {
-        XCTAssertEqual(FoliaTimeline.upcoming(lines: lines, activeIndex: 0, time: 2)?.id, "b")
         XCTAssertEqual(FoliaTimeline.upcomingLines(lines: lines, activeIndex: 0).map(\.id), ["b", "c"])
         XCTAssertTrue(FoliaTimeline.upcomingLines(lines: lines, activeIndex: -1).isEmpty)
         XCTAssertNil(FoliaTimeline.recentCompleted(lines: lines, activeIndex: 1, time: 6))

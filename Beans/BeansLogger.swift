@@ -8,17 +8,6 @@ enum CoLogLevel: String, CaseIterable {
     case info = "INFO"
     case warn = "WARN"
     case error = "ERROR"
-    case fatal = "FATAL"
-
-    var tint: Color {
-        switch self {
-        case .debug: return .secondary
-        case .info: return .blue
-        case .warn: return .orange
-        case .error: return .red
-        case .fatal: return .red
-        }
-    }
 }
 
 // MARK: - 单条日志
@@ -32,12 +21,10 @@ struct CoLogEntry: Identifiable, Equatable {
 
 // MARK: - 全局日志中心
 
-/// 全局日志中心：内存环形缓存（供 App 内查看）+ 文件持久化（Documents/CoLogs/co-日期.log，可导出分享）。
-/// 任意线程可调用 log()，界面更新自动切回主线程。
+/// 全局日志中心：文件持久化（Documents/CoLogs/co-日期.log，可导出分享）。
+/// 任意线程可调用 log()。
 final class CoLogger: ObservableObject {
     static let shared = CoLogger()
-
-    @Published private(set) var entries: [CoLogEntry] = []
 
     private let maxEntries = 5000
     private let maxLogFileBytes = 10 * 1024 * 1024
@@ -75,32 +62,8 @@ final class CoLogger: ObservableObject {
         if recentEntries.count > maxEntries {
             recentEntries.removeFirst(recentEntries.count - maxEntries)
         }
-        let snapshot = recentEntries
         lock.unlock()
-        DispatchQueue.main.async { [weak self] in
-            self?.entries = snapshot
-        }
         write(entry.line)
-    }
-
-    /// 全部日志文本（按时间正序）
-    var fullText: String {
-        lock.lock()
-        let snapshot = recentEntries
-        lock.unlock()
-        return snapshot.map(\.line).joined(separator: "\n")
-    }
-
-    /// 清空内存日志与日志文件
-    func clear() {
-        lock.lock()
-        recentEntries = []
-        lock.unlock()
-        DispatchQueue.main.async { [weak self] in
-            self?.entries = []
-        }
-        try? FileManager.default.removeItem(at: logDirectory)
-        log("日志已清空", level: .info)
     }
 
     // MARK: - 文件持久化

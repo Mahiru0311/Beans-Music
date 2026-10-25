@@ -6,16 +6,6 @@ enum SearchProvider: String, CaseIterable, Identifiable, Hashable {
     case kugou = "酷狗音乐"
 
     var id: String { rawValue }
-
-    var tint: LinearGradient {
-        LinearGradient(
-            colors: [Color(red: 0.12, green: 0.58, blue: 0.95), Color(red: 0.02, green: 0.32, blue: 0.72)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
-
-    var icon: String { "music.note" }
-
-    var brandImageName: String? { "BrandKugou" }
 }
 
 enum SearchResultType: String, CaseIterable, Identifiable, Hashable {
@@ -68,22 +58,6 @@ private enum SearchCatalogProvider: String, CaseIterable, Identifiable, Hashable
         }
     }
 
-    var songSource: SongSource? {
-        switch self {
-        case .aggregate: return nil
-        case .netease: return .netease
-        case .qq: return .qq
-        case .kugou: return .kugou
-        case .kuwo: return .kuwo
-        case .migu: return .migu
-        case .qishui: return .qishui
-        case .bilibili: return .bilibili
-        }
-    }
-
-    var supportsDetailedResults: Bool {
-        true
-    }
 }
 
 /// 底部搜索控件在新系统使用可交互的原生液态玻璃，旧系统保留材质回退。
@@ -163,7 +137,6 @@ struct SearchView: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
@@ -194,7 +167,6 @@ struct SearchView: View {
     @State private var searchRequestID = UUID()
     @State private var playlistSearchTask: Task<Void, Never>?
     @State private var playlistSearchRequestID = UUID()
-    @State private var artistCoverCache: [String: URL] = [:]
     /// UIKit 输入框控制器（提交拼音、收起键盘等由它统一处理）
     @State private var searchController = SearchFieldController()
 
@@ -709,7 +681,7 @@ struct SearchView: View {
             openArtist(artist)
         } label: {
             VStack(spacing: 10) {
-                CoverImage(url: artist.coverURL ?? artistCoverCache[artist.id], size: 124, cornerRadius: 62)
+                CoverImage(url: artist.coverURL, size: 124, cornerRadius: 62)
                     .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 1))
                 Text(artist.name)
                     .font(CoFont.appFont(13, .medium))

@@ -66,25 +66,6 @@ final class LocalLibraryStore: ObservableObject {
         return playlist
     }
 
-    /// Creates a local playlist with imported metadata while keeping the old
-    /// createPlaylist(name:) behavior unchanged for existing callers.
-    @discardableResult
-    func createPlaylist(
-        name: String,
-        songs: [Song],
-        coverURL: URL? = nil,
-        sourceName: String? = nil
-    ) -> LocalPlaylist {
-        let playlist = LocalPlaylist(
-            name: name,
-            songs: songs,
-            coverURL: coverURL,
-            sourceName: sourceName
-        )
-        playlists.insert(playlist, at: 0)
-        return playlist
-    }
-
     func deletePlaylist(id: UUID) {
         playlists.removeAll { $0.id == id }
     }
@@ -149,7 +130,7 @@ final class LocalLibraryStore: ObservableObject {
     }
 
     @discardableResult
-    func syncSongs(_ songs: [Song], intoPlaylistNamed name: String = "三平台喜欢") -> Int {
+    func syncSongs(_ songs: [Song], intoPlaylistNamed name: String) -> Int {
         var updated = playlists
         let targetIndex: Int
         if let index = updated.firstIndex(where: { $0.name == name }) {

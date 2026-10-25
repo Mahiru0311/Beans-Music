@@ -48,19 +48,6 @@ enum DeviceIdentity {
         return generated
     }
 
-    /// The first public ID assigned to this installation, retained when the
-    /// developer later renames the visible ID.
-    static var originalPublicID: String {
-        if let value = loadFromKeychain(account: originalPublicIDAccount),
-           isValidPublicID(value) {
-            return value
-        }
-        let value = publicID
-        saveToKeychain(value, account: originalPublicIDAccount)
-        return value
-    }
-
-
     static func isValidPublicID(_ value: String) -> Bool {
         let scalars = value.unicodeScalars
         guard !scalars.isEmpty, scalars.count <= 24 else { return false }

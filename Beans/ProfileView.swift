@@ -4,14 +4,6 @@ import PhotosUI
 import UniformTypeIdentifiers
 
 
-private struct CoProfileGlobalFrameKey: PreferenceKey {
-    static let defaultValue = CGRect.zero
-
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        value = nextValue()
-    }
-}
-
 /// 白卡顶部在全局坐标里的位置：用来判断白卡是否已滑到状态栏区域，
 /// 以便在黑头在顶时用浅色状态栏文字、白卡滑到顶时切回深色文字。
 private struct CoProfileCardTopKey: PreferenceKey {
@@ -124,11 +116,7 @@ final class CoProfileHeaderWallpaper: ObservableObject {
         image = img
         topIsLight = Self.computeTopIsLight(img)
     }
-    func save(data: Data) {
-        guard let raw = UIImage(data: data) else { return }
-        save(image: raw)
-    }
-    /// 直接存一张已裁好的图：与 save(data:) 同规格（最长边 1600、JPEG 0.85），
+    /// 直接存一张已裁好的图（最长边 1600、JPEG 0.85），
     /// 供裁切完成后调用；取消时不调它，旧壁纸原样保留。
     /// 返回是否真的写进了沙盒：写失败时调用方必须提示、不要静默关掉裁切页。
     @discardableResult
@@ -199,42 +187,6 @@ final class CoProfileHeaderWallpaper: ObservableObject {
     }
 }
 
-private struct CoProfileThemeRevealOverlay: View {
-    let snapshot: UIImage
-    let origin: CGPoint
-    let progress: CGFloat
-
-    var body: some View {
-        GeometryReader { proxy in
-            let farthestX = max(origin.x, proxy.size.width - origin.x)
-            let farthestY = max(origin.y, proxy.size.height - origin.y)
-            let radius = hypot(farthestX, farthestY) + 4
-
-            Image(uiImage: snapshot)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .clipped()
-                .mask {
-                    Rectangle()
-                        .fill(Color.white)
-                        .overlay {
-                            Circle()
-                                .fill(Color.black)
-                                .frame(width: radius * 2, height: radius * 2)
-                                .scaleEffect(max(progress, 0.001))
-                                .position(origin)
-                                .blendMode(.destinationOut)
-                        }
-                        .compositingGroup()
-                }
-                .allowsHitTesting(false)
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-    }
-}
-
 struct ProfileView: View {
     /// 由主页头像以 sheet 打开时，使用主页同一套壁纸背景。
     var forceHomeBackdrop = false
@@ -244,10 +196,7 @@ struct ProfileView: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @Environment(\.coUsesSharedRootBackdrop) private var usesSharedRootBackdrop
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("co.themeMode") private var themeModeRaw = CoThemeMode.system.rawValue
-    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
-    @AppStorage("co.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("co.pauseHomeRendering") private var homeRenderingPaused = false
 
     @State private var showHistory = false
@@ -267,19 +216,10 @@ struct ProfileView: View {
     @State private var showAccountHub = false
     /// 设置页（外观 + 歌词翻译等）
     @State private var showSettings = false
-    @State private var themeRevealSnapshot: UIImage?
-    @State private var themeRevealOrigin = CGPoint.zero
-    @State private var themeRevealProgress: CGFloat = 0
-    @State private var profileGlobalFrame = CGRect.zero
     @State private var didRefreshProfileAccount = false
-    @State private var showAvatarPicker = false
-    @State private var showProfileNameBackgroundPicker = false
     @AppStorage("co.profile.customNickname") private var customNickname = ""
-    @ObservedObject private var avatarStore = CoAvatarStore.shared
     @ObservedObject private var profileHeaderWallpaper = CoProfileHeaderWallpaper.shared
-    @ObservedObject private var profileNameBackgroundStore = CoProfileNameBackgroundStore.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
-    @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
     @AppStorage("co.globalFloatingEffect") private var globalFloatingEffectRaw = CoGlobalFloatingEffect.off.rawValue
     @AppStorage("co.globalFloatingDensity") private var globalFloatingDensity = 1.0
@@ -293,9 +233,6 @@ struct ProfileView: View {
         CoThemeMode(rawValue: themeModeRaw) ?? .system
     }
 
-    private var isNativeClean: Bool {
-        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
 
     private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
 
@@ -562,24 +499,6 @@ struct ProfileView: View {
                     }
             )
 
-            if let themeRevealSnapshot {
-                CoProfileThemeRevealOverlay(
-                    snapshot: themeRevealSnapshot,
-                    origin: themeRevealOrigin,
-                    progress: themeRevealProgress
-                )
-            }
-        }
-        .background {
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: CoProfileGlobalFrameKey.self,
-                    value: proxy.frame(in: .global)
-                )
-            }
-        }
-        .onPreferenceChange(CoProfileGlobalFrameKey.self) { frame in
-            profileGlobalFrame = frame
         }
         .task {
             guard !didRefreshProfileAccount else { return }
@@ -613,20 +532,6 @@ struct ProfileView: View {
                 .environmentObject(auth)
                 .environmentObject(theme)
                 .preferredColorScheme(profileEffectiveScheme)
-        }
-        .sheet(isPresented: $showAvatarPicker) {
-            AvatarMediaPicker { selection in
-                if selection.isVideo {
-                    avatarStore.saveVideo(data: selection.data, fileExtension: selection.fileExtension)
-                } else {
-                    avatarStore.save(data: selection.data)
-                }
-            }
-        }
-        .sheet(isPresented: $showProfileNameBackgroundPicker) {
-            AvatarMediaPicker { selection in
-                profileNameBackgroundStore.save(data: selection.data, fileExtension: selection.fileExtension)
-            }
         }
         .sheet(isPresented: $showSettings, onDismiss: { loadHiddenPlaylists() }) {
             settingsScreen(SettingsView(onClose: { showSettings = false }))
@@ -1078,112 +983,6 @@ struct ProfileView: View {
     }
 }
 
-private extension ProfileView {
-    var userIdentityCard: some View {
-        let isDeveloper = DeviceIdentity.isDeveloperInstallation
-        return Button {
-            UIPasteboard.general.string = DeviceIdentity.publicID
-            CoHaptics.tap()
-            ToastCenter.shared.show("用户 ID 已复制")
-        } label: {
-            VStack(alignment: .leading, spacing: 11) {
-                HStack(spacing: 9) {
-                    Image(systemName: isDeveloper ? "crown.fill" : "number.circle.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isDeveloper ? Color.white : Color.coAmber)
-                        .frame(width: 30, height: 30)
-                        .background {
-                            if isDeveloper {
-                                Circle().fill(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.98, green: 0.33, blue: 0.57), Color(red: 0.34, green: 0.29, blue: 0.96)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            } else {
-                                Circle().fill(Color.coGlassFill)
-                            }
-                        }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(isDeveloper ? "Co Creator" : "用户 ID")
-                            .font(CoFont.appFont(14, .semibold))
-                            .foregroundStyle(Color.coLabel)
-                        Text(isDeveloper ? "专属开发者铭牌" : "绑定当前设备，永久保留")
-                            .font(CoFont.appFont(11))
-                            .foregroundStyle(Color.coComment)
-                    }
-                    Spacer(minLength: 8)
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isDeveloper ? Color.white.opacity(0.86) : Color.coComment)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    if isDeveloper {
-                        Text(DeviceIdentity.publicID)
-                            .font(.system(size: 25, weight: .bold, design: .default))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color(red: 0.98, green: 0.42, blue: 0.67), Color(red: 0.42, green: 0.48, blue: 1.0)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .monospacedDigit()
-                    } else {
-                        Text(DeviceIdentity.publicID)
-                            .font(.system(size: 22, weight: .bold, design: .default))
-                            .foregroundStyle(Color.coLabel)
-                            .monospacedDigit()
-                    }
-                    if isDeveloper {
-                        Text("5201314")
-                            .font(CoFont.appFont(10, .bold))
-                            .foregroundStyle(Color.coLabel.opacity(0.7))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(Color.white.opacity(0.16), in: Capsule())
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-            .padding(15)
-            .background {
-                if isDeveloper {
-                    ZStack {
-                        CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous), forceLiquid: true)
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.95, green: 0.25, blue: 0.55).opacity(0.12),
-                                        Color(red: 0.26, green: 0.35, blue: 0.98).opacity(0.12)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.55), Color.white.opacity(0.08)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    }
-                } else {
-                    CoGlass(shape: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(GlassPressButtonStyle(scale: 0.98))
-        .accessibilityLabel("用户 ID \(DeviceIdentity.publicID)，点击复制")
-    }
-}
 
 // MARK: - 交流群二维码
 
@@ -1657,17 +1456,12 @@ struct AccountHubSheet: View {
     @EnvironmentObject private var theme: ThemeStore
     @EnvironmentObject private var auth: AuthStore
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
-    @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
     @Environment(\.dismiss) private var dismiss
 
     @State private var showKugouLogin = false
     @State private var confirmKugouLogout = false
 
-    private var isEnglish: Bool { languageRaw == AppLanguage.english.rawValue }
-    private var displayPlatformSummary: String {
-        isEnglish ? "Kugou Music" : "酷狗音乐"
-    }
 
     var body: some View {
         CoNavigationStack {
@@ -1760,12 +1554,9 @@ struct AccountHubSheet: View {
 struct SettingsView: View {
     var onClose: (() -> Void)? = nil
     @EnvironmentObject private var theme: ThemeStore
-    @EnvironmentObject private var player: PlayerManager
     @EnvironmentObject private var auth: AuthStore
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("co.themeMode") private var themeModeRaw = CoThemeMode.system.rawValue
-    @AppStorage("co.uiStyle") private var uiStyleRaw = CoUIStyle.liquid.rawValue
     @AppStorage("co.disableLiquidGlass") private var disableLiquidGlass = false
     @AppStorage("co.language") private var languageRaw = AppLanguage.chinese.rawValue
     @AppStorage("co.globalFloatingEffect") private var globalFloatingEffectRaw = CoGlobalFloatingEffect.off.rawValue
@@ -1785,36 +1576,10 @@ struct SettingsView: View {
     @AppStorage(CoHaptics.enabledKey) private var hapticsEnabled = true
     @AppStorage("co.playback.autoResumeLast") private var autoResumeLastPlayback = false
     @AppStorage("co.labelColorHex") private var labelColorHex = ""
-    @AppStorage("co.homeGreetingText") private var homeGreetingText = ""
-    @AppStorage("co.homeGreetingSize") private var homeGreetingSize = 30.0
-    @AppStorage("co.homeGreetingHeight") private var homeGreetingHeight = 0.0
-    @AppStorage("co.homeGreetingColorHex") private var homeGreetingColorHex = ""
-    @AppStorage("co.homeGreetingLine1Size") private var homeGreetingLine1Size = 0.0
-    @AppStorage("co.homeGreetingLine2Size") private var homeGreetingLine2Size = 0.0
-    @AppStorage("co.homeGreetingLine3Size") private var homeGreetingLine3Size = 0.0
-    @AppStorage("co.homeGreetingLine1ColorHex") private var homeGreetingLine1ColorHex = ""
-    @AppStorage("co.homeGreetingLine2ColorHex") private var homeGreetingLine2ColorHex = ""
-    @AppStorage("co.homeGreetingLine3ColorHex") private var homeGreetingLine3ColorHex = ""
-    @AppStorage("co.homeGreetingLine1OffsetY") private var homeGreetingLine1OffsetY = 0.0
-    @AppStorage("co.homeGreetingLine2OffsetY") private var homeGreetingLine2OffsetY = 0.0
-    @AppStorage("co.homeGreetingLine3OffsetY") private var homeGreetingLine3OffsetY = 0.0
-    @AppStorage("co.homeGreetingLine1GradientStartHex") private var homeGreetingLine1GradientStartHex = ""
-    @AppStorage("co.homeGreetingLine2GradientStartHex") private var homeGreetingLine2GradientStartHex = ""
-    @AppStorage("co.homeGreetingLine3GradientStartHex") private var homeGreetingLine3GradientStartHex = ""
-    @AppStorage("co.homeGreetingLine1GradientEndHex") private var homeGreetingLine1GradientEndHex = ""
-    @AppStorage("co.homeGreetingLine2GradientEndHex") private var homeGreetingLine2GradientEndHex = ""
-    @AppStorage("co.homeGreetingLine3GradientEndHex") private var homeGreetingLine3GradientEndHex = ""
-    @AppStorage("co.homeGreetingGlowEnabled") private var homeGreetingGlowEnabled = false
-    @AppStorage("co.homeGreetingGlowIntensity") private var homeGreetingGlowIntensity = 0.45
-    @AppStorage("co.homeGreetingUnderline") private var homeGreetingUnderline = false
-    @AppStorage("co.homeGreetingGradient") private var homeGreetingGradient = false
-    @AppStorage("co.homeGreetingGradientStartHex") private var homeGreetingGradientStartHex = ""
-    @AppStorage("co.homeGreetingGradientEndHex") private var homeGreetingGradientEndHex = ""
     @AppStorage("co.pauseHomeRendering") private var homeRenderingPaused = false
     @AppStorage("co.homeHeaderHideSort") private var homeHeaderHideSort = false
     @AppStorage("co.home.dailySongsListStyle") private var dailySongsListStyle = false
     @ObservedObject private var equalizer = CoEqualizer.shared
-    @ObservedObject private var platformPrefs = PlatformPreferenceStore.shared
     @ObservedObject private var kugouAuth = KugouMusicAuth.shared
 
     @State private var appearanceExpanded = false
@@ -1867,9 +1632,6 @@ struct SettingsView: View {
     /// beans.themeMode，不新发明键。开 = 深色，关 = 浅色；跟随系统仍走下方主题模式
     /// 三段选择（跟随系统/浅色/深色），开关只反映“当前是否显式深色”。
 
-    private var isNativeClean: Bool {
-        CoUIStyle(rawValue: uiStyleRaw) == .nativeClean
-    }
 
 
     /// iOS/iPadOS 26 and earlier can tear down a large full-screen SwiftUI tree
@@ -4488,62 +4250,6 @@ struct CoHeaderWallpaperCropView: View {
         .foregroundStyle(Color.white)
     }
 }
-
-struct AvatarMediaSelection {
-    let data: Data
-    let fileExtension: String
-    let isVideo: Bool
-}
-
-/// 头像可从相册选择静态图片或视频；视频保留为本地文件供头像循环播放。
-struct AvatarMediaPicker: UIViewControllerRepresentable {
-    let onPicked: (AvatarMediaSelection) -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var configuration = PHPickerConfiguration()
-        configuration.filter = .any(of: [.images, .videos])
-        configuration.selectionLimit = 1
-        let picker = PHPickerViewController(configuration: configuration)
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-
-    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let parent: AvatarMediaPicker
-
-        init(_ parent: AvatarMediaPicker) { self.parent = parent }
-
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            picker.dismiss(animated: true)
-            guard let provider = results.first?.itemProvider else { return }
-
-            if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                provider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, _ in
-                    guard let url, let data = try? Data(contentsOf: url), !data.isEmpty else { return }
-                    let ext = url.pathExtension.isEmpty ? "mov" : url.pathExtension
-                    DispatchQueue.main.async {
-                        self.parent.onPicked(AvatarMediaSelection(data: data, fileExtension: ext, isVideo: true))
-                    }
-                }
-            } else {
-                provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
-                    guard let data, !data.isEmpty else { return }
-                    let imageExtension = provider.registeredTypeIdentifiers
-                        .compactMap { UTType($0)?.preferredFilenameExtension }
-                        .first ?? "jpg"
-                    DispatchQueue.main.async {
-                        self.parent.onPicked(AvatarMediaSelection(data: data, fileExtension: imageExtension, isVideo: false))
-                    }
-                }
-            }
-        }
-    }
-}
-
 
 // MARK: - 配置备份文档（SwiftUI 原生 fileExporter 导出，稳定可靠）
 

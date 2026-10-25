@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Still: three rows, gentle fade+rise on line change — the calmest of the eight effects,
+// Still: three rows, gentle fade+rise on line change — the calmest of the five effects,
 // no glow or scale. (Earlier it was fully frozen; the bold rewrite gives it motion too.)
 struct FoliaStillRenderer: View {
     let document: FoliaLyricDocument

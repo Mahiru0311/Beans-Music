@@ -224,16 +224,6 @@ final class CustomSongCoverStore: ObservableObject {
 
 }
 
-enum CustomSongCoverError: LocalizedError {
-    case invalidMedia
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidMedia: return "请选择有效的图片、GIF 或视频"
-        }
-    }
-}
-
 extension Notification.Name {
     static let coCustomSongCoverDidChange = Notification.Name("co.customSongCoverDidChange")
 }

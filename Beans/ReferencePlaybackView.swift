@@ -99,10 +99,6 @@ struct ReferencePlaybackView: View {
         customCovers.url(for: song) ?? song?.coverURL
     }
 
-    private func displayCoverURL(for song: Song?) -> URL? {
-        customCovers.url(for: song) ?? song?.coverURL
-    }
-
     var body: some View {
         GeometryReader { geometry in
             if UIDevice.current.userInterfaceIdiom == .phone && geometry.size.width > geometry.size.height {
@@ -249,8 +245,7 @@ struct ReferencePlaybackView: View {
             Color(uiColor: .systemBackground)
                 .ignoresSafeArea()
 
-            if false {
-            } else if syncWallpaper, let image = theme.customBackgroundImage(for: colorScheme) {
+            if syncWallpaper, let image = theme.customBackgroundImage(for: colorScheme) {
                 WallpaperImage(image: image)
                     .blur(radius: CGFloat(wallpaperBlur))
                     .scaleEffect(wallpaperBlur > 0 ? 1.08 : 1)
@@ -1579,7 +1574,6 @@ struct ReferenceVolumeControl: View {
 
 struct CoSoftwareVolumeSheet: View {
     @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var theme: ThemeStore
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

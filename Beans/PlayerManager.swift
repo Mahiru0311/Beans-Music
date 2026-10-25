@@ -38,10 +38,6 @@ final class PlaybackRenderGate {
 
     private init() {}
 
-    var isSuppressed: Bool {
-        suppressionDepth > 0
-    }
-
     func beginSuppression() {
         suppressionDepth += 1
     }
@@ -77,7 +73,6 @@ final class PlayerManager: NSObject, ObservableObject {
     @Published var currentIndex = 0
     @Published var isPlaying = false
     @Published var isBuffering = false
-    @Published var loadFailed = false
     /// 切歌代次：防止旧歌的 URL 解析任务覆盖新歌（快速切歌时）
     private var loadGeneration = 0
     private var playbackLoadTask: Task<Void, Never>?
@@ -117,9 +112,6 @@ final class PlayerManager: NSObject, ObservableObject {
     @Published private(set) var listeningDuration: TimeInterval = 0
     /// 每次用户主动拖动进度或点击歌词都会递增，歌词视图据此立即重新定位。
     @Published private(set) var seekRevision = 0
-    /// 歌词统一使用的播放游标，和播放器时间观察器使用同一个时间源。
-    /// 高频游标不再触发整个播放器模型发布，由 PlaybackClock 驱动进度条与歌词局部刷新。
-    private(set) var lyricProgress: Double = 0
 
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -133,7 +125,6 @@ final class PlayerManager: NSObject, ObservableObject {
     /// 断点续播的待补 seek：换音质/重试时新地址还没就绪，立刻 seek 会被丢掉；
     /// 记下来等 item ready 时由状态观察者补上，播起来就不从头开始。
     private var pendingResumeSeek: Double?
-    private var sessionConfigured = false
     private var systemPlaybackPrepared = false
     private var routeObserverInstalled = false
     private var interruptionObserverInstalled = false
@@ -156,9 +147,7 @@ final class PlayerManager: NSObject, ObservableObject {
     /// history 上限 50 首，计过很多次的老歌滚出 50 首后榜单就掉了、但总数还在，
     /// 数和列表对不上；现在榜单从这里找歌，不再被 history 上限挤掉。
     private var countedSongs: [String: Song] = [:]
-    private var wasPlayingBeforeInterruption = false
     private var interruptionInProgress = false
-    private var interruptionResumeWorkItem: DispatchWorkItem?
     private var audioRecoveryWorkItem: DispatchWorkItem?
     private var audioSessionWatchdogTimer: Timer?
     private var shouldResumeAfterAudioLoss = false
@@ -166,8 +155,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private var lastNowPlayingRefreshUptime = 0.0
     private var lastPublishedProgress: Double = -1
     private var lastPersistedProgress: Double = -1
-    private var lastListeningProgress: Double?
-    private var lastListeningSongKey: String?
     private var pendingListeningDuration: TimeInterval = 0
     /// 单调时钟记录当前实际播放片段，不依赖歌曲进度，避免拖动/切歌放大统计。
     private var listeningSegmentStartedUptime: TimeInterval?
@@ -182,8 +169,6 @@ final class PlayerManager: NSObject, ObservableObject {
     private var nowPlayingInfo: [String: Any] = [:]
     /// 酷狗高音质地址在部分账号/系统上会返回但无法由 AVPlayer 打开；每首歌只自动降级一次。
     private var kugouStandardFallbackSongKey: String?
-    /// KVO 与 AVPlayerItemFailedToPlayToEndTime 可能同时报告同一次失败。
-    private var playbackRecoveryInFlightSongKey: String?
     /// 同一首歌的多个 AVFoundation 失败回调只允许弹一次提示并自动切歌一次。
     private var finalizedFailureSongKey: String?
     /// 播放失败后安排到下一个主线程周期切歌，避免 AVFoundation 回调中同步重入。
@@ -209,38 +194,6 @@ final class PlayerManager: NSObject, ObservableObject {
 
     static var storedListeningDuration: TimeInterval {
         max(0, UserDefaults.standard.double(forKey: listeningDurationKey))
-    }
-
-    static var storedPlayCount: Int {
-        storedLocalPlayCount + max(0, UserDefaults.standard.integer(forKey: listeningPlayCountOffsetKey))
-    }
-
-    private static var storedLocalPlayCount: Int {
-        guard let data = UserDefaults.standard.data(forKey: "co.playcounts"),
-              let counts = try? JSONDecoder().decode([String: Int].self, from: data) else {
-            return 0
-        }
-        return counts.values.reduce(0, +)
-    }
-
-
-    var totalPlayCount: Int {
-        playCounts.values.reduce(0, +)
-            + max(0, defaults.integer(forKey: Self.listeningPlayCountOffsetKey))
-    }
-
-    var formattedListeningDuration: String {
-        Self.formatListeningDuration(listeningDuration)
-    }
-
-    static func formatListeningDuration(_ duration: TimeInterval) -> String {
-        let totalMinutes = max(0, Int(duration / 60))
-        let days = totalMinutes / (24 * 60)
-        let hours = (totalMinutes % (24 * 60)) / 60
-        let minutes = totalMinutes % 60
-        if days > 0 { return "\(days) 天 \(hours) 小时 \(minutes) 分钟" }
-        if hours > 0 { return "\(hours) 小时 \(minutes) 分钟" }
-        return "\(minutes) 分钟"
     }
 
     private var externalSourcesEnabled: Bool { false }
@@ -294,7 +247,7 @@ final class PlayerManager: NSObject, ObservableObject {
         softwareVolume = min(max(defaults.object(forKey: softwareVolumeKey) as? Double ?? 1.0, 0), 1)
         // Ensure a stale auxiliary-audio category cannot carry a previous mix
         // preference into the first playback after relaunch.
-        sessionConfigured = Self.applyAudioMixPreference(mixesWithOthers, activate: false)
+        Self.applyAudioMixPreference(mixesWithOthers, activate: false)
         if let raw = defaults.string(forKey: playModeKey),
            let saved = PlayMode(rawValue: raw) {
             playMode = saved
@@ -336,7 +289,6 @@ final class PlayerManager: NSObject, ObservableObject {
     deinit {
         playbackLoadTask?.cancel()
         flushListeningDuration()
-        interruptionResumeWorkItem?.cancel()
         audioRecoveryWorkItem?.cancel()
         audioSessionWatchdogTimer?.invalidate()
         if let equalizerSettingsObserver {
@@ -367,20 +319,6 @@ final class PlayerManager: NSObject, ObservableObject {
         buildPlayOrder()
         jumpToOrderPosition(min(max(index, 0), songs.count - 1))
     }
-
-    /// 由哔哩哔哩“听视频”模式复用 Beans 音频播放器，保留当前详情页的续播时间和播放意图。
-    // Apply a resolved list without replacing the AVPlayer or losing its playhead.
-    /// 追加后台继续加载的私人漫游歌曲，不打断当前歌曲或重置播放位置。
-    func append(songs newSongs: [Song]) {
-        guard !newSongs.isEmpty else { return }
-        let existing = Set(queue.map(\.identityKey))
-        let additions = newSongs.filter { !existing.contains($0.identityKey) }
-        guard !additions.isEmpty else { return }
-        queue.append(contentsOf: additions)
-        buildPlayOrder()
-        savePersistedPlaybackState()
-    }
-
 
     /// 插队播放：把歌曲放到当前歌曲之后，不打断当前播放
     func playNext(_ song: Song) {
@@ -464,7 +402,6 @@ final class PlayerManager: NSObject, ObservableObject {
         // 不等待 AVPlayer 回调，也不使用回调中的旧 currentTime 覆盖目标位置。
         let clamped = max(0, min(seconds, max(duration, currentSong?.duration ?? seconds)))
         progress = clamped
-        lyricProgress = clamped
         resetListeningProgress()
         seekRevision &+= 1
         player?.seek(
@@ -488,7 +425,6 @@ final class PlayerManager: NSObject, ObservableObject {
         seekRevision &+= 1
         let revision = seekRevision
         progress = target
-        lyricProgress = target
         resetListeningProgress()
         player?.seek(
             to: CMTime(seconds: target, preferredTimescale: 600),
@@ -501,7 +437,6 @@ final class PlayerManager: NSObject, ObservableObject {
                       self.currentSong?.identityKey == seekSongKey,
                       self.seekRevision == revision else { return }
                 self.progress = target
-                self.lyricProgress = target
                 self.lastPublishedProgress = target
                 if shouldKeepPlaying {
                     self.player?.playImmediately(atRate: Float(self.rate))
@@ -625,7 +560,6 @@ final class PlayerManager: NSObject, ObservableObject {
 
     func retryCurrent() {
         guard ensurePlaybackAllowed() else { return }
-        loadFailed = false
         // 换音质 / 开关不断歌：从当前进度续播；暂停时保持暂停，缓冲中按播放处理。
         let time = player?.currentTime().seconds ?? 0
         let resume = time.isFinite ? max(0, time) : 0
@@ -711,9 +645,6 @@ final class PlayerManager: NSObject, ObservableObject {
         return max(0, time)
     }
 
-    // Bridges can reject asynchronous queue additions after a new load/ownership change.
-    var queueContextRevision: Int { loadGeneration }
-
     // MARK: - 播放顺序
 
     private func buildPlayOrder(avoiding removedID: Int? = nil) {
@@ -787,7 +718,6 @@ final class PlayerManager: NSObject, ObservableObject {
         loadGeneration += 1
         let generation = loadGeneration
         actualAudioQualityKey = nil
-        playbackRecoveryInFlightSongKey = nil
         finalizedFailureSongKey = nil
         failureAutoSkipWorkItem?.cancel()
         failureAutoSkipWorkItem = nil
@@ -803,15 +733,12 @@ final class PlayerManager: NSObject, ObservableObject {
         player = nil
         duration = song.duration
         progress = initialProgress
-        lyricProgress = initialProgress
         isPlaying = false
         isBuffering = true
-        loadFailed = false
         pushHistory(song)
         savePersistedPlaybackState()
         guard song.source == .kugou else {
             isBuffering = false
-            loadFailed = true
             finishUnrecoverablePlaybackFailure(song: song, reason: "酷狗专版仅支持酷狗歌曲")
             return
         }
@@ -836,7 +763,6 @@ final class PlayerManager: NSObject, ObservableObject {
                 await MainActor.run {
                     guard generation == self.loadGeneration else { return }
                     self.isBuffering = false
-                    self.loadFailed = true
                     let reason = "解析播放地址失败"
                     let failureMessage = coLocalized(
                         "播放失败：\(self.playbackFailureMessage(for: song, reason: reason))",
@@ -1025,7 +951,6 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         guard autoplay else {
             isBuffering = false
-            loadFailed = false
             refreshNowPlayingOwnership()
             return
         }
@@ -1033,7 +958,6 @@ final class PlayerManager: NSObject, ObservableObject {
         isPlaying = true
         startListeningSegment()
         isBuffering = false
-        loadFailed = false
         startAudioSessionWatchdogIfNeeded()
         // 播放次数：原先在 loadCurrent 里预计数，URL 加载失败/手动重试也会 +1，
         // 导致统计异常；改为真正开始播放时计数。同一 load 只计一次（失败重载会换
@@ -1047,7 +971,6 @@ final class PlayerManager: NSObject, ObservableObject {
             guard let self, let player = self.player else { return }
             if time.seconds.isFinite {
                 self.recordListeningProgress(at: time.seconds, player: player)
-                self.lyricProgress = time.seconds
                 if abs(time.seconds - self.lastPublishedProgress) >= 0.18 {
                     self.lastPublishedProgress = time.seconds
                     self.progress = time.seconds
@@ -1124,14 +1047,12 @@ final class PlayerManager: NSObject, ObservableObject {
         guard let failedSong = song,
               currentSong?.identityKey == failedSong.identityKey,
               finalizedFailureSongKey != failedSong.identityKey else {
-            loadFailed = true
             isBuffering = false
             isPlaying = false
             stopListeningSegment()
             stopAudioSessionWatchdog()
             return
         }
-        loadFailed = true
         isBuffering = false
         isPlaying = false
         stopListeningSegment()
@@ -1253,7 +1174,6 @@ final class PlayerManager: NSObject, ObservableObject {
         player = nil
         isPlaying = false
         isBuffering = false
-        loadFailed = true
         updateNowPlaying()
         if showToast {
             Task { @MainActor in
@@ -1292,8 +1212,6 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func resetListeningProgress() {
-        lastListeningProgress = nil
-        lastListeningSongKey = nil
     }
 
     private func startListeningSegment() {
@@ -1384,11 +1302,7 @@ final class PlayerManager: NSObject, ObservableObject {
     }
 
     private func configureAudioSession() {
-        if Self.applyAudioMixPreference(mixesWithOthers) {
-            sessionConfigured = true
-        } else {
-            sessionConfigured = false
-        }
+        Self.applyAudioMixPreference(mixesWithOthers)
     }
 
     @discardableResult
@@ -1440,7 +1354,6 @@ final class PlayerManager: NSObject, ObservableObject {
             }
             return
         }
-        sessionConfigured = false
         if isPlaying || player?.timeControlStatus == .playing {
             rememberAudioPlaybackIntent()
         }
@@ -1519,8 +1432,6 @@ final class PlayerManager: NSObject, ObservableObject {
         guard let type = AVAudioSession.InterruptionType(rawValue: rawType) else { return }
         switch type {
         case .began:
-            interruptionResumeWorkItem?.cancel()
-            interruptionResumeWorkItem = nil
             interruptionInProgress = true
             rememberAudioPlaybackIntent()
             // 混音模式下系统可能只暂停 AVPlayer 而不改变我们的状态；恢复统一交给
@@ -1531,12 +1442,10 @@ final class PlayerManager: NSObject, ObservableObject {
                 player?.pause()
                 updateNowPlaying()
             } else {
-                sessionConfigured = false
                 scheduleAudioRecovery(reason: "mixed audio interruption", delay: 0.2)
                 refreshNowPlayingOwnership()
             }
         case .ended:
-            sessionConfigured = false
             guard interruptionInProgress || shouldResumeAfterAudioLoss else { return }
             scheduleAudioRecovery(reason: "系统音频中断结束", delay: 0.18)
         @unknown default:
@@ -1563,11 +1472,9 @@ final class PlayerManager: NSObject, ObservableObject {
         // 系统定义 began=1、ended=0；使用原始值兼容旧系统 SDK。
         if rawType == 1 {
             rememberAudioPlaybackIntent()
-            sessionConfigured = false
             scheduleAudioRecovery(reason: "次级音频开始", delay: 0.12)
             refreshNowPlayingOwnership()
         } else {
-            sessionConfigured = false
             scheduleAudioRecovery(reason: "次级音频结束", delay: 0.12)
         }
     }
@@ -1579,7 +1486,6 @@ final class PlayerManager: NSObject, ObservableObject {
             }
             return
         }
-        sessionConfigured = false
         guard currentSong != nil else { return }
         rememberAudioPlaybackIntent()
         scheduleAudioRecovery(reason: "系统音频服务重置", delay: 0.2)
@@ -1607,7 +1513,6 @@ final class PlayerManager: NSObject, ObservableObject {
         guard currentSong != nil,
               isPlaying || shouldResumeAfterAudioLoss || player?.timeControlStatus == .playing else { return }
         rememberAudioPlaybackIntent()
-        sessionConfigured = false
         scheduleAudioRecovery(reason: "进入后台保持播放", delay: 0.25)
     }
 
@@ -1620,7 +1525,6 @@ final class PlayerManager: NSObject, ObservableObject {
         }
         applicationIsInBackground = false
         guard currentSong != nil else { return }
-        sessionConfigured = false
         if shouldResumeAfterAudioLoss || isPlaying || player?.timeControlStatus == .playing {
             scheduleAudioRecovery(reason: "应用重新激活", delay: 0.12)
         }
@@ -1631,7 +1535,6 @@ final class PlayerManager: NSObject, ObservableObject {
         let active = isPlaying || player?.timeControlStatus == .playing || player?.rate != 0
         if active {
             shouldResumeAfterAudioLoss = true
-            wasPlayingBeforeInterruption = true
         }
         audioLossInProgress = true
     }
@@ -1640,11 +1543,8 @@ final class PlayerManager: NSObject, ObservableObject {
         shouldResumeAfterAudioLoss = false
         audioLossInProgress = false
         interruptionInProgress = false
-        wasPlayingBeforeInterruption = false
         audioRecoveryWorkItem?.cancel()
         audioRecoveryWorkItem = nil
-        interruptionResumeWorkItem?.cancel()
-        interruptionResumeWorkItem = nil
     }
 
     /// 混音播放时，部分应用既不发送完整中断通知，也会暂停 AVPlayer 的时间回调。
@@ -1694,7 +1594,7 @@ final class PlayerManager: NSObject, ObservableObject {
 
         let session = AVAudioSession.sharedInstance()
         if !session.categoryOptions.contains(.mixWithOthers) {
-            sessionConfigured = Self.applyAudioMixPreference(true)
+            Self.applyAudioMixPreference(true)
         }
         let otherAudioIsActive = session.isOtherAudioPlaying || session.secondaryAudioShouldBeSilencedHint
         if shouldResumeAfterAudioLoss,
@@ -1739,7 +1639,6 @@ final class PlayerManager: NSObject, ObservableObject {
             return
         }
 
-        sessionConfigured = false
         guard Self.applyAudioMixPreference(mixesWithOthers) else {
             scheduleAudioRecovery(reason: reason, delay: 0.35, attempt: attempt + 1)
             return
@@ -1765,7 +1664,6 @@ final class PlayerManager: NSObject, ObservableObject {
         audioLossInProgress = false
         shouldResumeAfterAudioLoss = false
         interruptionInProgress = false
-        wasPlayingBeforeInterruption = false
         startAudioSessionWatchdogIfNeeded()
         refreshNowPlayingOwnership()
     }
@@ -1860,7 +1758,6 @@ final class PlayerManager: NSObject, ObservableObject {
         progress = max(0, min(saved.progress, max(duration, currentSong?.duration ?? 0)))
         isPlaying = false
         isBuffering = false
-        loadFailed = false
         buildPlayOrder()
     }
 
@@ -2055,35 +1952,11 @@ final class PlayerManager: NSObject, ObservableObject {
     /// 与其他 App 音频混合播放。此开关与锁屏/灵动岛显示相互独立。
     var mixesWithOthers: Bool {
         get { defaults.object(forKey: audioMixKey) as? Bool ?? false }
-        set { setMixesWithOthers(newValue) }
-    }
-
-    /// 更新混音会话后立即重申系统正在播放信息，避免混音开关影响锁屏和灵动岛显示。
-    func setMixesWithOthers(_ enabled: Bool) {
-        defaults.set(enabled, forKey: audioMixKey)
-        sessionConfigured = false
-        configureAudioSession()
-        if enabled, isPlaying || player?.timeControlStatus == .playing {
-            startAudioSessionWatchdogIfNeeded()
-        } else if !enabled {
-            stopAudioSessionWatchdog()
-        }
-        updateNowPlaying()
     }
 
     /// 独立控制锁屏和灵动岛的系统正在播放信息，不影响与其他音频混合播放。
     var nowPlayingEnabled: Bool {
         get { defaults.object(forKey: nowPlayingEnabledKey) as? Bool ?? true }
-        set { setNowPlayingEnabled(newValue) }
-    }
-
-    func setNowPlayingEnabled(_ enabled: Bool) {
-        defaults.set(enabled, forKey: nowPlayingEnabledKey)
-        if enabled {
-            updateNowPlaying()
-        } else {
-            clearNowPlayingInfo()
-        }
     }
 
 }

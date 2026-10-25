@@ -13,8 +13,6 @@ private struct CoPlaylistHeaderData {
     let sourceName: String
     let coverURL: URL?
     let description: String?
-    let creatorAvatarURL: URL?
-    let playCount: Int
 }
 
 /// 统一歌单详情页：我的页、歌单弹窗、主页每日推荐、榜单、搜索结果、歌单库、侧栏
@@ -25,9 +23,7 @@ private struct CoPlaylistHeaderData {
 /// 该开关仍保留给歌手页、本地音乐区、搜索专辑页等其他详情页用。
 struct PlaylistView: View {
     @EnvironmentObject private var player: PlayerManager
-    @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var theme: ThemeStore
-    @ObservedObject private var favorites = FavoritesStore.shared
     @ObservedObject private var playlistOverrides = CoPlaylistOverrides.shared
     @ObservedObject private var playlistFavorites = CoPlaylistFavorites.shared
 
@@ -239,9 +235,7 @@ struct PlaylistView: View {
                 sourceName: playlist.creatorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     ? "酷狗音乐" : playlist.creatorName,
                 coverURL: playlistOverrides.coverURL(for: playlist),
-                description: description.isEmpty ? nil : description,
-                creatorAvatarURL: playlist.creatorAvatarURL,
-                playCount: playlist.playCount
+                description: description.isEmpty ? nil : description
             )
         case .daily:
             // 每日推荐专属文案：只对每日推荐用，用户歌单与榜单没有简介时不编。
@@ -252,9 +246,7 @@ struct PlaylistView: View {
                 description: coLocalized(
                     "为你整理的每日推荐歌曲，随时发现新的喜欢。",
                     "Daily recommendations picked to help you discover your next favorite songs."
-                ),
-                creatorAvatarURL: nil,
-                playCount: 0
+                )
             )
         case .topList(let info):
             let description = (info.chartDescription ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -262,9 +254,7 @@ struct PlaylistView: View {
                 title: coChartName(info.name),
                 sourceName: "酷狗音乐",
                 coverURL: info.coverURL,
-                description: description.isEmpty ? nil : description,
-                creatorAvatarURL: nil,
-                playCount: info.playCount ?? 0
+                description: description.isEmpty ? nil : description
             )
         }
     }
