@@ -410,10 +410,11 @@ final class PlayerManager: NSObject, ObservableObject {
         pendingSeekSetUptime = ProcessInfo.processInfo.systemUptime
         resetListeningProgress()
         seekRevision &+= 1
+        // 0.25 秒容差：精确到帧要现解码才出声（滑动就卡一下），0.25 秒听不出来、行级歌词也不受影响。
         player?.seek(
             to: CMTime(seconds: clamped, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
+            toleranceBefore: CMTime(seconds: 0.25, preferredTimescale: 600),
+            toleranceAfter: CMTime(seconds: 0.25, preferredTimescale: 600)
         )
         updateNowPlaying()
         savePersistedPlaybackState()
@@ -434,10 +435,11 @@ final class PlayerManager: NSObject, ObservableObject {
         pendingSeekTarget = target
         pendingSeekSetUptime = ProcessInfo.processInfo.systemUptime
         resetListeningProgress()
+        // 0.25 秒容差：同上，精确到帧现解码会卡一下；点歌词行 0.25 秒内不影响行首。
         player?.seek(
             to: CMTime(seconds: target, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
+            toleranceBefore: CMTime(seconds: 0.25, preferredTimescale: 600),
+            toleranceAfter: CMTime(seconds: 0.25, preferredTimescale: 600)
         ) { [weak self] finished in
             guard finished else { return }
             DispatchQueue.main.async { [weak self] in
