@@ -4470,7 +4470,12 @@ struct LyricsSection: View {
                 }
             }
             .onChange(of: player.seekRevision) { _ in
-                guard !isUserScrolling, let newIndex = currentIndex else { return }
+                // 滑动进度条是明确的“跟随播放”指令：正在浏览歌词也要立刻跟回来，别等 3 秒回落。
+                resumeScrollTask?.cancel()
+                isUserScrolling = false
+                selectedLyricIndex = nil
+                focusedIndex = nil
+                guard let newIndex = currentIndex else { return }
                 DispatchQueue.main.async {
                     withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.3)) {
                         proxy.scrollTo(newIndex, anchor: anchor)

@@ -155,6 +155,9 @@ final class PlayerManager: NSObject, ObservableObject {
     private var lastNowPlayingRefreshUptime = 0.0
     private var lastPublishedProgress: Double = -1
     private var lastPersistedProgress: Double = -1
+    // 滑动进行中的目标位置：观察员在播放器落点前不许用旧时间把进度打回去。
+    private var pendingSeekTarget: Double?
+    private var pendingSeekSetUptime: Double = 0
     private var pendingListeningDuration: TimeInterval = 0
     /// 单调时钟记录当前实际播放片段，不依赖歌曲进度，避免拖动/切歌放大统计。
     private var listeningSegmentStartedUptime: TimeInterval?
@@ -402,7 +405,9 @@ final class PlayerManager: NSObject, ObservableObject {
         // 不等待 AVPlayer 回调，也不使用回调中的旧 currentTime 覆盖目标位置。
         let clamped = max(0, min(seconds, max(duration, currentSong?.duration ?? seconds)))
         progress = clamped
-        lastPublishedProgress = clamped
+        // 滑动进行中：观察员先别用播放器还没落点的旧时间把进度打回去（那就是进度条“还在原来卡一下”）。
+        pendingSeekTarget = clamped
+        pendingSeekSetUptime = ProcessInfo.processInfo.systemUptime
         resetListeningProgress()
         seekRevision &+= 1
         player?.seek(
@@ -426,7 +431,8 @@ final class PlayerManager: NSObject, ObservableObject {
         seekRevision &+= 1
         let revision = seekRevision
         progress = target
-        lastPublishedProgress = target
+        pendingSeekTarget = target
+        pendingSeekSetUptime = ProcessInfo.processInfo.systemUptime
         resetListeningProgress()
         player?.seek(
             to: CMTime(seconds: target, preferredTimescale: 600),
@@ -440,6 +446,7 @@ final class PlayerManager: NSObject, ObservableObject {
                       self.seekRevision == revision else { return }
                 self.progress = target
                 self.lastPublishedProgress = target
+                self.pendingSeekTarget = nil
                 if shouldKeepPlaying {
                     self.player?.playImmediately(atRate: Float(self.rate))
                     self.isPlaying = true
@@ -728,6 +735,7 @@ final class PlayerManager: NSObject, ObservableObject {
         stopListeningSegment()
         flushListeningDuration()
         resetListeningProgress()
+        pendingSeekTarget = nil
         let initialProgress = max(0, min(resumeAt ?? 0, max(song.duration, 0)))
         // 切歌时同时解除旧 item，避免旧音频在新播放器建立期间残留输出。
         player?.pause()
@@ -975,7 +983,15 @@ final class PlayerManager: NSObject, ObservableObject {
             guard let self, let player = self.player else { return }
             if time.seconds.isFinite {
                 self.recordListeningProgress(at: time.seconds, player: player)
-                if abs(time.seconds - self.lastPublishedProgress) >= 0.05 {
+                if let target = self.pendingSeekTarget {
+                    if abs(time.seconds - target) <= 0.5 {
+                        self.pendingSeekTarget = nil
+                    } else if ProcessInfo.processInfo.systemUptime - self.pendingSeekSetUptime > 3.0 {
+                        // 滑动 3 秒还没落点：基本等于这次滑动没成，放开让观察员报真实时间，别把进度冻住。
+                        self.pendingSeekTarget = nil
+                    }
+                }
+                if self.pendingSeekTarget == nil, abs(time.seconds - self.lastPublishedProgress) >= 0.05 {
                     self.lastPublishedProgress = time.seconds
                     self.progress = time.seconds
                     if abs(time.seconds - self.lastPersistedProgress) >= 5.0 {

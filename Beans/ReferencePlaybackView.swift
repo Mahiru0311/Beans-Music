@@ -446,6 +446,15 @@ struct ReferencePlaybackView: View {
                         guard !isDraggingLyrics else { return }
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
+                    .onChange(of: player.seekRevision) { _ in
+                        // 滑动进度条是明确的“跟随播放”指令：正在拖歌词也要立刻跟回来。
+                        resumeTask?.cancel()
+                        lyricTapTask?.cancel()
+                        isDraggingLyrics = false
+                        selectedLyricID = nil
+                        focusedLyricID = nil
+                        scrollToPlaybackLyric(proxy: proxy, animated: true)
+                    }
                 }
                 .transition(.modifier(active: LyricsEnterModifier(opacity: 0, offsetY: 14), identity: LyricsEnterModifier(opacity: 1, offsetY: 0)))
             }
@@ -1396,6 +1405,15 @@ struct AppleMusicLyricsSection: View {
                     }
                     .onChange(of: currentPlaybackLyricID) { _ in
                         guard !isDraggingLyrics else { return }
+                        scrollToPlaybackLyric(proxy: proxy, animated: true)
+                    }
+                    .onChange(of: player.seekRevision) { _ in
+                        // 滑动进度条是明确的“跟随播放”指令：正在拖歌词也要立刻跟回来。
+                        resumeTask?.cancel()
+                        lyricTapTask?.cancel()
+                        isDraggingLyrics = false
+                        selectedLyricID = nil
+                        focusedLyricID = nil
                         scrollToPlaybackLyric(proxy: proxy, animated: true)
                     }
                 }

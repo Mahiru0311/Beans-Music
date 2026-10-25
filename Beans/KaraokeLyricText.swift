@@ -19,8 +19,9 @@ struct KaraokeLyricText: View {
     var body: some View {
         if enabled, isActive, let words = line.words, !words.isEmpty {
             TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isPlaying)) { context in
+                // 卡顿时墙钟外推不能无限跑：最多超当前音频时间 0.25 秒，否则逐字会跑到声音前面。
                 let elapsed = isPlaying
-                    ? anchorTime + max(0, context.date.timeIntervalSince(anchorDate))
+                    ? min(anchorTime + max(0, context.date.timeIntervalSince(anchorDate)), currentTime + 0.25)
                     : currentTime
                 wordView(words: words, time: elapsed)
             }
