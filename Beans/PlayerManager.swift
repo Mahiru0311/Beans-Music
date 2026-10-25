@@ -845,8 +845,8 @@ final class PlayerManager: NSObject, ObservableObject {
         } else {
             item = AVPlayerItem(url: url)
         }
-        // 前向多备 15 秒：启动仍不等缓冲（waits=false 不变），网络抖动时靠缓冲顶过去，不一卡一卡。
-        item.preferredForwardBufferDuration = 15
+        // 前向多备 30 秒：启动仍不等缓冲（waits=false 不变），网络抖动时靠缓冲顶过去，不一卡一卡。
+        item.preferredForwardBufferDuration = 30
         let player = AVPlayer(playerItem: item)
         // QQ CDN 返回的首包较小，避免 AVPlayer 为了预缓冲过久而表现为
         // “点击后没反应”；真正不可播放时仍由 item 失败回调触发音质降级。
@@ -988,8 +988,10 @@ final class PlayerManager: NSObject, ObservableObject {
                 if let target = self.pendingSeekTarget {
                     if abs(time.seconds - target) <= 0.5 {
                         self.pendingSeekTarget = nil
-                    } else if ProcessInfo.processInfo.systemUptime - self.pendingSeekSetUptime > 3.0 {
-                        // 滑动 3 秒还没落点：基本等于这次滑动没成，放开让观察员报真实时间，别把进度冻住。
+                    } else if ProcessInfo.processInfo.systemUptime - self.pendingSeekSetUptime > 3.0,
+                              player.timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                        // 滑动 3 秒还没落点、且播放器已不在等数据：基本等于这次滑动没成，放开让观察员报真实时间，别把进度冻住。
+                        // 还在等数据（网络慢、正在取新位置）时不放开：歌词先停在滑动目标上，等数据到了自然对上，不来回跳。
                         self.pendingSeekTarget = nil
                     }
                 }
