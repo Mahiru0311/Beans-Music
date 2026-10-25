@@ -1355,7 +1355,7 @@ final class PlayerManager: NSObject, ObservableObject {
 
     private func configureEqualizer(for item: AVPlayerItem) {
         // 门与 CoEqualizer.processingEnabled 一致（五项全集）：只认均衡/3D 时，单独开耳机增强/人声清晰/声场加宽会静默不生效。
-        guard CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled || CoEqualizer.shared.headphoneBoostEnabled || CoEqualizer.shared.vocalBoostEnabled || CoEqualizer.shared.widenEnabled else {
+        guard CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled || CoEqualizer.shared.headphoneBoostEnabled || CoEqualizer.shared.vocalBoostEnabled || CoEqualizer.shared.widenEnabled || CoEqualizer.shared.landscapeRippleActive else {
             item.audioMix = nil
             return
         }
@@ -1373,7 +1373,7 @@ final class PlayerManager: NSObject, ObservableObject {
                 guard let self,
                       let item,
                       self.player?.currentItem === item,
-                      CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled else { return }
+                      CoEqualizer.shared.isEnabled || CoEqualizer.shared.surroundEnabled || CoEqualizer.shared.headphoneBoostEnabled || CoEqualizer.shared.vocalBoostEnabled || CoEqualizer.shared.widenEnabled || CoEqualizer.shared.landscapeRippleActive else { return }
                 item.audioMix = mix
             }
         }

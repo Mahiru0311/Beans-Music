@@ -33,7 +33,7 @@ struct FoliaStageView: View {
     var body: some View {
         GeometryReader { geo in
             if geo.size.width > geo.size.height {
-                landscapeBody(size: geo.size)
+                landscapeBody()
             } else {
                 portraitBody
             }
@@ -80,48 +80,35 @@ struct FoliaStageView: View {
         }
     }
 
-    // 横屏：封面在左、其余在右。顶部只剩两颗键，歌名歌手移到右栏顶部，
-    // 右栏从上到下是歌名歌手、歌词效果、控制框（同样 3 秒自动藏）。
-    private func landscapeBody(size: CGSize) -> some View {
-        let artworkSize = min(size.height - 96, size.width * 0.42)
-        return ZStack {
+    // 横屏：整屏就是歌词舞台（不分左右栏——这就是 Folia 的样子，与 Apple Music 的两栏不同）。
+    // 顶部只留歌名歌手（没有返回/设置键），中间是歌词效果，最底部是随音乐电平的轻柔涟漪。
+    // 横屏里没有任何按钮和控制框，只看；要操作就转回竖屏或下拉退出。
+    private func landscapeBody() -> some View {
+        ZStack {
             (daylight ? Color.white : Color.black).ignoresSafeArea()
             CoverBlurBackground(url: displayCoverURL, scheme: daylight ? .light : .dark)
                 .ignoresSafeArea()
             Color.black.opacity(daylight ? 0.10 : 0.35).ignoresSafeArea()
                 .allowsHitTesting(false)
-            Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture { pokeControls() }
-            VStack(spacing: 0) {
-                HStack {
-                    Button(action: onBack) { Image(systemName: "chevron.down").frame(width: 44, height: 44) }
-                    Spacer()
-                    Button(action: onSettings) { Image(systemName: "slider.horizontal.3").frame(width: 44, height: 44) }
+            VStack(spacing: 12) {
+                VStack(spacing: 4) {
+                    Text(song?.name ?? "Folia")
+                        .font(.title3.bold()).lineLimit(1)
+                    Text(song.map { $0.artists } ?? "")
+                        .font(.subheadline)
+                        .foregroundStyle(daylight ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
+                        .lineLimit(1)
                 }
-                .padding(.horizontal, 16)
-                HStack(spacing: 24) {
-                    CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
-                        .frame(width: artworkSize, height: artworkSize)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(song?.name ?? "Folia")
-                            .font(.title3.bold()).lineLimit(1)
-                        Text(song.map { $0.artists } ?? "")
-                            .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                        lyricSurface
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        if showControls {
-                            FoliaStageTransport(player: player, clock: clock, onInteract: pokeControls)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-                    }
+                .padding(.top, 16)
+                lyricSurface
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 12)
             }
-            .animation(.easeOut(duration: 0.3), value: showControls)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 12)
         }
+        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying) }
+        .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
+        .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
     }
 
     @ViewBuilder private var lyricSurface: some View {

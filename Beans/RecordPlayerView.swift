@@ -223,32 +223,34 @@ struct RecordPlayerView: View {
         .padding(.vertical, 12)
     }
 
-    // 横屏（手机）：封面在左、其余在右。左只放方形照片封面——内容是方形就保持方形，
-    // 不转黑胶圆盘；右栏从上到下是歌名歌手、歌词、进度、控制。横屏是固定布局，不跟布局编辑器走。
+    // 横屏（手机）：左边是唱片本身（转盘，不改方形照片），右边只留歌名、歌手、歌词——
+    // 没有进度条、没有按钮、没有菜单。横屏是固定布局，不跟布局编辑器走（转盘的编辑器位移保留）。
     private func landscapeLayout(size: CGSize) -> some View {
         let artworkDimension = min(220, max(140, size.height - 140))
         return HStack(spacing: 24) {
-            CoverImage(url: displayCoverURL, size: artworkDimension, cornerRadius: 12)
-                .frame(width: artworkDimension, height: artworkDimension)
-            VStack(spacing: 12) {
-                if showQueue {
-                    recordQueuePage
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
-                } else {
-                    trackMetadata
-                    lyricsColumn
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    RecordModeScrubber()
-                        .padding(.horizontal, 8)
-                    transportControls
-                        .frame(maxWidth: 360)
+            turntable(size: artworkDimension, allowsLyrics: false)
+                .modifier(recordLayout(.vinylCover))
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(song?.name ?? "")
+                        .font(CoFont.appFont(21, .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(song.map { $0.artists } ?? "")
+                        .font(CoFont.appFont(13.5))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1)
                 }
+                lyricsColumn
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
+        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying) }
+        .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
+        .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
     }
 
     private func regularLayout(size: CGSize) -> some View {

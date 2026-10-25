@@ -103,7 +103,7 @@ struct ReferencePlaybackView: View {
     var body: some View {
         GeometryReader { geometry in
             if UIDevice.current.userInterfaceIdiom == .phone && geometry.size.width > geometry.size.height {
-                landscapeBody(size: geometry.size, bottomInset: geometry.safeAreaInsets.bottom)
+                landscapeBody(size: geometry.size)
             } else {
             ZStack {
                 playerBackground
@@ -167,25 +167,36 @@ struct ReferencePlaybackView: View {
         }
     }
 
-    // 横屏（手机）：封面在左、其余在右。左是方形封面（不变形）；右栏是歌词页
-    // （自带歌名/歌手页眉 + 同步歌词列表，队列表开着时右栏改显示队列表）+ 播放控制。
-    // 横屏是固定布局，不跟自定义布局编辑器走；转回竖屏时 showLyrics 不变。
-    private func landscapeBody(size: CGSize, bottomInset: CGFloat) -> some View {
+    // 横屏（手机）：封面在左、其余在右，只留封面、歌名、歌手、歌词——没有进度条、没有按钮、没有菜单。
+    // 左是方形封面（不变形）；右栏是歌名歌手 + 纯歌词列表（共用 AppleMusicLyricsSection，无页眉按钮）。
+    // 最底部一层随音乐电平起伏的轻柔涟漪（电平来自音频 tap 的真实采样）。
+    private func landscapeBody(size: CGSize) -> some View {
         let artworkSize = min(size.height - 64, size.width * 0.42)
         return ZStack {
             playerBackground
             HStack(spacing: 24) {
                 CoverImage(url: displayCoverURL, size: artworkSize, cornerRadius: 16)
                     .frame(width: artworkSize, height: artworkSize)
-                VStack(spacing: 0) {
-                    if showQueue {
-                        compactQueuePage
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        lyricsPage
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(song?.name ?? "未在播放")
+                            .font(CoFont.appFont(22, .bold))
+                            .foregroundStyle(primaryColor)
+                            .lineLimit(1)
+                        Text(subtitle)
+                            .font(CoFont.appFont(13.5, .medium))
+                            .foregroundStyle(secondaryColor)
+                            .lineLimit(1)
                     }
-                    playbackControls(bottomInset: bottomInset)
+                    AppleMusicLyricsSection(
+                        lyrics: lyrics,
+                        primary: primaryColor,
+                        secondary: secondaryColor,
+                        lyricOffset: CGFloat(lyricOffset)
+                    ) { line in
+                        player.seekPrecisely(to: LyricTiming.seekTime(for: line, userOffset: lyricOffset))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -193,6 +204,9 @@ struct ReferencePlaybackView: View {
             .padding(.vertical, 16)
             .frame(width: size.width, height: size.height)
         }
+        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying) }
+        .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
+        .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
     }
 
     @ViewBuilder

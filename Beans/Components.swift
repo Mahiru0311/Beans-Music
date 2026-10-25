@@ -1829,3 +1829,56 @@ struct ToastView: View {
     }
 }
 
+
+// 横屏底部涟漪：随音乐电平起伏的轻柔波浪，只在横屏出现。
+// 电平是均衡器 tap 的真实采样 RMS（不是定时动画）；暂停或没挂 tap 时只剩微小基线起伏。
+// 振幅 = 基线 3 + 电平×22（正常音乐电平约 0.1–0.5，起伏在 5–14pt 之间，是“微微”不是大浪）。
+struct CoLandscapeRippleView: View {
+    var isPlaying: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var displayedLevel = 0.0
+    @State private var phase = 0.0
+
+    var body: some View {
+        if reduceMotion {
+            Color.white.opacity(0.05)
+                .frame(height: 64)
+                .allowsHitTesting(false)
+        } else {
+            TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+                Canvas { ctx, size in
+                    let width = size.width, height = size.height
+                    // 两层波（不同速度与相位），从下往上淡出，贴在最底部。
+                    for (index, speed, baseOpacity) in [(0, 1.0, 0.16), (1, 1.7, 0.10)] {
+                        let amp = 3 + displayedLevel * 22
+                        var path = Path()
+                        path.move(to: CGPoint(x: 0, y: height))
+                        var x: CGFloat = 0
+                        while x <= width {
+                            let t = x / max(1, width)
+                            let y = height - 6 - (sin(t * .pi * 4 + phase * speed + Double(index) * 1.3) * 0.5 + 0.5) * amp - CGFloat(index) * 5
+                            path.addLine(to: CGPoint(x: x, y: y))
+                            x += 4
+                        }
+                        path.addLine(to: CGPoint(x: width, y: height))
+                        path.closeSubpath()
+                        let gradient = Gradient(colors: [.white.opacity(0), .white.opacity(baseOpacity)])
+                        ctx.fill(path, with: .linearGradient(gradient, startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: height)))
+                    }
+                }
+                .onChange(of: context.date) { _, _ in
+                    // 起得快、落得慢：电平一上来立刻跟，落下去慢慢收；暂停时收得更快，涟漪归于平静。
+                    phase += 0.05
+                    let raw = CoEqualizer.shared.audioLevel()
+                    if raw > displayedLevel {
+                        displayedLevel = raw
+                    } else {
+                        displayedLevel *= isPlaying ? 0.88 : 0.78
+                    }
+                }
+            }
+            .frame(height: 64)
+            .allowsHitTesting(false)
+        }
+    }
+}
