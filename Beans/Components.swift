@@ -1830,10 +1830,10 @@ struct ToastView: View {
 }
 
 
-// 横屏底部涟漪：贴在最底部的几道细线涟漪（不是一条白杠、没有填充条带，背景透明）。
-// 颜色自适应背景（调用方传本页的主色：浅色背景传深色、深色背景传白色），
-// 形状是三组不同波长/速度的正弦叠加 + 缓慢呼吸，线条柔和不僵硬；
-// 振幅跟音乐电平走（电平来自音频 tap 的真实采样）：基线 2 + 电平×14，起得快、落得慢，暂停时归于平静。
+// 横屏底部涟漪：一条随音乐起伏的波浪（不是三条杠、没有填充条带，背景透明）。
+// 高度跟音乐走：整体高度由音频 tap 的真实电平定（起得快、落得慢，暂停时归于平静），
+// 沿波浪各处再叠一个缓慢移动的包络，让同一时刻波浪各处有高有低、且高低位置一直在走；
+// 安静时也有 5pt 左右的起伏，不会塌成直线。颜色自适应背景（调用方传本页的主色）。
 struct CoLandscapeRippleView: View {
     var isPlaying: Bool
     var color: Color
@@ -1848,36 +1848,31 @@ struct CoLandscapeRippleView: View {
             TimelineView(.animation(minimumInterval: 1 / 30)) { context in
                 Canvas { ctx, size in
                     let width = size.width, height = size.height
-                    // 呼吸：整体振幅随时间缓慢起伏，不是一成不变的机械波。
+                    // 整体高度：安静时 5pt 保底，音乐越响越高（最高约 17pt，波浪不出 44pt 的框）。
+                    let baseAmp = 5 + displayedLevel * 12
                     let breathing = 0.85 + 0.15 * sin(phase * 0.3)
-                    let amp = (2 + displayedLevel * 14) * breathing
-                    // 三道线：基线不同、透明度不同，像水面泛起的几层涟漪。
-                    for (index, baseOpacity) in [(0, 0.32), (1, 0.22), (2, 0.14)] {
-                        let baseline = height - 4 - CGFloat(index) * 6
-                        var path = Path()
-                        var x: CGFloat = 0
-                        var first = true
-                        while x <= width {
-                            let t = x / max(1, width)
-                            // 三组正弦叠加：波长、速度、相位各不相同，形状不重复、不僵硬。
-                            // 全用 Double 算（t 先转 Double，CGFloat 与 Double 混在一个表达式里会让编译器推断超时），
-                            // 最后再转回 CGFloat。
-                            let td = Double(t)
-                            let wave = sin(td * .pi * 4.4 + phase) * 0.55
-                                + sin(td * .pi * 7.4 + phase * 1.6 + 1.3) * 0.30
-                                + sin(td * .pi * 10.2 + phase * 0.7 + 2.1) * 0.15
-                            let y = baseline - CGFloat(wave) * CGFloat(amp)
-                            if first {
-                                path.move(to: CGPoint(x: x, y: y))
-                                first = false
-                            } else {
-                                path.addLine(to: CGPoint(x: x, y: y))
-                            }
-                            x += 3
+                    var path = Path()
+                    var x: CGFloat = 0
+                    var first = true
+                    while x <= width {
+                        let t = Double(x / max(1, width))
+                        // 沿波浪的包络：让不同位置的高度不一样，且随时间缓慢移动。
+                        let envelope = 0.65 + 0.35 * sin(t * .pi * 2 * 1.3 + phase * 0.5)
+                        // 波形：两组波长不同的正弦，速度不同，形状一直在变，不僵硬。
+                        // 全用 Double 算（t 先转 Double，CGFloat 与 Double 混写会让编译器推断超时），最后再转回 CGFloat。
+                        let wave = sin(t * .pi * 2 * 2.2 + phase * 1.0) * 0.6
+                            + sin(t * .pi * 2 * 3.9 + phase * 1.7 + 1.3) * 0.4
+                        let y = height - 18 - CGFloat(wave * envelope * baseAmp * breathing)
+                        if first {
+                            path.move(to: CGPoint(x: x, y: y))
+                            first = false
+                        } else {
+                            path.addLine(to: CGPoint(x: x, y: y))
                         }
-                        let opacity = baseOpacity * (0.6 + displayedLevel * 0.4)
-                        ctx.stroke(path, with: .color(color.opacity(opacity)), lineWidth: 1.2)
+                        x += 3
                     }
+                    let opacity = min(0.75, 0.35 + displayedLevel * 0.4)
+                    ctx.stroke(path, with: .color(color.opacity(opacity)), lineWidth: 1.5)
                 }
                 .onChange(of: context.date) { _, _ in
                     phase += 0.05
