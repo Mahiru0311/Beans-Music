@@ -1265,6 +1265,22 @@ struct AppleMusicLyricsSection: View {
     let centered: Bool = false
     let onTapLine: (LyricLine) -> Void
 
+    init(
+        lyrics: [LyricLine],
+        primary: Color,
+        secondary: Color,
+        lyricOffset: CGFloat,
+        centered: Bool = false,
+        onTapLine: @escaping (LyricLine) -> Void
+    ) {
+        self.lyrics = lyrics
+        self.primary = primary
+        self.secondary = secondary
+        self.lyricOffset = lyricOffset
+        self.centered = centered
+        self.onTapLine = onTapLine
+    }
+
     @State private var lyricCenters: [UUID: CGFloat] = [:]
     @State private var focusedLyricID: UUID?
     @State private var selectedLyricID: UUID?
