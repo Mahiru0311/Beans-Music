@@ -178,6 +178,11 @@ final class PlayerManager: NSObject, ObservableObject {
     private var failureAutoSkipWorkItem: DispatchWorkItem?
     private var playbackConfirmationWorkItem: DispatchWorkItem?
     private var playbackStallWorkItem: DispatchWorkItem?
+    // 自适应音质：连续卡顿（60 秒内 3 次等数据）说明当前档位网速供不上，自动降一档。
+    private var abrStallEpisodes: [Double] = []
+    private var abrDropSongKey: String?
+    private var abrDropCount = 0
+    private var abrLastDropUptime: Double = 0
     private static let nowPlayingArtworkCache = NSCache<NSURL, UIImage>()
 
     private let historyKey = "co.history"
@@ -738,6 +743,7 @@ final class PlayerManager: NSObject, ObservableObject {
         flushListeningDuration()
         resetListeningProgress()
         pendingSeekTarget = nil
+        abrStallEpisodes = []
         let initialProgress = max(0, min(resumeAt ?? 0, max(song.duration, 0)))
         // 切歌时同时解除旧 item，避免旧音频在新播放器建立期间残留输出。
         player?.pause()
@@ -812,6 +818,33 @@ final class PlayerManager: NSObject, ObservableObject {
         kugouStandardFallbackSongKey = song.identityKey
         let resume = progress
         loadCurrent(resumeAt: resume, forceKugouStandard: true)
+        return true
+    }
+
+    /// 中途连续卡顿降档：当前档位网速供不上时降一档（Hi-Res→无损→极高→标准），降了就写进偏好、以后都用新档。
+    /// 一首歌最多降 3 档（到底标准为止），20 秒内只降一次，防同一簇卡顿连降到底。
+    private func dropQualityTierForRepeatedStalls() -> Bool {
+        guard let song = currentSong else { return false }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - abrLastDropUptime >= 20 else { return false }
+        if abrDropSongKey != song.identityKey { abrDropSongKey = song.identityKey; abrDropCount = 0 }
+        guard abrDropCount < 3 else { return false }
+        let current = NetworkAudioQuality.officialPreferred
+        let next: CoAudioQuality?
+        switch current {
+        case .hires, .master: next = .lossless
+        case .lossless: next = .exhigh
+        case .exhigh, .higher: next = .standard
+        case .standard: next = nil
+        }
+        guard let next else { return false }
+        abrDropCount += 1
+        abrLastDropUptime = now
+        abrStallEpisodes = []
+        if next == .standard { kugouStandardFallbackSongKey = song.identityKey }
+        UserDefaults.standard.set(next.rawValue, forKey: "co.audioQuality")
+        ToastCenter.shared.show("网络较慢，已切换到\(next.displayName)音质", duration: 3)
+        loadCurrent(resumeAt: progress)
         return true
     }
 
@@ -913,6 +946,15 @@ final class PlayerManager: NSObject, ObservableObject {
                 }
                 if player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
                     self.isBuffering = true
+                    // 中途卡顿（已开播后才等数据）：60 秒内攒够 3 次就降一档；开局缓冲不算（还没 playbackConfirmed）。
+                    if self.playbackConfirmed {
+                        let now = ProcessInfo.processInfo.systemUptime
+                        self.abrStallEpisodes = self.abrStallEpisodes.filter { now - $0 <= 60 }
+                        self.abrStallEpisodes.append(now)
+                        if self.abrStallEpisodes.count >= 3, self.dropQualityTierForRepeatedStalls() {
+                            return
+                        }
+                    }
                     self.playbackStallWorkItem?.cancel()
                     let stall = DispatchWorkItem { [weak self, weak player, weak item] in
                         guard let self,
