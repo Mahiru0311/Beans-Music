@@ -1830,44 +1830,53 @@ struct ToastView: View {
 }
 
 
-// 横屏底部涟漪：随音乐电平起伏的轻柔波浪，只在横屏出现。
-// 电平是均衡器 tap 的真实采样 RMS（不是定时动画）；暂停或没挂 tap 时只剩微小基线起伏。
-// 振幅 = 基线 3 + 电平×22（正常音乐电平约 0.1–0.5，起伏在 5–14pt 之间，是“微微”不是大浪）。
+// 横屏底部涟漪：贴在最底部的几道细线涟漪（不是一条白杠、没有填充条带，背景透明）。
+// 颜色自适应背景（调用方传本页的主色：浅色背景传深色、深色背景传白色），
+// 形状是三组不同波长/速度的正弦叠加 + 缓慢呼吸，线条柔和不僵硬；
+// 振幅跟音乐电平走（电平来自音频 tap 的真实采样）：基线 2 + 电平×14，起得快、落得慢，暂停时归于平静。
 struct CoLandscapeRippleView: View {
     var isPlaying: Bool
+    var color: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var displayedLevel = 0.0
     @State private var phase = 0.0
 
     var body: some View {
         if reduceMotion {
-            Color.white.opacity(0.05)
-                .frame(height: 64)
-                .allowsHitTesting(false)
+            EmptyView()
         } else {
             TimelineView(.animation(minimumInterval: 1 / 30)) { context in
                 Canvas { ctx, size in
                     let width = size.width, height = size.height
-                    // 两层波（不同速度与相位），从下往上淡出，贴在最底部。
-                    for (index, speed, baseOpacity) in [(0, 1.0, 0.16), (1, 1.7, 0.10)] {
-                        let amp = 3 + displayedLevel * 22
+                    // 呼吸：整体振幅随时间缓慢起伏，不是一成不变的机械波。
+                    let breathing = 0.85 + 0.15 * sin(phase * 0.3)
+                    let amp = (2 + displayedLevel * 14) * breathing
+                    // 三道线：基线不同、透明度不同，像水面泛起的几层涟漪。
+                    for (index, baseOpacity) in [(0, 0.32), (1, 0.22), (2, 0.14)] {
+                        let baseline = height - 4 - CGFloat(index) * 6
                         var path = Path()
-                        path.move(to: CGPoint(x: 0, y: height))
                         var x: CGFloat = 0
+                        var first = true
                         while x <= width {
                             let t = x / max(1, width)
-                            let y = height - 6 - (sin(t * .pi * 4 + phase * speed + Double(index) * 1.3) * 0.5 + 0.5) * amp - CGFloat(index) * 5
-                            path.addLine(to: CGPoint(x: x, y: y))
-                            x += 4
+                            // 三组正弦叠加：波长、速度、相位各不相同，形状不重复、不僵硬。
+                            let wave = sin(t * .pi * 2 * 2.2 + phase * 1.0) * 0.55
+                                + sin(t * .pi * 2 * 3.7 + phase * 1.6 + 1.3) * 0.30
+                                + sin(t * .pi * 2 * 5.1 + phase * 0.7 + 2.1) * 0.15
+                            let y = baseline - CGFloat(wave) * CGFloat(amp)
+                            if first {
+                                path.move(to: CGPoint(x: x, y: y))
+                                first = false
+                            } else {
+                                path.addLine(to: CGPoint(x: x, y: y))
+                            }
+                            x += 3
                         }
-                        path.addLine(to: CGPoint(x: width, y: height))
-                        path.closeSubpath()
-                        let gradient = Gradient(colors: [.white.opacity(0), .white.opacity(baseOpacity)])
-                        ctx.fill(path, with: .linearGradient(gradient, startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: height)))
+                        let opacity = baseOpacity * (0.6 + displayedLevel * 0.4)
+                        ctx.stroke(path, with: .color(color.opacity(opacity)), lineWidth: 1.2)
                     }
                 }
                 .onChange(of: context.date) { _, _ in
-                    // 起得快、落得慢：电平一上来立刻跟，落下去慢慢收；暂停时收得更快，涟漪归于平静。
                     phase += 0.05
                     let raw = CoEqualizer.shared.audioLevel()
                     if raw > displayedLevel {
@@ -1877,7 +1886,7 @@ struct CoLandscapeRippleView: View {
                     }
                 }
             }
-            .frame(height: 64)
+            .frame(height: 44)
             .allowsHitTesting(false)
         }
     }

@@ -25,6 +25,7 @@ struct RecordPlayerView: View {
     let visualsActive: Bool
 
     @State private var showLyrics = false
+    @State private var showLandscapeControls = true
     @State private var showQueue = false
     @State private var showSoftwareVolume = false
     @State private var showLyricOffsetSheet = false
@@ -223,32 +224,48 @@ struct RecordPlayerView: View {
         .padding(.vertical, 12)
     }
 
-    // 横屏（手机）：左边是唱片本身（转盘，不改方形照片），右边只留歌名、歌手、歌词——
-    // 没有进度条、没有按钮、没有菜单。横屏是固定布局，不跟布局编辑器走（转盘的编辑器位移保留）。
+    // 横屏（手机）：左边是唱片本身（转盘），右边只留歌名、歌手、歌词 + 悬浮的进度条与三颗播放键。
+    // 控制是悬浮层（不占布局，出现/消失不推内容，位置固定在右栏底部）；点空白处切换显隐。
     private func landscapeLayout(size: CGSize) -> some View {
         let artworkDimension = min(220, max(140, size.height - 140))
-        return HStack(spacing: 24) {
-            turntable(size: artworkDimension, allowsLyrics: false)
-                .modifier(recordLayout(.vinylCover))
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(song?.name ?? "")
-                        .font(CoFont.appFont(21, .bold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text(song.map { $0.artists } ?? "")
-                        .font(CoFont.appFont(13.5))
-                        .foregroundStyle(.white.opacity(0.65))
-                        .lineLimit(1)
+        return ZStack {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { showLandscapeControls.toggle() }
+            HStack(spacing: 24) {
+                turntable(size: artworkDimension, allowsLyrics: false)
+                    .modifier(recordLayout(.vinylCover))
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(song?.name ?? "")
+                            .font(CoFont.appFont(21, .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(song.map { $0.artists } ?? "")
+                            .font(CoFont.appFont(13.5))
+                            .foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(1)
+                    }
+                    lyricsColumn
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                lyricsColumn
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .bottom) {
+                    if showLandscapeControls {
+                        VStack(spacing: 4) {
+                            RecordModeScrubber()
+                            transportControls.frame(maxWidth: 360)
+                        }
+                        .padding(.horizontal, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .animation(.easeOut(duration: 0.3), value: showLandscapeControls)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying) }
+        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying, color: .white) }
         .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
         .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
     }

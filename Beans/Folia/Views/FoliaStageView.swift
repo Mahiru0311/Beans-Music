@@ -17,13 +17,19 @@ struct FoliaStageView: View {
     @State private var showControls = true
     @State private var hideControlsTask: Task<Void, Never>?
 
-    /// 沉浸式：点一下出现，3 秒不动自动藏起（只藏底部控制框，顶部栏一直在，退出路不断）。
+    /// 沉浸式：点一下出来、再点一下消失（与横屏同一套点按切换逻辑）；3 秒不动仍自动藏起
+    ///（只藏底部控制框，顶部栏一直在，退出路不断）。
     private func pokeControls() {
-        showControls = true
-        hideControlsTask?.cancel()
-        hideControlsTask = Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            if !Task.isCancelled { showControls = false }
+        if showControls {
+            showControls = false
+            hideControlsTask?.cancel()
+        } else {
+            showControls = true
+            hideControlsTask?.cancel()
+            hideControlsTask = Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if !Task.isCancelled { showControls = false }
+            }
         }
     }
 
@@ -82,7 +88,9 @@ struct FoliaStageView: View {
 
     // 横屏：整屏就是歌词舞台（不分左右栏——这就是 Folia 的样子，与 Apple Music 的两栏不同）。
     // 顶部只留歌名歌手（没有返回/设置键），中间是歌词效果，最底部是随音乐电平的轻柔涟漪。
-    // 横屏里没有任何按钮和控制框，只看；要操作就转回竖屏或下拉退出。
+    // 横屏：整屏就是歌词舞台。顶部只留歌名歌手（没有返回/设置键），中间是歌词效果，
+    // 底部悬浮 Folia 自己的进度条与三颗播放键（出现/消失不推内容，位置固定在底部）；点空白处切换显隐。
+    // 最底部是自适应背景色的细线涟漪（日间黑、夜间白）。
     private func landscapeBody() -> some View {
         ZStack {
             (daylight ? Color.white : Color.black).ignoresSafeArea()
@@ -90,6 +98,9 @@ struct FoliaStageView: View {
                 .ignoresSafeArea()
             Color.black.opacity(daylight ? 0.10 : 0.35).ignoresSafeArea()
                 .allowsHitTesting(false)
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { showControls.toggle() }
             VStack(spacing: 12) {
                 VStack(spacing: 4) {
                     Text(song?.name ?? "Folia")
@@ -105,9 +116,17 @@ struct FoliaStageView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 12)
+            .overlay(alignment: .bottom) {
+                if showControls {
+                    FoliaStageTransport(player: player, clock: clock, onInteract: {})
+                        .padding(.horizontal, 24)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.3), value: showControls)
         }
-        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying) }
-        .onAppear { CoEqualizer.shared.landscapeRippleActive = true }
+        .overlay(alignment: .bottom) { CoLandscapeRippleView(isPlaying: player.isPlaying, color: daylight ? .black : .white) }
+        .onAppear { hideControlsTask?.cancel(); CoEqualizer.shared.landscapeRippleActive = true }
         .onDisappear { CoEqualizer.shared.landscapeRippleActive = false }
     }
 
